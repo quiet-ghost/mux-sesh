@@ -40,7 +40,7 @@ mv mux-sesh ~/.local/bin/
 ### Quick install script
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/quiet-ghost/mux-sesh/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/quiet-ghost/mux-sesh/master/install.sh | bash
 ```
 
 ## Configuration
@@ -51,10 +51,7 @@ The sessionizer automatically creates a configuration file at `~/.config/mux-ses
 
 ```json
 {
-  "project_paths": [
-    "~/dev",
-    "~/personal"
-  ],
+  "project_paths": ["~/dev", "~/personal"],
   "repos_path": "~/dev/repos",
   "editor": "nvim",
   "editor_cmd": "nvim -c \"lua if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end\""
@@ -74,12 +71,7 @@ Edit `~/.config/mux-sesh/config.json`:
 
 ```json
 {
-  "project_paths": [
-    "~/dev",
-    "~/personal", 
-    "~/work",
-    "~/projects"
-  ],
+  "project_paths": ["~/dev", "~/personal", "~/work", "~/projects"],
   "repos_path": "~/code/repos",
   "editor": "code",
   "editor_cmd": "code ."
@@ -101,6 +93,7 @@ alias tmp='mux-sesh'
 ### Key Bindings
 
 #### Normal Mode
+
 - `Enter` or `1-9`: Switch to selected session
 - `n`: Create new session
 - `d`: Kill session
@@ -110,6 +103,7 @@ alias tmp='mux-sesh'
 - `q`: Quit
 
 #### Search/New Session Mode
+
 - `Enter`: Select/create
 - `↑/↓`: Navigate
 - `Esc`: Cancel
@@ -117,11 +111,13 @@ alias tmp='mux-sesh'
 ### Creating Sessions
 
 #### From Local Projects
+
 1. Press `n` to enter new session mode
 2. Type project name to filter
 3. Press `Enter` to create session in project root
 
 #### From GitHub URLs
+
 1. Press `n` to enter new session mode
 2. Paste GitHub URL (https or ssh):
    - `https://github.com/user/repo`
@@ -129,6 +125,7 @@ alias tmp='mux-sesh'
 3. Press `Enter` to clone to configured repos directory and create session
 
 #### Custom Session
+
 1. Press `n` to enter new session mode
 2. Type custom session name
 3. Press `Enter` to create session
@@ -148,6 +145,7 @@ bindkey -s '^[s' 'mux-sesh\n'  # Alt+s
 ## Dependencies
 
 This project uses:
+
 - [Bubble Tea](https://github.com/charmbracelet/bubbletea) - TUI framework
 - [Lip Gloss](https://github.com/charmbracelet/lipgloss) - Styling
 - [Bubbles](https://github.com/charmbracelet/bubbles) - TUI components
