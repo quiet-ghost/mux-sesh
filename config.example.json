@@ -1,0 +1,11 @@
+{
+  "project_paths": [
+    "~/dev",
+    "~/personal",
+    "~/work",
+    "~/projects"
+  ],
+  "repos_path": "~/dev/repos",
+  "editor": "nvim",
+  "editor_cmd": "nvim -c \"lua if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end\""
+}
