@@ -146,10 +146,10 @@ bindkey -s '^[s' 'mux-sesh\n'  # Alt+s
 
 ## Related Tools
 
-For Neovim users, check out [mux-manager.nvim](https://github.com/quiet-ghost/mux-manager.nvim) - a Telescope-based tmux session manager that complements mux-sesh perfectly:
+For Neovim users, check out [mux-manager](https://github.com/quiet-ghost/mux-manager) - a Telescope-based tmux session manager that complements mux-sesh perfectly:
 
 - **mux-sesh** - Standalone TUI for terminal-based session management
-- **mux-manager.nvim** - Session management from within Neovim using Telescope
+- **mux-manager** - Session management from within Neovim using Telescope
 - **Shared workflow** - Both tools support GitHub repo cloning and use the same configuration concepts
 
 Together they provide a complete tmux session management solution for both terminal and Neovim environments.
