@@ -27,11 +27,8 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     format_overrides:
-    - goos: windows
-      format: zip
-
-checksum:
-  name_template: 'checksums.txt'
+      - goos: windows
+        format: zip
 
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
@@ -40,11 +37,11 @@ changelog:
   sort: asc
   filters:
     exclude:
-      - '^docs:'
-      - '^test:'
+      - "^docs:"
+      - "^test:"
 
 release:
   github:
     owner: quiet-ghost
     name: mux-sesh
-  name_template: "{{.ProjectName}} v{{.Version}}"
+  name_template: "v{{.Version}}"
