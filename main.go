@@ -116,6 +116,7 @@ type model struct {
 	viewMode     ViewMode
 	items        []item
 	allItems     []item
+	projectItems []item // Cache project items
 	cursor       int
 	searchInput  textinput.Model
 	choice       string
@@ -172,7 +173,8 @@ func (m model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "n":
 		m.appMode = ModeNewSession
 		m.viewMode = ViewProjects
-		m.allItems = getProjectItems(m.config)
+		// Use cached project items instead of calling getProjectItems
+		m.allItems = m.projectItems
 		m.items = m.allItems
 		if len(m.items) > 0 {
 			m.cursor = len(m.items) - 1
@@ -483,7 +485,9 @@ func (m *model) refreshItems() {
 	if m.viewMode == ViewSessions {
 		m.allItems = getSessionItems()
 	} else {
-		m.allItems = getProjectItems(m.config)
+		// Update cached project items when refreshing
+		m.projectItems = getProjectItems(m.config)
+		m.allItems = m.projectItems
 	}
 	m.items = m.allItems
 	m.cursor = 0
@@ -851,47 +855,53 @@ func getSessionItems() []item {
 func getProjectItems(config Config) []item {
 	var items []item
 
-	searchPaths := config.ProjectPaths
+	// Filter out non-existent directories first
+	var existingPaths []string
+	for _, path := range config.ProjectPaths {
+		if _, err := os.Stat(path); err == nil {
+			existingPaths = append(existingPaths, path)
+		}
+	}
 
-	for _, searchPath := range searchPaths {
-		err := filepath.Walk(searchPath, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return nil // Skip errors, continue walking
-			}
+	if len(existingPaths) == 0 {
+		return items
+	}
 
-			if !info.IsDir() {
-				return nil
-			}
+	// Use find command for better performance (search deeper like mux-manager)
+	args := []string{}
+	args = append(args, existingPaths...)
+	args = append(args, "-mindepth", "1", "-maxdepth", "3", "-type", "d")
 
-			relPath, err := filepath.Rel(searchPath, path)
-			if err != nil {
-				return nil
-			}
-
-			depth := strings.Count(relPath, string(filepath.Separator))
-			if relPath == "." {
-				depth = 0
-			}
-
-			if depth == 1 &&
-				!strings.HasPrefix(filepath.Base(path), ".") &&
-				!strings.Contains(path, "node_modules") {
-				name := filepath.Base(path)
-				desc := strings.Replace(path, os.Getenv("HOME"), "~", 1)
-
-				items = append(items, item{
-					title:     name,
-					desc:      desc,
-					path:      path,
-					isSession: false,
-				})
-			}
-
-			return nil
-		})
-		if err != nil {
+	cmd := exec.Command("find", args...)
+	output, err := cmd.Output()
+	if err != nil {
+		return items
+	}
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	for _, line := range lines {
+		if line == "" {
 			continue
 		}
+
+		// Skip hidden directories and common build directories
+		baseName := filepath.Base(line)
+		if strings.HasPrefix(baseName, ".") ||
+			baseName == "node_modules" ||
+			baseName == "target" ||
+			baseName == "build" ||
+			baseName == "dist" {
+			continue
+		}
+
+		name := baseName
+		desc := strings.Replace(line, os.Getenv("HOME"), "~", 1)
+
+		items = append(items, item{
+			title:     name,
+			desc:      desc,
+			path:      line,
+			isSession: false,
+		})
 	}
 
 	sort.Slice(items, func(i, j int) bool {
@@ -1047,10 +1057,11 @@ func main() {
 	ti.Width = 40
 
 	m := model{
-		appMode:     ModeNormal,
-		viewMode:    ViewSessions,
-		searchInput: ti,
-		config:      config,
+		appMode:      ModeNormal,
+		viewMode:     ViewSessions,
+		searchInput:  ti,
+		config:       config,
+		projectItems: getProjectItems(config), // Pre-load project items
 	}
 
 	sessionItems := getSessionItems()
@@ -1059,7 +1070,7 @@ func main() {
 		m.items = sessionItems
 	} else {
 		m.viewMode = ViewProjects
-		m.allItems = getProjectItems(m.config)
+		m.allItems = m.projectItems
 		m.items = m.allItems
 	}
 

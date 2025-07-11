@@ -24,6 +24,16 @@ A beautiful, fzf-like tmux session manager with GitHub repository cloning suppor
 - git (for GitHub cloning)
 - nvim (optional, for enhanced session creation)
 
+### Install with Go (Recommended)
+
+```bash
+# Install latest version
+go install github.com/quiet-ghost/mux-sesh@latest
+
+# Install specific version
+go install github.com/quiet-ghost/mux-sesh@v1.0.0
+```
+
 ### Install from source
 
 ```bash
@@ -43,6 +53,24 @@ mv mux-sesh ~/.local/bin/
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/quiet-ghost/mux-sesh/master/install.sh | bash
+```
+
+## Updating
+
+### Update with Go
+
+```bash
+# Update to latest version
+go install github.com/quiet-ghost/mux-sesh@latest
+```
+
+### Update from source
+
+```bash
+cd /path/to/mux-sesh
+git pull origin main
+go build -o mux-sesh main.go config.go
+sudo mv mux-sesh /usr/local/bin/  # or ~/.local/bin/
 ```
 
 ## Configuration
