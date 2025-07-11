@@ -1,4 +1,4 @@
-module mux-sesh
+module github.com/quiet-ghost/mux-sesh
 
 go 1.24.4
 
