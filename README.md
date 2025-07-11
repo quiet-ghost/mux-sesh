@@ -31,7 +31,7 @@ A beautiful, fzf-like tmux session manager with GitHub repository cloning suppor
 go install github.com/quiet-ghost/mux-sesh@latest
 
 # Install specific version
-go install github.com/quiet-ghost/mux-sesh@v1.0.0
+go install github.com/quiet-ghost/mux-sesh@v0.2.0
 ```
 
 ### Install from source
