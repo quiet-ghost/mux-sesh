@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -873,10 +874,19 @@ func getProjectItems(config Config) []item {
 	args = append(args, "-mindepth", "1", "-maxdepth", "3", "-type", "d")
 
 	cmd := exec.Command("find", args...)
-	output, err := cmd.Output()
-	if err != nil {
+	// Capture both stdout and stderr separately to handle permission errors gracefully
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	// Don't fail completely on permission errors - just use what we can find
+	if err != nil && stdout.Len() == 0 {
+		// Only return empty if we got no output at all
 		return items
 	}
+
+	output := stdout.Bytes()
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 	for _, line := range lines {
 		if line == "" {
