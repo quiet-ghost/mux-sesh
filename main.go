@@ -673,7 +673,7 @@ func (m model) View() string {
 		}
 	default:
 		keybinds = []string{
-			formatKeybind("⏎ Enter/1-9", "switch"),
+			formatKeybind("Enter/1-9", "switch"),
 			formatKeybind(" d", "kill"),
 			formatKeybind(" r", "rename"),
 			formatKeybind(" n", "new"),
