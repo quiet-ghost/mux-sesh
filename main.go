@@ -667,19 +667,20 @@ func (m model) View() string {
 	switch m.appMode {
 	case ModeSearch, ModeNewSession, ModeRename:
 		keybinds = []string{
-			formatKeybind("⏎ Enter", "select"),
-			formatKeybind("↑/↓", "navigate"),
-			formatKeybind("Esc", "cancel"),
+			formatKeybind("Enter", "select"),
+			formatKeybind(" ↑/↓ ", "navigate"),
+			formatKeybind(" Esc ", "cancel"),
 		}
 	default:
 		keybinds = []string{
-			formatKeybind("Enter/1-9", "switch"),
-			formatKeybind(" d", "kill"),
-			formatKeybind(" r", "rename"),
-			formatKeybind(" n", "new"),
-			formatKeybind(" i", "search"),
-			formatKeybind(" R", "refresh"),
-			formatKeybind(" q", "quit"),
+			formatKeybind("j/k", "navigate"),
+			formatKeybind("1-9", "switch"),
+			formatKeybind(" d ", "kill"),
+			formatKeybind(" r ", "rename"),
+			formatKeybind(" n ", "new"),
+			formatKeybind(" i ", "search"),
+			formatKeybind(" R ", "refresh"),
+			formatKeybind(" q ", "quit"),
 		}
 	}
 
