@@ -17,18 +17,22 @@ import (
 )
 
 var (
-	// Clean color palette matching nvim plugin
-	primaryColor    = lipgloss.Color("#f38ba8") // pink/red for title and accents
-	activeColor     = lipgloss.Color("#a6e3a1") // green for active sessions
-	inactiveColor   = lipgloss.Color("#6c7086") // gray for inactive
-	textColor       = lipgloss.Color("#cdd6f4") // light text
-	borderColor     = lipgloss.Color("#45475a") // subtle border
-	backgroundColor = lipgloss.Color("#1e1e2e") // dark background
+	primaryColor    = lipgloss.Color("#f38ba8")
+	activeColor     = lipgloss.Color("#a6e3a1")
+	inactiveColor   = lipgloss.Color("#6c7086")
+	textColor       = lipgloss.Color("#cdd6f4")
+	borderColor     = lipgloss.Color("#89b4fa")
+	backgroundColor = lipgloss.Color("#1e1e2e")
+
+	keyColor       = lipgloss.Color("#f9e2af")
+	actionColor    = lipgloss.Color("#cba6f7")
+	separatorColor = lipgloss.Color("#585b70")
 
 	titleStyle = lipgloss.NewStyle().
 			Foreground(primaryColor).
 			Bold(true).
-			Align(lipgloss.Center)
+			Align(lipgloss.Center).
+			Width(50)
 
 	sessionListStyle = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
@@ -68,9 +72,20 @@ var (
 	keybindStyle = lipgloss.NewStyle().
 			Foreground(inactiveColor)
 
+	keyStyle = lipgloss.NewStyle().
+			Foreground(keyColor).
+			Bold(true)
+
+	actionStyle = lipgloss.NewStyle().
+			Foreground(actionColor)
+
+	separatorStyle = lipgloss.NewStyle().
+			Foreground(separatorColor)
+
 	detailHeaderStyle = lipgloss.NewStyle().
 				Foreground(primaryColor).
-				Bold(true)
+				Bold(true).
+				Align(lipgloss.Center)
 
 	detailTextStyle = lipgloss.NewStyle().
 			Foreground(textColor)
@@ -85,6 +100,17 @@ var (
 	highlightStyle = lipgloss.NewStyle().
 			Foreground(textColor).
 			Bold(true)
+
+	programStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#fab387"))
+
+	fileTreeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#94e2d5"))
+
+	windowHeaderStyle = lipgloss.NewStyle().
+				Foreground(primaryColor).
+				Bold(true).
+				Align(lipgloss.Center)
 )
 
 type AppMode int
@@ -117,7 +143,7 @@ type model struct {
 	viewMode     ViewMode
 	items        []item
 	allItems     []item
-	projectItems []item // Cache project items
+	projectItems []item
 	cursor       int
 	searchInput  textinput.Model
 	choice       string
@@ -174,7 +200,6 @@ func (m model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "n":
 		m.appMode = ModeNewSession
 		m.viewMode = ViewProjects
-		// Use cached project items instead of calling getProjectItems
 		m.allItems = m.projectItems
 		m.items = m.allItems
 		if len(m.items) > 0 {
@@ -388,7 +413,7 @@ func (m model) handleRenameMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.message = fmt.Sprintf("Error renaming session: %v", err)
 			} else {
 				m.message = fmt.Sprintf("Session renamed to '%s'", newName)
-				m.refreshItems() // Refresh to show new name
+				m.refreshItems()
 			}
 		}
 		m.appMode = ModeNormal
@@ -469,9 +494,9 @@ func calculateSearchScore(item item, query string) int {
 	}
 
 	pathDepth := strings.Count(item.desc, "/")
-	score += (10 - pathDepth) * 10 // Less depth = higher score
+	score += (10 - pathDepth) * 10
 
-	if strings.Count(item.desc, "/") == 2 { // ~/dev/project or ~/personal/project
+	if strings.Count(item.desc, "/") == 2 {
 		score += 200
 	}
 
@@ -486,7 +511,6 @@ func (m *model) refreshItems() {
 	if m.viewMode == ViewSessions {
 		m.allItems = getSessionItems()
 	} else {
-		// Update cached project items when refreshing
 		m.projectItems = getProjectItems(m.config)
 		m.allItems = m.projectItems
 	}
@@ -503,15 +527,24 @@ func (m model) View() string {
 	}
 
 	var title string
+	var titleWidth int
+	if m.appMode == ModeNewSession {
+		titleWidth = 110
+	} else {
+		titleWidth = 50
+	}
+
+	titleStyleDynamic := titleStyle.Copy().Width(titleWidth)
+
 	switch m.appMode {
 	case ModeSearch:
-		title = titleStyle.Render(" Search Sessions")
+		title = titleStyleDynamic.Render(" Search Sessions")
 	case ModeNewSession:
-		title = titleStyle.Render("+ New Session")
+		title = titleStyleDynamic.Render(" New Session")
 	case ModeRename:
-		title = titleStyle.Render(" Rename Session")
+		title = titleStyleDynamic.Render(" Rename Session")
 	default:
-		title = titleStyle.Render(" Tmux Session Manager")
+		title = titleStyleDynamic.Render(" Tmux Session Manager")
 	}
 
 	var itemLines []string
@@ -519,16 +552,16 @@ func (m model) View() string {
 
 	var searchLine string
 	if m.appMode == ModeSearch {
-		searchLine = keybindStyle.Render(" ") + m.searchInput.View()
+		searchLine = keybindStyle.Render(" ") + m.searchInput.View()
 	} else if m.appMode == ModeNewSession {
 		searchLine = keybindStyle.Render("+ ") + m.searchInput.View()
 	} else if m.appMode == ModeRename {
-		searchLine = keybindStyle.Render(" ") + m.searchInput.View()
+		searchLine = keybindStyle.Render(" ") + m.searchInput.View()
 	}
 
 	maxItems := len(m.items)
 	if m.appMode == ModeSearch || m.appMode == ModeNewSession {
-		maxItems = 15 // Show max 15 items when searching (more than before)
+		maxItems = 15
 	}
 
 	displayedItems := m.items
@@ -605,7 +638,6 @@ func (m model) View() string {
 	if itemCount == 0 {
 		if m.appMode == ModeNewSession {
 			if m.searchInput.Value() != "" {
-				// Check if it's a GitHub URL
 				if isGitHubURL(m.searchInput.Value()) {
 					repoName := extractRepoName(m.searchInput.Value())
 					if repoName != "" {
@@ -635,19 +667,19 @@ func (m model) View() string {
 	switch m.appMode {
 	case ModeSearch, ModeNewSession, ModeRename:
 		keybinds = []string{
-			keybindStyle.Render("⏎ Enter: select"),
-			keybindStyle.Render("↑/↓: navigate"),
-			keybindStyle.Render("Esc: cancel"),
+			formatKeybind("⏎ Enter", "select"),
+			formatKeybind("↑/↓", "navigate"),
+			formatKeybind("Esc", "cancel"),
 		}
 	default:
 		keybinds = []string{
-			keybindStyle.Render("⏎ Enter/1-9: switch"),
-			keybindStyle.Render("🗑 d: kill"),
-			keybindStyle.Render(" r: rename"),
-			keybindStyle.Render("+ n: new"),
-			keybindStyle.Render(" i: search"),
-			keybindStyle.Render("↻ R: refresh"),
-			keybindStyle.Render("× q: quit"),
+			formatKeybind("⏎ Enter/1-9", "switch"),
+			formatKeybind(" d", "kill"),
+			formatKeybind(" r", "rename"),
+			formatKeybind(" n", "new"),
+			formatKeybind(" i", "search"),
+			formatKeybind(" R", "refresh"),
+			formatKeybind(" q", "quit"),
 		}
 	}
 
@@ -733,7 +765,7 @@ func cloneGitHubRepo(url string, config Config) (string, error) {
 	targetDir := filepath.Join(reposDir, repoName)
 
 	if _, err := os.Stat(targetDir); err == nil {
-		return targetDir, nil // Directory already exists, just return it
+		return targetDir, nil
 	}
 
 	cmd := exec.Command("git", "clone", url, targetDir)
@@ -745,7 +777,7 @@ func cloneGitHubRepo(url string, config Config) (string, error) {
 }
 
 func buildSessionDetails(sessionName string) string {
-	header := detailHeaderStyle.Render(" " + sessionName)
+	header := detailHeaderStyle.Render(" " + sessionName)
 
 	statusCmd := exec.Command("tmux", "list-sessions", "-F", "#{session_name}:#{session_attached}:#{session_windows}", "-f", "#{==:#{session_name},"+sessionName+"}")
 	statusOutput, err := statusCmd.Output()
@@ -770,7 +802,7 @@ func buildSessionDetails(sessionName string) string {
 	windowsOutput, err := windowsCmd.Output()
 
 	var windowDetails []string
-	windowDetails = append(windowDetails, detailHeaderStyle.Render("⊞ Windows:"))
+	windowDetails = append(windowDetails, windowHeaderStyle.Render("⊞ Windows"))
 	if err == nil && len(windowsOutput) > 0 {
 		windows := strings.Split(strings.TrimSpace(string(windowsOutput)), "\n")
 		for _, window := range windows {
@@ -783,15 +815,25 @@ func buildSessionDetails(sessionName string) string {
 					dirCmd := exec.Command("tmux", "display-message", "-t", sessionName+":"+windowNum, "-p", "#{pane_current_path}")
 					dirOutput, dirErr := dirCmd.Output()
 
+					cmdCmd := exec.Command("tmux", "display-message", "-t", sessionName+":"+windowNum, "-p", "#{pane_current_command}")
+					cmdOutput, cmdErr := cmdCmd.Output()
+
 					windowLine := fmt.Sprintf("%s: %s", windowNum, windowName)
 					windowDetails = append(windowDetails, windowStyle.Render(windowLine))
+
+					if cmdErr == nil {
+						currentCmd := strings.TrimSpace(string(cmdOutput))
+						if currentCmd != "" && currentCmd != "bash" && currentCmd != "zsh" && currentCmd != "fish" {
+							windowDetails = append(windowDetails, windowStyle.Render("     "+programStyle.Render(currentCmd)))
+						}
+					}
 
 					if dirErr == nil {
 						currentDir := strings.TrimSpace(string(dirOutput))
 						if strings.HasPrefix(currentDir, os.Getenv("HOME")) {
 							currentDir = strings.Replace(currentDir, os.Getenv("HOME"), "~", 1)
 						}
-						windowDetails = append(windowDetails, windowStyle.Render("    \uea83 "+pathStyle.Render(currentDir)))
+						windowDetails = append(windowDetails, windowStyle.Render("    \uea83 "+fileTreeStyle.Render(currentDir)))
 					}
 				}
 			}
@@ -856,7 +898,6 @@ func getSessionItems() []item {
 func getProjectItems(config Config) []item {
 	var items []item
 
-	// Filter out non-existent directories first
 	var existingPaths []string
 	for _, path := range config.ProjectPaths {
 		if _, err := os.Stat(path); err == nil {
@@ -868,21 +909,17 @@ func getProjectItems(config Config) []item {
 		return items
 	}
 
-	// Use find command for better performance (search deeper like mux-manager)
 	args := []string{}
 	args = append(args, existingPaths...)
 	args = append(args, "-mindepth", "1", "-maxdepth", "3", "-type", "d")
 
 	cmd := exec.Command("find", args...)
-	// Capture both stdout and stderr separately to handle permission errors gracefully
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
 	err := cmd.Run()
-	// Don't fail completely on permission errors - just use what we can find
 	if err != nil && stdout.Len() == 0 {
-		// Only return empty if we got no output at all
 		return items
 	}
 
@@ -893,7 +930,6 @@ func getProjectItems(config Config) []item {
 			continue
 		}
 
-		// Skip hidden directories and common build directories
 		baseName := filepath.Base(line)
 		if strings.HasPrefix(baseName, ".") ||
 			baseName == "node_modules" ||
@@ -1058,6 +1094,10 @@ func highlightMatches(text, query string) string {
 	return result.String()
 }
 
+func formatKeybind(key, action string) string {
+	return keyStyle.Render(key) + separatorStyle.Render(" │ ") + actionStyle.Render(action)
+}
+
 func main() {
 	config := LoadConfig()
 
@@ -1071,7 +1111,7 @@ func main() {
 		viewMode:     ViewSessions,
 		searchInput:  ti,
 		config:       config,
-		projectItems: getProjectItems(config), // Pre-load project items
+		projectItems: getProjectItems(config),
 	}
 
 	sessionItems := getSessionItems()
