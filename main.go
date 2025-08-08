@@ -448,15 +448,9 @@ func (m *model) filterItems(query string) {
 		}
 	}
 
-	if m.appMode == ModeNewSession {
-		sort.Slice(results, func(i, j int) bool {
-			return results[i].score < results[j].score
-		})
-	} else {
-		sort.Slice(results, func(i, j int) bool {
-			return results[i].score > results[j].score
-		})
-	}
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].score > results[j].score
+	})
 
 	var filtered []item
 	for _, result := range results {
@@ -464,33 +458,69 @@ func (m *model) filterItems(query string) {
 	}
 
 	m.items = filtered
-	if m.appMode == ModeNewSession && len(filtered) > 0 {
-		m.cursor = len(filtered) - 1
-	} else {
-		m.cursor = 0
-	}
+	m.cursor = 0
 }
 
 func calculateSearchScore(item item, query string) int {
 	title := strings.ToLower(item.title)
 	desc := strings.ToLower(item.desc)
+	query = strings.ToLower(strings.TrimSpace(query))
 
-	if !strings.Contains(title, query) && !strings.Contains(desc, query) {
+	if query == "" {
+		return 1
+	}
+
+	queryWords := strings.Fields(query)
+	if len(queryWords) == 0 {
 		return 0
 	}
 
 	score := 0
+	matchedWords := 0
 
-	if title == query {
-		score += 1000
+	for _, word := range queryWords {
+		wordScore := 0
+
+		if title == word {
+			wordScore += 1000
+		}
+
+		if strings.HasPrefix(title, word) {
+			wordScore += 500
+		}
+
+		if strings.Contains(title, word) {
+			wordScore += 200
+			matchedWords++
+		}
+
+		if strings.Contains(desc, word) {
+			wordScore += 100
+			matchedWords++
+		}
+
+		if wordScore == 0 {
+			titleWords := strings.FieldsFunc(title, func(c rune) bool {
+				return c == '-' || c == '_' || c == '.' || c == ' '
+			})
+			for _, titleWord := range titleWords {
+				if strings.Contains(titleWord, word) {
+					wordScore += 150
+					matchedWords++
+					break
+				}
+			}
+		}
+
+		score += wordScore
 	}
 
-	if strings.HasPrefix(title, query) {
-		score += 500
+	if matchedWords > 1 {
+		score += matchedWords * 100
 	}
 
-	if strings.Contains(title, query) {
-		score += 100
+	if matchedWords == len(queryWords) {
+		score += 300
 	}
 
 	pathDepth := strings.Count(item.desc, "/")
@@ -500,8 +530,8 @@ func calculateSearchScore(item item, query string) int {
 		score += 200
 	}
 
-	if strings.Contains(desc, query) {
-		score += 50
+	if matchedWords == 0 {
+		return 0
 	}
 
 	return score
@@ -596,7 +626,15 @@ func (m model) View() string {
 			} else {
 				indicator = inactiveIndicatorStyle.Render("○")
 			}
-			itemLine = fmt.Sprintf("%d %s %s (%s)", actualIndex+1, indicator, item.title, item.windowCount)
+
+			var sessionTitle string
+			if m.appMode == ModeSearch {
+				sessionTitle = highlightMultiWordMatches(item.title, m.searchInput.Value())
+			} else {
+				sessionTitle = item.title
+			}
+
+			itemLine = fmt.Sprintf("%d %s %s (%s)", actualIndex+1, indicator, sessionTitle, item.windowCount)
 		} else {
 			if m.appMode == ModeNewSession {
 				fullPath := item.desc
@@ -685,15 +723,17 @@ func (m model) View() string {
 	}
 
 	leftContent := []string{title, ""}
+
+	if searchLine != "" {
+		leftContent = append(leftContent, searchLine, "")
+	}
+
 	leftContent = append(leftContent, itemLines...)
 	if statusLine != "" {
 		leftContent = append(leftContent, statusLine)
 	}
 	leftContent = append(leftContent, "")
 	leftContent = append(leftContent, keybinds...)
-	if searchLine != "" {
-		leftContent = append(leftContent, "", searchLine)
-	}
 
 	var leftPanel string
 	if m.appMode == ModeNewSession {
@@ -1093,6 +1133,78 @@ func highlightMatches(text, query string) string {
 	}
 
 	return result.String()
+}
+
+func highlightMultiWordMatches(text, query string) string {
+	if query == "" {
+		return text
+	}
+
+	query = strings.ToLower(strings.TrimSpace(query))
+	queryWords := strings.Fields(query)
+	if len(queryWords) == 0 {
+		return text
+	}
+
+	textLower := strings.ToLower(text)
+
+	highlights := make([]bool, len(text))
+
+	for _, word := range queryWords {
+		startIdx := 0
+		for {
+			idx := strings.Index(textLower[startIdx:], word)
+			if idx == -1 {
+				break
+			}
+
+			actualIdx := startIdx + idx
+			for i := actualIdx; i < actualIdx+len(word) && i < len(highlights); i++ {
+				highlights[i] = true
+			}
+			startIdx = actualIdx + 1
+		}
+
+		textWords := strings.FieldsFunc(textLower, func(c rune) bool {
+			return c == '-' || c == '_' || c == '.' || c == ' '
+		})
+
+		currentPos := 0
+		for _, textWord := range textWords {
+			wordStart := strings.Index(textLower[currentPos:], textWord)
+			if wordStart != -1 {
+				wordStart += currentPos
+				if strings.Contains(textWord, word) {
+					subIdx := strings.Index(textWord, word)
+					if subIdx != -1 {
+						actualStart := wordStart + subIdx
+						for i := actualStart; i < actualStart+len(word) && i < len(highlights); i++ {
+							highlights[i] = true
+						}
+					}
+				}
+				currentPos = wordStart + len(textWord)
+			}
+		}
+	}
+
+	var resultBuilder strings.Builder
+	i := 0
+	for i < len(text) {
+		if highlights[i] {
+			j := i
+			for j < len(text) && highlights[j] {
+				j++
+			}
+			resultBuilder.WriteString(highlightStyle.Render(text[i:j]))
+			i = j
+		} else {
+			resultBuilder.WriteString(string(text[i]))
+			i++
+		}
+	}
+
+	return resultBuilder.String()
 }
 
 func formatKeybind(key, action string) string {
