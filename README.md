@@ -6,14 +6,14 @@ A beautiful, fzf-like tmux session manager with GitHub repository cloning suppor
 
 ## Features
 
-- 🎨 **Clean UI** - Minimal design inspired by nvim telescope
-- 🔍 **Fuzzy Search** - fzf-like filtering with real-time results
-- 📁 **Project Management** - Browse and create sessions from configurable project paths
-- 🐙 **GitHub Integration** - Clone repositories directly from GitHub URLs
-- ⚡ **Fast Navigation** - Keyboard shortcuts for quick session switching
-- 🎯 **Smart Highlighting** - Matched letters highlighted in bold
-- 📋 **Session Preview** - See session details and window information
-- ⚙️ **Configurable** - Customize project paths, repos location, and editor
+- **Clean UI** - Minimal design inspired by nvim telescope
+- **Fuzzy Search** - fzf-like filtering with real-time results
+- **Project Management** - Browse and create sessions from configurable project paths
+- **GitHub Integration** - Clone repositories directly from GitHub URLs
+- **Fast Navigation** - Keyboard shortcuts for quick session switching
+- **Smart Highlighting** - Matched letters highlighted in bold
+- **Session Preview** - See session details and window information
+- **Configurable** - Customize project paths, repos location, and editor
 
 ## Installation
 
@@ -24,7 +24,14 @@ A beautiful, fzf-like tmux session manager with GitHub repository cloning suppor
 - git (for GitHub cloning)
 - nvim (optional, for enhanced session creation)
 
-### Install with Go (Recommended)
+### Quick install script (Recommended)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/quiet-ghost/mux-sesh/master/install.sh | bash
+
+```
+
+### Install with Go
 
 ```bash
 # Install latest version
@@ -49,11 +56,7 @@ sudo mv mux-sesh /usr/local/bin/
 mv mux-sesh ~/.local/bin/
 ```
 
-### Quick install script
-
-```bash
-curl -sSL https://raw.githubusercontent.com/quiet-ghost/mux-sesh/master/install.sh | bash
-```
+````
 
 ## Updating
 
@@ -62,7 +65,7 @@ curl -sSL https://raw.githubusercontent.com/quiet-ghost/mux-sesh/master/install.
 ```bash
 # Update to latest version
 go install github.com/quiet-ghost/mux-sesh@latest
-```
+````
 
 ### Update from source
 
