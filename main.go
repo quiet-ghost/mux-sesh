@@ -1019,7 +1019,7 @@ func createTmuxSession(selectedPath string) error {
 
 		go func() {
 			time.Sleep(100 * time.Millisecond)
-			exec.Command("tmux", "send-keys", "-t", selectedName, "nvim -c \"lua if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end\"", "Enter").Run()
+			exec.Command("tmux", "send-keys", "-t", selectedName, "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"", "Enter").Run()
 		}()
 
 		return cmd.Run()
@@ -1033,7 +1033,7 @@ func createTmuxSession(selectedPath string) error {
 			return fmt.Errorf("failed to create session: %v", err)
 		}
 
-		nvimCmd := exec.Command("tmux", "send-keys", "-t", selectedName, "nvim -c \"lua if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end\"", "Enter")
+		nvimCmd := exec.Command("tmux", "send-keys", "-t", selectedName, "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"", "Enter")
 		nvimCmd.Run()
 	}
 
@@ -1061,7 +1061,7 @@ func createNamedTmuxSession(sessionName string) error {
 
 		go func() {
 			time.Sleep(100 * time.Millisecond)
-			exec.Command("tmux", "send-keys", "-t", sessionName, "nvim -c \"lua if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end\"", "Enter").Run()
+			exec.Command("tmux", "send-keys", "-t", sessionName, "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"", "Enter").Run()
 		}()
 
 		return cmd.Run()
@@ -1074,7 +1074,7 @@ func createNamedTmuxSession(sessionName string) error {
 		if err := createCmd.Run(); err != nil {
 			return fmt.Errorf("failed to create session: %v", err)
 		}
-		nvimCmd := exec.Command("tmux", "send-keys", "-t", sessionName, "nvim -c \"lua if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end\"", "Enter")
+		nvimCmd := exec.Command("tmux", "send-keys", "-t", sessionName, "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"", "Enter")
 		nvimCmd.Run()
 	}
 	switchCmd := exec.Command("tmux", "switch-client", "-t", sessionName)

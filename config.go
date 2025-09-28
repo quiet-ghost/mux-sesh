@@ -22,7 +22,7 @@ func DefaultConfig() Config {
 		},
 		ReposPath: filepath.Join(homeDir, "dev", "repos"),
 		Editor:    "nvim",
-		EditorCmd: "nvim -c \"lua if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end\"",
+		EditorCmd: "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
 	}
 }
 

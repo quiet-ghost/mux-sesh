@@ -87,7 +87,7 @@ The sessionizer automatically creates a configuration file at `~/.config/mux-ses
   "project_paths": ["~/dev", "~/personal"],
   "repos_path": "~/dev/repos",
   "editor": "nvim",
-  "editor_cmd": "nvim -c \"lua if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end\""
+  "editor_cmd": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\""
 }
 ```
 
