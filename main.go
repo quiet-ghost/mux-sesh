@@ -799,7 +799,7 @@ func cloneGitHubRepo(url string, config Config) (string, error) {
 	}
 
 	reposDir := config.ReposPath
-	if err := os.MkdirAll(reposDir, 0755); err != nil {
+	if err := os.MkdirAll(reposDir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create repos directory: %v", err)
 	}
 
@@ -828,9 +828,9 @@ func buildSessionDetails(sessionName string) string {
 		parts := strings.Split(strings.TrimSpace(string(statusOutput)), ":")
 		if len(parts) >= 3 {
 			if parts[1] == "1" {
-				status = activeIndicatorStyle.Render("⚡ Active")
+				status = activeIndicatorStyle.Render("󰐥 Active")
 			} else {
-				status = inactiveIndicatorStyle.Render("○ Inactive")
+				status = inactiveIndicatorStyle.Render("󰒲 Inactive")
 			}
 			windowCount = parts[2]
 		}
