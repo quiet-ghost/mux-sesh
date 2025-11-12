@@ -1,0 +1,7 @@
+[install]
+# Don't install peer dependencies automatically
+peer = true
+
+[run]
+# Automatically restart when files change (for development)
+watch = true

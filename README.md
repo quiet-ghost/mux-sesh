@@ -1,199 +1,196 @@
-# Mux-Sesh
+# mux-sesh
 
-A beautiful, fzf-like tmux session manager with GitHub repository cloning support. Inspired by nvim telescope plugin aesthetics.
+> A beautiful, fast tmux session manager built with OpenTUI and TypeScript
 
-![Screenshot](screenshot.png)
+<p align="center">
+  <img src="screenshot.png" alt="mux-sesh screenshot" width="800">
+</p>
 
 ## Features
 
-- **Clean UI** - Minimal design inspired by nvim telescope
-- **Fuzzy Search** - fzf-like filtering with real-time results
-- **Project Management** - Browse and create sessions from configurable project paths
-- **GitHub Integration** - Clone repositories directly from GitHub URLs
-- **Fast Navigation** - Keyboard shortcuts for quick session switching
-- **Smart Highlighting** - Matched letters highlighted in bold
-- **Session Preview** - See session details and window information
-- **Configurable** - Customize project paths, repos location, and editor
+-  **Fuzzy search** - Find sessions and projects instantly
+-  **Lightning fast** - Built with Bun and OpenTUI
+-  **Beautiful UI** - Catppuccin-themed interface
+-  **Vim keybindings** - Navigate with j/k or arrow keys
+-  **Project scanning** - Browse and create sessions from local directories
+-  **GitHub integration** - Clone repos directly from URLs
+-  **Quick select** - Use number keys (1-9) for instant switching
+-  **Session management** - Create, switch, kill, and rename sessions
 
 ## Installation
 
 ### Prerequisites
 
-- Go 1.19 or later
-- tmux
-- git (for GitHub cloning)
-- nvim (optional, for enhanced session creation)
-
-### Quick install script (Recommended)
+- [Bun](https://bun.sh) - JavaScript runtime (required)
+- [Zig](https://ziglang.org) - Required for building OpenTUI
+- tmux - Terminal multiplexer
+- git - For GitHub cloning feature
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/quiet-ghost/mux-sesh/master/install.sh | bash
+# Install Bun
+curl -fsSL https://bun.sh/install | bash
 
+# Install Zig (macOS)
+brew install zig
+
+# Install Zig (Linux - check https://ziglang.org/download/)
 ```
 
-### Install with Go
+### Install from npm/Bun
 
 ```bash
-# Install latest version
-go install github.com/quiet-ghost/mux-sesh@latest
+bun install -g mux-sesh
 
-# Install specific version
-go install github.com/quiet-ghost/mux-sesh@v0.2.0
+# Then run
+mux-sesh
 ```
 
-### Install from source
+### Install from Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/quiet-ghost/mux-sesh.git
 cd mux-sesh
+git checkout opentui-convert
 
-# Build and install
-go build -o mux-sesh main.go config.go
-sudo mv mux-sesh /usr/local/bin/
+# Install dependencies
+bun install
 
-# Or install to your local bin
-mv mux-sesh ~/.local/bin/
+# Build standalone executable
+bun run build
+
+# Install globally
+sudo cp dist/mux-sesh /usr/local/bin/
+# or
+cp dist/mux-sesh ~/.local/bin/
 ```
 
-````
+## Keybindings
 
-## Updating
+### Normal Mode
+| Key | Action |
+|-----|--------|
+| `j` / `k` or `↑` / `↓` | Navigate up/down |
+| `1-9` | Quick select session/project |
+| `Enter` | Switch to session / Create from project |
+| `i` | Enter search mode |
+| `n` | Create new session |
+| `d` | Kill selected session |
+| `r` | Rename selected session |
+| `R` | Refresh list |
+| `s` | Switch to sessions view |
+| `p` | Switch to projects view |
+| `q` or `Esc` | Quit |
 
-### Update with Go
+### Search Mode
+| Key | Action |
+|-----|--------|
+| Type to search | Filter sessions/projects |
+| `Enter` | Select first result |
+| `↑` / `↓` | Navigate results |
+| `Esc` | Cancel search |
 
-```bash
-# Update to latest version
-go install github.com/quiet-ghost/mux-sesh@latest
-````
-
-### Update from source
-
-```bash
-cd /path/to/mux-sesh
-git pull origin main
-go build -o mux-sesh main.go config.go
-sudo mv mux-sesh /usr/local/bin/  # or ~/.local/bin/
-```
+### New Session Mode
+| Key | Action |
+|-----|--------|
+| Type project name | Filter projects |
+| Paste GitHub URL | Clone and create session |
+| Type custom name | Create named session |
+| `Enter` | Confirm selection |
+| `Esc` | Cancel |
 
 ## Configuration
 
-The sessionizer automatically creates a configuration file at `~/.config/mux-sesh/config.json` on first run with sensible defaults.
-
-### Default Configuration
+Configuration is stored at `~/.config/mux-sesh/config.json`:
 
 ```json
 {
-  "project_paths": ["~/dev", "~/personal"],
-  "repos_path": "~/dev/repos",
+  "projectPaths": ["~/dev", "~/personal", "~/work"],
+  "reposPath": "~/dev/repos",
   "editor": "nvim",
-  "editor_cmd": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\""
+  "editorCmd": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\""
 }
 ```
 
 ### Configuration Options
 
-- **`project_paths`**: Array of directories to search for projects
-- **`repos_path`**: Directory where GitHub repositories will be cloned
-- **`editor`**: Default editor to use
-- **`editor_cmd`**: Command to run when opening editor (supports telescope integration)
+- **`projectPaths`** - Array of directories to scan for projects
+- **`reposPath`** - Directory where GitHub repositories will be cloned
+- **`editor`** - Default editor to use
+- **`editorCmd`** - Command to run when opening editor
 
-### Customizing Configuration
+## Usage Examples
 
-Edit `~/.config/mux-sesh/config.json`:
-
-```json
-{
-  "project_paths": ["~/dev", "~/personal", "~/work", "~/projects"],
-  "repos_path": "~/code/repos",
-  "editor": "code",
-  "editor_cmd": "code ."
-}
-```
-
-## Usage
-
-### Basic Usage
-
+### Quick Session Switching
 ```bash
-# Start the sessionizer
+# Open mux-sesh
 mux-sesh
 
-# Or add an alias to your shell config
-alias tmp='mux-sesh'
+# Press 1-9 to instantly switch to that session
+# Or use j/k to navigate and Enter to select
 ```
 
-### Key Bindings
+### Create Session from Project
+```bash
+mux-sesh
 
-#### Normal Mode
+# Press 'n' for new session
+# Type project name to filter
+# Press Enter to create session in that directory
+```
 
-- `Enter` or `1-9`: Switch to selected session
-- `n`: Create new session
-- `d`: Kill session
-- `r`: Rename session
-- `i`: Search sessions
-- `R`: Refresh
-- `q`: Quit
+### Clone from GitHub
+```bash
+mux-sesh
 
-#### Search/New Session Mode
+# Press 'n' for new session
+# Paste GitHub URL:
+#   https://github.com/user/repo
+#   or
+#   git@github.com:user/repo.git
+# Press Enter to clone and create session
+```
 
-- `Enter`: Select/create
-- `↑/↓`: Navigate
-- `Esc`: Cancel
+### Search Existing Sessions
+```bash
+mux-sesh
 
-### Creating Sessions
+# Press 'i' to search
+# Type to filter sessions
+# Press Enter to switch to first match
+```
 
-#### From Local Projects
+## Color Scheme
 
-1. Press `n` to enter new session mode
-2. Type project name to filter
-3. Press `Enter` to create session in project root
+mux-sesh uses the beautiful [Catppuccin](https://github.com/catppuccin/catppuccin) color scheme with the following palette:
 
-#### From GitHub URLs
+- **Primary**: `#f38ba8` (Pink)
+- **Active**: `#a6e3a1` (Green)
+- **Inactive**: `#6c7086` (Gray)
+- **Border**: `#89b4fa` (Blue)
+- **Key**: `#f9e2af` (Yellow)
+- **Action**: `#cba6f7` (Mauve)
 
-1. Press `n` to enter new session mode
-2. Paste GitHub URL (https or ssh):
-   - `https://github.com/user/repo`
-   - `git@github.com:user/repo.git`
-3. Press `Enter` to clone to configured repos directory and create session
+ **Cross-Platform** - Works on Linux, macOS, Windows
 
-#### Custom Session
-
-1. Press `n` to enter new session mode
-2. Type custom session name
-3. Press `Enter` to create session
-
-## Shell Integration
-
-Add to your shell config (`.zshrc`, `.bashrc`, etc.):
+##  Development
 
 ```bash
-# Basic alias
-alias tmp='mux-sesh'
+# Install dependencies
+bun install
 
-# Keyboard shortcuts (zsh)
-bindkey -s '^[s' 'mux-sesh\n'  # Alt+s
+# Run in dev mode (with hot reload)
+bun run dev
+
+# Type check
+bun run typecheck
+
+# Build for production
+bun run build
 ```
 
-## Related Tools
+##  Contributing
 
-For Neovim users, check out [mux-manager](https://github.com/quiet-ghost/mux-manager) - a Telescope-based tmux session manager that complements mux-sesh perfectly:
-
-- **mux-sesh** - Standalone TUI for terminal-based session management
-- **mux-manager** - Session management from within Neovim using Telescope
-- **Shared workflow** - Both tools support GitHub repo cloning and use the same configuration concepts
-
-Together they provide a complete tmux session management solution for both terminal and Neovim environments.
-
-## Dependencies
-
-This project uses:
-
-- [Bubble Tea](https://github.com/charmbracelet/bubbletea) - TUI framework
-- [Lip Gloss](https://github.com/charmbracelet/lipgloss) - Styling
-- [Bubbles](https://github.com/charmbracelet/bubbles) - TUI components
-
-## Contributing
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -201,12 +198,22 @@ This project uses:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
+##  License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](./LICENSE) for details.
 
-## Acknowledgments
+##  Acknowledgments
 
 - Inspired by [ThePrimeagen's tmux-sessionizer](https://github.com/ThePrimeagen/.dotfiles/blob/master/bin/.local/scripts/tmux-sessionizer)
-- UI design inspired by nvim telescope plugin
-- Built with [Charm](https://charm.sh/) TUI libraries
+- Built with [OpenTUI](https://github.com/sst/opentui)
+- UI design inspired by [nvim telescope plugin](https://github.com/nvim-telescope/telescope.nvim)
+
+##  Related Projects
+
+- [mux-manager](https://github.com/quiet-ghost/mux-manager) - Telescope-based tmux session manager for Neovim
+
+---
+
+<p align="center">
+  Made with using <a href="https://github.com/sst/opentui">OpenTUI</a> and <a href="https://bun.sh">Bun</a>
+</p>

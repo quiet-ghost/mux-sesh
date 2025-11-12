@@ -1,0 +1,60 @@
+{
+  "name": "mux-sesh",
+  "version": "0.1.0",
+  "description": "A beautiful tmux session manager built with OpenTUI - fuzzy search sessions, manage projects, clone from GitHub",
+  "type": "module",
+  "bin": {
+    "mux-sesh": "./src/index.tsx"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE",
+    "config.example.json"
+  ],
+  "scripts": {
+    "dev": "bun run src/index.tsx",
+    "build": "bun build src/index.tsx --compile --outfile dist/mux-sesh",
+    "start": "bun run src/index.tsx",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
+    "test": "bun test",
+    "prepublishOnly": "bun run typecheck"
+  },
+  "keywords": [
+    "tmux",
+    "tui",
+    "terminal",
+    "session-manager",
+    "opentui",
+    "cli",
+    "tmux-manager",
+    "terminal-ui",
+    "fuzzy-search",
+    "project-manager"
+  ],
+  "author": "quiet-ghost",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/quiet-ghost/mux-sesh.git"
+  },
+  "bugs": {
+    "url": "https://github.com/quiet-ghost/mux-sesh/issues"
+  },
+  "homepage": "https://github.com/quiet-ghost/mux-sesh#readme",
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "dependencies": {
+    "@opentui/core": "latest",
+    "@opentui/react": "latest",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.0.0",
+    "typescript": "^5.0.0"
+  }
+}
