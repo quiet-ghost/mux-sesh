@@ -44,6 +44,8 @@ export function App() {
   const [message, setMessage] = useState('')
   const [renameTarget, setRenameTarget] = useState('')
   const [config, setConfig] = useState<Config | null>(null)
+  const [prefixActive, setPrefixActive] = useState(false)
+  const prefixTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const textareaRef = useRef<any>(null)
   const statsCache = useRef<Map<string, OpencodeSessionStats>>(new Map())
   const [loadingStats, setLoadingStats] = useState(false)
@@ -52,6 +54,11 @@ export function App() {
     async function init() {
       const cfg = await loadConfig()
       setConfig(cfg)
+
+      // Standard mode always starts in search mode (non-modal)
+      if (cfg.keybindMode === 'standard') {
+        setAppMode(AppMode.Search)
+      }
 
       const sessions = await listTmuxSessions()
       const projects = await getProjectItems(cfg)
@@ -194,8 +201,12 @@ export function App() {
     cursor,
     opencodeCursor,
     searchQuery,
+    renameTarget,
     projectItems,
     sessionItems,
+    prefixActive,
+    prefixTimeoutRef,
+    textareaRef,
     setAppMode,
     setViewMode,
     setCursor,
@@ -204,6 +215,7 @@ export function App() {
     setRenameTarget,
     setAllItems,
     setItems,
+    setPrefixActive,
     refreshItems,
     handleSelect,
     handleKillSession: handleKillSessionWrapper,
@@ -212,24 +224,25 @@ export function App() {
   }
 
   useKeyboard(key => {
+    const keybindMode = config?.keybindMode || 'vim'
     if (appMode === AppMode.Normal) {
-      handleNormalMode(key, keyboardContext)
+      handleNormalMode(key, keyboardContext, keybindMode)
     } else if (appMode === AppMode.Search) {
-      handleSearchMode(key, keyboardContext)
+      handleSearchMode(key, keyboardContext, keybindMode)
     } else if (appMode === AppMode.NewSession) {
       if (key.name === 'return') {
         handleNewSessionSubmit()
       } else {
-        handleNewSessionMode(key, keyboardContext)
+        handleNewSessionMode(key, keyboardContext, keybindMode)
       }
     } else if (appMode === AppMode.Rename) {
       if (key.name === 'return') {
         handleRenameSubmit()
       } else {
-        handleRenameMode(key, keyboardContext)
+        handleRenameMode(key, keyboardContext, keybindMode)
       }
     } else if (appMode === AppMode.OpencodeManage) {
-      handleOpencodeManageMode(key, keyboardContext)
+      handleOpencodeManageMode(key, keyboardContext, keybindMode)
     }
   })
 
@@ -311,9 +324,11 @@ export function App() {
           appMode === AppMode.NewSession ||
           appMode === AppMode.Rename) && (
           <SearchInput
+            key={appMode}
             appMode={appMode}
             searchQuery={searchQuery}
             textareaRef={textareaRef}
+            prefixActive={prefixActive}
             onContentChange={() => {
               if (textareaRef.current && textareaRef.current.plainText !== undefined) {
                 setSearchQuery(textareaRef.current.plainText)
@@ -376,7 +391,7 @@ export function App() {
 
         {/* Keybind help */}
         <box style={{ marginTop: 1, flexDirection: 'column' }}>
-          <KeybindHelp appMode={appMode} />
+          <KeybindHelp appMode={appMode} keybindMode={config?.keybindMode} />
         </box>
       </box>
 

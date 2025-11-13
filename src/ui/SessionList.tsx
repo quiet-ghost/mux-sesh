@@ -46,8 +46,7 @@ export default function SessionList({ items, cursor, maxItems = 20, searchQuery 
                 </>
               ) : (
                 titlePadded
-              )}
-              {' '}
+              )}{' '}
               <span style={{ fg: colors.inactive }}>{sessionAge}</span>
             </text>
           </box>

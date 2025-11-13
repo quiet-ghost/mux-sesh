@@ -10,7 +10,7 @@ export interface OpencodeStats {
   deletions?: number
   createdAt?: number
   updatedAt?: number
-  
+
   // Global stats
   totalSessions?: number
   totalMessages?: number
@@ -21,11 +21,11 @@ export interface OpencodeStats {
   cacheRead?: string
   cacheWrite?: string
   topTools?: Array<{ name: string; count: number; percentage: string }>
-  
+
   // Aggregated stats (for home directory sessions)
   sessionCount?: number
   mostRecentTitle?: string
-  
+
   // Current session live stats (last message)
   lastMessageTokens?: number
   contextLimit?: number

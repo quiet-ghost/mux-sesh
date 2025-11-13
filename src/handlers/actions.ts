@@ -1,6 +1,12 @@
 import { basename } from 'path'
 import type { Item, Config } from '../types'
-import { switchTmuxSession, createTmuxSession, killTmuxSession, renameTmuxSession, createNamedTmuxSession } from '../tmux/index'
+import {
+  switchTmuxSession,
+  createTmuxSession,
+  killTmuxSession,
+  renameTmuxSession,
+  createNamedTmuxSession,
+} from '../tmux/index'
 import { isGitHubURL, cloneGitHubRepo } from '../util/github'
 
 export async function handleSelect(item: Item) {

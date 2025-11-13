@@ -13,6 +13,8 @@ export enum ViewMode {
   Projects,
 }
 
+export type KeybindMode = 'vim' | 'standard'
+
 export interface OpencodeSessionStats {
   sessionID?: string
   title?: string
@@ -50,6 +52,7 @@ export interface Config {
   reposPath: string
   editor: string
   editorCmd: string
+  keybindMode?: KeybindMode
 }
 
 export interface WindowInfo {

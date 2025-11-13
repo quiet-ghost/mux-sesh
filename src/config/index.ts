@@ -5,26 +5,31 @@ import type { Config } from '../types'
 export function getDefaultConfig(): Config {
   const homeDir = process.env.HOME || '~'
   return {
-    projectPaths: [
-      join(homeDir, 'dev'),
-      join(homeDir, 'personal'),
-    ],
+    projectPaths: [join(homeDir, 'dev'), join(homeDir, 'personal')],
     reposPath: join(homeDir, 'dev', 'repos'),
     editor: 'nvim',
-    editorCmd: 'nvim -c "lua vim.defer_fn(function() if pcall(require, \'telescope\') then vim.cmd(\'Telescope find_files\') end end, 100)"',
+    editorCmd:
+      "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
+    keybindMode: 'vim',
   }
 }
 
 export async function loadConfig(): Promise<Config> {
   const configDir = join(process.env.HOME!, '.config', 'mux-sesh')
   const configPath = join(configDir, 'config.json')
-  
+
   try {
     const file = Bun.file(configPath)
     const config = await file.json()
+
+    // Convert snake_case keys to camelCase for TypeScript
     return {
       ...getDefaultConfig(),
-      ...config,
+      projectPaths: config.project_paths || config.projectPaths,
+      reposPath: config.repos_path || config.reposPath,
+      editor: config.editor,
+      editorCmd: config.editor_cmd || config.editorCmd,
+      keybindMode: config.keybind_mode || config.keybindMode,
     }
   } catch (error) {
     // Config doesn't exist, create default
@@ -37,7 +42,7 @@ export async function loadConfig(): Promise<Config> {
 export async function saveConfig(config: Config): Promise<void> {
   const configDir = join(process.env.HOME!, '.config', 'mux-sesh')
   const configPath = join(configDir, 'config.json')
-  
+
   await mkdir(configDir, { recursive: true })
   await Bun.write(configPath, JSON.stringify(config, null, 2))
 }
