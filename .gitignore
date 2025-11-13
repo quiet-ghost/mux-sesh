@@ -29,3 +29,9 @@ tmux-sessionizer
 # OS files
 .DS_Store
 Thumbs.db
+
+# TypeScript / Bun
+node_modules/
+dist/
+.bun/
+bun.lockb

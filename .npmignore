@@ -1,0 +1,26 @@
+# Development files
+.git
+.github
+node_modules
+.bun
+bun.lockb
+
+# Build artifacts (we ship source, not dist)
+dist
+
+# Documentation (keep README.md, LICENSE)
+CONVERSION_GUIDE.md
+SETUP.md
+README-GO.md
+screenshot.png
+
+# Config
+.gitignore
+.editorconfig
+bunfig.toml
+tsconfig.json
+
+# Test files
+*.test.ts
+*.test.tsx
+__tests__
