@@ -104,19 +104,24 @@ Configuration is stored at `~/.config/mux-sesh/config.json`:
 
 ```json
 {
-  "projectPaths": ["~/dev", "~/personal", "~/work"],
-  "reposPath": "~/dev/repos",
+  "project_paths": ["~/dev", "~/personal", "~/work"],
+  "repos_path": "~/dev/repos",
   "editor": "nvim",
-  "editorCmd": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\""
+  "editor_cmd": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
+  "keybind_mode": "vim", #other option is 'standard'
+  "start_in_search_mode": false
 }
 ```
 
+
 ### Configuration Options
 
-- **`projectPaths`** - Array of directories to scan for projects
-- **`reposPath`** - Directory where GitHub repositories will be cloned
+- **`project_Paths`** - Array of directories to scan for projects
+- **`repos_Path`** - Directory where GitHub repositories will be cloned
 - **`editor`** - Default editor to use
-- **`editorCmd`** - Command to run when opening editor
+- **`editor_Cmd`** - Command to run when opening editor
+- **`keybind_mode`** - alternative keybinds for those who do not want vim like binds
+- **`start_in_search_mode`** - alternative keybinds for those who do not want vim like binds
 
 ## Usage Examples
 
