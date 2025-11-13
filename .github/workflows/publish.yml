@@ -83,7 +83,7 @@ jobs:
           tag_name: v${{ steps.version.outputs.version }}
           release_name: Release v${{ steps.version.outputs.version }}
           body: |
-            ## 🎉 Release v${{ steps.version.outputs.version }}
+            ## Release v${{ steps.version.outputs.version }}
             
             ### Installation
             
@@ -94,10 +94,6 @@ jobs:
             # Or with npm
             npm install -g mux-sesh
             ```
-            
-            ### What's Changed
-            
-            See [CHANGELOG.md](https://github.com/quiet-ghost/mux-sesh/blob/main/CHANGELOG.md) for details.
             
             ### Prerequisites
             
