@@ -5,11 +5,32 @@ export enum AppMode {
   Search,
   NewSession,
   Rename,
+  OpencodeManage,
 }
 
 export enum ViewMode {
   Sessions,
   Projects,
+}
+
+export interface OpencodeSessionStats {
+  sessionID?: string
+  title?: string
+  projectID?: string
+  directory?: string
+  messageCount?: number
+  filesModified?: number
+  additions?: number
+  deletions?: number
+  createdAt?: number
+  updatedAt?: number
+  // Aggregated stats (for home directory sessions)
+  sessionCount?: number
+  mostRecentTitle?: string
+  // Current session live stats (last message)
+  lastMessageTokens?: number
+  contextLimit?: number
+  sessionTotalCost?: number
 }
 
 export interface Item {
@@ -19,6 +40,9 @@ export interface Item {
   isSession: boolean
   isAttached?: boolean
   windowCount?: string
+  createdAt?: number
+  lastActivity?: number
+  opencodeStats?: OpencodeSessionStats
 }
 
 export interface Config {
@@ -45,4 +69,9 @@ export interface SessionDetails {
 export interface SearchResult {
   item: Item
   score: number
+}
+
+export interface FuzzyMatch {
+  score: number
+  indices: number[]
 }

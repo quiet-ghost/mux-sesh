@@ -6,25 +6,27 @@ export async function listTmuxSessions(): Promise<Item[]> {
     'tmux',
     'list-sessions',
     '-F',
-    '#{session_name}:#{session_attached}:#{session_windows}',
+    '#{session_name}:#{session_attached}:#{session_windows}:#{session_created}:#{session_activity}',
   ])
 
   const output = await new Response(proc.stdout).text()
   const lines = output.trim().split('\n').filter(Boolean)
 
-  return lines
-    .map(line => {
-      const [name, attached, windows] = line.split(':')
-      return {
-        title: name,
-        path: name,
-        desc: '',
-        isSession: true,
-        isAttached: attached === '1',
-        windowCount: windows,
-      }
-    })
-    .sort((a, b) => a.title.localeCompare(b.title))
+  const sessions = lines.map(line => {
+    const [name, attached, windows, created, activity] = line.split(':')
+    return {
+      title: name,
+      path: name,
+      desc: '',
+      isSession: true,
+      isAttached: attached === '1',
+      windowCount: windows,
+      createdAt: parseInt(created, 10),
+      lastActivity: parseInt(activity, 10),
+    }
+  })
+
+  return sessions.sort((a, b) => a.title.localeCompare(b.title))
 }
 
 export async function createTmuxSession(name: string, path: string): Promise<void> {
@@ -37,7 +39,6 @@ export async function createTmuxSession(name: string, path: string): Promise<voi
   const isTmuxRunning = tmuxRunning.exitCode === 0
 
   if (!insideTmux && !isTmuxRunning) {
-    // Not inside tmux and tmux not running - create new session and attach
     const proc = spawn(['tmux', 'new-session', '-s', sessionName, '-c', path], {
       stdin: 'inherit',
       stdout: 'inherit',
@@ -47,16 +48,13 @@ export async function createTmuxSession(name: string, path: string): Promise<voi
     return
   }
 
-  // Check if session exists
   const hasSession = spawn(['tmux', 'has-session', `-t=${sessionName}`])
   await hasSession.exited
 
   if (hasSession.exitCode !== 0) {
-    // Session doesn't exist, create it
     const createProc = spawn(['tmux', 'new-session', '-d', '-s', sessionName, '-c', path])
     await createProc.exited
 
-    // Send nvim command
     const nvimProc = spawn([
       'tmux',
       'send-keys',
@@ -68,7 +66,6 @@ export async function createTmuxSession(name: string, path: string): Promise<voi
     await nvimProc.exited
   }
 
-  // Switch to session
   const switchProc = spawn(['tmux', 'switch-client', '-t', sessionName])
   await switchProc.exited
 }
@@ -77,13 +74,11 @@ export async function createNamedTmuxSession(name: string): Promise<void> {
   const sessionName = name.replace(/\./g, '_').replace(/ /g, '_')
   const insideTmux = !!process.env.TMUX
 
-  // Check if tmux is running
   const tmuxRunning = spawn(['pgrep', 'tmux'])
   await tmuxRunning.exited
   const isTmuxRunning = tmuxRunning.exitCode === 0
 
   if (!insideTmux && !isTmuxRunning) {
-    // Not inside tmux and tmux not running - create new session and attach
     const proc = spawn(['tmux', 'new-session', '-s', sessionName], {
       stdin: 'inherit',
       stdout: 'inherit',
@@ -93,17 +88,14 @@ export async function createNamedTmuxSession(name: string): Promise<void> {
     return
   }
 
-  // Check if session exists
   const hasSession = spawn(['tmux', 'has-session', `-t=${sessionName}`])
   await hasSession.exited
 
   if (hasSession.exitCode !== 0) {
-    // Session doesn't exist, create it
     const createProc = spawn(['tmux', 'new-session', '-d', '-s', sessionName])
     await createProc.exited
   }
 
-  // Switch to session
   const switchProc = spawn(['tmux', 'switch-client', '-t', sessionName])
   await switchProc.exited
 }
@@ -176,7 +168,6 @@ export async function getSessionDetails(sessionName: string): Promise<SessionDet
     ])
     const currentCommand = (await new Response(cmdProc.stdout).text()).trim()
 
-    // Replace home directory with ~
     const displayPath = currentPath.replace(process.env.HOME || '', '~')
 
     windows.push({

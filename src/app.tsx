@@ -1,21 +1,35 @@
 import { useKeyboard } from '@opentui/react'
-import { useState, useEffect } from 'react'
-import { AppMode, ViewMode, type Item, type Config } from './types'
-import { loadConfig } from './lib/config'
-import {
-  listTmuxSessions,
-  switchTmuxSession,
-  killTmuxSession,
-  renameTmuxSession,
-  createTmuxSession,
-  createNamedTmuxSession,
-} from './lib/tmux'
-import { getProjectItems } from './lib/projects'
-import { filterAndSortItems } from './lib/search'
-import { isGitHubURL, cloneGitHubRepo } from './lib/github'
-import { colors, sessionListStyle, sessionListStyleFull, detailPanelStyle } from './styles/theme'
+import { useState, useEffect, useRef } from 'react'
+import { AppMode, ViewMode, type Item, type Config, type OpencodeSessionStats } from './types'
+import { loadConfig } from './config'
+import { listTmuxSessions } from './tmux'
+import { getProjectItems } from './tmux/projects'
+import { filterAndSortItems, clearMatchIndices } from './search'
+import { isGitHubURL } from './util/github'
+import { getOpencodeSessionStats } from './opencode'
+import { formatSessionAge } from './util/time'
+import { colors, sessionListStyle, sessionListStyleFull } from './styles/theme'
 import KeybindHelp from './components/KeybindHelp'
-import DetailPanel from './components/DetailPanel'
+import OpencodeStatsPanel from './ui/OpencodeStatsPanel'
+import SessionDetailsPanel from './ui/SessionDetailsPanel'
+import SessionList from './ui/SessionList'
+import OpencodeSessionGroup from './ui/OpencodeSessionGroup'
+import SearchInput from './ui/SearchInput'
+import SessionStats from './ui/SessionStats'
+import ItemList from './ui/ItemList'
+import {
+  handleNormalMode,
+  handleOpencodeManageMode,
+  handleSearchMode,
+  handleNewSessionMode,
+  handleRenameMode,
+} from './handlers/keyboard'
+import {
+  handleSelect,
+  handleKillSession as actionKillSession,
+  handleRenameSubmit as actionRenameSubmit,
+  handleNewSessionSubmit as actionNewSessionSubmit,
+} from './handlers/actions'
 
 export function App() {
   const [appMode, setAppMode] = useState(AppMode.Normal)
@@ -23,19 +37,22 @@ export function App() {
   const [items, setItems] = useState<Item[]>([])
   const [allItems, setAllItems] = useState<Item[]>([])
   const [projectItems, setProjectItems] = useState<Item[]>([])
+  const [sessionItems, setSessionItems] = useState<Item[]>([])
   const [cursor, setCursor] = useState(0)
+  const [opencodeCursor, setOpencodeCursor] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [message, setMessage] = useState('')
   const [renameTarget, setRenameTarget] = useState('')
   const [config, setConfig] = useState<Config | null>(null)
+  const textareaRef = useRef<any>(null)
+  const statsCache = useRef<Map<string, OpencodeSessionStats>>(new Map())
+  const [loadingStats, setLoadingStats] = useState(false)
 
-  // Initialize
   useEffect(() => {
     async function init() {
       const cfg = await loadConfig()
       setConfig(cfg)
 
-      // Load initial data
       const sessions = await listTmuxSessions()
       const projects = await getProjectItems(cfg)
 
@@ -43,6 +60,7 @@ export function App() {
 
       if (sessions.length > 0) {
         setViewMode(ViewMode.Sessions)
+        setSessionItems(sessions)
         setAllItems(sessions)
         setItems(sessions)
       } else {
@@ -54,15 +72,20 @@ export function App() {
     init()
   }, [])
 
-  async function refreshItems() {
+  async function refreshItems(forceViewMode?: ViewMode) {
     if (!config) return
 
-    if (viewMode === ViewMode.Sessions) {
+    const targetMode = forceViewMode ?? viewMode
+
+    if (targetMode === ViewMode.Sessions) {
       const sessions = await listTmuxSessions()
+      clearMatchIndices(sessions)
+      setSessionItems(sessions)
       setAllItems(sessions)
       setItems(sessions)
     } else {
       const projects = await getProjectItems(config)
+      clearMatchIndices(projects)
       setProjectItems(projects)
       setAllItems(projects)
       setItems(projects)
@@ -70,174 +93,80 @@ export function App() {
     setCursor(0)
   }
 
-  // Keyboard handling
-  useKeyboard(key => {
-    if (appMode === AppMode.Normal) {
-      handleNormalMode(key)
-    } else if (appMode === AppMode.Search) {
-      handleSearchMode(key)
-    } else if (appMode === AppMode.NewSession) {
-      handleNewSessionMode(key)
-    } else if (appMode === AppMode.Rename) {
-      handleRenameMode(key)
+  async function loadOpencodeStatsForSession(sessionName: string) {
+    if (statsCache.current.has(sessionName)) {
+      return statsCache.current.get(sessionName)
     }
-  })
 
-  function handleNormalMode(key: any) {
-    switch (key.name) {
-      case 'q':
-      case 'escape':
-        process.exit(0)
-        break
-      case 'i':
-        setAppMode(AppMode.Search)
-        setSearchQuery('')
-        break
-      case 'n':
-        setAppMode(AppMode.NewSession)
-        setViewMode(ViewMode.Projects)
-        setAllItems(projectItems)
-        setItems(projectItems)
-        setCursor(Math.max(0, projectItems.length - 1))
-        setSearchQuery('')
-        break
-      case 'd':
-        if (viewMode === ViewMode.Sessions && items[cursor]?.isSession) {
-          handleKillSession(items[cursor].title)
-        }
-        break
-      case 'r':
-        if (viewMode === ViewMode.Sessions && items[cursor]?.isSession) {
-          setAppMode(AppMode.Rename)
-          setRenameTarget(items[cursor].title)
-          setSearchQuery(items[cursor].title)
-        }
-        break
-      case 'R':
-        refreshItems()
-        setMessage('Refreshed')
-        setTimeout(() => setMessage(''), 2000)
-        break
-      case 's':
-        setViewMode(ViewMode.Sessions)
-        refreshItems()
-        break
-      case 'p':
-        setViewMode(ViewMode.Projects)
-        refreshItems()
-        break
-      case 'j':
-      case 'down':
-        setCursor(c => Math.min(c + 1, items.length - 1))
-        break
-      case 'k':
-      case 'up':
-        setCursor(c => Math.max(c - 1, 0))
-        break
-      case 'return':
-        if (items[cursor]) {
-          handleSelect(items[cursor])
-        }
-        break
-      default:
-        // Handle number keys 1-9
-        if (key.name >= '1' && key.name <= '9') {
-          const num = parseInt(key.name) - 1
-          if (num >= 0 && num < items.length) {
-            handleSelect(items[num])
-          }
-        }
-        break
-    }
-  }
-
-  function handleSearchMode(key: any) {
-    switch (key.name) {
-      case 'escape':
-        setAppMode(AppMode.Normal)
-        setSearchQuery('')
-        setItems(allItems)
-        setCursor(0)
-        break
-      case 'return':
-        if (items.length > 0) {
-          handleSelect(items[0])
-        }
-        break
-      case 'down':
-        setCursor(c => Math.min(c + 1, items.length - 1))
-        break
-      case 'up':
-        setCursor(c => Math.max(c - 1, 0))
-        break
-    }
-  }
-
-  function handleNewSessionMode(key: any) {
-    switch (key.name) {
-      case 'escape':
-        setAppMode(AppMode.Normal)
-        setViewMode(ViewMode.Sessions)
-        setSearchQuery('')
-        refreshItems()
-        break
-      case 'return':
-        handleNewSessionSubmit()
-        break
-      case 'down':
-        setCursor(c => Math.min(c + 1, items.length - 1))
-        break
-      case 'up':
-        setCursor(c => Math.max(c - 1, 0))
-        break
-    }
-  }
-
-  function handleRenameMode(key: any) {
-    switch (key.name) {
-      case 'escape':
-        setAppMode(AppMode.Normal)
-        setSearchQuery('')
-        setRenameTarget('')
-        break
-      case 'return':
-        handleRenameSubmit()
-        break
-    }
-  }
-
-  async function handleSelect(item: Item) {
-    if (item.isSession) {
-      await switchTmuxSession(item.title)
-    } else {
-      await createTmuxSession(item.title, item.path)
-    }
-  }
-
-  async function handleKillSession(sessionName: string) {
+    setLoadingStats(true)
     try {
-      await killTmuxSession(sessionName)
-      setMessage(`Session '${sessionName}' killed`)
-      setTimeout(() => setMessage(''), 2000)
-      await refreshItems()
-    } catch (error) {
-      setMessage(`Error killing session: ${error}`)
-      setTimeout(() => setMessage(''), 3000)
+      const stats = await getOpencodeSessionStats(sessionName)
+      if (stats) {
+        statsCache.current.set(sessionName, stats)
+
+        setSessionItems(prevItems =>
+          prevItems.map(item =>
+            item.title === sessionName ? { ...item, opencodeStats: stats } : item
+          )
+        )
+
+        setAllItems(prevItems =>
+          prevItems.map(item =>
+            item.title === sessionName ? { ...item, opencodeStats: stats } : item
+          )
+        )
+        setItems(prevItems =>
+          prevItems.map(item =>
+            item.title === sessionName ? { ...item, opencodeStats: stats } : item
+          )
+        )
+      }
+      return stats
+    } finally {
+      setLoadingStats(false)
     }
+  }
+
+  const regularSessions =
+    viewMode === ViewMode.Sessions &&
+    (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
+      ? items.filter(item => item.isSession && !item.title.startsWith('opencode-'))
+      : items
+
+  const opencodeSessions =
+    viewMode === ViewMode.Sessions &&
+    (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
+      ? items.filter(item => item.isSession && item.title.startsWith('opencode-'))
+      : []
+
+  async function handleKillSessionWrapper(sessionName: string) {
+    await actionKillSession(sessionName, {
+      onSuccess: msg => {
+        setMessage(msg)
+        setTimeout(() => setMessage(''), 2000)
+      },
+      onError: msg => {
+        setMessage(msg)
+        setTimeout(() => setMessage(''), 3000)
+      },
+      refreshItems,
+    })
   }
 
   async function handleRenameSubmit() {
     const newName = searchQuery.trim()
     if (newName && newName !== renameTarget) {
-      try {
-        await renameTmuxSession(renameTarget, newName)
-        setMessage(`Session renamed to '${newName}'`)
-        setTimeout(() => setMessage(''), 2000)
-        await refreshItems()
-      } catch (error) {
-        setMessage(`Error renaming session: ${error}`)
-        setTimeout(() => setMessage(''), 3000)
-      }
+      await actionRenameSubmit(renameTarget, newName, {
+        onSuccess: msg => {
+          setMessage(msg)
+          setTimeout(() => setMessage(''), 2000)
+        },
+        onError: msg => {
+          setMessage(msg)
+          setTimeout(() => setMessage(''), 3000)
+        },
+        refreshItems,
+      })
     }
     setAppMode(AppMode.Normal)
     setSearchQuery('')
@@ -246,30 +175,79 @@ export function App() {
 
   async function handleNewSessionSubmit() {
     const searchTerm = searchQuery.trim()
-
     if (!searchTerm) return
 
-    if (isGitHubURL(searchTerm)) {
-      // Clone and create session
-      try {
-        if (!config) return
-        const clonedPath = await cloneGitHubRepo(searchTerm, config)
-        await createTmuxSession(clonedPath, clonedPath)
-      } catch (error) {
-        setMessage(`Error cloning repository: ${error}`)
-        setTimeout(() => setMessage(''), 3000)
-      }
-    } else if (items.length > 0 && cursor < items.length) {
-      // Create session from selected project
-      const selectedItem = items[cursor]
-      await createTmuxSession(selectedItem.title, selectedItem.path)
-    } else {
-      // Create custom named session
-      await createNamedTmuxSession(searchTerm)
+    try {
+      await actionNewSessionSubmit(searchTerm, config, items, cursor)
+    } catch (error: any) {
+      setMessage(error.message)
+      setTimeout(() => setMessage(''), 3000)
     }
   }
 
-  // Filter items based on search query
+  const keyboardContext = {
+    appMode,
+    viewMode,
+    items,
+    regularSessions,
+    opencodeSessions,
+    cursor,
+    opencodeCursor,
+    searchQuery,
+    projectItems,
+    sessionItems,
+    setAppMode,
+    setViewMode,
+    setCursor,
+    setOpencodeCursor,
+    setSearchQuery,
+    setRenameTarget,
+    setAllItems,
+    setItems,
+    refreshItems,
+    handleSelect,
+    handleKillSession: handleKillSessionWrapper,
+    loadOpencodeStatsForSession,
+    setMessage,
+  }
+
+  useKeyboard(key => {
+    if (appMode === AppMode.Normal) {
+      handleNormalMode(key, keyboardContext)
+    } else if (appMode === AppMode.Search) {
+      handleSearchMode(key, keyboardContext)
+    } else if (appMode === AppMode.NewSession) {
+      if (key.name === 'return') {
+        handleNewSessionSubmit()
+      } else {
+        handleNewSessionMode(key, keyboardContext)
+      }
+    } else if (appMode === AppMode.Rename) {
+      if (key.name === 'return') {
+        handleRenameSubmit()
+      } else {
+        handleRenameMode(key, keyboardContext)
+      }
+    } else if (appMode === AppMode.OpencodeManage) {
+      handleOpencodeManageMode(key, keyboardContext)
+    }
+  })
+
+  useEffect(() => {
+    if (appMode === AppMode.Search && searchQuery === '') {
+      setItems(allItems)
+    }
+  }, [appMode, searchQuery, allItems])
+
+  useEffect(() => {
+    if (appMode === AppMode.Normal && viewMode === ViewMode.Sessions) {
+      // Clear match indices when returning to normal mode
+      clearMatchIndices(sessionItems)
+      setAllItems(sessionItems)
+      setItems(sessionItems)
+    }
+  }, [appMode, viewMode, sessionItems])
+
   useEffect(() => {
     if (appMode === AppMode.Search || appMode === AppMode.NewSession) {
       if (searchQuery.trim()) {
@@ -285,20 +263,38 @@ export function App() {
 
   const title =
     appMode === AppMode.Search
-      ? ' Search Sessions'
+      ? ' Search Sessions'
       : appMode === AppMode.NewSession
-        ? ' New Session'
+        ? ' New Session'
         : appMode === AppMode.Rename
-          ? '󰏫  Rename Session'
-          : '  Tmux Session Manager'
+          ? '󰏫 Rename Session'
+          : appMode === AppMode.OpencodeManage
+            ? ' Opencode Sessions'
+            : ' Tmux Session Manager'
 
   const listStyle = appMode === AppMode.NewSession ? sessionListStyleFull : sessionListStyle
+
+  const totalSessions =
+    viewMode === ViewMode.Sessions && appMode === AppMode.Normal ? items.length : 0
+  const activeSessions = items.filter(item => item.isSession && item.isAttached).length
+  const idleSessions = totalSessions - activeSessions
+
+  const sessionsWithAges = items
+    .filter(item => item.isSession && item.createdAt)
+    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+
+  const oldestSession =
+    sessionsWithAges.length > 0 ? formatSessionAge(sessionsWithAges[0].createdAt!) : 'N/A'
+  const newestSession =
+    sessionsWithAges.length > 0
+      ? formatSessionAge(sessionsWithAges[sessionsWithAges.length - 1].createdAt!)
+      : 'N/A'
 
   return (
     <box
       style={{
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
         height: '100%',
@@ -314,20 +310,16 @@ export function App() {
         {(appMode === AppMode.Search ||
           appMode === AppMode.NewSession ||
           appMode === AppMode.Rename) && (
-          <box style={{ marginBottom: 1 }}>
-            <input
-              placeholder={
-                appMode === AppMode.NewSession
-                  ? 'Type project name, GitHub URL, or custom session name...'
-                  : appMode === AppMode.Rename
-                    ? 'Enter new session name...'
-                    : 'Type to search...'
+          <SearchInput
+            appMode={appMode}
+            searchQuery={searchQuery}
+            textareaRef={textareaRef}
+            onContentChange={() => {
+              if (textareaRef.current && textareaRef.current.plainText !== undefined) {
+                setSearchQuery(textareaRef.current.plainText)
               }
-              value={searchQuery}
-              onInput={setSearchQuery}
-              focused
-            />
-          </box>
+            }}
+          />
         )}
 
         {/* Items list */}
@@ -335,7 +327,13 @@ export function App() {
           style={{
             alignSelf: 'auto',
             flexDirection: 'column',
-            flexGrow: 1,
+            flexGrow: 0,
+            flexShrink: 0,
+            marginTop:
+              viewMode === ViewMode.Sessions &&
+              (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
+                ? 2
+                : 0,
           }}
         >
           {items.length === 0 ? (
@@ -346,41 +344,30 @@ export function App() {
                   ? `Create session: ${searchQuery}`
                   : 'No items found'}
             </text>
+          ) : viewMode === ViewMode.Sessions &&
+            (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage) ? (
+            <>
+              {/* Regular sessions */}
+              <SessionList items={regularSessions} cursor={cursor} searchQuery={searchQuery} />
+
+              {/* Opencode sessions group */}
+              <OpencodeSessionGroup
+                sessions={opencodeSessions}
+                appMode={appMode}
+                cursor={opencodeCursor}
+              />
+
+              {/* Session statistics */}
+              <SessionStats
+                totalSessions={totalSessions}
+                activeSessions={activeSessions}
+                idleSessions={idleSessions}
+                oldestSession={oldestSession}
+                newestSession={newestSession}
+              />
+            </>
           ) : (
-            items.slice(0, 50).map((item, i) => (
-              <box
-                key={i}
-                style={{
-                  backgroundColor: i === cursor ? colors.backgroundAlt : 'transparent',
-                  height: 1,
-                  paddingLeft: 2,
-                }}
-              >
-                {i === cursor && <text> </text>}
-                <text>
-                  {i + 1}{' '}
-                  {item.isSession ? (
-                    <>
-                      <span
-                        style={{
-                          fg: item.isAttached ? colors.active : colors.inactive,
-                        }}
-                      >
-                        {item.isAttached ? '●' : '○'}
-                      </span>{' '}
-                      {item.title} <span style={{ fg: colors.inactive }}>({item.windowCount})</span>
-                    </>
-                  ) : (
-                    <>
-                      {appMode === AppMode.NewSession ? item.desc : item.title}
-                      {appMode !== AppMode.NewSession && item.desc && (
-                        <span style={{ fg: colors.inactive }}> {item.desc}</span>
-                      )}
-                    </>
-                  )}
-                </text>
-              </box>
-            ))
+            <ItemList items={items} cursor={cursor} appMode={appMode} searchQuery={searchQuery} />
           )}
         </box>
 
@@ -388,14 +375,26 @@ export function App() {
         {message && <text style={{ fg: colors.action, marginTop: 1 }}>{message}</text>}
 
         {/* Keybind help */}
-        <box style={{ marginTop: 1 }}>
+        <box style={{ marginTop: 1, flexDirection: 'column' }}>
           <KeybindHelp appMode={appMode} />
         </box>
       </box>
 
       {/* Right panel - Detail panel (only in non-new-session modes) */}
       {appMode !== AppMode.NewSession && (
-        <DetailPanel selectedItem={items[cursor]} appMode={appMode} />
+        <>
+          {viewMode === ViewMode.Sessions && appMode === AppMode.OpencodeManage ? (
+            <OpencodeStatsPanel selectedItem={opencodeSessions[opencodeCursor]} />
+          ) : (
+            <SessionDetailsPanel
+              selectedItem={
+                viewMode === ViewMode.Sessions && appMode === AppMode.Normal
+                  ? regularSessions[cursor]
+                  : items[cursor]
+              }
+            />
+          )}
+        </>
       )}
     </box>
   )

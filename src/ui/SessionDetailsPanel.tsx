@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
-import { getSessionDetails } from '../lib/tmux'
+import { getSessionDetails } from '../tmux'
 import { colors, detailPanelStyle } from '../styles/theme'
-import type { Item, SessionDetails, AppMode } from '../types'
+import type { Item, SessionDetails } from '../types'
 
 interface Props {
   selectedItem?: Item
-  appMode: AppMode
 }
 
-export default function DetailPanel({ selectedItem, appMode }: Props) {
+export default function SessionDetailsPanel({ selectedItem }: Props) {
   const [details, setDetails] = useState<SessionDetails | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -53,9 +52,11 @@ export default function DetailPanel({ selectedItem, appMode }: Props) {
 
   return (
     <box style={detailPanelStyle}>
-      <text style={{ fg: colors.primary, marginBottom: 1 }}>{details.name}</text>
+      <box style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <text style={{ fg: colors.primary, marginBottom: 1 }}>{details.name}</text>
+      </box>
 
-      <box style={{ flexDirection: 'column', marginBottom: 1 }}>
+      <box style={{ flexDirection: 'column', marginBottom: 1, marginLeft: 2 }}>
         <text>
           Status:{' '}
           <span style={{ fg: details.isAttached ? colors.active : colors.inactive }}>
@@ -65,9 +66,11 @@ export default function DetailPanel({ selectedItem, appMode }: Props) {
         <text>Windows: {details.windowCount}</text>
       </box>
 
-      <text style={{ fg: colors.primary, marginBottom: 1 }}> Windows</text>
+      <box style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <text style={{ fg: colors.primary, marginBottom: 1 }}> Windows</text>
+      </box>
 
-      <box style={{ flexDirection: 'column' }}>
+      <box style={{ flexDirection: 'column', marginLeft: 2 }}>
         {details.windows.length === 0 ? (
           <text style={{ fg: colors.inactive }}>No windows found</text>
         ) : (
@@ -77,10 +80,10 @@ export default function DetailPanel({ selectedItem, appMode }: Props) {
                 {win.index}: {win.name}
               </text>
               {win.currentCommand && (
-                <text style={{ fg: colors.program, marginLeft: 2 }}>▸ {win.currentCommand}</text>
+                <text style={{ fg: colors.program, marginLeft: 2 }}> {win.currentCommand}</text>
               )}
               {win.currentPath && (
-                <text style={{ fg: colors.fileTree, marginLeft: 2 }}> {win.currentPath}</text>
+                <text style={{ fg: colors.fileTree, marginLeft: 2 }}> {win.currentPath}</text>
               )}
             </box>
           ))
