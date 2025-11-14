@@ -4,10 +4,11 @@
   "description": "A beautiful tmux session manager built with OpenTUI - fuzzy search sessions, manage projects, clone from GitHub",
   "type": "module",
   "bin": {
-    "mux-sesh": "./src/index.tsx"
+    "mux-sesh": "./bin/mux-sesh"
   },
   "files": [
     "src",
+    "bin",
     "README.md",
     "LICENSE",
     "config.example.json"
