@@ -18,13 +18,17 @@ export const sessionListStyle = {
   borderStyle: 'rounded' as const,
   borderColor: colors.border,
   padding: 0.3,
-  width: 65,
-  height: 38,
+  width: '50%' as const,
+  height: '100%' as const,
 }
 
 export const sessionListStyleFull = {
-  ...sessionListStyle,
-  width: 110,
+  border: true,
+  borderStyle: 'rounded' as const,
+  borderColor: colors.border,
+  padding: 0.3,
+  width: '100%' as const,
+  height: '100%' as const,
 }
 
 export const detailPanelStyle = {
@@ -32,8 +36,8 @@ export const detailPanelStyle = {
   borderStyle: 'rounded' as const,
   borderColor: colors.border,
   padding: 0.3,
-  width: 65,
-  height: 38,
+  width: '50%' as const,
+  height: '100%' as const,
 }
 
 export const selectedStyle = {

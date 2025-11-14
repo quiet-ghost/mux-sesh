@@ -29,8 +29,15 @@ export default function OpencodeStatsPanel({ selectedItem }: Props) {
       : 0
   const sessionCost = sessionStats?.sessionTotalCost || 0
 
+  const panelStyle = {
+    ...detailPanelStyle,
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 40,
+  }
+
   return (
-    <box style={detailPanelStyle}>
+    <box style={panelStyle}>
       {/* Header */}
       <box style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 2 }}>
         <text style={{ fg: colors.primary, marginBottom: 1 }}> OpenCode Stats</text>

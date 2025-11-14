@@ -9,6 +9,7 @@ import { isGitHubURL } from './util/github'
 import { getOpencodeSessionStats } from './opencode'
 import { formatSessionAge } from './util/time'
 import { colors, sessionListStyle, sessionListStyleFull } from './styles/theme'
+import { useTerminalSize, shouldShowDetailPanel } from './util/terminal'
 import KeybindHelp from './components/KeybindHelp'
 import OpencodeStatsPanel from './ui/OpencodeStatsPanel'
 import SessionDetailsPanel from './ui/SessionDetailsPanel'
@@ -49,6 +50,7 @@ export function App() {
   const textareaRef = useRef<any>(null)
   const statsCache = useRef<Map<string, OpencodeSessionStats>>(new Map())
   const [loadingStats, setLoadingStats] = useState(false)
+  const { columns } = useTerminalSize()
 
   useEffect(() => {
     async function init() {
@@ -276,16 +278,28 @@ export function App() {
 
   const title =
     appMode === AppMode.Search
-      ? ' Search Sessions'
+      ? ' Search Sessions'
       : appMode === AppMode.NewSession
-        ? ' New Session'
+        ? ' New Session'
         : appMode === AppMode.Rename
           ? '󰏫 Rename Session'
           : appMode === AppMode.OpencodeManage
-            ? ' Opencode Sessions'
-            : ' Tmux Session Manager'
+            ? ' Opencode Sessions'
+            : ' Tmux Session Manager'
 
-  const listStyle = appMode === AppMode.NewSession ? sessionListStyleFull : sessionListStyle
+  const listStyle =
+    appMode === AppMode.NewSession
+      ? {
+          ...sessionListStyleFull,
+          flexGrow: 1,
+          flexShrink: 1,
+        }
+      : {
+          ...sessionListStyle,
+          flexGrow: 1,
+          flexShrink: 1,
+          minWidth: 40,
+        }
 
   const totalSessions =
     viewMode === ViewMode.Sessions && appMode === AppMode.Normal ? items.length : 0
@@ -307,10 +321,11 @@ export function App() {
     <box
       style={{
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'stretch',
         justifyContent: 'center',
         width: '100%',
         height: '100%',
+        gap: 1,
       }}
     >
       {/* Left panel - Session/Project list */}
@@ -389,6 +404,13 @@ export function App() {
         {/* Message */}
         {message && <text style={{ fg: colors.action, marginTop: 1 }}>{message}</text>}
 
+        {/* Terminal size warning */}
+        {columns < 80 && appMode !== AppMode.NewSession && (
+          <text style={{ fg: colors.inactive, marginTop: 1 }}>
+            Terminal too small. Resize for full view.
+          </text>
+        )}
+
         {/* Keybind help */}
         <box style={{ marginTop: 1, flexDirection: 'column' }}>
           <KeybindHelp appMode={appMode} keybindMode={config?.keybindMode} />
@@ -396,7 +418,7 @@ export function App() {
       </box>
 
       {/* Right panel - Detail panel (only in non-new-session modes) */}
-      {appMode !== AppMode.NewSession && (
+      {shouldShowDetailPanel(columns, appMode === AppMode.NewSession) && (
         <>
           {viewMode === ViewMode.Sessions && appMode === AppMode.OpencodeManage ? (
             <OpencodeStatsPanel selectedItem={opencodeSessions[opencodeCursor]} />

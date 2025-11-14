@@ -23,9 +23,16 @@ export default function SessionDetailsPanel({ selectedItem }: Props) {
     }
   }, [selectedItem])
 
+  const panelStyle = {
+    ...detailPanelStyle,
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 40,
+  }
+
   if (!selectedItem?.isSession) {
     return (
-      <box style={detailPanelStyle}>
+      <box style={panelStyle}>
         <text style={{ fg: colors.primary, marginBottom: 1 }}>Details</text>
         <text style={{ fg: colors.inactive }}>No session selected</text>
       </box>
@@ -34,7 +41,7 @@ export default function SessionDetailsPanel({ selectedItem }: Props) {
 
   if (loading) {
     return (
-      <box style={detailPanelStyle}>
+      <box style={panelStyle}>
         <text style={{ fg: colors.primary, marginBottom: 1 }}>{selectedItem.title}</text>
         <text style={{ fg: colors.inactive }}>Loading...</text>
       </box>
@@ -43,7 +50,7 @@ export default function SessionDetailsPanel({ selectedItem }: Props) {
 
   if (!details) {
     return (
-      <box style={detailPanelStyle}>
+      <box style={panelStyle}>
         <text style={{ fg: colors.primary, marginBottom: 1 }}>{selectedItem.title}</text>
         <text style={{ fg: colors.inactive }}>Unable to load session details</text>
       </box>
@@ -51,7 +58,7 @@ export default function SessionDetailsPanel({ selectedItem }: Props) {
   }
 
   return (
-    <box style={detailPanelStyle}>
+    <box style={panelStyle}>
       <box style={{ alignItems: 'center', justifyContent: 'center' }}>
         <text style={{ fg: colors.primary, marginBottom: 1 }}>{details.name}</text>
       </box>
