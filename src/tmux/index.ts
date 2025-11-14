@@ -144,7 +144,7 @@ export async function getSessionDetails(sessionName: string): Promise<SessionDet
   const windows: WindowInfo[] = []
 
   for (const line of windowLines) {
-    const [index, name] = line.split(': ')
+    const [index, name] = line.split(':')
 
     // Get current directory
     const dirProc = spawn([

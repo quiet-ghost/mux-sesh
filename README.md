@@ -113,15 +113,34 @@ Configuration is stored at `~/.config/mux-sesh/config.json`:
 }
 ```
 
-
 ### Configuration Options
 
-- **`project_Paths`** - Array of directories to scan for projects
-- **`repos_Path`** - Directory where GitHub repositories will be cloned
+- **`project_paths`** - Array of directories to scan for projects
+- **`repos_path`** - Directory where GitHub repositories will be cloned
 - **`editor`** - Default editor to use
-- **`editor_Cmd`** - Command to run when opening editor
+- **`editor_cmd`** - Command to run when opening editor
 - **`keybind_mode`** - alternative keybinds for those who do not want vim like binds
-- **`start_in_search_mode`** - alternative keybinds for those who do not want vim like binds
+- **`start_in_search_mode`** - Start in search mode by default
+
+### tmux Integration
+
+For the best experience, bind mux-sesh to a global tmux keybinding. Add this to your `~/.tmux.conf`:
+
+```bash
+# Open mux-sesh in a popup with Alt+w (no prefix required)
+bind-key -n M-w popup -E -w 62% -h 70% "mux-sesh"
+```
+
+After adding the binding, reload your tmux config:
+```bash
+tmux source-file ~/.tmux.conf
+```
+
+Now you can press `Alt+w` from anywhere in tmux (including inside nvim) to launch mux-sesh.
+
+**Alternative Integration:**
+- **From Neovim**: Use [mux-manager](https://github.com/quiet-ghost/mux-manager) - a Telescope-based tmux session manager that integrates directly into Neovim
+- **With prefix**: Use `bind-key f popup -E -w 80% -h 80% "mux-sesh"` if you prefer requiring the tmux prefix key first
 
 ## Usage Examples
 
