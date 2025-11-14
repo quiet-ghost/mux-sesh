@@ -1,6 +1,6 @@
 {
   "name": "mux-sesh",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "description": "A beautiful tmux session manager built with OpenTUI - fuzzy search sessions, manage projects, clone from GitHub",
   "type": "module",
   "bin": {
