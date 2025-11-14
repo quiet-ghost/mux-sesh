@@ -178,7 +178,7 @@ export function handleOpencodeManageMode(
   if (key.name === 'down' || (!isStandard && key.name === 'j')) {
     ctx.setOpencodeCursor(c => {
       const newCursor = Math.min(c + 1, ctx.opencodeSessions.length - 1)
-      if (newCursor !== c) {
+      if (newCursor !== c && ctx.opencodeSessions[newCursor]) {
         ctx.loadOpencodeStatsForSession(ctx.opencodeSessions[newCursor].title)
       }
       return newCursor
@@ -190,7 +190,7 @@ export function handleOpencodeManageMode(
   if (key.name === 'up' || (!isStandard && key.name === 'k')) {
     ctx.setOpencodeCursor(c => {
       const newCursor = Math.max(c - 1, 0)
-      if (newCursor !== c) {
+      if (newCursor !== c && ctx.opencodeSessions[newCursor]) {
         ctx.loadOpencodeStatsForSession(ctx.opencodeSessions[newCursor].title)
       }
       return newCursor
