@@ -8,10 +8,7 @@
   },
   "files": [
     "src",
-    "bin",
-    "README.md",
-    "LICENSE",
-    "config.example.json"
+    "bin"
   ],
   "scripts": {
     "dev": "bun run src/index.tsx",
