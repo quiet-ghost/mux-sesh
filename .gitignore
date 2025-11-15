@@ -16,6 +16,7 @@
 
 # Go workspace file
 go.work
+.worktrees/
 
 # Built binary
 tmux-sessionizer

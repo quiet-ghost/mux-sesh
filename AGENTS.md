@@ -1,0 +1,57 @@
+
+Agent Guidelines for mux-sesh using opentui
+
+Default to using Bun instead of Node.js.
+
+    Use bun <file> instead of node <file> or ts-node <file>
+    Use bun test instead of jest or vitest
+    Use bun install instead of npm install or yarn install or pnpm install
+    Use bun run <script> instead of npm run <script> or yarn run <script> or pnpm run <script>
+    Bun automatically loads .env, so don't use dotenv.
+
+NOTE: When only changing typescript, you do NOT need to run the build script. The build is only needed when changing native code.
+APIs
+
+    Bun.serve() supports WebSockets, HTTPS, and routes. Don't use express.
+    bun:sqlite for SQLite. Don't use better-sqlite3.
+    Bun.redis for Redis. Don't use ioredis.
+    Bun.sql for Postgres. Don't use pg or postgres.js.
+    WebSocket is built-in. Don't use ws.
+    Prefer Bun.file over node:fs's readFile/writeFile
+    Bun.$ls instead of execa.
+
+Testing
+
+Use bun test to run tests from the packages directories for a specific package.
+
+import { test, expect } from "bun:test";
+
+test("hello world", () => {
+  expect(1).toBe(1);
+});
+
+For more information, read the Bun API docs in node_modules/bun-types/docs/**.md.
+Build/Test Commands
+
+To build the project (before running typescript tests), run bun run build FROM THE REPO ROOT to make sure all packages are built correctly.
+
+To run native tests for packages/core, run bun run test:native FROM THE packages/core DIRECTORY.
+
+To filter native tests, use: bun run test:native -Dtest-filter="test name" FROM THE packages/core DIRECTORY.
+Typescript Code Style
+
+    Runtime: Bun with TypeScript
+    Formatting: Prettier (semi: false, printWidth: 120)
+    Imports: Use explicit imports, group by: built-ins, external deps, internal modules
+    Types: Strict TypeScript, use interfaces for options/configs, explicit return types for public APIs
+    Naming: camelCase for variables/functions, PascalCase for classes/interfaces, UPPER_CASE for constants
+    Error Handling: Use proper Error objects, avoid silent failures
+    Async: Prefer async/await over Promises, handle errors explicitly
+    Comments: Minimal comments, NO JSDoc
+    File Structure: Index files for clean exports, group related functionality
+    Testing: Bun test framework, descriptive test names, use beforeEach/afterEach for setup
+
+Debugging
+
+    NOTE this is a terminal UI lib and when running examples or apps built with it, you cannot currently see log output like console.log. Ask the user to run the example/app and provide the output.
+    Reproduce the issue in a test case. Do NOT start fixing without a reproducible test case. Use debug logs to see what is actually happening. DO NOT GUESS.

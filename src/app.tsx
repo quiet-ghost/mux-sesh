@@ -278,14 +278,14 @@ export function App() {
 
   const title =
     appMode === AppMode.Search
-      ? ' Search Sessions'
+      ? ' Search Sessions'
       : appMode === AppMode.NewSession
-        ? ' New Session'
+        ? '󰏌 New Session'
         : appMode === AppMode.Rename
           ? '󰏫 Rename Session'
           : appMode === AppMode.OpencodeManage
-            ? ' Opencode Sessions'
-            : ' Tmux Session Manager'
+            ? ' Opencode Sessions'
+            : ' Tmux Session Manager'
 
   const listStyle =
     appMode === AppMode.NewSession
