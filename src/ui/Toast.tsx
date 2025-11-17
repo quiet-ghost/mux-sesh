@@ -1,4 +1,4 @@
-import { colors } from '@/styles/theme'
+import { colors } from '../styles/theme'
 
 interface ToastProps {
   message: string
