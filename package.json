@@ -7,8 +7,8 @@
     "mux-sesh": "./bin/mux-sesh"
   },
   "files": [
-    "src",
-    "bin"
+    "bin",
+    "src"
   ],
   "scripts": {
     "dev": "bun run src/index.tsx",

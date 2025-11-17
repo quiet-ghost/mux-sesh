@@ -1,5 +1,3 @@
-// Core types for the application
-
 export enum AppMode {
   Normal,
   Search,
@@ -53,6 +51,7 @@ export interface Config {
   editor: string
   editorCmd: string
   keybindMode?: KeybindMode
+  autoUpdate?: boolean
 }
 
 export interface WindowInfo {
@@ -78,3 +77,11 @@ export interface FuzzyMatch {
   score: number
   indices: number[]
 }
+
+export type InstallMethod = 'npm' | 'bun' | 'brew' | 'unknown'
+
+export interface UpdateCompletedEvent {
+  version: string
+}
+
+export type UpdateEventListener = (event: UpdateCompletedEvent) => void
