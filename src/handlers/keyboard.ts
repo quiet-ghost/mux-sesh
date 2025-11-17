@@ -142,7 +142,7 @@ export function handleNormalMode(
 
   // Handle selection
   if (key.name === 'return') {
-    if (ctx.items[ctx.cursor]) {
+    if (ctx.regularSessions[ctx.cursor]) {
       ctx.handleSelect(ctx.regularSessions[ctx.cursor])
     }
     return
