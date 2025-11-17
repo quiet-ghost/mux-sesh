@@ -82,7 +82,7 @@ export function handleNormalMode(
   // Handle delete/kill (d for vim, Ctrl+D for standard)
   if ((!isStandard && key.name === 'd') || (isStandard && key.ctrl && key.name === 'd')) {
     if (ctx.viewMode === ViewMode.Sessions && ctx.items[ctx.cursor]?.isSession) {
-      ctx.handleKillSession(ctx.items[ctx.cursor].title)
+      ctx.handleKillSession(ctx.regularSessions[ctx.cursor].title)
     }
     return
   }
@@ -94,8 +94,8 @@ export function handleNormalMode(
   ) {
     if (ctx.viewMode === ViewMode.Sessions && ctx.items[ctx.cursor]?.isSession) {
       ctx.setAppMode(AppMode.Rename)
-      ctx.setRenameTarget(ctx.items[ctx.cursor].title)
-      ctx.setSearchQuery(ctx.items[ctx.cursor].title)
+      ctx.setRenameTarget(ctx.regularSessions[ctx.cursor].title)
+      ctx.setSearchQuery(ctx.regularSessions[ctx.cursor].title)
     }
     return
   }
@@ -143,7 +143,7 @@ export function handleNormalMode(
   // Handle selection
   if (key.name === 'return') {
     if (ctx.items[ctx.cursor]) {
-      ctx.handleSelect(ctx.items[ctx.cursor])
+      ctx.handleSelect(ctx.regularSessions[ctx.cursor])
     }
     return
   }
@@ -151,8 +151,8 @@ export function handleNormalMode(
   // Handle number shortcuts (vim only)
   if (!isStandard && key.name >= '1' && key.name <= '9') {
     const num = parseInt(key.name) - 1
-    if (num >= 0 && num < ctx.items.length) {
-      ctx.handleSelect(ctx.items[num])
+    if (num >= 0 && num < ctx.regularSessions.length) {
+      ctx.handleSelect(ctx.regularSessions[num])
     }
   }
 }
