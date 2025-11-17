@@ -266,15 +266,6 @@ export function App() {
     return unsubscribe
   }, [])
 
-  //NOTE:
-  // After the updateEvents.on() effect, add:
-  useEffect(() => {
-    // Simulate an update after 2 seconds
-    setTimeout(() => {
-      updateEvents.emit({ version: '99.99.99' })
-    }, 2000)
-  }, [])
-
   useEffect(() => {
     if (appMode === AppMode.Search && searchQuery === '') {
       setItems(allItems)
