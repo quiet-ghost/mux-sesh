@@ -10,6 +10,8 @@ import { getOpencodeSessionStats } from './opencode'
 import { formatSessionAge } from './util/time'
 import { colors, sessionListStyle, sessionListStyleFull } from './styles/theme'
 import { useTerminalSize, shouldShowDetailPanel } from './util/terminal'
+import Toast from './ui/Toast'
+import { checkAndUpdate, updateEvents } from './update'
 import KeybindHelp from './components/KeybindHelp'
 import OpencodeStatsPanel from './ui/OpencodeStatsPanel'
 import SessionDetailsPanel from './ui/SessionDetailsPanel'
@@ -51,6 +53,8 @@ export function App() {
   const statsCache = useRef<Map<string, OpencodeSessionStats>>(new Map())
   const [loadingStats, setLoadingStats] = useState(false)
   const { columns } = useTerminalSize()
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastVisible, setToastVisible] = useState(false)
 
   useEffect(() => {
     async function init() {
@@ -77,6 +81,9 @@ export function App() {
         setAllItems(projects)
         setItems(projects)
       }
+      checkAndUpdate(cfg).catch(error => {
+        console.error('Auto-update check failed:', error)
+      })
     }
     init()
   }, [])
@@ -247,6 +254,26 @@ export function App() {
       handleOpencodeManageMode(key, keyboardContext, keybindMode)
     }
   })
+
+  useEffect(() => {
+    const unsubscribe = updateEvents.on(event => {
+      setToastMessage(`v${event.version}`)
+      setToastVisible(true)
+      setTimeout(() => {
+        setToastVisible(false)
+      }, 5000)
+    })
+    return unsubscribe
+  }, [])
+
+  //NOTE:
+  // After the updateEvents.on() effect, add:
+  useEffect(() => {
+    // Simulate an update after 2 seconds
+    setTimeout(() => {
+      updateEvents.emit({ version: '99.99.99' })
+    }, 2000)
+  }, [])
 
   useEffect(() => {
     if (appMode === AppMode.Search && searchQuery === '') {
@@ -433,6 +460,7 @@ export function App() {
           )}
         </>
       )}
+      <Toast message={toastMessage} visible={toastVisible} />
     </box>
   )
 }

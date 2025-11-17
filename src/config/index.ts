@@ -11,6 +11,7 @@ export function getDefaultConfig(): Config {
     editorCmd:
       "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
     keybindMode: 'vim',
+    autoUpdate: true,
   }
 }
 
@@ -30,6 +31,7 @@ export async function loadConfig(): Promise<Config> {
       editor: config.editor,
       editorCmd: config.editor_cmd || config.editorCmd,
       keybindMode: config.keybind_mode || config.keybindMode,
+      autoUpdate: config.auto_update || config.autoUpdate,
     }
   } catch (error) {
     // Config doesn't exist, create default
