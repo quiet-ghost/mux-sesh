@@ -31,4 +31,4 @@ if [ -z "$resolved" ]; then
 fi
 
 # Execute with bun
-exec bun "$resolved" "$@"
+cd "$(dirname "$resolved")/.." && exec bun "$resolved" "$@"
