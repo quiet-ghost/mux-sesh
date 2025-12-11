@@ -8,7 +8,8 @@
   },
   "files": [
     "bin",
-    "src"
+    "src",
+    "tsconfig.json"
   ],
   "scripts": {
     "dev": "bun run src/index.tsx",
