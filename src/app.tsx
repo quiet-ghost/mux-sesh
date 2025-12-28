@@ -1,5 +1,5 @@
 import { useKeyboard } from '@opentui/react'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, use } from 'react'
 import { AppMode, ViewMode, type Item, type Config, type OpencodeSessionStats } from './types'
 import { loadConfig } from './config'
 import { listTmuxSessions } from './tmux'
@@ -293,6 +293,17 @@ export function App() {
       }
     }
   }, [searchQuery, appMode, allItems])
+
+  useEffect(() => {
+    if (appMode === AppMode.Rename && textareaRef.current && renameTarget) {
+      setTimeout(() => {
+        if (textareaRef.current && !textareaRef.current.isDestroyed) {
+          const textLength = Bun.stringWidth(renameTarget)
+          textareaRef.current.cursorOffset = textLength
+        }
+      }, 0)
+    }
+  }, [appMode, renameTarget])
 
   const title =
     appMode === AppMode.Search
