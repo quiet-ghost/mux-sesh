@@ -229,7 +229,7 @@ MIT License - see [LICENSE](./LICENSE) for details.
 ##  Acknowledgments
 
 - Inspired by [ThePrimeagen's tmux-sessionizer](https://github.com/ThePrimeagen/.dotfiles/blob/master/bin/.local/scripts/tmux-sessionizer)
-- Built with [OpenTUI](https://github.com/sst/opentui)
+- Built with [OpenTUI](https://github.com/anomalyco/opentui)
 - UI design inspired by [nvim telescope plugin](https://github.com/nvim-telescope/telescope.nvim)
 
 ##  Related Projects
@@ -239,5 +239,5 @@ MIT License - see [LICENSE](./LICENSE) for details.
 ---
 
 <p align="center">
-  Made with using <a href="https://github.com/sst/opentui">OpenTUI</a> and <a href="https://bun.sh">Bun</a>
+  Made with using <a href="https://github.com/anomalyco/opentui">OpenTUI</a> and <a href="https://bun.sh">Bun</a>
 </p>
