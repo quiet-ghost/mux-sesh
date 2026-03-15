@@ -1,6 +1,6 @@
 import { useKeyboard } from '@opentui/react'
 import { useState, useEffect, useRef } from 'react'
-import { AppMode, ViewMode, type Item, type Config, type OpencodeSessionStats } from './types'
+import { AppMode, ViewMode, type Item, type Config, type OpencodeStatsState } from './types'
 import { loadConfig } from './config'
 import { listTmuxSessions } from './tmux'
 import { getProjectItems } from './tmux/projects'
@@ -50,11 +50,20 @@ export function App() {
   const [prefixActive, setPrefixActive] = useState(false)
   const prefixTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const textareaRef = useRef<any>(null)
-  const statsCache = useRef<Map<string, OpencodeSessionStats>>(new Map())
-  const [loadingStats, setLoadingStats] = useState(false)
   const { columns } = useTerminalSize()
   const [toastMessage, setToastMessage] = useState('')
   const [toastVisible, setToastVisible] = useState(false)
+
+  function updateOpencodeState(sessionName: string, nextState: OpencodeStatsState) {
+    const applyState = (existingItems: Item[]) =>
+      existingItems.map(item =>
+        item.title === sessionName ? { ...item, opencodeState: nextState } : item
+      )
+
+    setSessionItems(applyState)
+    setAllItems(applyState)
+    setItems(applyState)
+  }
 
   useEffect(() => {
     async function init() {
@@ -110,36 +119,27 @@ export function App() {
   }
 
   async function loadOpencodeStatsForSession(sessionName: string) {
-    if (statsCache.current.has(sessionName)) {
-      return statsCache.current.get(sessionName)
-    }
+    updateOpencodeState(sessionName, { status: 'loading' })
 
-    setLoadingStats(true)
     try {
       const stats = await getOpencodeSessionStats(sessionName)
+
       if (stats) {
-        statsCache.current.set(sessionName, stats)
-
-        setSessionItems(prevItems =>
-          prevItems.map(item =>
-            item.title === sessionName ? { ...item, opencodeStats: stats } : item
-          )
-        )
-
-        setAllItems(prevItems =>
-          prevItems.map(item =>
-            item.title === sessionName ? { ...item, opencodeStats: stats } : item
-          )
-        )
-        setItems(prevItems =>
-          prevItems.map(item =>
-            item.title === sessionName ? { ...item, opencodeStats: stats } : item
-          )
-        )
+        updateOpencodeState(sessionName, { status: 'ready', stats })
+        return stats
       }
-      return stats
-    } finally {
-      setLoadingStats(false)
+
+      updateOpencodeState(sessionName, {
+        status: 'missing',
+        message: `No OpenCode stats found for '${sessionName}'`,
+      })
+      return null
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : `Failed to load stats for '${sessionName}'`
+      updateOpencodeState(sessionName, { status: 'error', message: errorMessage })
+      setMessage(errorMessage)
+      setTimeout(() => setMessage(''), 4000)
+      return null
     }
   }
 
@@ -154,6 +154,8 @@ export function App() {
     (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
       ? items.filter(item => item.isSession && item.title.startsWith('opencode-'))
       : []
+  const selectedOpencodeSessionName =
+    appMode === AppMode.OpencodeManage ? opencodeSessions[opencodeCursor]?.title : undefined
 
   async function handleKillSessionWrapper(sessionName: string) {
     await actionKillSession(sessionName, {
@@ -293,6 +295,22 @@ export function App() {
       }
     }
   }, [searchQuery, appMode, allItems])
+
+  useEffect(() => {
+    if (!selectedOpencodeSessionName) {
+      return
+    }
+
+    void loadOpencodeStatsForSession(selectedOpencodeSessionName)
+
+    const interval = setInterval(() => {
+      void loadOpencodeStatsForSession(selectedOpencodeSessionName)
+    }, 2000)
+
+    return () => {
+      clearInterval(interval)
+    }
+  }, [selectedOpencodeSessionName])
 
   const title =
     appMode === AppMode.Search

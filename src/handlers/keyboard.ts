@@ -1,4 +1,5 @@
 import { AppMode, ViewMode, KeybindMode } from '../types'
+import { requestShutdown } from '../util/shutdown'
 
 export interface KeyboardHandlerContext {
   appMode: AppMode
@@ -46,7 +47,8 @@ export function handleNormalMode(
     (isStandard && ((key.ctrl && key.name === 'q') || key.name === 'escape')) ||
     (!isStandard && (key.name === 'q' || key.name === 'escape'))
   ) {
-    process.exit(0)
+    void requestShutdown(0)
+    return
   }
 
   // Handle search mode (i for vim, Ctrl+I for standard)
@@ -287,7 +289,8 @@ export function handleSearchMode(
 
     // Ctrl+Q to quit (immediate, no prefix needed)
     if (key.ctrl && key.name === 'q') {
-      process.exit(0)
+      void requestShutdown(0)
+      return
     }
   }
 
