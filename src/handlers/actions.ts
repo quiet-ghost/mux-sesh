@@ -8,14 +8,15 @@ import {
   createNamedTmuxSession,
 } from '../tmux/index'
 import { isGitHubURL, cloneGitHubRepo } from '../util/github'
+import { requestShutdown } from '../util/shutdown'
 
 export async function handleSelect(item: Item) {
   if (item.isSession) {
     await switchTmuxSession(item.title)
-    process.exit(0)
+    await requestShutdown(0)
   } else {
     await createTmuxSession(item.title, item.path)
-    process.exit(0)
+    await requestShutdown(0)
   }
 }
 
@@ -71,16 +72,16 @@ export async function handleNewSessionSubmit(
       const clonedPath = await cloneGitHubRepo(searchTerm, config)
       const repoName = basename(clonedPath)
       await createTmuxSession(repoName, clonedPath)
-      process.exit(0)
+      await requestShutdown(0)
     } catch (error) {
       throw new Error(`Error cloning repository: ${error}`)
     }
   } else if (items.length > 0 && cursor < items.length) {
     const selectedItem = items[cursor]
     await createTmuxSession(selectedItem.title, selectedItem.path)
-    process.exit(0)
+    await requestShutdown(0)
   } else {
     await createNamedTmuxSession(searchTerm)
-    process.exit(0)
+    await requestShutdown(0)
   }
 }

@@ -33,6 +33,12 @@ export interface OpencodeSessionStats {
   sessionTotalCost?: number
 }
 
+export type OpencodeStatsState =
+  | { status: 'loading' }
+  | { status: 'ready'; stats: OpencodeSessionStats }
+  | { status: 'missing'; message: string }
+  | { status: 'error'; message: string }
+
 export interface Item {
   title: string
   desc: string
@@ -42,7 +48,7 @@ export interface Item {
   windowCount?: string
   createdAt?: number
   lastActivity?: number
-  opencodeStats?: OpencodeSessionStats
+  opencodeState?: OpencodeStatsState
 }
 
 export interface Config {
