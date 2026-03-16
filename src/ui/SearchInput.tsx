@@ -1,9 +1,11 @@
+import type { TextareaRenderable } from '@opentui/core'
+import { useEffect } from 'react'
 import { AppMode } from '../types'
 
 interface Props {
   appMode: AppMode
   searchQuery: string
-  textareaRef: any
+  textareaRef: { current: TextareaRenderable | null }
   onContentChange: () => void
   prefixActive?: boolean
 }
@@ -21,6 +23,22 @@ export default function SearchInput({
       : appMode === AppMode.Rename
         ? 'Enter new session name...'
         : 'Type to search...'
+
+  useEffect(() => {
+    if (appMode !== AppMode.Rename) {
+      return
+    }
+
+    queueMicrotask(() => {
+      const textarea = textareaRef.current
+      if (!textarea) {
+        return
+      }
+
+      textarea.focus()
+      textarea.gotoLineEnd()
+    })
+  }, [appMode, textareaRef])
 
   return (
     <box
