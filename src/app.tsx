@@ -1,3 +1,4 @@
+import type { TextareaRenderable } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
 import { useState, useEffect, useRef } from 'react'
 import { AppMode, ViewMode, type Item, type Config, type OpencodeStatsState } from './types'
@@ -49,7 +50,7 @@ export function App() {
   const [config, setConfig] = useState<Config | null>(null)
   const [prefixActive, setPrefixActive] = useState(false)
   const prefixTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const textareaRef = useRef<any>(null)
+  const textareaRef = useRef<TextareaRenderable | null>(null)
   const { columns } = useTerminalSize()
   const [toastMessage, setToastMessage] = useState('')
   const [toastVisible, setToastVisible] = useState(false)
