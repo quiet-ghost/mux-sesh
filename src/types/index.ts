@@ -12,6 +12,29 @@ export enum ViewMode {
 }
 
 export type KeybindMode = 'vim' | 'standard'
+export type ZoxideMode = 'off' | 'rank' | 'merge'
+export type ItemKind = 'tmux' | 'configured' | 'project'
+
+export interface SessionDefaults {
+  startupCommand?: string
+  previewCommand?: string
+}
+
+export interface ProjectProfile {
+  path: string
+  sessionName?: string
+  startupCommand?: string
+  previewCommand?: string
+  listed?: boolean
+  icon?: string
+}
+
+export interface ProjectWildcard {
+  pattern: string
+  sessionName?: string
+  startupCommand?: string
+  previewCommand?: string
+}
 
 export interface OpencodeSessionStats {
   sessionID?: string
@@ -39,16 +62,26 @@ export type OpencodeStatsState =
   | { status: 'missing'; message: string }
   | { status: 'error'; message: string }
 
+export interface SearchMatchMetadata {
+  titleIndices?: number[]
+  descIndices?: number[]
+}
+
 export interface Item {
   title: string
   desc: string
   path: string
   isSession: boolean
+  itemKind?: ItemKind
+  icon?: string
   isAttached?: boolean
+  linkedSessionName?: string
+  linkedSessionAttached?: boolean
   windowCount?: string
   createdAt?: number
   lastActivity?: number
   opencodeState?: OpencodeStatsState
+  searchMatch?: SearchMatchMetadata
 }
 
 export interface Config {
@@ -58,6 +91,12 @@ export interface Config {
   editorCmd: string
   keybindMode?: KeybindMode
   autoUpdate?: boolean
+  dirLength?: number
+  hiddenSessions?: string[]
+  zoxideMode?: ZoxideMode
+  defaultSession?: SessionDefaults
+  projects?: ProjectProfile[]
+  wildcards?: ProjectWildcard[]
 }
 
 export interface WindowInfo {

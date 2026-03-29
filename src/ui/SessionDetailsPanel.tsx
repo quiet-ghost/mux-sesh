@@ -1,64 +1,93 @@
 import { useEffect, useState } from 'react'
+import { getProjectPreview, type ProjectPreview } from '../preview/project'
 import { getSessionDetails } from '../tmux'
 import { colors, detailPanelStyle } from '../styles/theme'
-import type { Item, SessionDetails } from '../types'
+import type { Config, Item, SessionDetails } from '../types'
 
 interface Props {
   selectedItem?: Item
+  config: Config | null
 }
 
-export default function SessionDetailsPanel({ selectedItem }: Props) {
-  const [details, setDetails] = useState<SessionDetails | null>(null)
-  const [loading, setLoading] = useState(false)
+type DetailState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'session'; details: SessionDetails }
+  | { status: 'project'; details: ProjectPreview }
+  | { status: 'error'; message: string }
 
-  useEffect(() => {
-    if (selectedItem?.isSession) {
-      setLoading(true)
-      getSessionDetails(selectedItem.title)
-        .then(setDetails)
-        .catch(() => setDetails(null))
-        .finally(() => setLoading(false))
-    } else {
-      setDetails(null)
-    }
-  }, [selectedItem])
-
-  const panelStyle = {
-    ...detailPanelStyle,
-    flexGrow: 1,
-    flexShrink: 1,
-    minWidth: 40,
+function formatSourceLabel(source: ProjectPreview['source']): string {
+  switch (source) {
+    case 'project':
+      return 'Project Rule'
+    case 'wildcard':
+      return 'Wildcard Rule'
+    case 'default':
+      return 'Default Rule'
   }
+}
 
-  if (!selectedItem?.isSession) {
-    return (
-      <box style={panelStyle}>
-        <text style={{ fg: colors.primary, marginBottom: 1 }}>Details</text>
-        <text style={{ fg: colors.inactive }}>No session selected</text>
-      </box>
-    )
-  }
-
-  if (loading) {
-    return (
-      <box style={panelStyle}>
-        <text style={{ fg: colors.primary, marginBottom: 1 }}>{selectedItem.title}</text>
-        <text style={{ fg: colors.inactive }}>Loading...</text>
-      </box>
-    )
-  }
-
-  if (!details) {
-    return (
-      <box style={panelStyle}>
-        <text style={{ fg: colors.primary, marginBottom: 1 }}>{selectedItem.title}</text>
-        <text style={{ fg: colors.inactive }}>Unable to load session details</text>
-      </box>
-    )
-  }
-
+function ProjectPreviewView({ preview }: { preview: ProjectPreview }) {
   return (
-    <box style={panelStyle}>
+    <>
+      <box style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <text style={{ fg: colors.primary, marginBottom: 1 }}>{preview.sessionName}</text>
+      </box>
+
+      <box style={{ flexDirection: 'column', marginBottom: 1, marginLeft: 2 }}>
+        <text>
+          Source: <span style={{ fg: colors.action }}>{formatSourceLabel(preview.source)}</span>
+        </text>
+        <text style={{ fg: colors.fileTree, marginTop: 1 }}>{preview.path}</text>
+        {preview.gitRoot && preview.gitRoot !== preview.path && (
+          <text>
+            Git Root: <span style={{ fg: colors.fileTree }}>{preview.gitRoot}</span>
+          </text>
+        )}
+        {preview.gitBranch && (
+          <text>
+            Branch: <span style={{ fg: colors.active }}>{preview.gitBranch}</span>
+          </text>
+        )}
+        {preview.startupCommand && (
+          <text style={{ marginTop: 1 }}>
+            Startup: <span style={{ fg: colors.program }}>{preview.startupCommand}</span>
+          </text>
+        )}
+        {preview.previewCommand && (
+          <text>
+            Preview Cmd: <span style={{ fg: colors.action }}>{preview.previewCommand}</span>
+          </text>
+        )}
+      </box>
+
+      <box style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <text style={{ fg: colors.primary, marginBottom: 1 }}> {preview.previewLabel}</text>
+      </box>
+
+      <box style={{ flexDirection: 'column', marginLeft: 2 }}>
+        {preview.previewNotice && (
+          <text style={{ fg: colors.inactive, marginBottom: 1 }}>{preview.previewNotice}</text>
+        )}
+        {preview.previewLines.map((line, index) => (
+          <text
+            key={`${preview.previewKind}:${index}:${line}`}
+            style={{
+              fg: preview.previewKind === 'directory' && line.endsWith('/') ? colors.fileTree : colors.text,
+              marginBottom: 1,
+            }}
+          >
+            {line}
+          </text>
+        ))}
+      </box>
+    </>
+  )
+}
+
+function SessionDetailsView({ details }: { details: SessionDetails }) {
+  return (
+    <>
       <box style={{ alignItems: 'center', justifyContent: 'center' }}>
         <text style={{ fg: colors.primary, marginBottom: 1 }}>{details.name}</text>
       </box>
@@ -81,8 +110,8 @@ export default function SessionDetailsPanel({ selectedItem }: Props) {
         {details.windows.length === 0 ? (
           <text style={{ fg: colors.inactive }}>No windows found</text>
         ) : (
-          details.windows.map((win, i) => (
-            <box key={i} style={{ flexDirection: 'column', marginBottom: 1 }}>
+          details.windows.map(win => (
+            <box key={`${win.index}:${win.name}`} style={{ flexDirection: 'column', marginBottom: 1 }}>
               <text>
                 {win.index}: {win.name}
               </text>
@@ -96,6 +125,88 @@ export default function SessionDetailsPanel({ selectedItem }: Props) {
           ))
         )}
       </box>
+    </>
+  )
+}
+
+export default function SessionDetailsPanel({ selectedItem, config }: Props) {
+  const [detailState, setDetailState] = useState<DetailState>({ status: 'idle' })
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadDetails() {
+      if (!selectedItem) {
+        setDetailState({ status: 'idle' })
+        return
+      }
+
+      setDetailState({ status: 'loading' })
+
+      try {
+        if (selectedItem.isSession) {
+          const details = await getSessionDetails(selectedItem.title)
+          if (!cancelled) {
+            setDetailState({ status: 'session', details })
+          }
+          return
+        }
+
+        if (!config) {
+          if (!cancelled) {
+            setDetailState({ status: 'error', message: 'Config is not loaded yet' })
+          }
+          return
+        }
+
+        const details = await getProjectPreview(selectedItem.path, config)
+        if (!cancelled) {
+          setDetailState({ status: 'project', details })
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unable to load details'
+        if (!cancelled) {
+          setDetailState({ status: 'error', message })
+        }
+      }
+    }
+
+    void loadDetails()
+
+    return () => {
+      cancelled = true
+    }
+  }, [config, selectedItem])
+
+  const panelStyle = {
+    ...detailPanelStyle,
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 40,
+  }
+
+  return (
+    <box style={panelStyle}>
+      {detailState.status === 'idle' ? (
+        <>
+          <text style={{ fg: colors.primary, marginBottom: 1 }}>Details</text>
+          <text style={{ fg: colors.inactive }}>No session or project selected</text>
+        </>
+      ) : detailState.status === 'loading' ? (
+        <>
+          <text style={{ fg: colors.primary, marginBottom: 1 }}>{selectedItem?.title ?? 'Details'}</text>
+          <text style={{ fg: colors.inactive }}>Loading...</text>
+        </>
+      ) : detailState.status === 'error' ? (
+        <>
+          <text style={{ fg: colors.primary, marginBottom: 1 }}>{selectedItem?.title ?? 'Details'}</text>
+          <text style={{ fg: colors.action }}>{detailState.message}</text>
+        </>
+      ) : detailState.status === 'session' ? (
+        <SessionDetailsView details={detailState.details} />
+      ) : (
+        <ProjectPreviewView preview={detailState.details} />
+      )}
     </box>
   )
 }

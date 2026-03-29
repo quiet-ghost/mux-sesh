@@ -1,6 +1,8 @@
 import { colors } from '../styles/theme'
 import { AppMode } from '../types'
 import HighlightedText from './HighlightedText'
+import { getItemIconPresentation } from './item-icon'
+import { getVisibleWindow } from './list-window'
 import type { Item } from '../types'
 
 interface Props {
@@ -19,34 +21,33 @@ export default function ItemList({
   searchQuery = '',
 }: Props) {
   const isSearching = searchQuery.trim().length > 0
+  const visibleWindow = getVisibleWindow(items, cursor, maxItems)
 
   return (
     <>
-      {items.slice(0, maxItems).map((item, i) => {
-        const titleMatchIndices = (item as any).titleMatchIndices as number[] | undefined
-        const descMatchIndices = (item as any).descMatchIndices as number[] | undefined
+      {visibleWindow.items.map((item, i) => {
+        const absoluteIndex = visibleWindow.startIndex + i
+        const titleMatchIndices = item.searchMatch?.titleIndices
+        const descMatchIndices = item.searchMatch?.descIndices
         const hasTitleMatch = titleMatchIndices && titleMatchIndices.length > 0
         const hasDescMatch = descMatchIndices && descMatchIndices.length > 0
+        const icon = getItemIconPresentation(item)
 
         return (
           <box
             key={i}
             style={{
-              backgroundColor: i === cursor ? colors.backgroundAlt : 'transparent',
+              backgroundColor: absoluteIndex === cursor ? colors.backgroundAlt : 'transparent',
               height: 1,
               paddingLeft: 2,
             }}
           >
-            {i === cursor && <text> </text>}
+            {absoluteIndex === cursor && <text> </text>}
             <text>
-              {i + 1}{' '}
+              {absoluteIndex + 1}{' '}
               {item.isSession ? (
                 <>
-                  <span
-                    style={{
-                      fg: item.isAttached ? colors.active : colors.inactive,
-                    }}
-                  >
+                  <span style={{ fg: item.isAttached ? colors.active : colors.inactive }}>
                     {item.isAttached ? '●' : '○'}
                   </span>{' '}
                   {isSearching && hasTitleMatch ? (
@@ -58,6 +59,7 @@ export default function ItemList({
                 </>
               ) : (
                 <>
+                  <span style={{ fg: icon.color }}>{icon.glyph}</span>{' '}
                   {appMode === AppMode.NewSession ? (
                     <>
                       {/* Show path (desc) with highlighting if it matches */}

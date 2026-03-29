@@ -39,6 +39,16 @@ export default function KeybindHelp({ appMode, keybindMode = 'vim' }: Props) {
             <span style={{ fg: colors.action }}>opencode</span>
           </text>
           <text>
+            <span style={{ fg: colors.key }}>Ctrl+X l </span>
+            <span style={{ fg: colors.separator }}>│ </span>
+            <span style={{ fg: colors.action }}>last</span>
+          </text>
+          <text>
+            <span style={{ fg: colors.key }}>Ctrl+X g </span>
+            <span style={{ fg: colors.separator }}>│ </span>
+            <span style={{ fg: colors.action }}>root</span>
+          </text>
+          <text>
             <span style={{ fg: colors.key }}>Ctrl+X R </span>
             <span style={{ fg: colors.separator }}>│ </span>
             <span style={{ fg: colors.action }}>refresh</span>
@@ -157,6 +167,16 @@ export default function KeybindHelp({ appMode, keybindMode = 'vim' }: Props) {
           <span style={{ fg: colors.action }}>opencode</span>
         </text>
         <text>
+          <span style={{ fg: colors.key }}>Ctrl+L </span>
+          <span style={{ fg: colors.separator }}>│ </span>
+          <span style={{ fg: colors.action }}>last</span>
+        </text>
+        <text>
+          <span style={{ fg: colors.key }}>Ctrl+G </span>
+          <span style={{ fg: colors.separator }}>│ </span>
+          <span style={{ fg: colors.action }}>root</span>
+        </text>
+        <text>
           <span style={{ fg: colors.key }}>Ctrl+X R </span>
           <span style={{ fg: colors.separator }}>│ </span>
           <span style={{ fg: colors.action }}>refresh</span>
@@ -206,6 +226,16 @@ export default function KeybindHelp({ appMode, keybindMode = 'vim' }: Props) {
         <span style={{ fg: colors.key }}>o </span>
         <span style={{ fg: colors.separator }}>│ </span>
         <span style={{ fg: colors.action }}>opencode</span>
+      </text>
+      <text>
+        <span style={{ fg: colors.key }}>l </span>
+        <span style={{ fg: colors.separator }}>│ </span>
+        <span style={{ fg: colors.action }}>last</span>
+      </text>
+      <text>
+        <span style={{ fg: colors.key }}>g </span>
+        <span style={{ fg: colors.separator }}>│ </span>
+        <span style={{ fg: colors.action }}>root</span>
       </text>
       <text>
         <span style={{ fg: colors.key }}>R </span>

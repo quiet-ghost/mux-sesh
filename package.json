@@ -47,8 +47,8 @@
     "bun": ">=1.0.0"
   },
   "dependencies": {
-    "@opentui/core": "latest",
-    "@opentui/react": "latest",
+    "@opentui/core": "0.1.60",
+    "@opentui/react": "0.1.60",
     "react": "^19.2.2"
   },
   "devDependencies": {

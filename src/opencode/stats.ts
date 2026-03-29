@@ -1,10 +1,10 @@
 import {
-  getTmuxSessionDirectory,
   getActiveOpencodeSession,
   getAggregatedOpencodeStats,
   getMostRecentSessionForDirectory,
 } from './session'
 import type { OpencodeStats } from './types'
+import { getTmuxSessionDirectory } from '../tmux'
 
 export async function getOpencodeSessionStats(
   tmuxSessionName: string

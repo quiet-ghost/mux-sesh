@@ -1,17 +1,184 @@
 import { join } from 'path'
 import { mkdir } from 'fs/promises'
-import type { Config } from '../types'
+import type { Config, KeybindMode, ProjectProfile, ProjectWildcard, SessionDefaults, ZoxideMode } from '../types'
 
-export function getDefaultConfig(): Config {
-  const homeDir = process.env.HOME || '~'
+const DEFAULT_EDITOR = 'nvim'
+const DEFAULT_EDITOR_COMMAND =
+  "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\""
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
+function asBoolean(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined
+}
+
+function asStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  const strings = value.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0)
+  return strings.length > 0 ? strings : undefined
+}
+
+function asKeybindMode(value: unknown): KeybindMode | undefined {
+  return value === 'vim' || value === 'standard' ? value : undefined
+}
+
+function asZoxideMode(value: unknown): ZoxideMode | undefined {
+  return value === 'off' || value === 'rank' || value === 'merge' ? value : undefined
+}
+
+function asPositiveInteger(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : undefined
+}
+
+function expandHomePath(value: string, homeDir: string): string {
+  if (!value.startsWith('~')) {
+    return value
+  }
+
+  return join(homeDir, value.slice(1))
+}
+
+function normalizeSessionDefaults(value: unknown): SessionDefaults | undefined {
+  if (!isRecord(value)) {
+    return undefined
+  }
+
+  const startupCommand = asString(value.startup_command) ?? asString(value.startupCommand)
+  const previewCommand = asString(value.preview_command) ?? asString(value.previewCommand)
+
+  if (!startupCommand && !previewCommand) {
+    return undefined
+  }
+
+  return {
+    startupCommand,
+    previewCommand,
+  }
+}
+
+function normalizeProjectProfiles(value: unknown, homeDir: string): ProjectProfile[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  const profiles = value.flatMap(entry => {
+    if (!isRecord(entry)) {
+      return []
+    }
+
+    const path = asString(entry.path)
+    if (!path) {
+      return []
+    }
+
+    return [
+      {
+        path: expandHomePath(path, homeDir),
+        sessionName: asString(entry.session_name) ?? asString(entry.sessionName),
+        startupCommand: asString(entry.startup_command) ?? asString(entry.startupCommand),
+        previewCommand: asString(entry.preview_command) ?? asString(entry.previewCommand),
+        listed: asBoolean(entry.listed),
+        icon: asString(entry.icon),
+      },
+    ]
+  })
+
+  return profiles.length > 0 ? profiles : undefined
+}
+
+function normalizeWildcards(value: unknown, homeDir: string): ProjectWildcard[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  const wildcards = value.flatMap(entry => {
+    if (!isRecord(entry)) {
+      return []
+    }
+
+    const pattern = asString(entry.pattern)
+    if (!pattern) {
+      return []
+    }
+
+    return [
+      {
+        pattern: expandHomePath(pattern, homeDir),
+        sessionName: asString(entry.session_name) ?? asString(entry.sessionName),
+        startupCommand: asString(entry.startup_command) ?? asString(entry.startupCommand),
+        previewCommand: asString(entry.preview_command) ?? asString(entry.previewCommand),
+      },
+    ]
+  })
+
+  return wildcards.length > 0 ? wildcards : undefined
+}
+
+export function normalizeConfig(rawConfig: unknown, homeDir = process.env.HOME || '~'): Config {
+  const raw = isRecord(rawConfig) ? rawConfig : {}
+  const defaultConfig = getDefaultConfig(homeDir)
+
+  const projectPaths = (asStringArray(raw.project_paths) ?? asStringArray(raw.projectPaths) ?? defaultConfig.projectPaths).map(
+    projectPath => expandHomePath(projectPath, homeDir)
+  )
+  const reposPath = expandHomePath(
+    asString(raw.repos_path) ?? asString(raw.reposPath) ?? defaultConfig.reposPath,
+    homeDir
+  )
+  const editor = asString(raw.editor) ?? defaultConfig.editor
+  const editorCmd = asString(raw.editor_cmd) ?? asString(raw.editorCmd) ?? defaultConfig.editorCmd
+  const keybindMode = asKeybindMode(raw.keybind_mode) ?? asKeybindMode(raw.keybindMode) ?? defaultConfig.keybindMode
+  const zoxideMode = asZoxideMode(raw.zoxide_mode) ?? asZoxideMode(raw.zoxideMode) ?? defaultConfig.zoxideMode
+  const autoUpdate = asBoolean(raw.auto_update) ?? asBoolean(raw.autoUpdate) ?? defaultConfig.autoUpdate
+  const dirLength = asPositiveInteger(raw.dir_length) ?? asPositiveInteger(raw.dirLength) ?? defaultConfig.dirLength
+  const hiddenSessions = asStringArray(raw.hidden_sessions) ?? asStringArray(raw.hiddenSessions) ?? defaultConfig.hiddenSessions
+  const configuredDefaultSession = normalizeSessionDefaults(raw.default_session) ?? normalizeSessionDefaults(raw.defaultSession)
+  const defaultSession = {
+    startupCommand: configuredDefaultSession?.startupCommand ?? editorCmd,
+    previewCommand: configuredDefaultSession?.previewCommand,
+  }
+
+  return {
+    projectPaths,
+    reposPath,
+    editor,
+    editorCmd,
+    keybindMode,
+    zoxideMode,
+    autoUpdate,
+    dirLength,
+    hiddenSessions,
+    defaultSession,
+    projects: normalizeProjectProfiles(raw.projects, homeDir) ?? defaultConfig.projects,
+    wildcards: normalizeWildcards(raw.wildcards, homeDir) ?? defaultConfig.wildcards,
+  }
+}
+
+export function getDefaultConfig(homeDir = process.env.HOME || '~'): Config {
   return {
     projectPaths: [join(homeDir, 'dev'), join(homeDir, 'personal')],
     reposPath: join(homeDir, 'dev', 'repos'),
-    editor: 'nvim',
-    editorCmd:
-      "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
+    editor: DEFAULT_EDITOR,
+    editorCmd: DEFAULT_EDITOR_COMMAND,
     keybindMode: 'vim',
+    zoxideMode: 'off',
     autoUpdate: true,
+    dirLength: 1,
+    hiddenSessions: [],
+    defaultSession: {
+      startupCommand: DEFAULT_EDITOR_COMMAND,
+    },
+    projects: [],
+    wildcards: [],
   }
 }
 
@@ -21,19 +188,8 @@ export async function loadConfig(): Promise<Config> {
 
   try {
     const file = Bun.file(configPath)
-    const config = await file.json()
-
-    // Convert snake_case keys to camelCase for TypeScript
-    return {
-      ...getDefaultConfig(),
-      projectPaths: config.project_paths || config.projectPaths,
-      reposPath: config.repos_path || config.reposPath,
-      editor: config.editor,
-      editorCmd: config.editor_cmd || config.editorCmd,
-      keybindMode: config.keybind_mode || config.keybindMode,
-      autoUpdate: config.auto_update || config.autoUpdate,
-    }
-  } catch (error) {
+    return normalizeConfig(await file.json(), process.env.HOME || '~')
+  } catch {
     // Config doesn't exist, create default
     const defaultConfig = getDefaultConfig()
     await saveConfig(defaultConfig)
