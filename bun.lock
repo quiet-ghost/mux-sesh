@@ -5,8 +5,8 @@
     "": {
       "name": "mux-sesh",
       "dependencies": {
-        "@opentui/core": "latest",
-        "@opentui/react": "latest",
+        "@opentui/core": "0.1.60",
+        "@opentui/react": "0.1.60",
         "react": "^19.2.2",
       },
       "devDependencies": {
