@@ -375,12 +375,10 @@ export function resolveTheme(
 
 export function getPanelStyle(theme: ThemeColors, width: 'split' | 'full' = 'split') {
   return {
-    border: true,
-    borderStyle: 'rounded' as const,
-    borderColor: theme.borderMuted,
+    border: false,
     backgroundColor: theme.surface,
-    paddingTop: 0.6,
-    paddingBottom: 0.6,
+    paddingTop: 0.4,
+    paddingBottom: 0.4,
     paddingLeft: 1,
     paddingRight: 1,
     width: width === 'full' ? ('100%' as const) : ('50%' as const),
@@ -391,7 +389,7 @@ export function getPanelStyle(theme: ThemeColors, width: 'split' | 'full' = 'spl
 export function getDetailPanelStyle(theme: ThemeColors) {
   return {
     ...getPanelStyle(theme, 'split'),
-    borderColor: theme.borderMuted,
+    backgroundColor: theme.surface,
   }
 }
 

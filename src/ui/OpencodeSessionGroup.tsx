@@ -20,56 +20,48 @@ export default function OpencodeSessionGroup({ sessions, appMode, cursor, icons,
 
   return (
     <>
-      <text style={{ fg: theme.separator, marginTop: 2, marginBottom: 1 }}>
+      <text style={{ fg: theme.textSubtle, marginTop: 2, marginBottom: 1 }}>
         <span style={{ fg: header.color }}>{header.text}</span>
       </text>
       {sessions.map((item, i) => {
         const pendingKill = item.title === pendingKillSessionName
+        const selected = appMode === AppModeEnum.OpencodeManage && i === cursor
 
         return (
           <box
             key={`opencode-${i}`}
             style={{
-              height: 1,
-              paddingLeft: 2,
+              flexDirection: 'row',
+              justifyContent: 'space-between',
               backgroundColor:
                 pendingKill
                   ? theme.dangerSurface
-                  : appMode === AppModeEnum.OpencodeManage && i === cursor
+                  : selected
                     ? theme.surfaceAlt
                     : 'transparent',
+              paddingLeft: 1,
+              paddingRight: 1,
             }}
           >
-            {appMode === AppModeEnum.OpencodeManage && i === cursor && <text> </text>}
             <text>
-              {appMode === AppModeEnum.OpencodeManage ? `${i + 1} ` : '  '}
+              <span style={{ fg: selected ? theme.primary : theme.textSubtle }}>{selected ? '› ' : '  '}</span>
               <span
                 style={{
-                  fg:
-                    appMode === AppModeEnum.OpencodeManage
-                      ? item.isAttached
-                        ? theme.active
-                        : theme.inactive
-                      : theme.inactive,
+                  fg: item.isAttached ? theme.active : theme.inactive,
                 }}
               >
                 {item.isAttached ? '●' : '○'}
               </span>{' '}
-              <span
-                style={{
-                  fg: appMode === AppModeEnum.OpencodeManage ? theme.text : theme.inactive,
-                }}
-              >
-                {item.title.padEnd(20)}
-              </span>{' '}
-              <span style={{ fg: pendingKill ? theme.danger : theme.inactive }}>
-                {pendingKill ? 'press d again to kill' : item.createdAt ? formatSessionAge(item.createdAt) : ''}
-              </span>
+              <span style={{ fg: theme.text }}>{item.title}</span>
+            </text>
+
+            <text style={{ fg: pendingKill ? theme.danger : theme.textSubtle }}>
+              {pendingKill ? 'press d again to kill' : item.createdAt ? formatSessionAge(item.createdAt) : ''}
             </text>
           </box>
         )
       })}
-      <box style={{ marginBottom: 2 }} />
+      <box style={{ marginBottom: 1 }} />
     </>
   )
 }

@@ -40,67 +40,56 @@ export default function ItemList({
         const sessionStatusLabel = item.linkedSessionName ? 'attach' : 'create'
         const linkedSessionLabel = item.linkedSessionName ? ` -> ${item.linkedSessionName}` : ''
         const pendingKill = item.isSession && item.title === pendingKillSessionName
+        const selected = absoluteIndex === cursor
 
         return (
           <box
             key={i}
             style={{
-              backgroundColor: pendingKill
-                ? theme.dangerSurface
-                : absoluteIndex === cursor
-                  ? theme.surfaceAlt
-                  : 'transparent',
-              height: 1,
-              paddingLeft: 2,
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              backgroundColor: pendingKill ? theme.dangerSurface : selected ? theme.surfaceAlt : 'transparent',
+              paddingLeft: 1,
+              paddingRight: 1,
             }}
           >
-            {absoluteIndex === cursor && <text> </text>}
             <text>
-              {absoluteIndex + 1}{' '}
+              <span style={{ fg: selected ? theme.primary : theme.textSubtle }}>{selected ? '› ' : '  '}</span>
               {item.isSession ? (
                 <>
-                  <span style={{ fg: item.isAttached ? theme.active : theme.inactive }}>
-                    {item.isAttached ? '●' : '○'}
-                  </span>{' '}
+                  <span style={{ fg: item.isAttached ? theme.active : theme.inactive }}>{item.isAttached ? '●' : '○'}</span>{' '}
                   {isSearching && hasTitleMatch ? (
                     <HighlightedText text={item.title} matchIndices={titleMatchIndices} />
                   ) : (
-                    item.title
-                  )}{' '}
-                  <span style={{ fg: pendingKill ? theme.danger : theme.inactive }}>
-                    {pendingKill ? 'press d again to kill' : `(${item.windowCount})`}
-                  </span>
+                    <span style={{ fg: theme.text }}>{item.title}</span>
+                  )}
                 </>
               ) : (
                 <>
                   <span style={{ fg: icon.color }}>{icon.glyph}</span>{' '}
                   {appMode === AppMode.NewSession ? (
-                    <>
-                      {isSearching && hasDescMatch ? (
-                        <HighlightedText text={item.desc} matchIndices={descMatchIndices} />
-                      ) : (
-                        item.desc
-                      )}{' '}
-                      <span style={{ fg: theme.inactive }}>{sessionStatusLabel}</span>
-                      {linkedSessionLabel && <span style={{ fg: theme.separator }}>{linkedSessionLabel}</span>}
-                    </>
+                    isSearching && hasDescMatch ? (
+                      <HighlightedText text={item.desc} matchIndices={descMatchIndices} />
+                    ) : (
+                      <span style={{ fg: theme.text }}>{item.desc}</span>
+                    )
+                  ) : isSearching && hasTitleMatch ? (
+                    <HighlightedText text={item.title} matchIndices={titleMatchIndices} />
                   ) : (
-                    <>
-                      {isSearching && hasTitleMatch ? (
-                        <HighlightedText text={item.title} matchIndices={titleMatchIndices} />
-                      ) : (
-                        item.title
-                      )}
-                      {item.desc && (
-                        <>
-                          {' '}
-                          <span style={{ fg: theme.inactive }}>{item.desc}</span>
-                        </>
-                      )}
-                    </>
+                    <span style={{ fg: theme.text }}>{item.title}</span>
                   )}
                 </>
               )}
+            </text>
+
+            <text style={{ fg: pendingKill ? theme.danger : theme.textSubtle }}>
+              {item.isSession
+                ? pendingKill
+                  ? 'press d again to kill'
+                  : `(${item.windowCount})`
+                : appMode === AppMode.NewSession
+                  ? `${sessionStatusLabel}${linkedSessionLabel}`
+                  : item.desc ?? ''}
             </text>
           </box>
         )

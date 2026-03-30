@@ -89,28 +89,6 @@ export function handleNormalMode(
     }
 
     switch (keyName) {
-      case 'i':
-        ctx.clearPendingKill()
-        ctx.setAppMode(AppMode.Search)
-        ctx.setSearchQuery('')
-        return
-      case 'n':
-        ctx.clearPendingKill()
-        ctx.setAppMode(AppMode.NewSession)
-        ctx.setViewMode(ViewMode.Projects)
-        ctx.setAllItems(ctx.projectItems)
-        ctx.setItems(ctx.projectItems)
-        ctx.setCursor(Math.max(0, ctx.projectItems.length - 1))
-        ctx.setSearchQuery('')
-        return
-      case 'o':
-        ctx.clearPendingKill()
-        if (ctx.viewMode === ViewMode.Sessions && ctx.opencodeSessions.length > 0) {
-          ctx.setAppMode(AppMode.OpencodeManage)
-          ctx.setOpencodeCursor(0)
-          ctx.loadOpencodeStatsForSession(ctx.opencodeSessions[0].title)
-        }
-        return
       case 'l':
         ctx.clearPendingKill()
         void ctx.handleLastSession()
@@ -144,11 +122,13 @@ export function handleNormalMode(
         return
       case 's':
         ctx.clearPendingKill()
-        ctx.openSettingsModal()
+        ctx.setViewMode(ViewMode.Sessions)
+        ctx.refreshItems(ViewMode.Sessions)
         return
-      case 'h':
+      case 'p':
         ctx.clearPendingKill()
-        ctx.openCommandsModal()
+        ctx.setViewMode(ViewMode.Projects)
+        ctx.refreshItems(ViewMode.Projects)
         return
     }
 
@@ -174,7 +154,7 @@ export function handleNormalMode(
   }
 
   // Handle search mode (i for vim, Ctrl+I for standard)
-  if (!ctx.prefixKey && !isStandard && keyName === 'i') {
+  if (!isStandard && keyName === 'i') {
     ctx.clearPendingKill()
     ctx.setAppMode(AppMode.Search)
     ctx.setSearchQuery('')
@@ -182,7 +162,7 @@ export function handleNormalMode(
   }
 
   // Handle new session (n for vim, Ctrl+N for standard)
-  if (!ctx.prefixKey && !isStandard && keyName === 'n') {
+  if (!isStandard && keyName === 'n') {
     ctx.clearPendingKill()
     ctx.setAppMode(AppMode.NewSession)
     if (ctx.viewMode === ViewMode.Sessions) {
@@ -196,13 +176,19 @@ export function handleNormalMode(
   }
 
   // Handle opencode mode (o for vim, Ctrl+O for standard)
-  if (!ctx.prefixKey && !isStandard && keyName === 'o') {
+  if (!isStandard && keyName === 'o') {
     ctx.clearPendingKill()
     if (ctx.viewMode === ViewMode.Sessions && ctx.opencodeSessions.length > 0) {
       ctx.setAppMode(AppMode.OpencodeManage)
       ctx.setOpencodeCursor(0)
       ctx.loadOpencodeStatsForSession(ctx.opencodeSessions[0].title)
     }
+    return
+  }
+
+  if (key.ctrl && keyName === 'p') {
+    ctx.clearPendingKill()
+    ctx.openCommandsModal()
     return
   }
 
@@ -245,21 +231,6 @@ export function handleNormalMode(
       ctx.clearPendingKill()
       ctx.openRenameModal(ctx.regularSessions[ctx.cursor].title)
     }
-    return
-  }
-
-  if (keyName === 'h' || keyName === '?') {
-    if (ctx.prefixKey) {
-      return
-    }
-    ctx.clearPendingKill()
-    ctx.openCommandsModal()
-    return
-  }
-
-  if (!ctx.prefixKey && !isStandard && keyName === ',') {
-    ctx.clearPendingKill()
-    ctx.openSettingsModal()
     return
   }
 
@@ -334,6 +305,12 @@ export function handleOpencodeManageMode(
   const keyName = getKeyName(key)
   const isStandard = keybindMode === 'standard'
 
+  if (key.ctrl && keyName === 'p') {
+    ctx.clearPendingKill()
+    ctx.openCommandsModal()
+    return
+  }
+
   if (ctx.prefixActive) {
     if (ctx.prefixTimeoutRef.current) {
       clearTimeout(ctx.prefixTimeoutRef.current)
@@ -356,10 +333,6 @@ export function handleOpencodeManageMode(
           ctx.clearPendingKill()
           ctx.openRenameModal(ctx.opencodeSessions[ctx.opencodeCursor].title)
         }
-        return
-      case 's':
-        ctx.clearPendingKill()
-        ctx.openSettingsModal()
         return
     }
 

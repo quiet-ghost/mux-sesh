@@ -55,11 +55,11 @@ export function getSessionSectionPresentation(
 
   switch (section) {
     case 'configured':
-      return { glyph: resolvedIcons.configured, color: theme.action, label: 'Configured Sessions' }
+      return { glyph: resolvedIcons.configured, color: theme.action, label: 'Configured' }
     case 'opencode':
-      return { glyph: resolvedIcons.opencode, color: theme.action, label: 'Opencode Sessions' }
+      return { glyph: resolvedIcons.opencode, color: theme.action, label: 'OpenCode' }
     case 'live':
-      return { glyph: resolvedIcons.tmux, color: theme.inactive, label: 'Live Sessions' }
+      return { glyph: resolvedIcons.tmux, color: theme.inactive, label: 'Live' }
   }
 }
 
@@ -73,6 +73,6 @@ export function formatSectionHeader(
 
   return {
     ...presentation,
-    text: `─ ${prefix}${presentation.label} ─`,
+    text: `${prefix}${presentation.label}`,
   }
 }

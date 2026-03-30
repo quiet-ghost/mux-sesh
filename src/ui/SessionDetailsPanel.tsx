@@ -19,92 +19,67 @@ type DetailState =
 function formatSourceLabel(source: ProjectPreview['source']): string {
   switch (source) {
     case 'project':
-      return 'Project Rule'
+      return 'Project rule'
     case 'wildcard':
-      return 'Wildcard Rule'
+      return 'Wildcard rule'
     case 'default':
-      return 'Default Rule'
+      return 'Default rule'
   }
+}
+
+function MetaRow(props: { label: string; value: string; color?: string }) {
+  const theme = useTheme()
+
+  return (
+    <text>
+      <span style={{ fg: theme.textSubtle }}>{props.label}</span>{' '}
+      <span style={{ fg: props.color ?? theme.textMuted }}>{props.value}</span>
+    </text>
+  )
+}
+
+function SectionLabel(props: { children: string }) {
+  const theme = useTheme()
+  return <text style={{ fg: theme.textSubtle, marginTop: 1 }}>{props.children}</text>
 }
 
 function ProjectPreviewView({ preview }: { preview: ProjectPreview }) {
   const theme = useTheme()
 
   return (
-    <>
-      <box style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <text style={{ fg: theme.primary, marginBottom: 1 }}>{preview.sessionName}</text>
-      </box>
+    <box style={{ flexDirection: 'column' }}>
+      <text style={{ fg: theme.secondary }}>{preview.sessionName}</text>
+      <text style={{ fg: theme.fileTree, marginTop: 1 }}>{preview.path}</text>
 
-      <box style={{ flexDirection: 'column', marginBottom: 1, marginLeft: 2 }}>
-        <text>
-          Source: <span style={{ fg: theme.action }}>{formatSourceLabel(preview.source)}</span>
-        </text>
-        <text style={{ fg: theme.fileTree, marginTop: 1 }}>{preview.path}</text>
-        {preview.gitRoot && preview.gitRoot !== preview.path && (
-          <text>
-            Git Root: <span style={{ fg: theme.fileTree }}>{preview.gitRoot}</span>
-          </text>
-        )}
-        {preview.gitBranch && (
-          <text>
-            Branch: <span style={{ fg: theme.active }}>{preview.gitBranch}</span>
-          </text>
-        )}
-        {preview.startupCommand && (
-          <text style={{ marginTop: 1 }}>
-            Startup: <span style={{ fg: theme.program }}>{preview.startupCommand}</span>
-          </text>
-        )}
-        {preview.previewCommand && (
-          <text>
-            Preview Cmd: <span style={{ fg: theme.action }}>{preview.previewCommand}</span>
-          </text>
-        )}
+      <box style={{ flexDirection: 'column', marginTop: 1 }}>
+        <MetaRow label='Source' value={formatSourceLabel(preview.source)} color={theme.action} />
+        {preview.gitBranch && <MetaRow label='Branch' value={preview.gitBranch} color={theme.active} />}
+        {preview.startupCommand && <MetaRow label='Startup' value={preview.startupCommand} color={theme.program} />}
+        {preview.previewCommand && <MetaRow label='Preview' value={preview.previewCommand} color={theme.action} />}
       </box>
 
       {preview.linkedSession && (
-        <>
-          <box style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <text style={{ fg: theme.primary, marginBottom: 1 }}> Live Session</text>
-          </box>
-
-          <box style={{ flexDirection: 'column', marginBottom: 1, marginLeft: 2 }}>
-            <text>
-              Status:{' '}
-              <span style={{ fg: preview.linkedSession.isAttached ? theme.active : theme.inactive }}>
-                {preview.linkedSession.isAttached ? '● Attached' : '○ Detached'}
-              </span>
-            </text>
-            <text>Windows: {preview.linkedSession.windowCount}</text>
-            {preview.linkedSession.windows.slice(0, 4).map(window => (
-              <text key={`${window.index}:${window.name}`} style={{ marginLeft: 2, fg: theme.inactive }}>
-                {window.index}: {window.name}
-              </text>
-            ))}
-          </box>
-        </>
+        <box style={{ flexDirection: 'column', marginTop: 1 }}>
+          <SectionLabel>Live session</SectionLabel>
+          <MetaRow
+            label='Status'
+            value={preview.linkedSession.isAttached ? 'attached' : 'detached'}
+            color={preview.linkedSession.isAttached ? theme.active : theme.textMuted}
+          />
+          <MetaRow label='Windows' value={String(preview.linkedSession.windowCount)} />
+        </box>
       )}
 
-      <box style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <text style={{ fg: theme.primary, marginBottom: 1 }}> {preview.previewLabel}</text>
-      </box>
-
-      <box style={{ flexDirection: 'column', marginLeft: 2 }}>
-        {preview.previewNotice && <text style={{ fg: theme.inactive, marginBottom: 1 }}>{preview.previewNotice}</text>}
-        {preview.previewLines.map((line, index) => (
-          <text
-            key={`${preview.previewKind}:${index}:${line}`}
-            style={{
-              fg: preview.previewKind === 'directory' && line.endsWith('/') ? theme.fileTree : theme.text,
-              marginBottom: 1,
-            }}
-          >
+      <SectionLabel>{preview.previewLabel}</SectionLabel>
+      {preview.previewNotice && <text style={{ fg: theme.textSubtle, marginTop: 1 }}>{preview.previewNotice}</text>}
+      <box style={{ flexDirection: 'column', marginTop: 1 }}>
+        {preview.previewLines.slice(0, 12).map((line, index) => (
+          <text key={`${preview.previewKind}:${index}:${line}`} style={{ fg: line.endsWith('/') ? theme.fileTree : theme.textMuted }}>
             {line}
           </text>
         ))}
       </box>
-    </>
+    </box>
   )
 }
 
@@ -112,38 +87,29 @@ function SessionDetailsView({ details }: { details: SessionDetails }) {
   const theme = useTheme()
 
   return (
-    <>
-      <box style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <text style={{ fg: theme.primary, marginBottom: 1 }}>{details.name}</text>
+    <box style={{ flexDirection: 'column' }}>
+      <text style={{ fg: theme.secondary }}>{details.name}</text>
+
+      <box style={{ flexDirection: 'column', marginTop: 1 }}>
+        <MetaRow label='Status' value={details.isAttached ? 'active' : 'inactive'} color={details.isAttached ? theme.active : theme.textMuted} />
+        <MetaRow label='Windows' value={String(details.windowCount)} />
       </box>
 
-      <box style={{ flexDirection: 'column', marginBottom: 1, marginLeft: 2 }}>
-        <text>
-          Status: <span style={{ fg: details.isAttached ? theme.active : theme.inactive }}>{details.isAttached ? '● Active' : '○ Inactive'}</span>
-        </text>
-        <text>Windows: {details.windowCount}</text>
-      </box>
-
-      <box style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <text style={{ fg: theme.primary, marginBottom: 1 }}> Windows</text>
-      </box>
-
-      <box style={{ flexDirection: 'column', marginLeft: 2 }}>
+      <SectionLabel>Windows</SectionLabel>
+      <box style={{ flexDirection: 'column', marginTop: 1 }}>
         {details.windows.length === 0 ? (
-          <text style={{ fg: theme.inactive }}>No windows found</text>
+          <text style={{ fg: theme.textMuted }}>No windows found</text>
         ) : (
           details.windows.map(win => (
             <box key={`${win.index}:${win.name}`} style={{ flexDirection: 'column', marginBottom: 1 }}>
-              <text>
-                {win.index}: {win.name}
-              </text>
-              {win.currentCommand && <text style={{ fg: theme.program, marginLeft: 2 }}> {win.currentCommand}</text>}
-              {win.currentPath && <text style={{ fg: theme.fileTree, marginLeft: 2 }}> {win.currentPath}</text>}
+              <text style={{ fg: theme.text }}>{win.index}: {win.name}</text>
+              {win.currentPath && <text style={{ fg: theme.fileTree }}>{win.currentPath}</text>}
+              {win.currentCommand && <text style={{ fg: theme.textSubtle }}>{win.currentCommand}</text>}
             </box>
           ))
         )}
       </box>
-    </>
+    </box>
   )
 }
 
@@ -208,18 +174,18 @@ export default function SessionDetailsPanel({ selectedItem, config }: Props) {
     <box style={panelStyle}>
       {detailState.status === 'idle' ? (
         <>
-          <text style={{ fg: theme.primary, marginBottom: 1 }}>Details</text>
-          <text style={{ fg: theme.inactive }}>No session or project selected</text>
+          <text style={{ fg: theme.textMuted }}>Nothing selected</text>
+          <text style={{ fg: theme.textSubtle, marginTop: 1 }}>Pick a session or project to see details.</text>
         </>
       ) : detailState.status === 'loading' ? (
         <>
-          <text style={{ fg: theme.primary, marginBottom: 1 }}>{selectedItem?.title ?? 'Details'}</text>
-          <text style={{ fg: theme.inactive }}>Loading...</text>
+          <text style={{ fg: theme.secondary }}>{selectedItem?.title ?? 'Details'}</text>
+          <text style={{ fg: theme.textSubtle, marginTop: 1 }}>Loading…</text>
         </>
       ) : detailState.status === 'error' ? (
         <>
-          <text style={{ fg: theme.primary, marginBottom: 1 }}>{selectedItem?.title ?? 'Details'}</text>
-          <text style={{ fg: theme.action }}>{detailState.message}</text>
+          <text style={{ fg: theme.secondary }}>{selectedItem?.title ?? 'Details'}</text>
+          <text style={{ fg: theme.danger, marginTop: 1 }}>{detailState.message}</text>
         </>
       ) : detailState.status === 'session' ? (
         <SessionDetailsView details={detailState.details} />
