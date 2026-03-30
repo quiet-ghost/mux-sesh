@@ -1,4 +1,4 @@
-import { test, expect, describe } from 'bun:test'
+import { test, expect, describe, mock } from 'bun:test'
 import { isNewerVersion, getLatestVersion, CURRENT_VERSION } from '../src/update/version'
 
 describe('version', () => {
@@ -70,6 +70,8 @@ describe('version', () => {
     test('should return null on fetch error', async () => {
       // Mock fetch to simulate network error
       const originalFetch = global.fetch
+      const originalConsoleError = console.error
+      console.error = mock(() => {})
       global.fetch = (async () => {
         throw new Error('Network error')
       }) as unknown as typeof fetch
@@ -79,11 +81,14 @@ describe('version', () => {
 
       // Restore original fetch
       global.fetch = originalFetch
+      console.error = originalConsoleError
     })
 
     test('should return null on non-ok response', async () => {
       // Mock fetch to return error status
       const originalFetch = global.fetch
+      const originalConsoleError = console.error
+      console.error = mock(() => {})
       global.fetch = (async () =>
         ({
           ok: false,
@@ -95,6 +100,7 @@ describe('version', () => {
 
       // Restore original fetch
       global.fetch = originalFetch
+      console.error = originalConsoleError
     })
   })
 })

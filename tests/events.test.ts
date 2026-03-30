@@ -1,4 +1,4 @@
-import { test, expect, describe } from 'bun:test'
+import { test, expect, describe, mock } from 'bun:test'
 import { updateEvents } from '../src/update/events'
 
 describe('UpdateEvents', () => {
@@ -62,6 +62,8 @@ describe('UpdateEvents', () => {
   test('should handle listener errors gracefully', () => {
     let errorListenerCalled = false
     let normalListenerCalled = false
+    const originalConsoleError = console.error
+    console.error = mock(() => {})
 
     const errorListener = () => {
       errorListenerCalled = true
@@ -82,6 +84,7 @@ describe('UpdateEvents', () => {
 
     unsubscribe1()
     unsubscribe2()
+    console.error = originalConsoleError
   })
 
   test('should handle multiple unsubscribes', () => {

@@ -16,7 +16,8 @@
     "opencode": ""
   },
   "default_session": {
-    "startup_command": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\""
+    "startup_command": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
+    "preview_command": "eza --all --color=never {}"
   },
   "projects": [
     {

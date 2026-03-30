@@ -200,6 +200,8 @@ describe('installation', () => {
 
     test('should return false on spawn error', async () => {
       const originalSpawn = Bun.spawn
+      const originalConsoleError = console.error
+      console.error = mock(() => {})
       Bun.spawn = mock(() => {
         throw new Error('Spawn error')
       }) as typeof Bun.spawn
@@ -208,6 +210,7 @@ describe('installation', () => {
       expect(success).toBe(false)
 
       Bun.spawn = originalSpawn
+      console.error = originalConsoleError
     })
   })
 })

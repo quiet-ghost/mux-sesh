@@ -13,6 +13,9 @@
 -  **Beautiful UI** - Catppuccin-themed interface
 -  **Vim keybindings** - Navigate with j/k or arrow keys
 -  **Project scanning** - Browse and create sessions from local directories
+-  **Config-driven sessions** - Exact project rules, wildcard rules, and listed config targets
+-  **Session-aware project picker** - See when a project will attach to an existing tmux session vs create a new one
+-  **Rich previews** - Preview commands with directory fallback and live tmux context for running projects
 -  **GitHub integration** - Clone repos directly from URLs
 -  **Quick select** - Use number keys (1-9) for instant switching
 -  **Session management** - Create, switch, kill, and rename sessions
@@ -76,10 +79,28 @@ cp dist/mux-sesh ~/.local/bin/
 | `n` | Create new session |
 | `d` | Kill selected session |
 | `r` | Rename selected session |
+| `l` | Jump to previous tmux session |
+| `g` | Open the git-root session for the selected item |
+| `e` | Edit configured session target |
 | `R` | Refresh list |
 | `s` | Switch to sessions view |
 | `p` | Switch to projects view |
 | `q` or `Esc` | Quit |
+
+### Standard Mode
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Navigate |
+| `Ctrl+I` | Search |
+| `Ctrl+N` | New session |
+| `Ctrl+D` | Kill selected live session |
+| `Ctrl+R` | Rename selected live session |
+| `Ctrl+L` | Jump to previous tmux session |
+| `Ctrl+G` | Open the git-root session for the selected item |
+| `Ctrl+E` | Edit configured session target |
+| `Ctrl+Q` | Quit |
+
+In search/new/rename mode, standard mode also supports `Ctrl+X` prefix commands for refresh, rename, kill, root, and opencode actions.
 
 ### Search Mode
 | Key | Action |
@@ -104,12 +125,40 @@ Configuration is stored at `~/.config/mux-sesh/config.json`:
 
 ```json
 {
-  "project_paths": ["~/dev", "~/personal", "~/work"],
+  "project_paths": ["~/dev", "~/personal", "~/work", "~/projects"],
   "repos_path": "~/dev/repos",
   "editor": "nvim",
   "editor_cmd": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
-  "keybind_mode": "vim", #other option is 'standard'
-  "start_in_search_mode": false
+  "keybind_mode": "vim",
+  "sort_order": "zoxide-first",
+  "zoxide_mode": "rank",
+  "dir_length": 2,
+  "hidden_sessions": ["scratch", "tmp*"],
+  "icons": {
+    "tmux": "",
+    "configured": "",
+    "project": "",
+    "opencode": ""
+  },
+  "default_session": {
+    "startup_command": "nvim",
+    "preview_command": "eza --all {}"
+  },
+  "projects": [
+    {
+      "path": "~/.dotfiles/hypr/.config/hypr",
+      "session_name": "hyprland",
+      "listed": true,
+      "icon": "",
+      "startup_command": "nvim"
+    }
+  ],
+  "wildcards": [
+    {
+      "pattern": "~/work/**",
+      "startup_command": "bun run dev"
+    }
+  ]
 }
 ```
 
@@ -118,9 +167,66 @@ Configuration is stored at `~/.config/mux-sesh/config.json`:
 - **`project_paths`** - Array of directories to scan for projects
 - **`repos_path`** - Directory where GitHub repositories will be cloned
 - **`editor`** - Default editor to use
-- **`editor_cmd`** - Command to run when opening editor
-- **`keybind_mode`** - alternative keybinds for those who do not want vim like binds
-- **`start_in_search_mode`** - Start in search mode by default
+- **`editor_cmd`** - Default startup command for new sessions unless overridden
+- **`keybind_mode`** - `vim` or `standard`
+- **`sort_order`** - Session/project ordering: `live-first`, `configured-first`, `zoxide-first`, or `alphabetical`
+- **`zoxide_mode`** - `off`, `rank`, or `merge` for zoxide-aware project ordering
+- **`dir_length`** - Number of path segments used when generating session names from git roots or project paths
+- **`hidden_sessions`** - Glob patterns for live tmux sessions to hide from the list
+- **`icons`** - Global icons for tmux, configured, project, and opencode rows
+- **`default_session`** - Fallback startup and preview commands
+- **`projects`** - Exact path rules with optional `session_name`, `startup_command`, `preview_command`, `listed`, and `icon`
+- **`wildcards`** - Pattern-based defaults for matching projects
+
+### Rule Resolution
+
+When you select a project, mux-sesh resolves its behavior in this order:
+
+1. Exact `projects[]` path match
+2. First matching `wildcards[]` rule
+3. `default_session`
+
+Session names use the git root when available, then apply `dir_length` if you did not set an explicit `session_name`.
+
+### Listed Sessions
+
+Set `listed: true` on a project rule to keep that target visible in the Sessions view even when tmux has not started it yet. This works well for dotfiles, config folders, dashboards, and other “always useful” targets.
+
+If a live tmux session already exists with the same title, the live session takes precedence.
+
+### Sorting and Zoxide
+
+- `zoxide_mode: off` - scan only
+- `zoxide_mode: rank` - reorder discovered projects by zoxide score
+- `zoxide_mode: merge` - include additional zoxide-ranked projects inside configured roots
+- `sort_order: live-first` - live sessions before configured placeholders
+- `sort_order: configured-first` - configured placeholders before live sessions
+- `sort_order: zoxide-first` - preserve project discovery/zoxide ordering
+- `sort_order: alphabetical` - alphabetical project and session ordering
+
+### Preview Behavior
+
+`preview_command` inherits from `default_session`, can be overridden per project rule, and supports `{}` interpolation for the selected path.
+
+- if the preview command succeeds, mux-sesh renders its output in the detail panel
+- if it fails or times out, mux-sesh falls back to a directory listing
+- if a project already has a linked tmux session, the preview also includes live tmux window details
+
+Example:
+
+```json
+{
+  "default_session": {
+    "preview_command": "eza --all {}"
+  },
+  "projects": [
+    {
+      "path": "~/dev/projects/mux-sesh",
+      "preview_command": "git -C {} status --short"
+    }
+  ]
+}
+```
 
 ### tmux Integration
 
@@ -159,7 +265,17 @@ mux-sesh
 
 # Press 'n' for new session
 # Type project name to filter
-# Press Enter to create session in that directory
+# Rows show whether they will attach to an existing tmux session or create a new one
+# Press Enter to create or attach
+```
+
+### Jump to Root / Last / Edit Target
+```bash
+mux-sesh
+
+# Select a project or session, then press 'g' to jump to its git-root session
+# Press 'l' to jump to the most recent non-current tmux session
+# Select a configured session and press 'e' to open its target in your editor
 ```
 
 ### Clone from GitHub
