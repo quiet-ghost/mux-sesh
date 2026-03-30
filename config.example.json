@@ -4,6 +4,42 @@
   "editor": "nvim",
   "editor_cmd": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
   "keybind_mode": "vim",
+  "prefix_key": "ctrl+x",
+  "theme": "rosepine",
+  "color_scheme": "system",
+  "themes": {
+    "my-theme": {
+      "name": "My Theme",
+      "light": {
+        "palette": {
+          "neutral": "#faf4ed",
+          "ink": "#575279",
+          "primary": "#31748f",
+          "accent": "#d7827e",
+          "success": "#286983",
+          "warning": "#ea9d34",
+          "error": "#b4637a",
+          "info": "#56949f"
+        }
+      },
+      "dark": {
+        "palette": {
+          "neutral": "#191724",
+          "ink": "#e0def4",
+          "primary": "#9ccfd8",
+          "accent": "#ebbcba",
+          "success": "#31748f",
+          "warning": "#f6c177",
+          "error": "#eb6f92",
+          "info": "#9ccfd8"
+        },
+        "overrides": {
+          "markdown-heading": "#c4a7e7",
+          "text-weak": "#6e6a86"
+        }
+      }
+    }
+  },
   "sort_order": "zoxide-first",
   "zoxide_mode": "rank",
   "auto_update": true,

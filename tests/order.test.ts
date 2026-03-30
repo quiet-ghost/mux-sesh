@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { orderProjectItems, orderSessionItems } from '../src/items/order'
+import { resolveTheme } from '../src/styles/theme'
 import { getItemIconPresentation } from '../src/ui/item-icon'
 import type { Item } from '../src/types'
 
@@ -31,7 +32,9 @@ describe('item ordering', () => {
 
 describe('item icons', () => {
   test('uses config icons for linked project rows', () => {
+    const legacyTheme = resolveTheme('catppuccin', {}, 'dark').colors
     const icon = getItemIconPresentation(
+      legacyTheme,
       {
         title: 'highlight-helper',
         desc: '',
@@ -48,6 +51,6 @@ describe('item icons', () => {
       }
     )
 
-    expect(icon).toEqual({ glyph: 'T', color: '#a6e3a1' })
+    expect(icon).toEqual({ glyph: 'T', color: legacyTheme.active })
   })
 })

@@ -1,4 +1,4 @@
-import { colors } from '../styles/theme'
+import { useTheme } from '../styles/theme'
 import { AppMode, type IconConfig } from '../types'
 import HighlightedText from './HighlightedText'
 import { getItemIconPresentation } from './item-icon'
@@ -12,6 +12,7 @@ interface Props {
   maxItems?: number
   searchQuery?: string
   icons?: IconConfig
+  pendingKillSessionName?: string | null
 }
 
 export default function ItemList({
@@ -21,7 +22,9 @@ export default function ItemList({
   maxItems = 20,
   searchQuery = '',
   icons,
+  pendingKillSessionName,
 }: Props) {
+  const theme = useTheme()
   const isSearching = searchQuery.trim().length > 0
   const visibleWindow = getVisibleWindow(items, cursor, maxItems)
 
@@ -33,15 +36,20 @@ export default function ItemList({
         const descMatchIndices = item.searchMatch?.descIndices
         const hasTitleMatch = titleMatchIndices && titleMatchIndices.length > 0
         const hasDescMatch = descMatchIndices && descMatchIndices.length > 0
-        const icon = getItemIconPresentation(item, icons)
+        const icon = getItemIconPresentation(theme, item, icons)
         const sessionStatusLabel = item.linkedSessionName ? 'attach' : 'create'
         const linkedSessionLabel = item.linkedSessionName ? ` -> ${item.linkedSessionName}` : ''
+        const pendingKill = item.isSession && item.title === pendingKillSessionName
 
         return (
           <box
             key={i}
             style={{
-              backgroundColor: absoluteIndex === cursor ? colors.backgroundAlt : 'transparent',
+              backgroundColor: pendingKill
+                ? theme.dangerSurface
+                : absoluteIndex === cursor
+                  ? theme.surfaceAlt
+                  : 'transparent',
               height: 1,
               paddingLeft: 2,
             }}
@@ -51,7 +59,7 @@ export default function ItemList({
               {absoluteIndex + 1}{' '}
               {item.isSession ? (
                 <>
-                  <span style={{ fg: item.isAttached ? colors.active : colors.inactive }}>
+                  <span style={{ fg: item.isAttached ? theme.active : theme.inactive }}>
                     {item.isAttached ? '●' : '○'}
                   </span>{' '}
                   {isSearching && hasTitleMatch ? (
@@ -59,7 +67,9 @@ export default function ItemList({
                   ) : (
                     item.title
                   )}{' '}
-                  <span style={{ fg: colors.inactive }}>({item.windowCount})</span>
+                  <span style={{ fg: pendingKill ? theme.danger : theme.inactive }}>
+                    {pendingKill ? 'press d again to kill' : `(${item.windowCount})`}
+                  </span>
                 </>
               ) : (
                 <>
@@ -71,8 +81,8 @@ export default function ItemList({
                       ) : (
                         item.desc
                       )}{' '}
-                      <span style={{ fg: colors.inactive }}>{sessionStatusLabel}</span>
-                      {linkedSessionLabel && <span style={{ fg: colors.separator }}>{linkedSessionLabel}</span>}
+                      <span style={{ fg: theme.inactive }}>{sessionStatusLabel}</span>
+                      {linkedSessionLabel && <span style={{ fg: theme.separator }}>{linkedSessionLabel}</span>}
                     </>
                   ) : (
                     <>
@@ -84,7 +94,7 @@ export default function ItemList({
                       {item.desc && (
                         <>
                           {' '}
-                          <span style={{ fg: colors.inactive }}>{item.desc}</span>
+                          <span style={{ fg: theme.inactive }}>{item.desc}</span>
                         </>
                       )}
                     </>

@@ -1,4 +1,4 @@
-import { colors } from '../styles/theme'
+import { useTheme } from '../styles/theme'
 import { formatSessionAge } from '../util/time'
 import type { IconConfig, Item, AppMode } from '../types'
 import { AppMode as AppModeEnum } from '../types'
@@ -9,19 +9,23 @@ interface Props {
   appMode: AppMode
   cursor: number
   icons?: IconConfig
+  pendingKillSessionName?: string | null
 }
 
-export default function OpencodeSessionGroup({ sessions, appMode, cursor, icons }: Props) {
+export default function OpencodeSessionGroup({ sessions, appMode, cursor, icons, pendingKillSessionName }: Props) {
+  const theme = useTheme()
   if (sessions.length === 0) return null
 
-  const header = formatSectionHeader('opencode', icons)
+  const header = formatSectionHeader(theme, 'opencode', icons)
 
   return (
     <>
-      <text style={{ fg: colors.separator, marginTop: 2, marginBottom: 1 }}>
+      <text style={{ fg: theme.separator, marginTop: 2, marginBottom: 1 }}>
         <span style={{ fg: header.color }}>{header.text}</span>
       </text>
       {sessions.map((item, i) => {
+        const pendingKill = item.title === pendingKillSessionName
+
         return (
           <box
             key={`opencode-${i}`}
@@ -29,35 +33,37 @@ export default function OpencodeSessionGroup({ sessions, appMode, cursor, icons 
               height: 1,
               paddingLeft: 2,
               backgroundColor:
-                appMode === AppModeEnum.OpencodeManage && i === cursor
-                  ? colors.backgroundAlt
-                  : 'transparent',
+                pendingKill
+                  ? theme.dangerSurface
+                  : appMode === AppModeEnum.OpencodeManage && i === cursor
+                    ? theme.surfaceAlt
+                    : 'transparent',
             }}
           >
             {appMode === AppModeEnum.OpencodeManage && i === cursor && <text> </text>}
             <text>
-            {appMode === AppModeEnum.OpencodeManage ? `${i + 1} ` : '  '}
+              {appMode === AppModeEnum.OpencodeManage ? `${i + 1} ` : '  '}
               <span
                 style={{
                   fg:
                     appMode === AppModeEnum.OpencodeManage
                       ? item.isAttached
-                        ? colors.active
-                        : colors.inactive
-                      : colors.inactive,
+                        ? theme.active
+                        : theme.inactive
+                      : theme.inactive,
                 }}
               >
                 {item.isAttached ? '●' : '○'}
               </span>{' '}
               <span
                 style={{
-                  fg: appMode === AppModeEnum.OpencodeManage ? colors.text : colors.inactive,
+                  fg: appMode === AppModeEnum.OpencodeManage ? theme.text : theme.inactive,
                 }}
               >
                 {item.title.padEnd(20)}
               </span>{' '}
-              <span style={{ fg: colors.inactive }}>
-                {item.createdAt ? formatSessionAge(item.createdAt) : ''}
+              <span style={{ fg: pendingKill ? theme.danger : theme.inactive }}>
+                {pendingKill ? 'press d again to kill' : item.createdAt ? formatSessionAge(item.createdAt) : ''}
               </span>
             </text>
           </box>

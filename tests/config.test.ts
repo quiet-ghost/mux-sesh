@@ -12,6 +12,39 @@ describe('config normalization', () => {
         editor: 'helix',
         editor_cmd: 'hx .',
         keybind_mode: 'standard',
+        prefix_key: 'space',
+        color_scheme: 'dark',
+        theme: 'opencode-dark',
+        themes: {
+          midnight: {
+            name: 'Midnight',
+            light: {
+              palette: {
+                neutral: '#ffffff',
+                ink: '#111111',
+                primary: '#222222',
+                success: '#00aa00',
+                warning: '#ffaa00',
+                error: '#ff0000',
+                info: '#0000ff',
+              },
+            },
+            dark: {
+              palette: {
+                neutral: '#000000',
+                ink: '#eeeeee',
+                primary: '#ffffff',
+                success: '#00aa00',
+                warning: '#ffaa00',
+                error: '#ff0000',
+                info: '#0000ff',
+              },
+              overrides: {
+                'markdown-heading': '#c4a7e7',
+              },
+            },
+          },
+        },
         sort_order: 'configured-first',
         zoxide_mode: 'merge',
         auto_update: false,
@@ -51,6 +84,40 @@ describe('config normalization', () => {
     expect(config.editor).toBe('helix')
     expect(config.editorCmd).toBe('hx .')
     expect(config.keybindMode).toBe('standard')
+    expect(config.prefixKey).toBe('space')
+    expect(config.colorScheme).toBe('dark')
+    expect(config.theme).toBe('opencode')
+    expect(config.themes).toEqual({
+      midnight: {
+        name: 'Midnight',
+        light: {
+          palette: {
+            neutral: '#ffffff',
+            ink: '#111111',
+            primary: '#222222',
+            success: '#00aa00',
+            warning: '#ffaa00',
+            error: '#ff0000',
+            info: '#0000ff',
+          },
+          overrides: undefined,
+        },
+        dark: {
+          palette: {
+            neutral: '#000000',
+            ink: '#eeeeee',
+            primary: '#ffffff',
+            success: '#00aa00',
+            warning: '#ffaa00',
+            error: '#ff0000',
+            info: '#0000ff',
+          },
+          overrides: {
+            'markdown-heading': '#c4a7e7',
+          },
+        },
+      },
+    })
     expect(config.sortOrder).toBe('configured-first')
     expect(config.zoxideMode).toBe('merge')
     expect(config.autoUpdate).toBe(false)
@@ -97,6 +164,79 @@ describe('config normalization', () => {
     expect(config.defaultSession?.startupCommand).toBe('hx .')
   })
 
+  test('defaults to rose pine theme and filters invalid custom theme entries', () => {
+    const config = normalizeConfig(
+      {
+        themes: {
+          valid: {
+            light: {
+              palette: {
+                neutral: '#faf4ed',
+                ink: '#575279',
+                primary: '#31748f',
+                success: '#286983',
+                warning: '#ea9d34',
+                error: '#b4637a',
+                info: '#56949f',
+              },
+            },
+            dark: {
+              palette: {
+                neutral: '#191724',
+                ink: '#e0def4',
+                primary: '#9ccfd8',
+                success: '#31748f',
+                warning: '#f6c177',
+                error: '#eb6f92',
+                info: '#9ccfd8',
+              },
+              overrides: {
+                'markdown-heading': '#c4a7e7',
+              },
+            },
+          },
+          invalid: 'nope',
+        },
+      },
+      '/home/tester'
+    )
+
+    expect(config.theme).toBe('rosepine')
+    expect(config.colorScheme).toBe('system')
+    expect(config.prefixKey).toBe('ctrl+x')
+    expect(config.themes).toEqual({
+      valid: {
+        name: 'valid',
+        light: {
+          palette: {
+            neutral: '#faf4ed',
+            ink: '#575279',
+            primary: '#31748f',
+            success: '#286983',
+            warning: '#ea9d34',
+            error: '#b4637a',
+            info: '#56949f',
+          },
+          overrides: undefined,
+        },
+        dark: {
+          palette: {
+            neutral: '#191724',
+            ink: '#e0def4',
+            primary: '#9ccfd8',
+            success: '#31748f',
+            warning: '#f6c177',
+            error: '#eb6f92',
+            info: '#9ccfd8',
+          },
+          overrides: {
+            'markdown-heading': '#c4a7e7',
+          },
+        },
+      },
+    })
+  })
+
   test('returns defaults for invalid config values', () => {
     const defaults = getDefaultConfig('/home/tester')
     const config = normalizeConfig(
@@ -112,6 +252,8 @@ describe('config normalization', () => {
     )
 
     expect(config.keybindMode).toBe(defaults.keybindMode)
+    expect(config.prefixKey).toBe(defaults.prefixKey)
+    expect(config.theme).toBe(defaults.theme)
     expect(config.sortOrder).toBe(defaults.sortOrder)
     expect(config.zoxideMode).toBe(defaults.zoxideMode)
     expect(config.autoUpdate).toBe(defaults.autoUpdate)

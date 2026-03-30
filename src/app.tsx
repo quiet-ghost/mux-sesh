@@ -2,7 +2,7 @@ import type { TextareaRenderable } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
 import { useState, useEffect, useRef } from 'react'
 import { AppMode, ViewMode, type Item, type Config, type OpencodeStatsState } from './types'
-import { loadConfig } from './config'
+import { getConfigPath, loadConfig, saveConfig } from './config'
 import { getListedSessionItems, mergeSessionItems } from './config/listed-sessions'
 import { orderProjectItems, orderSessionItems } from './items/order'
 import { annotateProjectItemsWithSessionLinks } from './projects/session-links'
@@ -13,11 +13,10 @@ import { filterAndSortItems, clearMatchIndices } from './search'
 import { isGitHubURL } from './util/github'
 import { getOpencodeSessionStats } from './opencode'
 import { formatSessionAge } from './util/time'
-import { colors, sessionListStyle, sessionListStyleFull } from './styles/theme'
+import { ThemeProvider, getPanelStyle, resolveTheme } from './styles/theme'
 import { useTerminalSize, shouldShowDetailPanel } from './util/terminal'
 import Toast from './ui/Toast'
 import { checkAndUpdate, updateEvents } from './update'
-import KeybindHelp from './components/KeybindHelp'
 import OpencodeStatsPanel from './ui/OpencodeStatsPanel'
 import SessionDetailsPanel from './ui/SessionDetailsPanel'
 import SessionList from './ui/SessionList'
@@ -25,13 +24,29 @@ import OpencodeSessionGroup from './ui/OpencodeSessionGroup'
 import SearchInput from './ui/SearchInput'
 import SessionStats from './ui/SessionStats'
 import ItemList from './ui/ItemList'
+import RenameModal from './ui/RenameModal'
+import CommandsModal from './ui/CommandsModal'
+import SettingsModal from './ui/SettingsModal'
+import SettingOptionsModal from './ui/SettingOptionsModal'
+import SettingEditorModal from './ui/SettingEditorModal'
+import {
+  applyEditorSetting,
+  applyOptionSetting,
+  filterSettingsEntries,
+  filterSettingsOptions,
+  getSettingEditorTitle,
+  getSettingEditorValue,
+  getSettingsEntries,
+  getSettingOptions,
+  isOptionSetting,
+  type SettingsFieldId,
+} from './settings'
 import {
   type KeyboardHandlerContext,
   handleNormalMode,
   handleOpencodeManageMode,
   handleSearchMode,
   handleNewSessionMode,
-  handleRenameMode,
 } from './handlers/keyboard'
 import {
   handleSelect as actionHandleSelect,
@@ -42,6 +57,14 @@ import {
   handleRootSession as actionHandleRootSession,
   handleEditTarget as actionHandleEditTarget,
 } from './handlers/actions'
+
+type ModalState =
+  | { type: 'rename'; target: string }
+  | { type: 'commands' }
+  | { type: 'settings' }
+  | { type: 'setting-options'; field: SettingsFieldId }
+  | { type: 'setting-editor'; field: SettingsFieldId }
+  | null
 
 export function App() {
   const [appMode, setAppMode] = useState(AppMode.Normal)
@@ -56,14 +79,35 @@ export function App() {
   const [message, setMessage] = useState('')
   const [renameTarget, setRenameTarget] = useState('')
   const [config, setConfig] = useState<Config | null>(null)
+  const [modalState, setModalState] = useState<ModalState>(null)
+  const [modalInputValue, setModalInputValue] = useState('')
+  const [settingsCursor, setSettingsCursor] = useState(0)
+  const [settingsSearchQuery, setSettingsSearchQuery] = useState('')
+  const [settingOptionsCursor, setSettingOptionsCursor] = useState(0)
+  const [settingOptionsSearchQuery, setSettingOptionsSearchQuery] = useState('')
+  const [settingEditorValue, setSettingEditorValue] = useState('')
+  const [settingEditorError, setSettingEditorError] = useState('')
+  const [pendingKillSessionName, setPendingKillSessionName] = useState<string | null>(null)
   const [prefixActive, setPrefixActive] = useState(false)
   const prefixTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const textareaRef = useRef<TextareaRenderable | null>(null)
+  const modalTextareaRef = useRef<TextareaRenderable | null>(null)
+  const settingsSearchTextareaRef = useRef<TextareaRenderable | null>(null)
+  const settingOptionsSearchTextareaRef = useRef<TextareaRenderable | null>(null)
+  const settingEditorTextareaRef = useRef<TextareaRenderable | null>(null)
   const lastSessionSelectionRef = useRef<string | null>(null)
   const lastProjectSelectionRef = useRef<string | null>(null)
   const { columns, rows } = useTerminalSize()
   const [toastMessage, setToastMessage] = useState('')
   const [toastVisible, setToastVisible] = useState(false)
+  const configPath = getConfigPath()
+  const resolvedTheme = resolveTheme(config?.theme, config?.themes, config?.colorScheme)
+  const theme = resolvedTheme.colors
+  const settingsEntries = config ? getSettingsEntries(config) : []
+  const filteredSettingsEntries = filterSettingsEntries(settingsEntries, settingsSearchQuery)
+  const currentOptionField = modalState?.type === 'setting-options' ? modalState.field : undefined
+  const settingOptions = config && currentOptionField ? getSettingOptions(config, currentOptionField) : []
+  const filteredSettingOptions = filterSettingsOptions(settingOptions, settingOptionsSearchQuery)
 
   function getSessionSelectionIndex(nextItems: Item[]): number {
     const regularItems = nextItems.filter(item => !(item.isSession && item.title.startsWith('opencode-')))
@@ -115,16 +159,9 @@ export function App() {
         setAppMode(AppMode.Search)
       }
 
-      const sessions = await listTmuxSessions()
+      const [sessions, listedSessions] = await Promise.all([listTmuxSessions(), getListedSessionItems(cfg)])
       const visibleSessions = filterHiddenSessions(sessions, cfg.hiddenSessions)
-      const listedSessions = await getListedSessionItems(cfg)
       const combinedSessions = orderSessionItems(mergeSessionItems(visibleSessions, listedSessions), cfg.sortOrder)
-      const projects = orderProjectItems(
-        await annotateProjectItemsWithSessionLinks(await getProjectItems(cfg), visibleSessions, cfg),
-        cfg.sortOrder
-      )
-
-      setProjectItems(projects)
 
       if (combinedSessions.length > 0) {
         setViewMode(ViewMode.Sessions)
@@ -132,12 +169,23 @@ export function App() {
         setAllItems(combinedSessions)
         setItems(combinedSessions)
         setCursor(getSessionSelectionIndex(combinedSessions))
-      } else {
+      }
+
+      const rawProjects = await getProjectItems(cfg)
+      const projects = orderProjectItems(
+        await annotateProjectItemsWithSessionLinks(rawProjects, visibleSessions, cfg),
+        cfg.sortOrder
+      )
+
+      setProjectItems(projects)
+
+      if (combinedSessions.length === 0) {
         setViewMode(ViewMode.Projects)
         setAllItems(projects)
         setItems(projects)
         setCursor(getProjectSelectionIndex(projects))
       }
+
       checkAndUpdate(cfg).catch(error => {
         console.error('Auto-update check failed:', error)
       })
@@ -145,21 +193,21 @@ export function App() {
     init()
   }, [])
 
-  async function refreshItems(forceViewMode?: ViewMode) {
-    if (!config) return
+  async function refreshItems(forceViewMode?: ViewMode, nextConfig = config) {
+    if (!nextConfig) return
 
     const targetMode = forceViewMode ?? viewMode
 
     if (targetMode === ViewMode.Sessions) {
       const sessions = await listTmuxSessions()
-      const visibleSessions = filterHiddenSessions(sessions, config.hiddenSessions)
-      const listedSessions = await getListedSessionItems(config)
+      const visibleSessions = filterHiddenSessions(sessions, nextConfig.hiddenSessions)
+      const listedSessions = await getListedSessionItems(nextConfig)
       const cleanSessions = clearMatchIndices(
-        orderSessionItems(mergeSessionItems(visibleSessions, listedSessions), config.sortOrder)
+        orderSessionItems(mergeSessionItems(visibleSessions, listedSessions), nextConfig.sortOrder)
       )
       const linkedProjects = orderProjectItems(
-        await annotateProjectItemsWithSessionLinks(projectItems, visibleSessions, config),
-        config.sortOrder
+        await annotateProjectItemsWithSessionLinks(projectItems, visibleSessions, nextConfig),
+        nextConfig.sortOrder
       )
       setSessionItems(cleanSessions)
       setProjectItems(linkedProjects)
@@ -168,10 +216,10 @@ export function App() {
       setCursor(getSessionSelectionIndex(cleanSessions))
     } else {
       const sessions = await listTmuxSessions()
-      const visibleSessions = filterHiddenSessions(sessions, config.hiddenSessions)
+      const visibleSessions = filterHiddenSessions(sessions, nextConfig.hiddenSessions)
       const projects = orderProjectItems(
-        await annotateProjectItemsWithSessionLinks(await getProjectItems(config), visibleSessions, config),
-        config.sortOrder
+        await annotateProjectItemsWithSessionLinks(await getProjectItems(nextConfig), visibleSessions, nextConfig),
+        nextConfig.sortOrder
       )
       const cleanProjects = clearMatchIndices(projects)
       setProjectItems(cleanProjects)
@@ -223,6 +271,8 @@ export function App() {
     viewMode === ViewMode.Sessions && appMode === AppMode.Normal ? regularSessions[cursor] : items[cursor]
 
   async function handleKillSessionWrapper(sessionName: string) {
+    setPendingKillSessionName(null)
+
     await actionKillSession(sessionName, {
       onSuccess: msg => {
         setMessage(msg)
@@ -270,8 +320,71 @@ export function App() {
     }
   }
 
+  function clearPendingKill() {
+    setPendingKillSessionName(null)
+  }
+
+  function requestKillSession(sessionName: string) {
+    if (pendingKillSessionName === sessionName) {
+      void handleKillSessionWrapper(sessionName)
+      return
+    }
+
+    setPendingKillSessionName(sessionName)
+  }
+
+  function openRenameModal(sessionName: string) {
+    clearPendingKill()
+    setRenameTarget(sessionName)
+    setModalInputValue(sessionName)
+    setModalState({ type: 'rename', target: sessionName })
+  }
+
+  function openCommandsModal() {
+    clearPendingKill()
+    setModalState({ type: 'commands' })
+  }
+
+  function openSettingsModal() {
+    if (!config) {
+      return
+    }
+
+    clearPendingKill()
+    setSettingEditorError('')
+    setSettingsSearchQuery('')
+    setSettingsCursor(0)
+    setModalState({ type: 'settings' })
+  }
+
+  function openSettingOptions(field: SettingsFieldId) {
+    setSettingOptionsSearchQuery('')
+    setSettingOptionsCursor(0)
+    setModalState({ type: 'setting-options', field })
+  }
+
+  function openSettingEditor(field: SettingsFieldId) {
+    if (!config) {
+      return
+    }
+
+    setSettingEditorError('')
+    setSettingEditorValue(getSettingEditorValue(config, field))
+    setModalState({ type: 'setting-editor', field })
+  }
+
+  function closeModal() {
+    setModalState(null)
+    setModalInputValue('')
+    setSettingsSearchQuery('')
+    setSettingOptionsSearchQuery('')
+    setSettingEditorValue('')
+    setSettingEditorError('')
+    setRenameTarget('')
+  }
+
   async function handleRenameSubmit() {
-    const newName = searchQuery.trim()
+    const newName = (modalTextareaRef.current?.plainText ?? modalInputValue).trim()
     if (newName && newName !== renameTarget) {
       await actionRenameSubmit(renameTarget, newName, {
         onSuccess: msg => {
@@ -285,9 +398,8 @@ export function App() {
         refreshItems,
       })
     }
-    setAppMode(AppMode.Normal)
-    setSearchQuery('')
-    setRenameTarget('')
+
+    closeModal()
   }
 
   async function handleNewSessionSubmit() {
@@ -303,6 +415,41 @@ export function App() {
     }
   }
 
+  async function applyAndPersistConfig(nextConfig: Config, successMessage: string) {
+    await saveConfig(nextConfig)
+    setConfig(nextConfig)
+    await refreshItems(undefined, nextConfig)
+    setMessage(successMessage)
+    setTimeout(() => setMessage(''), 2000)
+  }
+
+  async function handleSettingsEditorSubmit(field: SettingsFieldId) {
+    if (!config) {
+      return
+    }
+
+    try {
+      const rawText = settingEditorTextareaRef.current?.plainText ?? settingEditorValue
+      const nextConfig = applyEditorSetting(config, field, rawText, process.env.HOME || '~')
+
+      setSettingEditorError('')
+      await applyAndPersistConfig(nextConfig, `${getSettingEditorTitle(field)} updated`)
+      openSettingsModal()
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save settings'
+      setSettingEditorError(errorMessage)
+    }
+  }
+
+  async function handleSettingOptionSubmit(field: SettingsFieldId, value: string) {
+    if (!config) {
+      return
+    }
+
+    const nextConfig = applyOptionSetting(config, field, value)
+    await applyAndPersistConfig(nextConfig, `${getSettingEditorTitle(field)} updated`)
+  }
+
   const keyboardContext: KeyboardHandlerContext = {
     appMode,
     viewMode,
@@ -313,6 +460,7 @@ export function App() {
     opencodeCursor,
     searchQuery,
     renameTarget,
+    prefixKey: config?.prefixKey,
     projectItems,
     sessionItems,
     prefixActive,
@@ -328,32 +476,103 @@ export function App() {
     setItems,
     setPrefixActive,
     refreshItems,
+    requestKillSession,
+    clearPendingKill,
     handleSelect: handleSelectWrapper,
     handleKillSession: handleKillSessionWrapper,
     handleLastSession: handleLastSessionWrapper,
     handleRootSession: handleRootSessionWrapper,
     handleEditTarget: handleEditTargetWrapper,
+    openRenameModal,
+    openCommandsModal,
+    openSettingsModal,
     loadOpencodeStatsForSession,
     setMessage,
   }
 
   useKeyboard(key => {
     const keybindMode = config?.keybindMode || 'vim'
+
+    if (modalState?.type === 'rename') {
+      if (key.name === 'return') {
+        void handleRenameSubmit()
+      } else if (key.name === 'escape') {
+        closeModal()
+      }
+      return
+    }
+
+    if (modalState?.type === 'commands') {
+      if (key.name === 'escape' || key.name === 'return' || key.name === 'q') {
+        closeModal()
+      }
+      return
+    }
+
+    if (modalState?.type === 'settings') {
+      if (key.name === 'escape') {
+        closeModal()
+      } else if (key.name === 'down' || key.name === 'j') {
+        setSettingsCursor(current => Math.min(current + 1, filteredSettingsEntries.length - 1))
+      } else if (key.name === 'up' || key.name === 'k') {
+        setSettingsCursor(current => Math.max(current - 1, 0))
+      } else if (key.name === 'return') {
+        const entry = filteredSettingsEntries[settingsCursor]
+        if (!entry) {
+          return
+        }
+
+        if (isOptionSetting(entry.id)) {
+          openSettingOptions(entry.id)
+        } else {
+          openSettingEditor(entry.id)
+        }
+      } else if (key.name === 'e') {
+        const entry = filteredSettingsEntries[settingsCursor]
+        if (!entry) return
+        if (isOptionSetting(entry.id)) {
+          openSettingOptions(entry.id)
+        } else {
+          openSettingEditor(entry.id)
+        }
+      }
+      return
+    }
+
+    if (modalState?.type === 'setting-options') {
+      if (key.name === 'escape') {
+        setModalState({ type: 'settings' })
+      } else if (key.name === 'down' || key.name === 'j') {
+        setSettingOptionsCursor(current => Math.min(current + 1, filteredSettingOptions.length - 1))
+      } else if (key.name === 'up' || key.name === 'k') {
+        setSettingOptionsCursor(current => Math.max(current - 1, 0))
+      } else if (key.name === 'return') {
+        const option = filteredSettingOptions[settingOptionsCursor]
+        if (!option) return
+        void handleSettingOptionSubmit(modalState.field, option.value)
+      }
+      return
+    }
+
+    if (modalState?.type === 'setting-editor') {
+      if (key.name === 'escape') {
+        setModalState({ type: 'settings' })
+        setSettingEditorError('')
+      } else if (key.name === 'return') {
+        void handleSettingsEditorSubmit(modalState.field)
+      }
+      return
+    }
+
     if (appMode === AppMode.Normal) {
       handleNormalMode(key, keyboardContext, keybindMode)
     } else if (appMode === AppMode.Search) {
       handleSearchMode(key, keyboardContext, keybindMode)
     } else if (appMode === AppMode.NewSession) {
       if (key.name === 'return') {
-        handleNewSessionSubmit()
+        void handleNewSessionSubmit()
       } else {
         handleNewSessionMode(key, keyboardContext, keybindMode)
-      }
-    } else if (appMode === AppMode.Rename) {
-      if (key.name === 'return') {
-        handleRenameSubmit()
-      } else {
-        handleRenameMode(key, keyboardContext, keybindMode)
       }
     } else if (appMode === AppMode.OpencodeManage) {
       handleOpencodeManageMode(key, keyboardContext, keybindMode)
@@ -394,6 +613,24 @@ export function App() {
   }, [appMode, viewMode, projectItems])
 
   useEffect(() => {
+    if (filteredSettingsEntries.length === 0) {
+      setSettingsCursor(0)
+      return
+    }
+
+    setSettingsCursor(current => Math.min(current, filteredSettingsEntries.length - 1))
+  }, [filteredSettingsEntries.length])
+
+  useEffect(() => {
+    if (filteredSettingOptions.length === 0) {
+      setSettingOptionsCursor(0)
+      return
+    }
+
+    setSettingOptionsCursor(current => Math.min(current, filteredSettingOptions.length - 1))
+  }, [filteredSettingOptions.length])
+
+  useEffect(() => {
     const selectedItem = appMode === AppMode.NewSession ? items[cursor] : selectedPrimaryItem
 
     if (!selectedItem) {
@@ -411,6 +648,23 @@ export function App() {
       lastSessionSelectionRef.current = selectedItem.title
     }
   }, [appMode, viewMode, cursor, items, selectedPrimaryItem])
+
+  useEffect(() => {
+    if (!pendingKillSessionName) {
+      return
+    }
+
+    const selectedSessionName =
+      appMode === AppMode.OpencodeManage
+        ? opencodeSessions[opencodeCursor]?.title
+        : viewMode === ViewMode.Sessions
+          ? regularSessions[cursor]?.title
+          : undefined
+
+    if (selectedSessionName !== pendingKillSessionName) {
+      setPendingKillSessionName(null)
+    }
+  }, [appMode, cursor, opencodeCursor, opencodeSessions, pendingKillSessionName, regularSessions, viewMode])
 
   useEffect(() => {
     if (appMode === AppMode.Search || appMode === AppMode.NewSession) {
@@ -443,24 +697,24 @@ export function App() {
 
   const title =
     appMode === AppMode.Search
-      ? ' Search Sessions'
+      ? 'Search'
       : appMode === AppMode.NewSession
-        ? '󰏌 New Session'
-        : appMode === AppMode.Rename
-          ? '󰏫 Rename Session'
-          : appMode === AppMode.OpencodeManage
-            ? ' Opencode Sessions'
-            : ' Tmux Session Manager'
+        ? 'New Session'
+        : appMode === AppMode.OpencodeManage
+          ? 'OpenCode Sessions'
+          : viewMode === ViewMode.Projects
+            ? 'Projects'
+            : 'Sessions'
 
   const listStyle =
     appMode === AppMode.NewSession
       ? {
-          ...sessionListStyleFull,
+          ...getPanelStyle(theme, 'full'),
           flexGrow: 1,
           flexShrink: 1,
         }
       : {
-          ...sessionListStyle,
+          ...getPanelStyle(theme, 'split'),
           flexGrow: 1,
           flexShrink: 1,
           minWidth: 40,
@@ -483,136 +737,217 @@ export function App() {
     sessionsWithAges.length > 0
       ? formatSessionAge(sessionsWithAges[sessionsWithAges.length - 1].createdAt!)
       : 'N/A'
-  const maxVisibleItems = Math.max(8, rows - (appMode === AppMode.NewSession ? 10 : 16))
+  const maxVisibleItems = Math.max(8, rows - (appMode === AppMode.NewSession ? 10 : 12))
+  const prefixLabel = config?.prefixKey ? `${config.prefixKey} ...` : 'direct keys'
+  const footerHint =
+    appMode === AppMode.OpencodeManage
+      ? `${prefixLabel}  esc back`
+      : appMode === AppMode.NewSession
+        ? 'enter create  esc cancel  h commands'
+        : appMode === AppMode.Search
+          ? 'enter select  esc cancel  h commands'
+          : `enter select  ${prefixLabel}`
 
   return (
-    <box
-      style={{
-        flexDirection: 'row',
-        alignItems: 'stretch',
-        justifyContent: 'center',
-        width: '100%',
-        height: '100%',
-        gap: 1,
-      }}
-    >
-      {/* Left panel - Session/Project list */}
-      <box style={listStyle}>
-        <box style={{ alignItems: 'center', justifyContent: 'center' }}>
-          <text style={{ fg: colors.primary, marginBottom: 1, marginTop: 1 }}>{title}</text>
+    <ThemeProvider theme={theme}>
+      <box
+        style={{
+          flexDirection: 'row',
+          alignItems: 'stretch',
+          justifyContent: 'center',
+          width: '100%',
+          height: '100%',
+          gap: 1,
+          backgroundColor: theme.background,
+        }}
+      >
+        <box style={listStyle}>
+          <box style={{ justifyContent: 'space-between', marginBottom: 1 }}>
+            <box style={{ flexDirection: 'column' }}>
+              <text style={{ fg: theme.text }}>mux-sesh</text>
+              <text style={{ fg: theme.textMuted }}>{title}</text>
+            </box>
+            <box style={{ flexDirection: 'column', alignItems: 'flex-end' }}>
+              <text style={{ fg: theme.textSubtle }}>{resolvedTheme.name}</text>
+              <text style={{ fg: theme.textSubtle }}>{`${resolvedTheme.mode} · ${viewMode === ViewMode.Sessions ? `${sessionItems.length} sessions` : `${projectItems.length} projects`}`}</text>
+            </box>
+          </box>
+
+          {(appMode === AppMode.Search || appMode === AppMode.NewSession) && (
+            <SearchInput
+              key={appMode}
+              appMode={appMode}
+              searchQuery={searchQuery}
+              textareaRef={textareaRef}
+              prefixActive={prefixActive}
+              onContentChange={() => {
+                if (textareaRef.current && textareaRef.current.plainText !== undefined) {
+                  setSearchQuery(textareaRef.current.plainText)
+                }
+              }}
+            />
+          )}
+
+          <box
+            style={{
+              alignSelf: 'auto',
+              flexDirection: 'column',
+              flexGrow: 0,
+              flexShrink: 0,
+              marginTop:
+                viewMode === ViewMode.Sessions && (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
+                  ? 1
+                  : 0,
+            }}
+          >
+            {items.length === 0 ? (
+              <text style={{ fg: theme.inactive }}>
+                {appMode === AppMode.NewSession && searchQuery && isGitHubURL(searchQuery)
+                  ? 'Clone & create session'
+                  : appMode === AppMode.NewSession && searchQuery
+                    ? `Create session: ${searchQuery}`
+                    : 'No items found'}
+              </text>
+            ) : viewMode === ViewMode.Sessions && (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage) ? (
+              <>
+                <SessionList
+                  items={regularSessions}
+                  cursor={cursor}
+                  searchQuery={searchQuery}
+                  maxItems={maxVisibleItems}
+                  icons={config?.icons}
+                  pendingKillSessionName={pendingKillSessionName}
+                />
+
+                <OpencodeSessionGroup
+                  sessions={opencodeSessions}
+                  appMode={appMode}
+                  cursor={opencodeCursor}
+                  icons={config?.icons}
+                  pendingKillSessionName={pendingKillSessionName}
+                />
+
+                <SessionStats
+                  totalSessions={totalSessions}
+                  activeSessions={activeSessions}
+                  idleSessions={idleSessions}
+                  oldestSession={oldestSession}
+                  newestSession={newestSession}
+                />
+              </>
+            ) : (
+              <ItemList
+                items={items}
+                cursor={cursor}
+                appMode={appMode}
+                searchQuery={searchQuery}
+                maxItems={maxVisibleItems}
+                icons={config?.icons}
+                pendingKillSessionName={pendingKillSessionName}
+              />
+            )}
+          </box>
+
+          {message && <text style={{ fg: theme.action, marginTop: 1 }}>{message}</text>}
+
+          {columns < 80 && appMode !== AppMode.NewSession && (
+            <text style={{ fg: theme.inactive, marginTop: 1 }}>Terminal too small. Resize for full view.</text>
+          )}
+
+          <text style={{ fg: theme.textSubtle, marginTop: 1 }}>{footerHint}</text>
         </box>
 
-        {/* Search input */}
-        {(appMode === AppMode.Search ||
-          appMode === AppMode.NewSession ||
-          appMode === AppMode.Rename) && (
-          <SearchInput
-            key={appMode}
-            appMode={appMode}
-            searchQuery={searchQuery}
-            textareaRef={textareaRef}
-            prefixActive={prefixActive}
+        {shouldShowDetailPanel(columns, appMode === AppMode.NewSession) && (
+          <>
+            {viewMode === ViewMode.Sessions && appMode === AppMode.OpencodeManage ? (
+              <OpencodeStatsPanel selectedItem={opencodeSessions[opencodeCursor]} />
+            ) : (
+              <SessionDetailsPanel selectedItem={selectedPrimaryItem} config={config} />
+            )}
+          </>
+        )}
+
+        {modalState?.type === 'rename' && (
+          <RenameModal
+            target={modalState.target}
+            initialValue={modalInputValue}
+            columns={columns}
+            textareaRef={modalTextareaRef}
             onContentChange={() => {
-              if (textareaRef.current && textareaRef.current.plainText !== undefined) {
-                setSearchQuery(textareaRef.current.plainText)
+              if (modalTextareaRef.current?.plainText !== undefined) {
+                setModalInputValue(modalTextareaRef.current.plainText)
               }
             }}
           />
         )}
 
-        {/* Items list */}
-        <box
-          style={{
-            alignSelf: 'auto',
-            flexDirection: 'column',
-            flexGrow: 0,
-            flexShrink: 0,
-            marginTop:
-              viewMode === ViewMode.Sessions &&
-              (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
-                ? 2
-                : 0,
-          }}
-        >
-          {items.length === 0 ? (
-            <text style={{ fg: colors.inactive }}>
-              {appMode === AppMode.NewSession && searchQuery && isGitHubURL(searchQuery)
-                ? `Clone & create session`
-                : appMode === AppMode.NewSession && searchQuery
-                  ? `Create session: ${searchQuery}`
-                  : 'No items found'}
-            </text>
-          ) : viewMode === ViewMode.Sessions &&
-            (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage) ? (
-            <>
-              {/* Regular sessions */}
-              <SessionList
-                items={regularSessions}
-                cursor={cursor}
-                searchQuery={searchQuery}
-                maxItems={maxVisibleItems}
-                icons={config?.icons}
-              />
-
-              {/* Opencode sessions group */}
-              <OpencodeSessionGroup
-                sessions={opencodeSessions}
-                appMode={appMode}
-                cursor={opencodeCursor}
-                icons={config?.icons}
-              />
-
-              {/* Session statistics */}
-              <SessionStats
-                totalSessions={totalSessions}
-                activeSessions={activeSessions}
-                idleSessions={idleSessions}
-                oldestSession={oldestSession}
-                newestSession={newestSession}
-              />
-            </>
-          ) : (
-            <ItemList
-              items={items}
-              cursor={cursor}
-              appMode={appMode}
-              searchQuery={searchQuery}
-              maxItems={maxVisibleItems}
-              icons={config?.icons}
-            />
-          )}
-        </box>
-
-        {/* Message */}
-        {message && <text style={{ fg: colors.action, marginTop: 1 }}>{message}</text>}
-
-        {/* Terminal size warning */}
-        {columns < 80 && appMode !== AppMode.NewSession && (
-          <text style={{ fg: colors.inactive, marginTop: 1 }}>
-            Terminal too small. Resize for full view.
-          </text>
+        {modalState?.type === 'commands' && (
+          <CommandsModal
+            appMode={appMode}
+            keybindMode={config?.keybindMode}
+            prefixKey={config?.prefixKey}
+            selectedItem={selectedPrimaryItem}
+            columns={columns}
+            themeId={resolvedTheme.id}
+          />
         )}
 
-        {/* Keybind help */}
-        <box style={{ marginTop: 1, flexDirection: 'column' }}>
-          <KeybindHelp appMode={appMode} keybindMode={config?.keybindMode} selectedItem={selectedPrimaryItem} />
-        </box>
-      </box>
+        {modalState?.type === 'settings' && config && (
+          <SettingsModal
+            configPath={configPath}
+            themeName={resolvedTheme.name}
+            colorMode={resolvedTheme.mode}
+            columns={columns}
+            entries={filteredSettingsEntries}
+            cursor={settingsCursor}
+            searchQuery={settingsSearchQuery}
+            textareaRef={settingsSearchTextareaRef}
+            onContentChange={() => {
+              if (settingsSearchTextareaRef.current?.plainText !== undefined) {
+                setSettingsSearchQuery(settingsSearchTextareaRef.current.plainText)
+                setSettingsCursor(0)
+              }
+            }}
+          />
+        )}
 
-      {/* Right panel - Detail panel (only in non-new-session modes) */}
-      {shouldShowDetailPanel(columns, appMode === AppMode.NewSession) && (
-        <>
-          {viewMode === ViewMode.Sessions && appMode === AppMode.OpencodeManage ? (
-            <OpencodeStatsPanel selectedItem={opencodeSessions[opencodeCursor]} />
-          ) : (
-            <SessionDetailsPanel
-              selectedItem={selectedPrimaryItem}
-              config={config}
-            />
-          )}
-        </>
-      )}
-      <Toast message={toastMessage} visible={toastVisible} />
-    </box>
+        {modalState?.type === 'setting-options' && (
+          <SettingOptionsModal
+            title={getSettingEditorTitle(modalState.field)}
+            description='Select an option to apply it immediately'
+            columns={columns}
+            options={filteredSettingOptions}
+            cursor={settingOptionsCursor}
+            searchQuery={settingOptionsSearchQuery}
+            textareaRef={settingOptionsSearchTextareaRef}
+            onContentChange={() => {
+              if (settingOptionsSearchTextareaRef.current?.plainText !== undefined) {
+                setSettingOptionsSearchQuery(settingOptionsSearchTextareaRef.current.plainText)
+                setSettingOptionsCursor(0)
+              }
+            }}
+          />
+        )}
+
+        {modalState?.type === 'setting-editor' && (
+          <SettingEditorModal
+            title={getSettingEditorTitle(modalState.field)}
+            description='Edit value and press Enter to apply immediately'
+            value={settingEditorValue}
+            error={settingEditorError}
+            columns={columns}
+            rows={rows}
+            textareaRef={settingEditorTextareaRef}
+            onContentChange={() => {
+              if (settingEditorTextareaRef.current?.plainText !== undefined) {
+                setSettingEditorValue(settingEditorTextareaRef.current.plainText)
+              }
+            }}
+          />
+        )}
+
+        <Toast message={toastMessage} visible={toastVisible} />
+      </box>
+    </ThemeProvider>
   )
 }

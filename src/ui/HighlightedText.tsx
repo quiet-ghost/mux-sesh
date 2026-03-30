@@ -1,4 +1,4 @@
-import { colors } from '../styles/theme'
+import { useTheme } from '../styles/theme'
 
 interface Props {
   text: string
@@ -13,8 +13,11 @@ interface Props {
 export default function HighlightedText({
   text,
   matchIndices = [],
-  highlightColor = colors.action,
+  highlightColor,
 }: Props) {
+  const theme = useTheme()
+  const resolvedHighlightColor = highlightColor ?? theme.action
+
   // If no matches, return plain text
   if (matchIndices.length === 0) {
     return <>{text}</>
@@ -49,7 +52,7 @@ export default function HighlightedText({
     <>
       {segments.map((segment, i) =>
         segment.highlighted ? (
-          <span key={i} style={{ fg: highlightColor }}>
+          <span key={i} style={{ fg: resolvedHighlightColor }}>
             {segment.text}
           </span>
         ) : (

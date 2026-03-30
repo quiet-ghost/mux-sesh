@@ -1,5 +1,6 @@
 import type { TextareaRenderable } from '@opentui/core'
 import { useEffect } from 'react'
+import { useTheme } from '../styles/theme'
 import { AppMode } from '../types'
 
 interface Props {
@@ -17,6 +18,7 @@ export default function SearchInput({
   onContentChange,
   prefixActive = false,
 }: Props) {
+  const theme = useTheme()
   const placeholder =
     appMode === AppMode.NewSession
       ? 'Type project name, GitHub URL, or custom session name...'
@@ -45,7 +47,7 @@ export default function SearchInput({
       style={{
         marginBottom: 1,
         height: 3,
-        backgroundColor: prefixActive ? '#3a3d5c' : 'transparent',
+        backgroundColor: prefixActive ? theme.surfaceAlt : theme.surface,
       }}
     >
       <textarea

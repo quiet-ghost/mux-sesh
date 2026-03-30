@@ -1,4 +1,4 @@
-import { colors } from '../styles/theme'
+import { useTheme } from '../styles/theme'
 
 interface ToastProps {
   message: string
@@ -6,6 +6,8 @@ interface ToastProps {
 }
 
 export default function Toast({ message, visible }: ToastProps) {
+  const theme = useTheme()
+
   if (!visible) return null
 
   return (
@@ -15,7 +17,8 @@ export default function Toast({ message, visible }: ToastProps) {
         top: 1,
         right: 1,
         border: true,
-        borderColor: colors.primary,
+        borderColor: theme.border,
+        backgroundColor: theme.surfaceModal,
         padding: 0.3,
         paddingLeft: 0.5,
         paddingRight: 0.5,
@@ -23,9 +26,8 @@ export default function Toast({ message, visible }: ToastProps) {
       }}
     >
       <box>
-        {/* <text style={{ fg: colors.key }}>󰙎 </text> */}
-        <text style={{ fg: colors.key }}> </text>
-        <text style={{ fg: colors.active, marginLeft: 1 }}> {message}</text>
+        <text style={{ fg: theme.key }}> </text>
+        <text style={{ fg: theme.text, marginLeft: 1 }}> {message}</text>
       </box>
     </box>
   )
