@@ -1,7 +1,8 @@
 import { readdir } from 'fs/promises'
 import { basename, join } from 'path'
 import { spawn } from 'bun'
-import type { Config } from '../types'
+import { getSessionDetails } from '../tmux'
+import type { Config, SessionDetails } from '../types'
 import { getGitRoot, resolveProjectSession } from '../config/session-rules'
 
 const MAX_PREVIEW_LINES = 24
@@ -16,6 +17,7 @@ export interface ProjectPreview {
   previewCommand?: string
   gitRoot?: string
   gitBranch?: string
+  linkedSession?: SessionDetails
   previewKind: 'command' | 'directory'
   previewLabel: string
   previewLines: string[]
@@ -177,11 +179,16 @@ async function runPreviewCommand(command: string, cwd: string): Promise<{ output
   }
 }
 
-export async function getProjectPreview(projectPath: string, config: Config): Promise<ProjectPreview> {
-  const [resolvedSession, gitRootPath, gitBranch] = await Promise.all([
+export async function getProjectPreview(
+  projectPath: string,
+  config: Config,
+  linkedSessionName?: string
+): Promise<ProjectPreview> {
+  const [resolvedSession, gitRootPath, gitBranch, linkedSession] = await Promise.all([
     resolveProjectSession(projectPath, config),
     getGitRoot(projectPath),
     getGitBranch(projectPath),
+    linkedSessionName ? getSessionDetails(linkedSessionName).catch(() => null) : Promise.resolve(null),
   ])
 
   const resolvedPreviewCommand = interpolatePreviewCommand(resolvedSession.previewCommand, projectPath)
@@ -197,6 +204,7 @@ export async function getProjectPreview(projectPath: string, config: Config): Pr
       previewCommand: resolvedPreviewCommand,
       gitRoot: gitRootPath ? displayPath(gitRootPath) : undefined,
       gitBranch,
+      linkedSession: linkedSession ?? undefined,
       previewKind: 'command',
       previewLabel: 'Preview Output',
       previewLines: formattedCommandOutput.lines,
@@ -217,6 +225,7 @@ export async function getProjectPreview(projectPath: string, config: Config): Pr
     previewCommand: resolvedPreviewCommand,
     gitRoot: gitRootPath ? displayPath(gitRootPath) : undefined,
     gitBranch,
+    linkedSession: linkedSession ?? undefined,
     previewKind: 'directory',
     previewLabel: 'Directory Listing',
     previewLines: formattedDirectoryOutput.lines,

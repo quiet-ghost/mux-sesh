@@ -1,5 +1,5 @@
 import { colors } from '../styles/theme'
-import { AppMode } from '../types'
+import { AppMode, type IconConfig } from '../types'
 import HighlightedText from './HighlightedText'
 import { getItemIconPresentation } from './item-icon'
 import { getVisibleWindow } from './list-window'
@@ -11,6 +11,7 @@ interface Props {
   appMode: AppMode
   maxItems?: number
   searchQuery?: string
+  icons?: IconConfig
 }
 
 export default function ItemList({
@@ -19,6 +20,7 @@ export default function ItemList({
   appMode,
   maxItems = 20,
   searchQuery = '',
+  icons,
 }: Props) {
   const isSearching = searchQuery.trim().length > 0
   const visibleWindow = getVisibleWindow(items, cursor, maxItems)
@@ -31,7 +33,9 @@ export default function ItemList({
         const descMatchIndices = item.searchMatch?.descIndices
         const hasTitleMatch = titleMatchIndices && titleMatchIndices.length > 0
         const hasDescMatch = descMatchIndices && descMatchIndices.length > 0
-        const icon = getItemIconPresentation(item)
+        const icon = getItemIconPresentation(item, icons)
+        const sessionStatusLabel = item.linkedSessionName ? 'attach' : 'create'
+        const linkedSessionLabel = item.linkedSessionName ? ` -> ${item.linkedSessionName}` : ''
 
         return (
           <box
@@ -62,12 +66,13 @@ export default function ItemList({
                   <span style={{ fg: icon.color }}>{icon.glyph}</span>{' '}
                   {appMode === AppMode.NewSession ? (
                     <>
-                      {/* Show path (desc) with highlighting if it matches */}
                       {isSearching && hasDescMatch ? (
                         <HighlightedText text={item.desc} matchIndices={descMatchIndices} />
                       ) : (
                         item.desc
-                      )}
+                      )}{' '}
+                      <span style={{ fg: colors.inactive }}>{sessionStatusLabel}</span>
+                      {linkedSessionLabel && <span style={{ fg: colors.separator }}>{linkedSessionLabel}</span>}
                     </>
                   ) : (
                     <>

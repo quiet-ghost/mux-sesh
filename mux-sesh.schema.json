@@ -47,6 +47,14 @@
       "type": "string",
       "enum": ["off", "rank", "merge"]
     },
+    "sort_order": {
+      "type": "string",
+      "enum": ["live-first", "configured-first", "zoxide-first", "alphabetical"]
+    },
+    "sortOrder": {
+      "type": "string",
+      "enum": ["live-first", "configured-first", "zoxide-first", "alphabetical"]
+    },
     "auto_update": {
       "type": "boolean"
     },
@@ -72,6 +80,9 @@
       "items": {
         "type": "string"
       }
+    },
+    "icons": {
+      "$ref": "#/definitions/icons"
     },
     "default_session": {
       "$ref": "#/definitions/sessionDefaults"
@@ -112,7 +123,31 @@
         "listed": {
           "type": "boolean"
         },
+        "listed": {
+          "type": "boolean"
+        },
         "icon": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "icons": {
+      "type": "object",
+      "properties": {
+        "tmux": {
+          "type": "string"
+        },
+        "configured": {
+          "type": "string"
+        },
+        "config": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "opencode": {
           "type": "string"
         }
       },
@@ -141,6 +176,12 @@
           "type": "string"
         },
         "previewCommand": {
+          "type": "string"
+        },
+        "listed": {
+          "type": "boolean"
+        },
+        "icon": {
           "type": "string"
         }
       },

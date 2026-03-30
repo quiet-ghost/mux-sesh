@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { AppMode, ViewMode, type Item, type Config, type OpencodeStatsState } from './types'
 import { loadConfig } from './config'
 import { getListedSessionItems, mergeSessionItems } from './config/listed-sessions'
+import { orderProjectItems, orderSessionItems } from './items/order'
 import { annotateProjectItemsWithSessionLinks } from './projects/session-links'
 import { listTmuxSessions } from './tmux'
 import { filterHiddenSessions } from './tmux/workflows'
@@ -39,6 +40,7 @@ import {
   handleRenameSubmit as actionRenameSubmit,
   handleNewSessionSubmit as actionNewSessionSubmit,
   handleRootSession as actionHandleRootSession,
+  handleEditTarget as actionHandleEditTarget,
 } from './handlers/actions'
 
 export function App() {
@@ -57,9 +59,40 @@ export function App() {
   const [prefixActive, setPrefixActive] = useState(false)
   const prefixTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const textareaRef = useRef<TextareaRenderable | null>(null)
+  const lastSessionSelectionRef = useRef<string | null>(null)
+  const lastProjectSelectionRef = useRef<string | null>(null)
   const { columns, rows } = useTerminalSize()
   const [toastMessage, setToastMessage] = useState('')
   const [toastVisible, setToastVisible] = useState(false)
+
+  function getSessionSelectionIndex(nextItems: Item[]): number {
+    const regularItems = nextItems.filter(item => !(item.isSession && item.title.startsWith('opencode-')))
+    if (regularItems.length === 0) {
+      return 0
+    }
+
+    const selection = lastSessionSelectionRef.current
+    if (!selection) {
+      return 0
+    }
+
+    const index = regularItems.findIndex(item => item.title === selection)
+    return index >= 0 ? index : 0
+  }
+
+  function getProjectSelectionIndex(nextItems: Item[]): number {
+    if (nextItems.length === 0) {
+      return 0
+    }
+
+    const selection = lastProjectSelectionRef.current
+    if (!selection) {
+      return 0
+    }
+
+    const index = nextItems.findIndex(item => item.path === selection)
+    return index >= 0 ? index : 0
+  }
 
   function updateOpencodeState(sessionName: string, nextState: OpencodeStatsState) {
     const applyState = (existingItems: Item[]) =>
@@ -85,8 +118,11 @@ export function App() {
       const sessions = await listTmuxSessions()
       const visibleSessions = filterHiddenSessions(sessions, cfg.hiddenSessions)
       const listedSessions = await getListedSessionItems(cfg)
-      const combinedSessions = mergeSessionItems(visibleSessions, listedSessions)
-      const projects = await annotateProjectItemsWithSessionLinks(await getProjectItems(cfg), visibleSessions, cfg)
+      const combinedSessions = orderSessionItems(mergeSessionItems(visibleSessions, listedSessions), cfg.sortOrder)
+      const projects = orderProjectItems(
+        await annotateProjectItemsWithSessionLinks(await getProjectItems(cfg), visibleSessions, cfg),
+        cfg.sortOrder
+      )
 
       setProjectItems(projects)
 
@@ -95,10 +131,12 @@ export function App() {
         setSessionItems(combinedSessions)
         setAllItems(combinedSessions)
         setItems(combinedSessions)
+        setCursor(getSessionSelectionIndex(combinedSessions))
       } else {
         setViewMode(ViewMode.Projects)
         setAllItems(projects)
         setItems(projects)
+        setCursor(getProjectSelectionIndex(projects))
       }
       checkAndUpdate(cfg).catch(error => {
         console.error('Auto-update check failed:', error)
@@ -116,22 +154,31 @@ export function App() {
       const sessions = await listTmuxSessions()
       const visibleSessions = filterHiddenSessions(sessions, config.hiddenSessions)
       const listedSessions = await getListedSessionItems(config)
-      const cleanSessions = clearMatchIndices(mergeSessionItems(visibleSessions, listedSessions))
-      const linkedProjects = await annotateProjectItemsWithSessionLinks(projectItems, visibleSessions, config)
+      const cleanSessions = clearMatchIndices(
+        orderSessionItems(mergeSessionItems(visibleSessions, listedSessions), config.sortOrder)
+      )
+      const linkedProjects = orderProjectItems(
+        await annotateProjectItemsWithSessionLinks(projectItems, visibleSessions, config),
+        config.sortOrder
+      )
       setSessionItems(cleanSessions)
       setProjectItems(linkedProjects)
       setAllItems(cleanSessions)
       setItems(cleanSessions)
+      setCursor(getSessionSelectionIndex(cleanSessions))
     } else {
       const sessions = await listTmuxSessions()
       const visibleSessions = filterHiddenSessions(sessions, config.hiddenSessions)
-      const projects = await annotateProjectItemsWithSessionLinks(await getProjectItems(config), visibleSessions, config)
+      const projects = orderProjectItems(
+        await annotateProjectItemsWithSessionLinks(await getProjectItems(config), visibleSessions, config),
+        config.sortOrder
+      )
       const cleanProjects = clearMatchIndices(projects)
       setProjectItems(cleanProjects)
       setAllItems(cleanProjects)
       setItems(cleanProjects)
+      setCursor(getProjectSelectionIndex(cleanProjects))
     }
-    setCursor(0)
   }
 
   async function loadOpencodeStatsForSession(sessionName: string) {
@@ -172,6 +219,8 @@ export function App() {
       : []
   const selectedOpencodeSessionName =
     appMode === AppMode.OpencodeManage ? opencodeSessions[opencodeCursor]?.title : undefined
+  const selectedPrimaryItem =
+    viewMode === ViewMode.Sessions && appMode === AppMode.Normal ? regularSessions[cursor] : items[cursor]
 
   async function handleKillSessionWrapper(sessionName: string) {
     await actionKillSession(sessionName, {
@@ -206,6 +255,16 @@ export function App() {
       await actionHandleRootSession(item, config)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to open the root session'
+      setMessage(errorMessage)
+      setTimeout(() => setMessage(''), 3000)
+    }
+  }
+
+  async function handleEditTargetWrapper(item?: Item) {
+    try {
+      await actionHandleEditTarget(item, config)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to edit target'
       setMessage(errorMessage)
       setTimeout(() => setMessage(''), 3000)
     }
@@ -273,6 +332,7 @@ export function App() {
     handleKillSession: handleKillSessionWrapper,
     handleLastSession: handleLastSessionWrapper,
     handleRootSession: handleRootSessionWrapper,
+    handleEditTarget: handleEditTargetWrapper,
     loadOpencodeStatsForSession,
     setMessage,
   }
@@ -323,8 +383,34 @@ export function App() {
       const cleanSessions = clearMatchIndices(sessionItems)
       setAllItems(cleanSessions)
       setItems(cleanSessions)
+      setCursor(getSessionSelectionIndex(cleanSessions))
     }
   }, [appMode, viewMode, sessionItems])
+
+  useEffect(() => {
+    if (appMode === AppMode.NewSession && viewMode === ViewMode.Projects) {
+      setCursor(getProjectSelectionIndex(projectItems))
+    }
+  }, [appMode, viewMode, projectItems])
+
+  useEffect(() => {
+    const selectedItem = appMode === AppMode.NewSession ? items[cursor] : selectedPrimaryItem
+
+    if (!selectedItem) {
+      return
+    }
+
+    if (appMode === AppMode.NewSession || viewMode === ViewMode.Projects) {
+      if (!selectedItem.isSession) {
+        lastProjectSelectionRef.current = selectedItem.path
+      }
+      return
+    }
+
+    if (viewMode === ViewMode.Sessions && appMode === AppMode.Normal) {
+      lastSessionSelectionRef.current = selectedItem.title
+    }
+  }, [appMode, viewMode, cursor, items, selectedPrimaryItem])
 
   useEffect(() => {
     if (appMode === AppMode.Search || appMode === AppMode.NewSession) {
@@ -465,6 +551,7 @@ export function App() {
                 cursor={cursor}
                 searchQuery={searchQuery}
                 maxItems={maxVisibleItems}
+                icons={config?.icons}
               />
 
               {/* Opencode sessions group */}
@@ -472,6 +559,7 @@ export function App() {
                 sessions={opencodeSessions}
                 appMode={appMode}
                 cursor={opencodeCursor}
+                icons={config?.icons}
               />
 
               {/* Session statistics */}
@@ -490,6 +578,7 @@ export function App() {
               appMode={appMode}
               searchQuery={searchQuery}
               maxItems={maxVisibleItems}
+              icons={config?.icons}
             />
           )}
         </box>
@@ -506,7 +595,7 @@ export function App() {
 
         {/* Keybind help */}
         <box style={{ marginTop: 1, flexDirection: 'column' }}>
-          <KeybindHelp appMode={appMode} keybindMode={config?.keybindMode} />
+          <KeybindHelp appMode={appMode} keybindMode={config?.keybindMode} selectedItem={selectedPrimaryItem} />
         </box>
       </box>
 
@@ -517,11 +606,7 @@ export function App() {
             <OpencodeStatsPanel selectedItem={opencodeSessions[opencodeCursor]} />
           ) : (
             <SessionDetailsPanel
-              selectedItem={
-                viewMode === ViewMode.Sessions && appMode === AppMode.Normal
-                  ? regularSessions[cursor]
-                  : items[cursor]
-              }
+              selectedItem={selectedPrimaryItem}
               config={config}
             />
           )}

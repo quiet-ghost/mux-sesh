@@ -61,6 +61,29 @@ function ProjectPreviewView({ preview }: { preview: ProjectPreview }) {
         )}
       </box>
 
+      {preview.linkedSession && (
+        <>
+          <box style={{ alignItems: 'center', justifyContent: 'center' }}>
+            <text style={{ fg: colors.primary, marginBottom: 1 }}> Live Session</text>
+          </box>
+
+          <box style={{ flexDirection: 'column', marginBottom: 1, marginLeft: 2 }}>
+            <text>
+              Status:{' '}
+              <span style={{ fg: preview.linkedSession.isAttached ? colors.active : colors.inactive }}>
+                {preview.linkedSession.isAttached ? '● Attached' : '○ Detached'}
+              </span>
+            </text>
+            <text>Windows: {preview.linkedSession.windowCount}</text>
+            {preview.linkedSession.windows.slice(0, 4).map(window => (
+              <text key={`${window.index}:${window.name}`} style={{ marginLeft: 2, fg: colors.inactive }}>
+                {window.index}: {window.name}
+              </text>
+            ))}
+          </box>
+        </>
+      )}
+
       <box style={{ alignItems: 'center', justifyContent: 'center' }}>
         <text style={{ fg: colors.primary, marginBottom: 1 }}> {preview.previewLabel}</text>
       </box>
@@ -159,7 +182,7 @@ export default function SessionDetailsPanel({ selectedItem, config }: Props) {
           return
         }
 
-        const details = await getProjectPreview(selectedItem.path, config)
+        const details = await getProjectPreview(selectedItem.path, config, selectedItem.linkedSessionName)
         if (!cancelled) {
           setDetailState({ status: 'project', details })
         }

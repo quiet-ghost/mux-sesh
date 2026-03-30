@@ -14,6 +14,14 @@ export enum ViewMode {
 export type KeybindMode = 'vim' | 'standard'
 export type ZoxideMode = 'off' | 'rank' | 'merge'
 export type ItemKind = 'tmux' | 'configured' | 'project'
+export type SortOrder = 'live-first' | 'configured-first' | 'zoxide-first' | 'alphabetical'
+
+export interface IconConfig {
+  tmux: string
+  configured: string
+  project: string
+  opencode: string
+}
 
 export interface SessionDefaults {
   startupCommand?: string
@@ -94,6 +102,8 @@ export interface Config {
   dirLength?: number
   hiddenSessions?: string[]
   zoxideMode?: ZoxideMode
+  sortOrder?: SortOrder
+  icons?: IconConfig
   defaultSession?: SessionDefaults
   projects?: ProjectProfile[]
   wildcards?: ProjectWildcard[]

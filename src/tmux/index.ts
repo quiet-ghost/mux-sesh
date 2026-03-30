@@ -45,7 +45,6 @@ export async function listTmuxSessions(): Promise<Item[]> {
       desc: '',
       isSession: true,
       itemKind: 'tmux' as const,
-      icon: '',
       isAttached: attached === '1',
       windowCount: windows,
       createdAt: parseInt(created, 10),

@@ -1,3 +1,4 @@
+import { spawn } from 'bun'
 import type { Item, Config } from '../types'
 import {
   switchTmuxSession,
@@ -12,6 +13,10 @@ import { getGitRoot, resolveProjectSession } from '../config/session-rules'
 import { getLastSessionTarget } from '../tmux/workflows'
 import { isGitHubURL, cloneGitHubRepo } from '../util/github'
 import { requestShutdown } from '../util/shutdown'
+
+function quoteShellArg(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`
+}
 
 export async function handleSelect(item: Item, config: Config | null) {
   if (item.isSession) {
@@ -132,6 +137,38 @@ export async function handleRootSession(item: Item | undefined, config: Config |
 
   await createTmuxSession(resolvedSession.sessionName, rootPath, {
     startupCommand: resolvedSession.startupCommand,
+  })
+  await requestShutdown(0)
+}
+
+export async function handleEditTarget(item: Item | undefined, config: Config | null) {
+  if (!item || item.itemKind !== 'configured') {
+    throw new Error('Select a configured session to edit its target')
+  }
+
+  if (!config) {
+    throw new Error('Config is not loaded yet')
+  }
+
+  const command = `${config.editor} ${quoteShellArg(item.path)}`
+
+  if (process.env.TMUX) {
+    const proc = spawn(['tmux', 'new-window', '-c', item.path, command], { stderr: 'pipe' })
+    await proc.exited
+
+    if (proc.exitCode !== 0) {
+      throw new Error(`Failed to open editor for '${item.title}'`)
+    }
+
+    await requestShutdown(0)
+    return
+  }
+
+  spawn(['sh', '-lc', command], {
+    cwd: item.path,
+    stdin: 'inherit',
+    stdout: 'inherit',
+    stderr: 'inherit',
   })
   await requestShutdown(0)
 }

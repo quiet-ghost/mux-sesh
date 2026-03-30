@@ -1,3 +1,4 @@
+import { basename } from 'path'
 import type { FuzzyMatch, Item, SearchMatchMetadata, SearchResult } from '../types'
 
 function withSearchMatch(item: Item, searchMatch?: SearchMatchMetadata): Item {
@@ -93,6 +94,32 @@ interface ScoredSearchResult extends SearchResult {
   item: Item
 }
 
+function calculateItemBonus(item: Item, query: string): number {
+  const normalizedQuery = query.toLowerCase()
+  const title = item.title.toLowerCase()
+  const pathBaseName = basename(item.path).toLowerCase()
+  const description = item.desc.toLowerCase()
+
+  let bonus = 0
+
+  if (title === normalizedQuery || pathBaseName === normalizedQuery) {
+    bonus += 5000
+  } else if (title.startsWith(normalizedQuery) || pathBaseName.startsWith(normalizedQuery)) {
+    bonus += 1200
+  }
+
+  if (item.path.toLowerCase().endsWith(`/${normalizedQuery}`) || description.endsWith(`/${normalizedQuery}`)) {
+    bonus += 2000
+  }
+
+  if (!item.isSession) {
+    const depth = item.path.split('/').filter(Boolean).length
+    bonus -= depth * 2
+  }
+
+  return bonus
+}
+
 function buildSearchResult(item: Item, query: string): ScoredSearchResult | null {
   const queryTrimmed = query.trim()
   if (queryTrimmed === '') {
@@ -134,7 +161,7 @@ function buildSearchResult(item: Item, query: string): ScoredSearchResult | null
 
   return {
     item: withSearchMatch(item, searchMatch),
-    score: bestScore,
+    score: bestScore + calculateItemBonus(item, queryTrimmed),
   }
 }
 

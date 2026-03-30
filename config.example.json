@@ -4,10 +4,17 @@
   "editor": "nvim",
   "editor_cmd": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
   "keybind_mode": "vim",
+  "sort_order": "zoxide-first",
   "zoxide_mode": "rank",
   "auto_update": true,
   "dir_length": 2,
   "hidden_sessions": ["scratch", "tmp*"],
+  "icons": {
+    "tmux": "",
+    "configured": "",
+    "project": "",
+    "opencode": ""
+  },
   "default_session": {
     "startup_command": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\""
   },

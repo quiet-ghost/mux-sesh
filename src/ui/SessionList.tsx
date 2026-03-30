@@ -1,18 +1,20 @@
 import { colors } from '../styles/theme'
 import { formatSessionAge } from '../util/time'
+import type { IconConfig, Item } from '../types'
+import { getSessionSection } from '../items/order'
 import HighlightedText from './HighlightedText'
-import { getItemIconPresentation } from './item-icon'
+import { formatSectionHeader, getItemIconPresentation } from './item-icon'
 import { getVisibleWindow } from './list-window'
-import type { Item } from '../types'
 
 interface Props {
   items: Item[]
   cursor: number
   maxItems?: number
   searchQuery?: string
+  icons?: IconConfig
 }
 
-export default function SessionList({ items, cursor, maxItems = 20, searchQuery = '' }: Props) {
+export default function SessionList({ items, cursor, maxItems = 20, searchQuery = '', icons }: Props) {
   const isSearching = searchQuery.trim().length > 0
   const visibleWindow = getVisibleWindow(items, cursor, maxItems)
 
@@ -27,49 +29,60 @@ export default function SessionList({ items, cursor, maxItems = 20, searchQuery 
             ? formatSessionAge(item.createdAt)
             : ''
           : item.desc
-        const icon = getItemIconPresentation(item)
+        const icon = getItemIconPresentation(item, icons)
+        const currentSection = getSessionSection(item)
+        const previousItem = absoluteIndex > 0 ? items[absoluteIndex - 1] : undefined
+        const previousSection = previousItem ? getSessionSection(previousItem) : undefined
+        const showSectionHeader = i === 0 || currentSection !== previousSection
+        const sectionHeader = formatSectionHeader(currentSection, icons)
 
         return (
-          <box
-            key={i}
-            style={{
-              backgroundColor: absoluteIndex === cursor ? colors.backgroundAlt : 'transparent',
-              height: 1,
-              paddingLeft: 2,
-            }}
-          >
-            {absoluteIndex === cursor && <text> </text>}
-            <text>
-              {absoluteIndex + 1}{' '}
-              {item.isSession ? (
-                <>
-                  <span style={{ fg: item.isAttached ? colors.active : colors.inactive }}>
-                    {item.isAttached ? '●' : '○'}
-                  </span>{' '}
-                  {isSearching && matchIndices && matchIndices.length > 0 ? (
-                    <>
-                      <HighlightedText text={item.title} matchIndices={matchIndices} />
-                      {' '.repeat(20 - item.title.length)}
-                    </>
-                  ) : (
-                    titlePadded
-                  )}{' '}
-                </>
-              ) : (
-                <>
-                  <span style={{ fg: icon.color }}>{icon.glyph}</span>{' '}
-                  {isSearching && matchIndices && matchIndices.length > 0 ? (
-                    <>
-                      <HighlightedText text={item.title} matchIndices={matchIndices} />
-                      {' '.repeat(20 - item.title.length)}
-                    </>
-                  ) : (
-                    titlePadded
-                  )}{' '}
-                </>
-              )}
-              <span style={{ fg: colors.inactive }}>{itemMeta}</span>
-            </text>
+          <box key={i} style={{ flexDirection: 'column' }}>
+            {showSectionHeader && (
+              <text style={{ fg: colors.separator, marginTop: absoluteIndex === 0 ? 0 : 1, marginBottom: 1 }}>
+                <span style={{ fg: sectionHeader.color }}>{sectionHeader.text}</span>
+              </text>
+            )}
+            <box
+              style={{
+                backgroundColor: absoluteIndex === cursor ? colors.backgroundAlt : 'transparent',
+                height: 1,
+                paddingLeft: 2,
+              }}
+            >
+              {absoluteIndex === cursor && <text> </text>}
+              <text>
+                {absoluteIndex + 1}{' '}
+                {item.isSession ? (
+                  <>
+                    <span style={{ fg: item.isAttached ? colors.active : colors.inactive }}>
+                      {item.isAttached ? '●' : '○'}
+                    </span>{' '}
+                    {isSearching && matchIndices && matchIndices.length > 0 ? (
+                      <>
+                        <HighlightedText text={item.title} matchIndices={matchIndices} />
+                        {' '.repeat(20 - item.title.length)}
+                      </>
+                    ) : (
+                      titlePadded
+                    )}{' '}
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fg: icon.color }}>{icon.glyph}</span>{' '}
+                    {isSearching && matchIndices && matchIndices.length > 0 ? (
+                      <>
+                        <HighlightedText text={item.title} matchIndices={matchIndices} />
+                        {' '.repeat(20 - item.title.length)}
+                      </>
+                    ) : (
+                      titlePadded
+                    )}{' '}
+                  </>
+                )}
+                <span style={{ fg: colors.inactive }}>{itemMeta}</span>
+              </text>
+            </box>
           </box>
         )
       })}

@@ -1,10 +1,16 @@
 import { join } from 'path'
 import { mkdir } from 'fs/promises'
-import type { Config, KeybindMode, ProjectProfile, ProjectWildcard, SessionDefaults, ZoxideMode } from '../types'
+import type { Config, IconConfig, KeybindMode, ProjectProfile, ProjectWildcard, SessionDefaults, SortOrder, ZoxideMode } from '../types'
 
 const DEFAULT_EDITOR = 'nvim'
 const DEFAULT_EDITOR_COMMAND =
   "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\""
+const DEFAULT_ICONS: IconConfig = {
+  tmux: '',
+  configured: '',
+  project: '',
+  opencode: '',
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -35,6 +41,12 @@ function asZoxideMode(value: unknown): ZoxideMode | undefined {
   return value === 'off' || value === 'rank' || value === 'merge' ? value : undefined
 }
 
+function asSortOrder(value: unknown): SortOrder | undefined {
+  return value === 'live-first' || value === 'configured-first' || value === 'zoxide-first' || value === 'alphabetical'
+    ? value
+    : undefined
+}
+
 function asPositiveInteger(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : undefined
 }
@@ -62,6 +74,19 @@ function normalizeSessionDefaults(value: unknown): SessionDefaults | undefined {
   return {
     startupCommand,
     previewCommand,
+  }
+}
+
+function normalizeIcons(value: unknown): IconConfig | undefined {
+  if (!isRecord(value)) {
+    return undefined
+  }
+
+  return {
+    tmux: asString(value.tmux) ?? DEFAULT_ICONS.tmux,
+    configured: asString(value.configured) ?? asString(value.config) ?? DEFAULT_ICONS.configured,
+    project: asString(value.project) ?? DEFAULT_ICONS.project,
+    opencode: asString(value.opencode) ?? DEFAULT_ICONS.opencode,
   }
 }
 
@@ -138,9 +163,11 @@ export function normalizeConfig(rawConfig: unknown, homeDir = process.env.HOME |
   const editorCmd = asString(raw.editor_cmd) ?? asString(raw.editorCmd) ?? defaultConfig.editorCmd
   const keybindMode = asKeybindMode(raw.keybind_mode) ?? asKeybindMode(raw.keybindMode) ?? defaultConfig.keybindMode
   const zoxideMode = asZoxideMode(raw.zoxide_mode) ?? asZoxideMode(raw.zoxideMode) ?? defaultConfig.zoxideMode
+  const sortOrder = asSortOrder(raw.sort_order) ?? asSortOrder(raw.sortOrder) ?? defaultConfig.sortOrder
   const autoUpdate = asBoolean(raw.auto_update) ?? asBoolean(raw.autoUpdate) ?? defaultConfig.autoUpdate
   const dirLength = asPositiveInteger(raw.dir_length) ?? asPositiveInteger(raw.dirLength) ?? defaultConfig.dirLength
   const hiddenSessions = asStringArray(raw.hidden_sessions) ?? asStringArray(raw.hiddenSessions) ?? defaultConfig.hiddenSessions
+  const icons = normalizeIcons(raw.icons) ?? defaultConfig.icons
   const configuredDefaultSession = normalizeSessionDefaults(raw.default_session) ?? normalizeSessionDefaults(raw.defaultSession)
   const defaultSession = {
     startupCommand: configuredDefaultSession?.startupCommand ?? editorCmd,
@@ -154,9 +181,11 @@ export function normalizeConfig(rawConfig: unknown, homeDir = process.env.HOME |
     editorCmd,
     keybindMode,
     zoxideMode,
+    sortOrder,
     autoUpdate,
     dirLength,
     hiddenSessions,
+    icons,
     defaultSession,
     projects: normalizeProjectProfiles(raw.projects, homeDir) ?? defaultConfig.projects,
     wildcards: normalizeWildcards(raw.wildcards, homeDir) ?? defaultConfig.wildcards,
@@ -171,9 +200,11 @@ export function getDefaultConfig(homeDir = process.env.HOME || '~'): Config {
     editorCmd: DEFAULT_EDITOR_COMMAND,
     keybindMode: 'vim',
     zoxideMode: 'off',
+    sortOrder: 'live-first',
     autoUpdate: true,
     dirLength: 1,
     hiddenSessions: [],
+    icons: DEFAULT_ICONS,
     defaultSession: {
       startupCommand: DEFAULT_EDITOR_COMMAND,
     },

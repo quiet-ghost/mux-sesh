@@ -12,10 +12,17 @@ describe('config normalization', () => {
         editor: 'helix',
         editor_cmd: 'hx .',
         keybind_mode: 'standard',
+        sort_order: 'configured-first',
         zoxide_mode: 'merge',
         auto_update: false,
         dir_length: 3,
         hidden_sessions: ['scratch', 'tmp*'],
+        icons: {
+          tmux: 'T',
+          configured: 'C',
+          project: 'P',
+          opencode: 'O',
+        },
         default_session: {
           startup_command: 'bun run dev',
           preview_command: 'git status --short',
@@ -44,10 +51,17 @@ describe('config normalization', () => {
     expect(config.editor).toBe('helix')
     expect(config.editorCmd).toBe('hx .')
     expect(config.keybindMode).toBe('standard')
+    expect(config.sortOrder).toBe('configured-first')
     expect(config.zoxideMode).toBe('merge')
     expect(config.autoUpdate).toBe(false)
     expect(config.dirLength).toBe(3)
     expect(config.hiddenSessions).toEqual(['scratch', 'tmp*'])
+    expect(config.icons).toEqual({
+      tmux: 'T',
+      configured: 'C',
+      project: 'P',
+      opencode: 'O',
+    })
     expect(config.defaultSession).toEqual({
       startupCommand: 'bun run dev',
       previewCommand: 'git status --short',
@@ -88,6 +102,7 @@ describe('config normalization', () => {
     const config = normalizeConfig(
       {
         keybind_mode: 'invalid',
+        sort_order: 'invalid',
         zoxide_mode: 'invalid',
         auto_update: 'nope',
         dir_length: 0,
@@ -97,6 +112,7 @@ describe('config normalization', () => {
     )
 
     expect(config.keybindMode).toBe(defaults.keybindMode)
+    expect(config.sortOrder).toBe(defaults.sortOrder)
     expect(config.zoxideMode).toBe(defaults.zoxideMode)
     expect(config.autoUpdate).toBe(defaults.autoUpdate)
     expect(config.dirLength).toBe(defaults.dirLength)

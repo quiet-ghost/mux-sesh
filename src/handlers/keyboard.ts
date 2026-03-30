@@ -40,6 +40,7 @@ export interface KeyboardHandlerContext {
   handleKillSession: (sessionName: string) => Promise<void>
   handleLastSession: () => Promise<void>
   handleRootSession: (item?: Item) => Promise<void>
+  handleEditTarget: (item?: Item) => Promise<void>
   loadOpencodeStatsForSession: (sessionName: string) => Promise<OpencodeSessionStats | null>
   setMessage: (message: string) => void
 }
@@ -105,6 +106,14 @@ export function handleNormalMode(
     const selectedItem =
       ctx.viewMode === ViewMode.Sessions ? ctx.regularSessions[ctx.cursor] : ctx.items[ctx.cursor]
     void ctx.handleRootSession(selectedItem)
+    return
+  }
+
+  if ((!isStandard && keyName === 'e') || (isStandard && key.ctrl && keyName === 'e')) {
+    const selectedItem = ctx.viewMode === ViewMode.Sessions ? ctx.regularSessions[ctx.cursor] : ctx.items[ctx.cursor]
+    if (selectedItem?.itemKind === 'configured') {
+      void ctx.handleEditTarget(selectedItem)
+    }
     return
   }
 

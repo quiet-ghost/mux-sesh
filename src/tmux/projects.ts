@@ -10,8 +10,6 @@ interface ZoxideEntry {
 }
 
 const PROJECT_MARKERS = ['.git', '.jj', 'package.json', 'Cargo.toml', 'go.mod', 'pyproject.toml', 'flake.nix']
-const DEFAULT_PROJECT_ICON = ''
-
 function isIgnoredProjectDirectory(baseName: string): boolean {
   return (
     baseName.startsWith('.') ||
@@ -29,7 +27,6 @@ function toProjectItem(projectPath: string): Item {
     path: projectPath,
     isSession: false,
     itemKind: 'project',
-    icon: DEFAULT_PROJECT_ICON,
   }
 }
 

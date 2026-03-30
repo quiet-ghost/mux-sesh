@@ -1,21 +1,25 @@
 import { colors } from '../styles/theme'
 import { formatSessionAge } from '../util/time'
-import type { Item, AppMode } from '../types'
+import type { IconConfig, Item, AppMode } from '../types'
 import { AppMode as AppModeEnum } from '../types'
+import { formatSectionHeader } from './item-icon'
 
 interface Props {
   sessions: Item[]
   appMode: AppMode
   cursor: number
+  icons?: IconConfig
 }
 
-export default function OpencodeSessionGroup({ sessions, appMode, cursor }: Props) {
+export default function OpencodeSessionGroup({ sessions, appMode, cursor, icons }: Props) {
   if (sessions.length === 0) return null
+
+  const header = formatSectionHeader('opencode', icons)
 
   return (
     <>
       <text style={{ fg: colors.separator, marginTop: 2, marginBottom: 1 }}>
-        ─ Opencode Sessions ─
+        <span style={{ fg: header.color }}>{header.text}</span>
       </text>
       {sessions.map((item, i) => {
         return (

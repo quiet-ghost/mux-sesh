@@ -1,8 +1,6 @@
 import type { Config, Item, ProjectProfile } from '../types'
 import { resolveProjectSession } from './session-rules'
 
-const DEFAULT_CONFIG_SESSION_ICON = ''
-
 function displayPath(path: string): string {
   return path.replace(process.env.HOME || '', '~')
 }
@@ -24,7 +22,7 @@ export async function getListedSessionItems(config: Config): Promise<Item[]> {
         path: profile.path,
         isSession: false,
         itemKind: 'configured' as const,
-        icon: profile.icon ?? DEFAULT_CONFIG_SESSION_ICON,
+        icon: profile.icon,
       }
     })
   )

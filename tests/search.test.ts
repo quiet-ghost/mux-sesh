@@ -42,4 +42,20 @@ describe('search', () => {
     expect(cleared[0]).toEqual(createItem())
     expect(cleared[0]).not.toBe(items[0])
   })
+
+  test('prefers an exact project root match over a weaker path match', () => {
+    const results = filterAndSortItems(
+      [
+        createItem({ title: 'highlight-helper', path: '/tmp/highlight-helper', desc: '~/dev/highlight-helper' }),
+        createItem({
+          title: 'notes',
+          path: '/tmp/misc/notes',
+          desc: '~/dev/misc/highlight-helper-notes',
+        }),
+      ],
+      'highlight-helper'
+    )
+
+    expect(results[0]?.title).toBe('highlight-helper')
+  })
 })
