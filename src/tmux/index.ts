@@ -1,6 +1,31 @@
 import { spawn } from 'bun'
 import type { Item, SessionDetails, WindowInfo } from '../types'
 
+export interface CreateTmuxSessionOptions {
+  startupCommand?: string
+}
+
+function sanitizeSessionName(name: string): string {
+  return name.replace(/\./g, '_').replace(/ /g, '_')
+}
+
+async function readTmuxValue(args: string[], errorMessage: string): Promise<string> {
+  const proc = spawn(args)
+  const output = await new Response(proc.stdout).text()
+  await proc.exited
+
+  if (proc.exitCode !== 0) {
+    throw new Error(errorMessage)
+  }
+
+  const value = output.trim()
+  if (!value) {
+    throw new Error(errorMessage)
+  }
+
+  return value
+}
+
 export async function listTmuxSessions(): Promise<Item[]> {
   const proc = spawn([
     'tmux',
@@ -19,6 +44,7 @@ export async function listTmuxSessions(): Promise<Item[]> {
       path: name,
       desc: '',
       isSession: true,
+      itemKind: 'tmux' as const,
       isAttached: attached === '1',
       windowCount: windows,
       createdAt: parseInt(created, 10),
@@ -29,8 +55,12 @@ export async function listTmuxSessions(): Promise<Item[]> {
   return sessions.sort((a, b) => a.title.localeCompare(b.title))
 }
 
-export async function createTmuxSession(name: string, path: string): Promise<void> {
-  const sessionName = name.replace(/\./g, '_')
+export async function createTmuxSession(
+  name: string,
+  path: string,
+  options: CreateTmuxSessionOptions = {}
+): Promise<void> {
+  const sessionName = sanitizeSessionName(name)
   const insideTmux = !!process.env.TMUX
 
   // Check if tmux is running
@@ -39,7 +69,12 @@ export async function createTmuxSession(name: string, path: string): Promise<voi
   const isTmuxRunning = tmuxRunning.exitCode === 0
 
   if (!insideTmux && !isTmuxRunning) {
-    const proc = spawn(['tmux', 'new-session', '-s', sessionName, '-c', path], {
+    const command = ['tmux', 'new-session', '-s', sessionName, '-c', path]
+    if (options.startupCommand) {
+      command.push(options.startupCommand)
+    }
+
+    const proc = spawn(command, {
       stdin: 'inherit',
       stdout: 'inherit',
       stderr: 'inherit',
@@ -55,15 +90,10 @@ export async function createTmuxSession(name: string, path: string): Promise<voi
     const createProc = spawn(['tmux', 'new-session', '-d', '-s', sessionName, '-c', path])
     await createProc.exited
 
-    const nvimProc = spawn([
-      'tmux',
-      'send-keys',
-      '-t',
-      sessionName,
-      "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
-      'Enter',
-    ])
-    await nvimProc.exited
+    if (options.startupCommand) {
+      const startupProc = spawn(['tmux', 'send-keys', '-t', sessionName, options.startupCommand, 'Enter'])
+      await startupProc.exited
+    }
   }
 
   const switchProc = spawn(['tmux', 'switch-client', '-t', sessionName])
@@ -71,7 +101,7 @@ export async function createTmuxSession(name: string, path: string): Promise<voi
 }
 
 export async function createNamedTmuxSession(name: string): Promise<void> {
-  const sessionName = name.replace(/\./g, '_').replace(/ /g, '_')
+  const sessionName = sanitizeSessionName(name)
   const insideTmux = !!process.env.TMUX
 
   const tmuxRunning = spawn(['pgrep', 'tmux'])
@@ -105,13 +135,27 @@ export async function switchTmuxSession(name: string): Promise<void> {
   await proc.exited
 }
 
+export async function getCurrentTmuxSessionName(): Promise<string> {
+  return readTmuxValue(
+    ['tmux', 'display-message', '-p', '#S'],
+    'Failed to resolve the current tmux session name'
+  )
+}
+
+export async function getTmuxSessionDirectory(sessionName: string): Promise<string> {
+  return readTmuxValue(
+    ['tmux', 'display-message', '-t', sessionName, '-p', '#{pane_current_path}'],
+    `Failed to resolve tmux directory for session '${sessionName}'`
+  )
+}
+
 export async function killTmuxSession(name: string): Promise<void> {
   const proc = spawn(['tmux', 'kill-session', '-t', name])
   await proc.exited
 }
 
 export async function renameTmuxSession(oldName: string, newName: string): Promise<void> {
-  const sanitizedName = newName.replace(/\./g, '_').replace(/ /g, '_')
+  const sanitizedName = sanitizeSessionName(newName)
   const proc = spawn(['tmux', 'rename-session', '-t', oldName, sanitizedName])
   await proc.exited
 }

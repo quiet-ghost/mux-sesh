@@ -3,5 +3,44 @@
   "repos_path": "~/dev/repos",
   "editor": "nvim",
   "editor_cmd": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
-  "keybind_mode": "vim"
+  "keybind_mode": "vim",
+  "sort_order": "zoxide-first",
+  "zoxide_mode": "rank",
+  "auto_update": true,
+  "dir_length": 2,
+  "hidden_sessions": ["scratch", "tmp*"],
+  "icons": {
+    "tmux": "",
+    "configured": "",
+    "project": "",
+    "opencode": ""
+  },
+  "default_session": {
+    "startup_command": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
+    "preview_command": "eza --all --color=never {}"
+  },
+  "projects": [
+    {
+      "path": "~/dev/projects/mux-sesh",
+      "session_name": "mux_sesh",
+      "startup_command": "bun run dev"
+    },
+    {
+      "path": "~/.dotfiles/hypr/.config/hypr",
+      "session_name": "hyprland",
+      "listed": true,
+      "icon": "",
+      "startup_command": "nvim"
+    }
+  ],
+  "wildcards": [
+    {
+      "pattern": "~/dev/repos/*",
+      "startup_command": "nvim"
+    },
+    {
+      "pattern": "~/work/**",
+      "startup_command": "bun run dev"
+    }
+  ]
 }

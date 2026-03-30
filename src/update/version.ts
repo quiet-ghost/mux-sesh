@@ -1,10 +1,11 @@
 import packageJson from '../../package.json'
 
 export const CURRENT_VERSION = packageJson.version
+const PACKAGE_NAME = packageJson.name
 
 export async function getLatestVersion(): Promise<string | null> {
   try {
-    const response = await fetch('https://registry.npmjs.org/mux-sesh/latest')
+    const response = await fetch(`https://registry.npmjs.org/${PACKAGE_NAME}/latest`)
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)

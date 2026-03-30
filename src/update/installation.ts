@@ -1,31 +1,20 @@
-import { spawn } from 'bun'
 import type { InstallMethod } from '../types'
 
 export async function detectInstallMethod(): Promise<InstallMethod> {
-  const execPath = process.execPath.toLowerCase()
-
   const checks = [
     {
       name: 'npm' as const,
-      command: () => spawn(['npm', 'list', '-g', '--depth=0']),
+      command: () => Bun.spawn(['npm', 'list', '-g', '--depth=0']),
     },
     {
       name: 'bun' as const,
-      command: () => spawn(['bun', 'pm', 'ls', '-g']),
+      command: () => Bun.spawn(['bun', 'pm', 'ls', '-g']),
     },
     {
       name: 'brew' as const,
-      command: () => spawn(['brew', 'list', '--formula']),
+      command: () => Bun.spawn(['brew', 'list', '--formula']),
     },
   ]
-
-  checks.sort((a, b) => {
-    const aMatch = execPath.includes(a.name)
-    const bMatch = execPath.includes(b.name)
-    if (aMatch && !bMatch) return -1
-    if (!aMatch && bMatch) return 1
-    return 0
-  })
 
   for (const check of checks) {
     try {
@@ -62,7 +51,7 @@ export async function performUpgrade(
       break
   }
   try {
-    const proc = spawn(command)
+    const proc = Bun.spawn(command)
     await proc.exited
     return proc.exitCode === 0
   } catch (error) {

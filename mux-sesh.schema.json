@@ -1,0 +1,219 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/quiet-ghost/mux-sesh/raw/main/mux-sesh.schema.json",
+  "title": "mux-sesh configuration",
+  "type": "object",
+  "properties": {
+    "project_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "projectPaths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "repos_path": {
+      "type": "string"
+    },
+    "reposPath": {
+      "type": "string"
+    },
+    "editor": {
+      "type": "string"
+    },
+    "editor_cmd": {
+      "type": "string"
+    },
+    "editorCmd": {
+      "type": "string"
+    },
+    "keybind_mode": {
+      "type": "string",
+      "enum": ["vim", "standard"]
+    },
+    "keybindMode": {
+      "type": "string",
+      "enum": ["vim", "standard"]
+    },
+    "zoxide_mode": {
+      "type": "string",
+      "enum": ["off", "rank", "merge"]
+    },
+    "zoxideMode": {
+      "type": "string",
+      "enum": ["off", "rank", "merge"]
+    },
+    "sort_order": {
+      "type": "string",
+      "enum": ["live-first", "configured-first", "zoxide-first", "alphabetical"]
+    },
+    "sortOrder": {
+      "type": "string",
+      "enum": ["live-first", "configured-first", "zoxide-first", "alphabetical"]
+    },
+    "auto_update": {
+      "type": "boolean"
+    },
+    "autoUpdate": {
+      "type": "boolean"
+    },
+    "dir_length": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "dirLength": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "hidden_sessions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "hiddenSessions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "icons": {
+      "$ref": "#/definitions/icons"
+    },
+    "default_session": {
+      "$ref": "#/definitions/sessionDefaults"
+    },
+    "defaultSession": {
+      "$ref": "#/definitions/sessionDefaults"
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/projectProfile"
+      }
+    },
+    "wildcards": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/projectWildcard"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "sessionDefaults": {
+      "type": "object",
+      "properties": {
+        "startup_command": {
+          "type": "string"
+        },
+        "startupCommand": {
+          "type": "string"
+        },
+        "preview_command": {
+          "type": "string"
+        },
+        "previewCommand": {
+          "type": "string"
+        },
+        "listed": {
+          "type": "boolean"
+        },
+        "listed": {
+          "type": "boolean"
+        },
+        "icon": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "icons": {
+      "type": "object",
+      "properties": {
+        "tmux": {
+          "type": "string"
+        },
+        "configured": {
+          "type": "string"
+        },
+        "config": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "opencode": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "projectProfile": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "session_name": {
+          "type": "string"
+        },
+        "sessionName": {
+          "type": "string"
+        },
+        "startup_command": {
+          "type": "string"
+        },
+        "startupCommand": {
+          "type": "string"
+        },
+        "preview_command": {
+          "type": "string"
+        },
+        "previewCommand": {
+          "type": "string"
+        },
+        "listed": {
+          "type": "boolean"
+        },
+        "icon": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "projectWildcard": {
+      "type": "object",
+      "required": ["pattern"],
+      "properties": {
+        "pattern": {
+          "type": "string"
+        },
+        "session_name": {
+          "type": "string"
+        },
+        "sessionName": {
+          "type": "string"
+        },
+        "startup_command": {
+          "type": "string"
+        },
+        "startupCommand": {
+          "type": "string"
+        },
+        "preview_command": {
+          "type": "string"
+        },
+        "previewCommand": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

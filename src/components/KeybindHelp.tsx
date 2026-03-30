@@ -1,13 +1,15 @@
 import { colors } from '../styles/theme'
-import { AppMode, KeybindMode } from '../types'
+import { AppMode, KeybindMode, type Item } from '../types'
 
 interface Props {
   appMode: AppMode
   keybindMode?: KeybindMode
+  selectedItem?: Item
 }
 
-export default function KeybindHelp({ appMode, keybindMode = 'vim' }: Props) {
+export default function KeybindHelp({ appMode, keybindMode = 'vim', selectedItem }: Props) {
   const isStandard = keybindMode === 'standard'
+  const showEditTarget = selectedItem?.itemKind === 'configured' && appMode === AppMode.Normal
   if (appMode === AppMode.Search || appMode === AppMode.NewSession || appMode === AppMode.Rename) {
     if (isStandard) {
       // Standard mode: show Ctrl+X prefix keybinds in vertical layout matching vim mode
@@ -38,6 +40,23 @@ export default function KeybindHelp({ appMode, keybindMode = 'vim' }: Props) {
             <span style={{ fg: colors.separator }}>│ </span>
             <span style={{ fg: colors.action }}>opencode</span>
           </text>
+          <text>
+            <span style={{ fg: colors.key }}>Ctrl+X l </span>
+            <span style={{ fg: colors.separator }}>│ </span>
+            <span style={{ fg: colors.action }}>last</span>
+          </text>
+        <text>
+          <span style={{ fg: colors.key }}>Ctrl+X g </span>
+          <span style={{ fg: colors.separator }}>│ </span>
+          <span style={{ fg: colors.action }}>root</span>
+        </text>
+          {showEditTarget && (
+            <text>
+              <span style={{ fg: colors.key }}>Ctrl+E </span>
+              <span style={{ fg: colors.separator }}>│ </span>
+              <span style={{ fg: colors.action }}>edit</span>
+            </text>
+          )}
           <text>
             <span style={{ fg: colors.key }}>Ctrl+X R </span>
             <span style={{ fg: colors.separator }}>│ </span>
@@ -157,6 +176,16 @@ export default function KeybindHelp({ appMode, keybindMode = 'vim' }: Props) {
           <span style={{ fg: colors.action }}>opencode</span>
         </text>
         <text>
+          <span style={{ fg: colors.key }}>Ctrl+L </span>
+          <span style={{ fg: colors.separator }}>│ </span>
+          <span style={{ fg: colors.action }}>last</span>
+        </text>
+        <text>
+          <span style={{ fg: colors.key }}>Ctrl+G </span>
+          <span style={{ fg: colors.separator }}>│ </span>
+          <span style={{ fg: colors.action }}>root</span>
+        </text>
+        <text>
           <span style={{ fg: colors.key }}>Ctrl+X R </span>
           <span style={{ fg: colors.separator }}>│ </span>
           <span style={{ fg: colors.action }}>refresh</span>
@@ -207,6 +236,23 @@ export default function KeybindHelp({ appMode, keybindMode = 'vim' }: Props) {
         <span style={{ fg: colors.separator }}>│ </span>
         <span style={{ fg: colors.action }}>opencode</span>
       </text>
+      <text>
+        <span style={{ fg: colors.key }}>l </span>
+        <span style={{ fg: colors.separator }}>│ </span>
+        <span style={{ fg: colors.action }}>last</span>
+      </text>
+      <text>
+        <span style={{ fg: colors.key }}>g </span>
+        <span style={{ fg: colors.separator }}>│ </span>
+        <span style={{ fg: colors.action }}>root</span>
+      </text>
+      {showEditTarget && (
+        <text>
+          <span style={{ fg: colors.key }}>e </span>
+          <span style={{ fg: colors.separator }}>│ </span>
+          <span style={{ fg: colors.action }}>edit</span>
+        </text>
+      )}
       <text>
         <span style={{ fg: colors.key }}>R </span>
         <span style={{ fg: colors.separator }}>│ </span>

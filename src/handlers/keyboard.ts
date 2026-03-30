@@ -1,65 +1,81 @@
-import { AppMode, ViewMode, KeybindMode } from '../types'
+import type { TextareaRenderable } from '@opentui/core'
+import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import { AppMode, ViewMode, KeybindMode, type Item, type OpencodeSessionStats } from '../types'
 import { requestShutdown } from '../util/shutdown'
+
+export interface KeyboardInput {
+  name?: string
+  ctrl?: boolean
+  shift?: boolean
+}
 
 export interface KeyboardHandlerContext {
   appMode: AppMode
   viewMode: ViewMode
-  items: any[]
-  regularSessions: any[]
-  opencodeSessions: any[]
+  items: Item[]
+  regularSessions: Item[]
+  opencodeSessions: Item[]
   cursor: number
   opencodeCursor: number
   searchQuery: string
   renameTarget: string
-  projectItems: any[]
-  sessionItems: any[]
+  projectItems: Item[]
+  sessionItems: Item[]
   prefixActive: boolean
-  prefixTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>
-  textareaRef: React.MutableRefObject<any>
+  prefixTimeoutRef: MutableRefObject<NodeJS.Timeout | null>
+  textareaRef: MutableRefObject<TextareaRenderable | null>
 
   setAppMode: (mode: AppMode) => void
   setViewMode: (mode: ViewMode) => void
-  setCursor: (cursor: number | ((prev: number) => number)) => void
-  setOpencodeCursor: (cursor: number | ((prev: number) => number)) => void
+  setCursor: Dispatch<SetStateAction<number>>
+  setOpencodeCursor: Dispatch<SetStateAction<number>>
   setSearchQuery: (query: string) => void
   setRenameTarget: (target: string) => void
-  setAllItems: (items: any[]) => void
-  setItems: (items: any[]) => void
+  setAllItems: Dispatch<SetStateAction<Item[]>>
+  setItems: Dispatch<SetStateAction<Item[]>>
   setPrefixActive: (active: boolean) => void
 
   refreshItems: (forceViewMode?: ViewMode) => Promise<void>
-  handleSelect: (item: any) => Promise<void>
+  handleSelect: (item: Item) => Promise<void>
   handleKillSession: (sessionName: string) => Promise<void>
-  loadOpencodeStatsForSession: (sessionName: string) => Promise<any>
+  handleLastSession: () => Promise<void>
+  handleRootSession: (item?: Item) => Promise<void>
+  handleEditTarget: (item?: Item) => Promise<void>
+  loadOpencodeStatsForSession: (sessionName: string) => Promise<OpencodeSessionStats | null>
   setMessage: (message: string) => void
 }
 
+function getKeyName(key: KeyboardInput): string {
+  return key.name ?? ''
+}
+
 export function handleNormalMode(
-  key: any,
+  key: KeyboardInput,
   ctx: KeyboardHandlerContext,
   keybindMode: KeybindMode = 'vim'
 ) {
+  const keyName = getKeyName(key)
   // Standard mode requires Ctrl for most actions
   const isStandard = keybindMode === 'standard'
 
   // Handle quit (q for vim, Ctrl+Q or Escape for standard)
   if (
-    (isStandard && ((key.ctrl && key.name === 'q') || key.name === 'escape')) ||
-    (!isStandard && (key.name === 'q' || key.name === 'escape'))
+    (isStandard && ((key.ctrl && keyName === 'q') || keyName === 'escape')) ||
+    (!isStandard && (keyName === 'q' || keyName === 'escape'))
   ) {
     void requestShutdown(0)
     return
   }
 
   // Handle search mode (i for vim, Ctrl+I for standard)
-  if ((!isStandard && key.name === 'i') || (isStandard && key.ctrl && key.name === 'i')) {
+  if ((!isStandard && keyName === 'i') || (isStandard && key.ctrl && keyName === 'i')) {
     ctx.setAppMode(AppMode.Search)
     ctx.setSearchQuery('')
     return
   }
 
   // Handle new session (n for vim, Ctrl+N for standard)
-  if ((!isStandard && key.name === 'n') || (isStandard && key.ctrl && key.name === 'n')) {
+  if ((!isStandard && keyName === 'n') || (isStandard && key.ctrl && keyName === 'n')) {
     ctx.setAppMode(AppMode.NewSession)
     if (ctx.viewMode === ViewMode.Sessions) {
     }
@@ -72,7 +88,7 @@ export function handleNormalMode(
   }
 
   // Handle opencode mode (o for vim, Ctrl+O for standard)
-  if ((!isStandard && key.name === 'o') || (isStandard && key.ctrl && key.name === 'o')) {
+  if ((!isStandard && keyName === 'o') || (isStandard && key.ctrl && keyName === 'o')) {
     if (ctx.viewMode === ViewMode.Sessions && ctx.opencodeSessions.length > 0) {
       ctx.setAppMode(AppMode.OpencodeManage)
       ctx.setOpencodeCursor(0)
@@ -81,9 +97,29 @@ export function handleNormalMode(
     return
   }
 
+  if ((!isStandard && keyName === 'l') || (isStandard && key.ctrl && keyName === 'l')) {
+    void ctx.handleLastSession()
+    return
+  }
+
+  if ((!isStandard && keyName === 'g') || (isStandard && key.ctrl && keyName === 'g')) {
+    const selectedItem =
+      ctx.viewMode === ViewMode.Sessions ? ctx.regularSessions[ctx.cursor] : ctx.items[ctx.cursor]
+    void ctx.handleRootSession(selectedItem)
+    return
+  }
+
+  if ((!isStandard && keyName === 'e') || (isStandard && key.ctrl && keyName === 'e')) {
+    const selectedItem = ctx.viewMode === ViewMode.Sessions ? ctx.regularSessions[ctx.cursor] : ctx.items[ctx.cursor]
+    if (selectedItem?.itemKind === 'configured') {
+      void ctx.handleEditTarget(selectedItem)
+    }
+    return
+  }
+
   // Handle delete/kill (d for vim, Ctrl+D for standard)
-  if ((!isStandard && key.name === 'd') || (isStandard && key.ctrl && key.name === 'd')) {
-    if (ctx.viewMode === ViewMode.Sessions && ctx.items[ctx.cursor]?.isSession) {
+  if ((!isStandard && keyName === 'd') || (isStandard && key.ctrl && keyName === 'd')) {
+    if (ctx.viewMode === ViewMode.Sessions && ctx.regularSessions[ctx.cursor]?.isSession) {
       ctx.handleKillSession(ctx.regularSessions[ctx.cursor].title)
     }
     return
@@ -91,10 +127,10 @@ export function handleNormalMode(
 
   // Handle rename (r for vim, Ctrl+R for standard)
   if (
-    (!isStandard && key.name === 'r') ||
-    (isStandard && key.ctrl && key.name === 'r' && !key.shift)
+    (!isStandard && keyName === 'r') ||
+    (isStandard && key.ctrl && keyName === 'r' && !key.shift)
   ) {
-    if (ctx.viewMode === ViewMode.Sessions && ctx.items[ctx.cursor]?.isSession) {
+    if (ctx.viewMode === ViewMode.Sessions && ctx.regularSessions[ctx.cursor]?.isSession) {
       ctx.setAppMode(AppMode.Rename)
       ctx.setRenameTarget(ctx.regularSessions[ctx.cursor].title)
       ctx.setSearchQuery(ctx.regularSessions[ctx.cursor].title)
@@ -104,8 +140,8 @@ export function handleNormalMode(
 
   // Handle refresh (R for vim, Ctrl+Shift+R for standard)
   if (
-    (!isStandard && key.name === 'R') ||
-    (isStandard && key.ctrl && key.shift && key.name === 'r')
+    (!isStandard && keyName === 'R') ||
+    (isStandard && key.ctrl && key.shift && keyName === 'r')
   ) {
     ctx.refreshItems()
     ctx.setMessage('Refreshed')
@@ -115,12 +151,12 @@ export function handleNormalMode(
 
   // Handle view mode switches (vim only)
   if (!isStandard) {
-    if (key.name === 's') {
+    if (keyName === 's') {
       ctx.setViewMode(ViewMode.Sessions)
       ctx.refreshItems(ViewMode.Sessions)
       return
     }
-    if (key.name === 'p') {
+    if (keyName === 'p') {
       ctx.setViewMode(ViewMode.Projects)
       ctx.refreshItems(ViewMode.Projects)
       return
@@ -128,7 +164,7 @@ export function handleNormalMode(
   }
 
   // Handle navigation
-  if (key.name === 'down' || (!isStandard && key.name === 'j')) {
+  if (keyName === 'down' || (!isStandard && keyName === 'j')) {
     if (ctx.viewMode === ViewMode.Sessions) {
       ctx.setCursor(c => Math.min(c + 1, ctx.regularSessions.length - 1))
     } else {
@@ -137,13 +173,13 @@ export function handleNormalMode(
     return
   }
 
-  if (key.name === 'up' || (!isStandard && key.name === 'k')) {
+  if (keyName === 'up' || (!isStandard && keyName === 'k')) {
     ctx.setCursor(c => Math.max(c - 1, 0))
     return
   }
 
   // Handle selection
-  if (key.name === 'return') {
+  if (keyName === 'return') {
     if (ctx.regularSessions[ctx.cursor]) {
       ctx.handleSelect(ctx.regularSessions[ctx.cursor])
     }
@@ -151,8 +187,8 @@ export function handleNormalMode(
   }
 
   // Handle number shortcuts (vim only)
-  if (!isStandard && key.name >= '1' && key.name <= '9') {
-    const num = parseInt(key.name) - 1
+  if (!isStandard && keyName >= '1' && keyName <= '9') {
+    const num = parseInt(keyName, 10) - 1
     if (num >= 0 && num < ctx.regularSessions.length) {
       ctx.handleSelect(ctx.regularSessions[num])
     }
@@ -160,24 +196,25 @@ export function handleNormalMode(
 }
 
 export function handleOpencodeManageMode(
-  key: any,
+  key: KeyboardInput,
   ctx: KeyboardHandlerContext,
   keybindMode: KeybindMode = 'vim'
 ) {
+  const keyName = getKeyName(key)
   const isStandard = keybindMode === 'standard'
 
   // Handle back/exit (o/Esc for vim, Ctrl+O/Esc for standard)
   if (
-    key.name === 'escape' ||
-    (!isStandard && key.name === 'o') ||
-    (isStandard && key.ctrl && key.name === 'o')
+    keyName === 'escape' ||
+    (!isStandard && keyName === 'o') ||
+    (isStandard && key.ctrl && keyName === 'o')
   ) {
     ctx.setAppMode(AppMode.Normal)
     return
   }
 
   // Handle navigation down
-  if (key.name === 'down' || (!isStandard && key.name === 'j')) {
+  if (keyName === 'down' || (!isStandard && keyName === 'j')) {
     ctx.setOpencodeCursor(c => {
       const newCursor = Math.min(c + 1, ctx.opencodeSessions.length - 1)
       if (newCursor !== c && ctx.opencodeSessions[newCursor]) {
@@ -189,7 +226,7 @@ export function handleOpencodeManageMode(
   }
 
   // Handle navigation up
-  if (key.name === 'up' || (!isStandard && key.name === 'k')) {
+  if (keyName === 'up' || (!isStandard && keyName === 'k')) {
     ctx.setOpencodeCursor(c => {
       const newCursor = Math.max(c - 1, 0)
       if (newCursor !== c && ctx.opencodeSessions[newCursor]) {
@@ -201,7 +238,7 @@ export function handleOpencodeManageMode(
   }
 
   // Handle delete/kill (d for vim, Ctrl+D for standard)
-  if ((!isStandard && key.name === 'd') || (isStandard && key.ctrl && key.name === 'd')) {
+  if ((!isStandard && keyName === 'd') || (isStandard && key.ctrl && keyName === 'd')) {
     if (ctx.opencodeSessions[ctx.opencodeCursor]) {
       ctx.handleKillSession(ctx.opencodeSessions[ctx.opencodeCursor].title)
     }
@@ -209,7 +246,7 @@ export function handleOpencodeManageMode(
   }
 
   // Handle rename (r for vim, Ctrl+R for standard)
-  if ((!isStandard && key.name === 'r') || (isStandard && key.ctrl && key.name === 'r')) {
+  if ((!isStandard && keyName === 'r') || (isStandard && key.ctrl && keyName === 'r')) {
     if (ctx.opencodeSessions[ctx.opencodeCursor]) {
       ctx.setAppMode(AppMode.Rename)
       ctx.setRenameTarget(ctx.opencodeSessions[ctx.opencodeCursor].title)
@@ -219,10 +256,11 @@ export function handleOpencodeManageMode(
 }
 
 export function handleSearchMode(
-  key: any,
+  key: KeyboardInput,
   ctx: KeyboardHandlerContext,
   keybindMode: KeybindMode = 'vim'
 ) {
+  const keyName = getKeyName(key)
   const isStandard = keybindMode === 'standard'
 
   // Standard mode: Prefix key system with Ctrl+X
@@ -236,7 +274,7 @@ export function handleSearchMode(
       }
       ctx.setPrefixActive(false)
 
-      switch (key.name) {
+      switch (keyName) {
         case 'd': // Ctrl+X d - delete/kill
           if (ctx.viewMode === ViewMode.Sessions && ctx.items[ctx.cursor]?.isSession) {
             ctx.handleKillSession(ctx.items[ctx.cursor].title)
@@ -257,17 +295,27 @@ export function handleSearchMode(
             ctx.loadOpencodeStatsForSession(ctx.opencodeSessions[0].title)
           }
           return
-        case 'r': // Ctrl+X r - rename
+        case 'l': // Ctrl+X l - last session
+          void ctx.handleLastSession()
+          return
+        case 'g': { // Ctrl+X g - root session
+          const selectedItem = ctx.viewMode === ViewMode.Sessions ? ctx.items[ctx.cursor] : ctx.items[ctx.cursor]
+          void ctx.handleRootSession(selectedItem)
+          return
+        }
+        case 'r':
+          if (key.shift) {
+            ctx.refreshItems()
+            ctx.setMessage('Refreshed')
+            setTimeout(() => ctx.setMessage(''), 2000)
+            return
+          }
+
           if (ctx.viewMode === ViewMode.Sessions && ctx.items[ctx.cursor]?.isSession) {
             ctx.setAppMode(AppMode.Rename)
             ctx.setRenameTarget(ctx.items[ctx.cursor].title)
             ctx.setSearchQuery(ctx.items[ctx.cursor].title)
           }
-          return
-        case 'R': // Ctrl+X R - refresh
-          ctx.refreshItems()
-          ctx.setMessage('Refreshed')
-          setTimeout(() => ctx.setMessage(''), 2000)
           return
         default:
           // Not a valid prefix command, ignore
@@ -276,7 +324,7 @@ export function handleSearchMode(
     }
 
     // Handle Ctrl+X prefix activation
-    if (key.ctrl && key.name === 'x') {
+    if (key.ctrl && keyName === 'x') {
       ctx.setPrefixActive(true)
 
       // Clear prefix after 2 seconds if no key pressed
@@ -288,14 +336,14 @@ export function handleSearchMode(
     }
 
     // Ctrl+Q to quit (immediate, no prefix needed)
-    if (key.ctrl && key.name === 'q') {
+    if (key.ctrl && keyName === 'q') {
       void requestShutdown(0)
       return
     }
   }
 
   // Handle Esc differently based on mode
-  if (key.name === 'escape') {
+  if (keyName === 'escape') {
     if (isStandard) {
       // Standard mode: just clear search, stay in search mode
       ctx.setSearchQuery('')
@@ -309,7 +357,7 @@ export function handleSearchMode(
     return
   }
 
-  switch (key.name) {
+  switch (keyName) {
     case 'return':
       if (ctx.items.length > 0) {
         ctx.handleSelect(ctx.items[0])
@@ -325,16 +373,17 @@ export function handleSearchMode(
 }
 
 export function handleNewSessionMode(
-  key: any,
+  key: KeyboardInput,
   ctx: KeyboardHandlerContext,
   keybindMode: KeybindMode = 'vim'
 ) {
+  const keyName = getKeyName(key)
   const isStandard = keybindMode === 'standard'
 
   // Handle Ctrl keybinds in standard mode
   if (isStandard && key.ctrl) {
     // Ctrl+I to switch to search mode
-    if (key.name === 'i') {
+      if (keyName === 'i') {
       ctx.setAppMode(AppMode.Search)
       ctx.setViewMode(ViewMode.Sessions)
       ctx.setAllItems(ctx.sessionItems)
@@ -344,14 +393,14 @@ export function handleNewSessionMode(
     }
 
     // Ctrl+D to delete session (if on sessions view)
-    if (key.name === 'd' && ctx.items[ctx.cursor]?.isSession) {
+      if (keyName === 'd' && ctx.items[ctx.cursor]?.isSession) {
       ctx.handleKillSession(ctx.items[ctx.cursor].title)
       return
     }
   }
 
   // Handle Esc differently based on mode
-  if (key.name === 'escape') {
+  if (keyName === 'escape') {
     if (isStandard) {
       // Standard mode: return to search mode (always in insert mode)
       ctx.setAppMode(AppMode.Search)
@@ -370,7 +419,7 @@ export function handleNewSessionMode(
     return
   }
 
-  switch (key.name) {
+  switch (keyName) {
     case 'return':
       break
     case 'down':
@@ -383,16 +432,17 @@ export function handleNewSessionMode(
 }
 
 export function handleRenameMode(
-  key: any,
+  key: KeyboardInput,
   ctx: KeyboardHandlerContext,
   keybindMode: KeybindMode = 'vim'
 ) {
+  const keyName = getKeyName(key)
   const isStandard = keybindMode === 'standard'
 
   // Handle Ctrl keybinds in standard mode
   if (isStandard && key.ctrl) {
     // Ctrl+I to switch to search mode
-    if (key.name === 'i') {
+      if (keyName === 'i') {
       ctx.setAppMode(AppMode.Search)
       ctx.setSearchQuery('')
       ctx.setRenameTarget('')
@@ -400,7 +450,7 @@ export function handleRenameMode(
     }
 
     // Ctrl+D to delete the rename target session
-    if (key.name === 'd' && ctx.renameTarget) {
+      if (keyName === 'd' && ctx.renameTarget) {
       ctx.handleKillSession(ctx.renameTarget)
       ctx.setAppMode(AppMode.Search)
       ctx.setSearchQuery('')
@@ -410,7 +460,7 @@ export function handleRenameMode(
   }
 
   // Handle Esc differently based on mode
-  if (key.name === 'escape') {
+  if (keyName === 'escape') {
     if (isStandard) {
       // Standard mode: return to search mode (always in insert mode)
       ctx.setAppMode(AppMode.Search)
@@ -427,7 +477,7 @@ export function handleRenameMode(
     return
   }
 
-  switch (key.name) {
+  switch (keyName) {
     case 'return':
       break
   }

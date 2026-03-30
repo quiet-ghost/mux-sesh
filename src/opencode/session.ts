@@ -10,6 +10,7 @@ import {
 } from './sqlite'
 import { getLastMessageTokens } from './tokens'
 import type { OpencodeStats } from './types'
+import { getTmuxSessionDirectory } from '../tmux'
 
 function toSummaryValue(value: number | null): number {
   return value ?? 0
@@ -36,23 +37,6 @@ async function buildSessionStats(row: OpencodeSessionRow): Promise<OpencodeStats
     contextLimit: lastMessageData?.contextLimit,
     sessionTotalCost: lastMessageData?.totalCost,
   }
-}
-
-export async function getTmuxSessionDirectory(sessionName: string): Promise<string> {
-  const proc = spawn(['tmux', 'display-message', '-t', sessionName, '-p', '#{pane_current_path}'])
-  const output = await new Response(proc.stdout).text()
-  await proc.exited
-
-  if (proc.exitCode !== 0) {
-    throw new Error(`Failed to resolve tmux directory for session '${sessionName}'`)
-  }
-
-  const directory = output.trim()
-  if (!directory) {
-    throw new Error(`tmux returned an empty directory for session '${sessionName}'`)
-  }
-
-  return directory
 }
 
 export async function getMessageCount(sessionID: string): Promise<number> {
