@@ -59,7 +59,7 @@ export function getSessionSectionPresentation(
     case 'opencode':
       return { glyph: resolvedIcons.opencode, color: theme.action, label: 'OpenCode' }
     case 'live':
-      return { glyph: resolvedIcons.tmux, color: theme.inactive, label: 'Live' }
+      return { glyph: resolvedIcons.tmux, color: theme.action, label: 'Live' }
   }
 }
 

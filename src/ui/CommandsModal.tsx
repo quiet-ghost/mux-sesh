@@ -47,31 +47,32 @@ export function getCommandEntries(
   selectedItem?: Item
 ): CommandEntry[] {
   const commandKey = (suffix: string, fallback: string) => (prefixKey ? prefixed(prefixKey, suffix) : fallback)
+  const prefixCategory = prefixKey ? `Prefix ${prefixKey}` : 'Prefix'
 
   if (appMode === AppMode.OpencodeManage) {
     return [
-      { id: 'back', category: 'Suggested', title: 'Back', keybind: 'esc' },
-      { id: 'rename-session', category: 'Session', title: 'Rename session', keybind: commandKey('r', 'r') },
-      { id: 'kill-session', category: 'Session', title: 'Kill session', keybind: commandKey('d', 'd') },
-      { id: 'open-settings', category: 'Settings', title: 'Open settings', keybind: commandKey('s', ',') },
+      { id: 'back', category: 'Direct', title: 'Back', keybind: 'esc' },
+      { id: 'kill-session', category: 'Direct', title: 'Kill session', keybind: 'd' },
+      { id: 'open-settings', category: 'Direct', title: 'Open settings', keybind: 'ctrl+p' },
+      { id: 'rename-session', category: prefixCategory, title: 'Rename session', keybind: commandKey('r', 'r') },
     ]
   }
 
   return [
-    { id: 'search', category: 'Suggested', title: 'Search', keybind: 'i' },
-    { id: 'new-session', category: 'Suggested', title: 'New session', keybind: 'n' },
-    { id: 'open-opencode', category: 'Suggested', title: 'Open OpenCode sessions', keybind: 'o' },
-    { id: 'open-settings', category: 'Suggested', title: 'Open settings', keybind: 'ctrl+p' },
-    { id: 'view-projects', category: 'View', title: 'Show projects', keybind: commandKey('p', 'p') },
-    { id: 'view-sessions', category: 'View', title: 'Show sessions', keybind: commandKey('s', 's') },
-    { id: 'rename-session', category: 'Session', title: 'Rename session', keybind: commandKey('r', 'r') },
-    { id: 'kill-session', category: 'Session', title: 'Kill session', keybind: commandKey('d', 'd') },
-    { id: 'last-session', category: 'Session', title: 'Last session', keybind: commandKey('l', 'l') },
-    { id: 'root-session', category: 'Session', title: 'Root session', keybind: commandKey('g', 'g') },
+    { id: 'search', category: 'Direct', title: 'Search', keybind: 'i' },
+    { id: 'new-session', category: 'Direct', title: 'New session', keybind: 'n' },
+    { id: 'open-opencode', category: 'Direct', title: 'Open OpenCode sessions', keybind: 'o' },
+    { id: 'kill-session', category: 'Direct', title: 'Kill session', keybind: 'd' },
+    { id: 'open-settings', category: 'Direct', title: 'Open settings', keybind: 'ctrl+p' },
+    { id: 'view-projects', category: prefixCategory, title: 'Show projects', keybind: commandKey('p', 'p') },
+    { id: 'view-sessions', category: prefixCategory, title: 'Show sessions', keybind: commandKey('s', 's') },
+    { id: 'rename-session', category: prefixCategory, title: 'Rename session', keybind: commandKey('r', 'r') },
+    { id: 'last-session', category: prefixCategory, title: 'Last session', keybind: commandKey('l', 'l') },
+    { id: 'root-session', category: prefixCategory, title: 'Root session', keybind: commandKey('g', 'g') },
     ...(selectedItem?.itemKind === 'configured'
-      ? [{ id: 'edit-target' as const, category: 'Project', title: 'Edit target', keybind: commandKey('e', 'e') }]
+      ? [{ id: 'edit-target' as const, category: prefixCategory, title: 'Edit target', keybind: commandKey('e', 'e') }]
       : []),
-    { id: 'refresh', category: 'App', title: 'Refresh', keybind: commandKey('shift+r', 'R') },
+    { id: 'refresh', category: prefixCategory, title: 'Refresh', keybind: commandKey('shift+r', 'R') },
   ]
 }
 

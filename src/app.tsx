@@ -677,7 +677,7 @@ export function App() {
 
   useEffect(() => {
     const unsubscribe = updateEvents.on(event => {
-      setToastMessage(`v${event.version}`)
+      setToastMessage(`Update ready ${event.version}`)
       setToastVisible(true)
       setTimeout(() => {
         setToastVisible(false)
@@ -716,6 +716,10 @@ export function App() {
 
     setCommandsCursor(current => Math.min(current, filteredCommandEntries.length - 1))
   }, [filteredCommandEntries.length])
+
+  useEffect(() => {
+    setCommandsCursor(0)
+  }, [commandsSearchQuery])
 
   useEffect(() => {
     if (filteredSettingsEntries.length === 0) {
@@ -831,12 +835,12 @@ export function App() {
   const prefixLabel = config?.prefixKey ? `${config.prefixKey} ...` : 'direct keys'
   const footerHint =
     appMode === AppMode.OpencodeManage
-      ? `o back  ctrl+p commands  ${prefixLabel}`
+      ? `o back  d kill  ctrl+p commands  ${prefixLabel}`
       : appMode === AppMode.NewSession
         ? 'enter create  esc cancel'
         : appMode === AppMode.Search
           ? 'enter select  esc cancel'
-          : `enter select  i search  n new  o opencode  ctrl+p commands  ${prefixLabel}`
+          : `enter select  i search  n new  o opencode  d kill  ctrl+p commands  ${prefixLabel}`
 
   return (
     <ThemeProvider theme={theme}>

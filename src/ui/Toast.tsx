@@ -16,18 +16,15 @@ export default function Toast({ message, visible }: ToastProps) {
         position: 'absolute',
         top: 1,
         right: 1,
-        border: true,
-        borderColor: theme.border,
-        backgroundColor: theme.surfaceModal,
-        padding: 0.3,
-        paddingLeft: 0.5,
-        paddingRight: 0.5,
+        backgroundColor: theme.surfaceAlt,
+        paddingLeft: 1,
+        paddingRight: 1,
         height: 2,
       }}
     >
       <box>
-        <text style={{ fg: theme.key }}> </text>
-        <text style={{ fg: theme.text, marginLeft: 1 }}> {message}</text>
+        <text style={{ fg: theme.secondary }}>●</text>
+        <text style={{ fg: theme.textMuted, marginLeft: 1 }}>{message}</text>
       </box>
     </box>
   )

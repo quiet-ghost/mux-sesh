@@ -216,7 +216,7 @@ export function handleNormalMode(
   }
 
   // Handle delete/kill (d for vim, Ctrl+D for standard)
-  if (!ctx.prefixKey && !isStandard && keyName === 'd') {
+  if (!isStandard && keyName === 'd') {
     if (ctx.viewMode === ViewMode.Sessions && ctx.regularSessions[ctx.cursor]?.isSession) {
       ctx.requestKillSession(ctx.regularSessions[ctx.cursor].title)
     }
@@ -385,7 +385,7 @@ export function handleOpencodeManageMode(
   }
 
   // Handle delete/kill (d for vim, Ctrl+D for standard)
-  if (!ctx.prefixKey && !isStandard && keyName === 'd') {
+  if (!isStandard && keyName === 'd') {
     if (ctx.opencodeSessions[ctx.opencodeCursor]) {
       ctx.requestKillSession(ctx.opencodeSessions[ctx.opencodeCursor].title)
     }

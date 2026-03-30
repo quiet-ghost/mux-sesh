@@ -1,5 +1,11 @@
 import { createContext, useContext, type ReactNode } from 'react'
-import type { DesktopTheme, ThemeColorScheme, ThemeColors, ThemeDefinition, ThemeVariant } from '../types'
+import type {
+  DesktopTheme,
+  ThemeColorScheme,
+  ThemeColors,
+  ThemeDefinition,
+  ThemeVariant,
+} from '../types'
 import { THEMES_A } from './opencode-themes-a'
 import { THEMES_B } from './opencode-themes-b'
 
@@ -40,9 +46,7 @@ function hexToRgb(hex: string) {
 }
 
 function rgbToHex(r: number, g: number, b: number) {
-  return `#${[r, g, b]
-    .map(channel => clamp(channel).toString(16).padStart(2, '0'))
-    .join('')}`
+  return `#${[r, g, b].map(channel => clamp(channel).toString(16).padStart(2, '0')).join('')}`
 }
 
 function luminance(color: string) {
@@ -58,7 +62,7 @@ const EXACT_TUI_THEME_COLORS: Partial<Record<string, Record<'light' | 'dark', Th
   rosepine: {
     dark: {
       background: '#191724',
-      surface: '#1f1d2e',
+      surface: '#191724',
       surfaceAlt: '#26233a',
       surfaceModal: '#1f1d2e',
       overlay: '#000000',
@@ -283,7 +287,10 @@ function themeFromDefinition(id: string, definition: ThemeDefinition): DesktopTh
   }
 }
 
-function pickVariant(theme: DesktopTheme, colorScheme: ThemeColorScheme): { mode: 'light' | 'dark'; variant: ThemeVariant } {
+function pickVariant(
+  theme: DesktopTheme,
+  colorScheme: ThemeColorScheme
+): { mode: 'light' | 'dark'; variant: ThemeVariant } {
   const mode = colorScheme === 'system' ? getSystemColorScheme() : colorScheme
   return {
     mode,
@@ -303,20 +310,35 @@ function resolveVariantTheme(theme: DesktopTheme, mode: 'light' | 'dark'): Theme
   const background = palette.neutral
   const ink = palette.ink
   const surface = overrides['surface-base'] ?? mix(background, ink, mode === 'dark' ? 0.08 : 0.035)
-  const surfaceAlt = overrides['surface-raised-base'] ?? overrides['surface-base-hover'] ?? mix(background, ink, mode === 'dark' ? 0.13 : 0.06)
-  const surfaceModal = overrides['surface-raised-stronger-non-alpha'] ?? overrides['surface-raised-stronger'] ?? overrides['surface-raised-base'] ?? surface
-  const borderMuted = overrides['border-weaker-base'] ?? mix(background, ink, mode === 'dark' ? 0.08 : 0.06)
-  const border = overrides['border-weak-base'] ?? mix(background, ink, mode === 'dark' ? 0.16 : 0.12)
+  const surfaceAlt =
+    overrides['surface-raised-base'] ??
+    overrides['surface-base-hover'] ??
+    mix(background, ink, mode === 'dark' ? 0.13 : 0.06)
+  const surfaceModal =
+    overrides['surface-raised-stronger-non-alpha'] ??
+    overrides['surface-raised-stronger'] ??
+    overrides['surface-raised-base'] ??
+    surface
+  const borderMuted =
+    overrides['border-weaker-base'] ?? mix(background, ink, mode === 'dark' ? 0.08 : 0.06)
+  const border =
+    overrides['border-weak-base'] ?? mix(background, ink, mode === 'dark' ? 0.16 : 0.12)
   const textMuted = overrides['text-base'] ?? mix(ink, background, mode === 'dark' ? 0.38 : 0.5)
   const textSubtle = overrides['text-weak'] ?? mix(ink, background, mode === 'dark' ? 0.55 : 0.66)
   const primary = palette.primary
-  const secondary = overrides['markdown-heading'] ?? overrides['syntax-constant'] ?? palette.accent ?? palette.primary
+  const secondary =
+    overrides['markdown-heading'] ??
+    overrides['syntax-constant'] ??
+    palette.accent ??
+    palette.primary
   const accent = overrides['markdown-link-text'] ?? palette.accent ?? palette.info
   const action = overrides['markdown-link-text'] ?? palette.info
   const fileTree = overrides['markdown-link'] ?? palette.info
   const program = overrides['markdown-code'] ?? palette.warning
   const separator = overrides['markdown-horizontal-rule'] ?? borderMuted
-  const dangerSurface = overrides['surface-critical-base'] ?? mix(background, palette.error, mode === 'dark' ? 0.2 : 0.12)
+  const dangerSurface =
+    overrides['surface-critical-base'] ??
+    mix(background, palette.error, mode === 'dark' ? 0.2 : 0.12)
   const selection = palette.primary
 
   return {
@@ -353,7 +375,10 @@ export function resolveTheme(
   colorScheme: ThemeColorScheme = DEFAULT_COLOR_SCHEME
 ) {
   const customCatalog = Object.fromEntries(
-    Object.entries(customThemes).map(([id, definition]) => [id, themeFromDefinition(id, definition)])
+    Object.entries(customThemes).map(([id, definition]) => [
+      id,
+      themeFromDefinition(id, definition),
+    ])
   )
   const catalog = {
     ...BUILTIN_THEMES,
