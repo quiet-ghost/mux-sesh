@@ -1,4 +1,4 @@
-import { colors } from '../styles/theme'
+import { useTheme } from '../styles/theme'
 import { AppMode, type IconConfig } from '../types'
 import HighlightedText from './HighlightedText'
 import { getItemIconPresentation } from './item-icon'
@@ -12,6 +12,7 @@ interface Props {
   maxItems?: number
   searchQuery?: string
   icons?: IconConfig
+  pendingKillSessionName?: string | null
 }
 
 export default function ItemList({
@@ -21,7 +22,9 @@ export default function ItemList({
   maxItems = 20,
   searchQuery = '',
   icons,
+  pendingKillSessionName,
 }: Props) {
+  const theme = useTheme()
   const isSearching = searchQuery.trim().length > 0
   const visibleWindow = getVisibleWindow(items, cursor, maxItems)
 
@@ -33,64 +36,60 @@ export default function ItemList({
         const descMatchIndices = item.searchMatch?.descIndices
         const hasTitleMatch = titleMatchIndices && titleMatchIndices.length > 0
         const hasDescMatch = descMatchIndices && descMatchIndices.length > 0
-        const icon = getItemIconPresentation(item, icons)
+        const icon = getItemIconPresentation(theme, item, icons)
         const sessionStatusLabel = item.linkedSessionName ? 'attach' : 'create'
         const linkedSessionLabel = item.linkedSessionName ? ` -> ${item.linkedSessionName}` : ''
+        const pendingKill = item.isSession && item.title === pendingKillSessionName
+        const selected = absoluteIndex === cursor
 
         return (
           <box
             key={i}
             style={{
-              backgroundColor: absoluteIndex === cursor ? colors.backgroundAlt : 'transparent',
-              height: 1,
-              paddingLeft: 2,
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              backgroundColor: pendingKill ? theme.dangerSurface : selected ? theme.surfaceAlt : 'transparent',
+              paddingLeft: 1,
+              paddingRight: 1,
             }}
           >
-            {absoluteIndex === cursor && <text> </text>}
             <text>
-              {absoluteIndex + 1}{' '}
+              <span style={{ fg: selected ? theme.primary : theme.textSubtle }}>{selected ? '› ' : '  '}</span>
               {item.isSession ? (
                 <>
-                  <span style={{ fg: item.isAttached ? colors.active : colors.inactive }}>
-                    {item.isAttached ? '●' : '○'}
-                  </span>{' '}
+                  <span style={{ fg: item.isAttached ? theme.active : theme.inactive }}>{item.isAttached ? '●' : '○'}</span>{' '}
                   {isSearching && hasTitleMatch ? (
                     <HighlightedText text={item.title} matchIndices={titleMatchIndices} />
                   ) : (
-                    item.title
-                  )}{' '}
-                  <span style={{ fg: colors.inactive }}>({item.windowCount})</span>
+                    <span style={{ fg: theme.text }}>{item.title}</span>
+                  )}
                 </>
               ) : (
                 <>
                   <span style={{ fg: icon.color }}>{icon.glyph}</span>{' '}
                   {appMode === AppMode.NewSession ? (
-                    <>
-                      {isSearching && hasDescMatch ? (
-                        <HighlightedText text={item.desc} matchIndices={descMatchIndices} />
-                      ) : (
-                        item.desc
-                      )}{' '}
-                      <span style={{ fg: colors.inactive }}>{sessionStatusLabel}</span>
-                      {linkedSessionLabel && <span style={{ fg: colors.separator }}>{linkedSessionLabel}</span>}
-                    </>
+                    isSearching && hasDescMatch ? (
+                      <HighlightedText text={item.desc} matchIndices={descMatchIndices} />
+                    ) : (
+                      <span style={{ fg: theme.text }}>{item.desc}</span>
+                    )
+                  ) : isSearching && hasTitleMatch ? (
+                    <HighlightedText text={item.title} matchIndices={titleMatchIndices} />
                   ) : (
-                    <>
-                      {isSearching && hasTitleMatch ? (
-                        <HighlightedText text={item.title} matchIndices={titleMatchIndices} />
-                      ) : (
-                        item.title
-                      )}
-                      {item.desc && (
-                        <>
-                          {' '}
-                          <span style={{ fg: colors.inactive }}>{item.desc}</span>
-                        </>
-                      )}
-                    </>
+                    <span style={{ fg: theme.text }}>{item.title}</span>
                   )}
                 </>
               )}
+            </text>
+
+            <text style={{ fg: pendingKill ? theme.danger : theme.textSubtle }}>
+              {item.isSession
+                ? pendingKill
+                  ? 'press d again to kill'
+                  : `(${item.windowCount})`
+                : appMode === AppMode.NewSession
+                  ? `${sessionStatusLabel}${linkedSessionLabel}`
+                  : item.desc ?? ''}
             </text>
           </box>
         )

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { formatSessionAge } from '../opencode'
 import { getGlobalOpencodeStats } from '../opencode/parser'
 import type { OpencodeStats } from '../opencode'
-import { colors, detailPanelStyle } from '../styles/theme'
+import { getDetailPanelStyle, useTheme } from '../styles/theme'
 import type { Item } from '../types'
 
 interface Props {
@@ -19,6 +19,7 @@ function formatNumber(value: number): string {
 }
 
 export default function OpencodeStatsPanel({ selectedItem }: Props) {
+  const theme = useTheme()
   const [globalStatsState, setGlobalStatsState] = useState<GlobalStatsState>({ status: 'loading' })
 
   useEffect(() => {
@@ -59,7 +60,7 @@ export default function OpencodeStatsPanel({ selectedItem }: Props) {
   const sessionCost = sessionStats?.sessionTotalCost ?? 0
 
   const panelStyle = {
-    ...detailPanelStyle,
+    ...getDetailPanelStyle(theme),
     flexGrow: 1,
     flexShrink: 1,
     minWidth: 40,
@@ -68,73 +69,69 @@ export default function OpencodeStatsPanel({ selectedItem }: Props) {
   return (
     <box style={panelStyle}>
       <box style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 2 }}>
-        <text style={{ fg: colors.primary, marginBottom: 1 }}> OpenCode Stats</text>
+        <text style={{ fg: theme.primary, marginBottom: 1 }}> OpenCode Stats</text>
       </box>
 
       <box style={{ flexDirection: 'row', marginBottom: 2 }}>
         <box style={{ flexDirection: 'column', marginLeft: 2, width: '50%' }}>
-          <text style={{ fg: colors.key, marginBottom: 1 }}>Current Session</text>
+          <text style={{ fg: theme.key, marginBottom: 1 }}>Current Session</text>
           {sessionState?.status === 'ready' ? (
             <>
               <text>
-                Messages: <span style={{ fg: colors.active }}>{sessionState.stats.messageCount ?? 0}</span>
+                Messages: <span style={{ fg: theme.active }}>{sessionState.stats.messageCount ?? 0}</span>
               </text>
               <text>
-                Cost: <span style={{ fg: colors.action }}>${sessionCost.toFixed(2)}</span>
+                Cost: <span style={{ fg: theme.action }}>${sessionCost.toFixed(2)}</span>
               </text>
               <text style={{ marginTop: 1 }}>
-                Context: <span style={{ fg: colors.text }}>{formatNumber(lastMessageTokens)}</span>
-                <span style={{ fg: colors.action }}>/{contextPercentage}%</span>
+                Context: <span style={{ fg: theme.text }}>{formatNumber(lastMessageTokens)}</span>
+                <span style={{ fg: theme.action }}>/{contextPercentage}%</span>
               </text>
             </>
           ) : sessionState?.status === 'error' ? (
-            <text style={{ fg: colors.action }}>{sessionState.message}</text>
+            <text style={{ fg: theme.action }}>{sessionState.message}</text>
           ) : sessionState?.status === 'missing' ? (
-            <text style={{ fg: colors.inactive }}>{sessionState.message}</text>
+            <text style={{ fg: theme.inactive }}>{sessionState.message}</text>
           ) : (
-            <text style={{ fg: colors.inactive }}>Loading stats...</text>
+            <text style={{ fg: theme.inactive }}>Loading stats...</text>
           )}
         </box>
 
         <box style={{ flexDirection: 'column', marginLeft: 2 }}>
-          <text style={{ fg: colors.key, marginBottom: 1 }}>Global Overview</text>
+          <text style={{ fg: theme.key, marginBottom: 1 }}>Global Overview</text>
           {globalStatsState.status === 'ready' ? (
             <>
               <text>
-                Sessions: <span style={{ fg: colors.active }}>{globalStatsState.stats.totalSessions ?? 0}</span>
+                Sessions: <span style={{ fg: theme.active }}>{globalStatsState.stats.totalSessions ?? 0}</span>
               </text>
               <text>
-                Messages: <span style={{ fg: colors.active }}>{globalStatsState.stats.totalMessages ?? 0}</span>
+                Messages: <span style={{ fg: theme.active }}>{globalStatsState.stats.totalMessages ?? 0}</span>
               </text>
               <text>
-                Total Cost:{' '}
-                <span style={{ fg: colors.action }}>{globalStatsState.stats.totalCost ?? '$0.00'}</span>
+                Total Cost: <span style={{ fg: theme.action }}>{globalStatsState.stats.totalCost ?? '$0.00'}</span>
               </text>
               <text>
-                Cost/Day:{' '}
-                <span style={{ fg: colors.text }}>{globalStatsState.stats.costPerDay ?? '$0.00'}</span>
+                Cost/Day: <span style={{ fg: theme.text }}>{globalStatsState.stats.costPerDay ?? '$0.00'}</span>
               </text>
 
-              <text style={{ fg: colors.key, marginTop: 1, marginBottom: 1 }}>Token Usage</text>
+              <text style={{ fg: theme.key, marginTop: 1, marginBottom: 1 }}>Token Usage</text>
               <text>
-                Input: <span style={{ fg: colors.text }}>{globalStatsState.stats.inputTokens ?? '0'}</span>
+                Input: <span style={{ fg: theme.text }}>{globalStatsState.stats.inputTokens ?? '0'}</span>
               </text>
               <text>
-                Output: <span style={{ fg: colors.text }}>{globalStatsState.stats.outputTokens ?? '0'}</span>
+                Output: <span style={{ fg: theme.text }}>{globalStatsState.stats.outputTokens ?? '0'}</span>
               </text>
               <text>
-                Cache Read:{' '}
-                <span style={{ fg: colors.inactive }}>{globalStatsState.stats.cacheRead ?? '0'}</span>
+                Cache Read: <span style={{ fg: theme.inactive }}>{globalStatsState.stats.cacheRead ?? '0'}</span>
               </text>
               <text>
-                Cache Write:{' '}
-                <span style={{ fg: colors.inactive }}>{globalStatsState.stats.cacheWrite ?? '0'}</span>
+                Cache Write: <span style={{ fg: theme.inactive }}>{globalStatsState.stats.cacheWrite ?? '0'}</span>
               </text>
             </>
           ) : globalStatsState.status === 'error' ? (
-            <text style={{ fg: colors.action }}>{globalStatsState.message}</text>
+            <text style={{ fg: theme.action }}>{globalStatsState.message}</text>
           ) : (
-            <text style={{ fg: colors.inactive }}>Loading stats...</text>
+            <text style={{ fg: theme.inactive }}>Loading stats...</text>
           )}
         </box>
       </box>
@@ -142,53 +139,51 @@ export default function OpencodeStatsPanel({ selectedItem }: Props) {
       {sessionStats && (
         <>
           <box style={{ alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
-            <text style={{ fg: colors.primary, marginBottom: 1 }}> Session Details</text>
+            <text style={{ fg: theme.primary, marginBottom: 1 }}> Session Details</text>
           </box>
 
           <box style={{ flexDirection: 'column', marginLeft: 2 }}>
             {sessionStats.title && (
               <text style={{ marginBottom: 1 }}>
-                <span style={{ fg: colors.key }}>Title:</span> {sessionStats.title}
+                <span style={{ fg: theme.key }}>Title:</span> {sessionStats.title}
               </text>
             )}
 
-            {sessionStats.directory && (
-              <text style={{ marginBottom: 1, fg: colors.fileTree }}>{sessionStats.directory}</text>
-            )}
+            {sessionStats.directory && <text style={{ marginBottom: 1, fg: theme.fileTree }}>{sessionStats.directory}</text>}
 
             {sessionStats.sessionCount !== undefined && (
               <text>
-                Sessions: <span style={{ fg: colors.active }}>{sessionStats.sessionCount}</span>
+                Sessions: <span style={{ fg: theme.active }}>{sessionStats.sessionCount}</span>
               </text>
             )}
 
             {sessionStats.messageCount !== undefined && (
               <text>
-                Messages: <span style={{ fg: colors.active }}>{sessionStats.messageCount}</span>
+                Messages: <span style={{ fg: theme.active }}>{sessionStats.messageCount}</span>
               </text>
             )}
 
             {sessionStats.filesModified !== undefined && sessionStats.filesModified > 0 && (
               <text>
-                Files Modified: <span style={{ fg: colors.action }}>{sessionStats.filesModified}</span>
+                Files Modified: <span style={{ fg: theme.action }}>{sessionStats.filesModified}</span>
               </text>
             )}
 
             {sessionStats.mostRecentTitle && (
               <text style={{ marginTop: 1 }}>
-                <span style={{ fg: colors.key }}>Most Recent:</span> {sessionStats.mostRecentTitle}
+                <span style={{ fg: theme.key }}>Most Recent:</span> {sessionStats.mostRecentTitle}
               </text>
             )}
 
             {sessionStats.createdAt && (
               <text style={{ marginTop: 1 }}>
-                Created: <span style={{ fg: colors.inactive }}>{formatSessionAge(sessionStats.createdAt)}</span>
+                Created: <span style={{ fg: theme.inactive }}>{formatSessionAge(sessionStats.createdAt)}</span>
               </text>
             )}
 
             {sessionStats.updatedAt && (
               <text>
-                Updated: <span style={{ fg: colors.inactive }}>{formatSessionAge(sessionStats.updatedAt)}</span>
+                Updated: <span style={{ fg: theme.inactive }}>{formatSessionAge(sessionStats.updatedAt)}</span>
               </text>
             )}
           </box>
@@ -197,7 +192,7 @@ export default function OpencodeStatsPanel({ selectedItem }: Props) {
 
       {!selectedItem && (
         <box style={{ marginTop: 2, marginLeft: 2 }}>
-          <text style={{ fg: colors.inactive }}>No session data found</text>
+          <text style={{ fg: theme.inactive }}>No session data found</text>
         </box>
       )}
     </box>

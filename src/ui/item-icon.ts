@@ -1,5 +1,4 @@
-import { colors } from '../styles/theme'
-import type { IconConfig, Item } from '../types'
+import type { IconConfig, Item, ThemeColors } from '../types'
 
 export interface ItemIconPresentation {
   glyph: string
@@ -15,13 +14,13 @@ function getIconConfig(icons?: IconConfig): IconConfig {
   }
 }
 
-export function getItemIconPresentation(item: Item, icons?: IconConfig): ItemIconPresentation {
+export function getItemIconPresentation(theme: ThemeColors, item: Item, icons?: IconConfig): ItemIconPresentation {
   const resolvedIcons = getIconConfig(icons)
 
   if (item.itemKind === 'configured') {
     return {
       glyph: item.icon ?? resolvedIcons.configured,
-      color: colors.action,
+      color: theme.action,
     }
   }
 
@@ -30,24 +29,25 @@ export function getItemIconPresentation(item: Item, icons?: IconConfig): ItemIco
       glyph:
         item.icon ??
         (item.title.startsWith('opencode-') ? resolvedIcons.opencode : resolvedIcons.tmux),
-      color: item.isAttached ? colors.active : colors.inactive,
+      color: item.isAttached ? theme.active : theme.inactive,
     }
   }
 
   if (item.linkedSessionName) {
     return {
       glyph: resolvedIcons.tmux,
-      color: item.linkedSessionAttached ? colors.active : colors.inactive,
+      color: item.linkedSessionAttached ? theme.active : theme.inactive,
     }
   }
 
   return {
     glyph: item.icon ?? resolvedIcons.project,
-    color: colors.fileTree,
+    color: theme.fileTree,
   }
 }
 
 export function getSessionSectionPresentation(
+  theme: ThemeColors,
   section: 'live' | 'configured' | 'opencode',
   icons?: IconConfig
 ): ItemIconPresentation & { label: string } {
@@ -55,23 +55,24 @@ export function getSessionSectionPresentation(
 
   switch (section) {
     case 'configured':
-      return { glyph: resolvedIcons.configured, color: colors.action, label: 'Configured Sessions' }
+      return { glyph: resolvedIcons.configured, color: theme.action, label: 'Configured' }
     case 'opencode':
-      return { glyph: resolvedIcons.opencode, color: colors.action, label: 'Opencode Sessions' }
+      return { glyph: resolvedIcons.opencode, color: theme.action, label: 'OpenCode' }
     case 'live':
-      return { glyph: resolvedIcons.tmux, color: colors.inactive, label: 'Live Sessions' }
+      return { glyph: resolvedIcons.tmux, color: theme.action, label: 'Live' }
   }
 }
 
 export function formatSectionHeader(
+  theme: ThemeColors,
   section: 'live' | 'configured' | 'opencode',
   icons?: IconConfig
 ): ItemIconPresentation & { text: string } {
-  const presentation = getSessionSectionPresentation(section, icons)
+  const presentation = getSessionSectionPresentation(theme, section, icons)
   const prefix = presentation.glyph.length > 0 ? `${presentation.glyph} ` : ''
 
   return {
     ...presentation,
-    text: `─ ${prefix}${presentation.label} ─`,
+    text: `${prefix}${presentation.label}`,
   }
 }

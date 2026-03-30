@@ -39,6 +39,29 @@
       "type": "string",
       "enum": ["vim", "standard"]
     },
+    "prefix_key": {
+      "type": "string"
+    },
+    "prefixKey": {
+      "type": "string"
+    },
+    "theme": {
+      "type": "string"
+    },
+    "color_scheme": {
+      "type": "string",
+      "enum": ["light", "dark", "system"]
+    },
+    "colorScheme": {
+      "type": "string",
+      "enum": ["light", "dark", "system"]
+    },
+    "themes": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/themeDefinition"
+      }
+    },
     "zoxide_mode": {
       "type": "string",
       "enum": ["off", "rank", "merge"]
@@ -150,6 +173,56 @@
         "opencode": {
           "type": "string"
         }
+      },
+      "additionalProperties": false
+    },
+    "themeDefinition": {
+      "type": "object",
+      "required": ["light", "dark"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "light": {
+          "$ref": "#/definitions/themeVariant"
+        },
+        "dark": {
+          "$ref": "#/definitions/themeVariant"
+        }
+      },
+      "additionalProperties": false
+    },
+    "themeVariant": {
+      "type": "object",
+      "required": ["palette"],
+      "properties": {
+        "palette": {
+          "$ref": "#/definitions/themePalette"
+        },
+        "overrides": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "themePalette": {
+      "type": "object",
+      "required": ["neutral", "ink", "primary", "success", "warning", "error", "info"],
+      "properties": {
+        "neutral": { "type": "string" },
+        "ink": { "type": "string" },
+        "primary": { "type": "string" },
+        "success": { "type": "string" },
+        "warning": { "type": "string" },
+        "error": { "type": "string" },
+        "info": { "type": "string" },
+        "accent": { "type": "string" },
+        "interactive": { "type": "string" },
+        "diffAdd": { "type": "string" },
+        "diffDelete": { "type": "string" }
       },
       "additionalProperties": false
     },

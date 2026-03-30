@@ -1,4 +1,4 @@
-import { colors } from '../styles/theme'
+import { useTheme } from '../styles/theme'
 
 interface Props {
   totalSessions: number
@@ -15,14 +15,16 @@ export default function SessionStats({
   oldestSession,
   newestSession,
 }: Props) {
+  const theme = useTheme()
+
   if (totalSessions === 0) return null
 
   return (
     <>
-      <text style={{ marginTop: 2, fg: colors.text }}>
+      <text style={{ marginTop: 1, fg: theme.textMuted }}>
         Sessions: {totalSessions} ({activeSessions} active, {idleSessions} idle)
       </text>
-      <text style={{ fg: colors.text }}>
+      <text style={{ fg: theme.textSubtle }}>
         Oldest: {oldestSession} Newest: {newestSession}
       </text>
     </>
