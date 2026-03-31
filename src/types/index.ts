@@ -220,8 +220,4 @@ export type UpdateEvent =
       installMethod: InstallMethod
     }
 
-export interface UpdateCompletedEvent {
-  version: string
-}
-
 export type UpdateEventListener = (event: UpdateEvent) => void

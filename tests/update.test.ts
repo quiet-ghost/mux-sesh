@@ -1,6 +1,7 @@
 import { describe, expect, mock, test } from 'bun:test'
 import type { Config, UpdateEvent } from '../src/types'
 import { checkAndUpdate } from '../src/update'
+import { CURRENT_VERSION } from '../src/update/version'
 
 const baseConfig: Config = {
   projectPaths: [],
@@ -13,9 +14,10 @@ const baseConfig: Config = {
 describe('checkAndUpdate', () => {
   test('emits an updated event after a successful background upgrade', async () => {
     const events: UpdateEvent[] = []
+    const nextVersion = '1.6.1'
 
     await checkAndUpdate(baseConfig, {
-      getLatestVersion: async () => '1.6.0',
+      getLatestVersion: async () => nextVersion,
       isNewerVersion: () => true,
       detectInstallMethod: async () => 'npm',
       canAutoUpdate: () => true,
@@ -28,8 +30,8 @@ describe('checkAndUpdate', () => {
     expect(events).toEqual([
       {
         kind: 'updated',
-        currentVersion: '1.5.0',
-        version: '1.6.0',
+        currentVersion: CURRENT_VERSION,
+        version: nextVersion,
         installMethod: 'npm',
       },
     ])
@@ -37,9 +39,10 @@ describe('checkAndUpdate', () => {
 
   test('emits an available event when the install method cannot auto-update', async () => {
     const events: UpdateEvent[] = []
+    const nextVersion = '1.6.1'
 
     await checkAndUpdate(baseConfig, {
-      getLatestVersion: async () => '1.6.0',
+      getLatestVersion: async () => nextVersion,
       isNewerVersion: () => true,
       detectInstallMethod: async () => 'unknown',
       canAutoUpdate: () => false,
@@ -52,8 +55,8 @@ describe('checkAndUpdate', () => {
     expect(events).toEqual([
       {
         kind: 'available',
-        currentVersion: '1.5.0',
-        version: '1.6.0',
+        currentVersion: CURRENT_VERSION,
+        version: nextVersion,
         installMethod: 'unknown',
       },
     ])
@@ -61,9 +64,10 @@ describe('checkAndUpdate', () => {
 
   test('emits a failed event when the background upgrade fails', async () => {
     const events: UpdateEvent[] = []
+    const nextVersion = '1.6.1'
 
     await checkAndUpdate(baseConfig, {
-      getLatestVersion: async () => '1.6.0',
+      getLatestVersion: async () => nextVersion,
       isNewerVersion: () => true,
       detectInstallMethod: async () => 'bun',
       canAutoUpdate: () => true,
@@ -76,8 +80,8 @@ describe('checkAndUpdate', () => {
     expect(events).toEqual([
       {
         kind: 'failed',
-        currentVersion: '1.5.0',
-        version: '1.6.0',
+        currentVersion: CURRENT_VERSION,
+        version: nextVersion,
         installMethod: 'bun',
       },
     ])
@@ -92,7 +96,7 @@ describe('checkAndUpdate', () => {
         autoUpdate: false,
       },
       {
-        getLatestVersion: async () => '1.6.0',
+        getLatestVersion: async () => '1.6.1',
         isNewerVersion: () => true,
         detectInstallMethod: async () => 'npm',
         canAutoUpdate: () => true,

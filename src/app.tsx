@@ -209,7 +209,6 @@ export function App() {
 
     return () => clearTimeout(timeout)
   }, [config])
-
   async function refreshItems(forceViewMode?: ViewMode, nextConfig = config) {
     if (!nextConfig) return
 
@@ -701,7 +700,6 @@ export function App() {
       } else {
         setToastMessage(`Background update to v${event.version} failed.`)
       }
-
       setToastVisible(true)
       setTimeout(() => {
         setToastVisible(false)
