@@ -186,6 +186,7 @@ export interface SessionDetails {
   isAttached: boolean
   windowCount: string
   windows: WindowInfo[]
+  panePreviewLines?: string[]
 }
 
 export interface SearchResult {

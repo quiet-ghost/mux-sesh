@@ -109,6 +109,19 @@ function SessionDetailsView({ details }: { details: SessionDetails }) {
           ))
         )}
       </box>
+
+      {details.panePreviewLines && details.panePreviewLines.length > 0 && (
+        <>
+          <SectionLabel>Preview</SectionLabel>
+          <box style={{ flexDirection: 'column', marginTop: 1 }}>
+            {details.panePreviewLines.map((line, index) => (
+              <text key={`${details.name}:preview:${index}`} style={{ fg: theme.textMuted }}>
+                {line}
+              </text>
+            ))}
+          </box>
+        </>
+      )}
     </box>
   )
 }
