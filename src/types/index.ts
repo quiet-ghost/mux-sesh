@@ -199,7 +199,7 @@ export interface FuzzyMatch {
   indices: number[]
 }
 
-export type InstallMethod = 'npm' | 'bun' | 'brew' | 'unknown'
+export type InstallMethod = 'npm' | 'bun' | 'brew' | 'source' | 'unknown'
 
 export type UpdateEvent =
   | {

@@ -14,13 +14,14 @@ const baseConfig: Config = {
 describe('checkAndUpdate', () => {
   test('emits an updated event after a successful background upgrade', async () => {
     const events: UpdateEvent[] = []
-    const nextVersion = '1.6.1'
+    const nextVersion = '1.6.2'
 
     await checkAndUpdate(baseConfig, {
       getLatestVersion: async () => nextVersion,
       isNewerVersion: () => true,
       detectInstallMethod: async () => 'npm',
       canAutoUpdate: () => true,
+      getInstalledVersion: async () => nextVersion,
       performUpgrade: async () => true,
       emit: event => {
         events.push(event)
@@ -39,13 +40,14 @@ describe('checkAndUpdate', () => {
 
   test('emits an available event when the install method cannot auto-update', async () => {
     const events: UpdateEvent[] = []
-    const nextVersion = '1.6.1'
+    const nextVersion = '1.6.2'
 
     await checkAndUpdate(baseConfig, {
       getLatestVersion: async () => nextVersion,
       isNewerVersion: () => true,
       detectInstallMethod: async () => 'unknown',
       canAutoUpdate: () => false,
+      getInstalledVersion: async () => CURRENT_VERSION,
       performUpgrade: mock(async () => true),
       emit: event => {
         events.push(event)
@@ -64,13 +66,14 @@ describe('checkAndUpdate', () => {
 
   test('emits a failed event when the background upgrade fails', async () => {
     const events: UpdateEvent[] = []
-    const nextVersion = '1.6.1'
+    const nextVersion = '1.6.2'
 
     await checkAndUpdate(baseConfig, {
       getLatestVersion: async () => nextVersion,
       isNewerVersion: () => true,
       detectInstallMethod: async () => 'bun',
       canAutoUpdate: () => true,
+      getInstalledVersion: async () => CURRENT_VERSION,
       performUpgrade: async () => false,
       emit: event => {
         events.push(event)
@@ -100,11 +103,64 @@ describe('checkAndUpdate', () => {
         isNewerVersion: () => true,
         detectInstallMethod: async () => 'npm',
         canAutoUpdate: () => true,
+        getInstalledVersion: async () => '1.6.1',
         performUpgrade: async () => true,
         emit,
       }
     )
 
     expect(emit).not.toHaveBeenCalled()
+  })
+
+  test('emits available when running from a source checkout', async () => {
+    const events: UpdateEvent[] = []
+    const nextVersion = '1.6.2'
+
+    await checkAndUpdate(baseConfig, {
+      getLatestVersion: async () => nextVersion,
+      isNewerVersion: () => true,
+      detectInstallMethod: async () => 'source',
+      canAutoUpdate: () => false,
+      getInstalledVersion: async () => CURRENT_VERSION,
+      performUpgrade: mock(async () => true),
+      emit: event => {
+        events.push(event)
+      },
+    })
+
+    expect(events).toEqual([
+      {
+        kind: 'available',
+        currentVersion: CURRENT_VERSION,
+        version: nextVersion,
+        installMethod: 'source',
+      },
+    ])
+  })
+
+  test('emits failed when the install command succeeds but the running version does not change', async () => {
+    const events: UpdateEvent[] = []
+    const nextVersion = '1.6.2'
+
+    await checkAndUpdate(baseConfig, {
+      getLatestVersion: async () => nextVersion,
+      isNewerVersion: () => true,
+      detectInstallMethod: async () => 'bun',
+      canAutoUpdate: () => true,
+      getInstalledVersion: async () => CURRENT_VERSION,
+      performUpgrade: async () => true,
+      emit: event => {
+        events.push(event)
+      },
+    })
+
+    expect(events).toEqual([
+      {
+        kind: 'failed',
+        currentVersion: CURRENT_VERSION,
+        version: nextVersion,
+        installMethod: 'bun',
+      },
+    ])
   })
 })
