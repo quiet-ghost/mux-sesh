@@ -1,5 +1,5 @@
 import { test, expect, describe, mock } from 'bun:test'
-import { detectInstallMethod, performUpgrade } from '../src/update/installation'
+import { canAutoUpdate, detectInstallMethod, performUpgrade } from '../src/update/installation'
 import type { Subprocess } from 'bun'
 
 describe('installation', () => {
@@ -211,6 +211,18 @@ describe('installation', () => {
 
       Bun.spawn = originalSpawn
       console.error = originalConsoleError
+    })
+  })
+
+  describe('canAutoUpdate', () => {
+    test('supports npm and bun installs', () => {
+      expect(canAutoUpdate('npm')).toBe(true)
+      expect(canAutoUpdate('bun')).toBe(true)
+    })
+
+    test('does not auto-update brew or unknown installs', () => {
+      expect(canAutoUpdate('brew')).toBe(false)
+      expect(canAutoUpdate('unknown')).toBe(false)
     })
   })
 })
