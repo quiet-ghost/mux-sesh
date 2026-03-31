@@ -1,21 +1,27 @@
 import { test, expect, describe, mock } from 'bun:test'
 import { updateEvents } from '../src/update/events'
+import type { UpdateEvent } from '../src/types'
 
 describe('UpdateEvents', () => {
   test('should call listener when event is emitted', () => {
     let called = false
-    let receivedEvent: any = null
+    let receivedEvent: unknown = null
 
-    const listener = (event: any) => {
+    const listener = (event: UpdateEvent) => {
       called = true
       receivedEvent = event
     }
 
     const unsubscribe = updateEvents.on(listener)
-    updateEvents.emit({ version: '2.0.0' })
+    updateEvents.emit({ kind: 'updated', currentVersion: '1.0.0', version: '2.0.0', installMethod: 'npm' })
 
     expect(called).toBe(true)
-    expect(receivedEvent).toEqual({ version: '2.0.0' })
+    expect(receivedEvent).not.toBeNull()
+    const event = receivedEvent as UpdateEvent
+    expect(event.kind).toBe('updated')
+    expect(event.currentVersion).toBe('1.0.0')
+    expect(event.version).toBe('2.0.0')
+    expect(event.installMethod).toBe('npm')
 
     unsubscribe()
   })
@@ -34,7 +40,7 @@ describe('UpdateEvents', () => {
     const unsubscribe1 = updateEvents.on(listener1)
     const unsubscribe2 = updateEvents.on(listener2)
 
-    updateEvents.emit({ version: '2.0.0' })
+    updateEvents.emit({ kind: 'updated', currentVersion: '1.0.0', version: '2.0.0', installMethod: 'npm' })
 
     expect(called1).toBe(true)
     expect(called2).toBe(true)
@@ -51,11 +57,11 @@ describe('UpdateEvents', () => {
     }
 
     const unsubscribe = updateEvents.on(listener)
-    updateEvents.emit({ version: '2.0.0' })
+    updateEvents.emit({ kind: 'updated', currentVersion: '1.0.0', version: '2.0.0', installMethod: 'npm' })
     expect(callCount).toBe(1)
 
     unsubscribe()
-    updateEvents.emit({ version: '3.0.0' })
+    updateEvents.emit({ kind: 'available', currentVersion: '1.0.0', version: '3.0.0', installMethod: 'unknown' })
     expect(callCount).toBe(1)
   })
 
@@ -77,7 +83,7 @@ describe('UpdateEvents', () => {
     const unsubscribe1 = updateEvents.on(errorListener)
     const unsubscribe2 = updateEvents.on(normalListener)
 
-    updateEvents.emit({ version: '2.0.0' })
+    updateEvents.emit({ kind: 'failed', currentVersion: '1.0.0', version: '2.0.0', installMethod: 'bun' })
 
     expect(errorListenerCalled).toBe(true)
     expect(normalListenerCalled).toBe(true)
@@ -96,18 +102,22 @@ describe('UpdateEvents', () => {
   })
 
   test('should pass correct event data to listeners', () => {
-    const testEvent = { version: '4.5.6' }
-    let receivedEvent: any = null
+    const testEvent: UpdateEvent = { kind: 'available', currentVersion: '4.5.5', version: '4.5.6', installMethod: 'unknown' }
+    let receivedEvent: unknown = null
 
-    const listener = (event: any) => {
+    const listener = (event: UpdateEvent) => {
       receivedEvent = event
     }
 
     const unsubscribe = updateEvents.on(listener)
     updateEvents.emit(testEvent)
 
-    expect(receivedEvent).toEqual(testEvent)
-    expect(receivedEvent.version).toBe('4.5.6')
+    expect(receivedEvent).not.toBeNull()
+    const event = receivedEvent as UpdateEvent
+    expect(event.kind).toBe(testEvent.kind)
+    expect(event.currentVersion).toBe(testEvent.currentVersion)
+    expect(event.version).toBe('4.5.6')
+    expect(event.installMethod).toBe(testEvent.installMethod)
 
     unsubscribe()
   })

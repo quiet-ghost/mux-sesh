@@ -16,12 +16,14 @@ import { ThemeProvider, getPanelStyle, resolveTheme } from './styles/theme'
 import { useTerminalSize, shouldShowDetailPanel } from './util/terminal'
 import Toast from './ui/Toast'
 import { checkAndUpdate, updateEvents } from './update'
+import { CURRENT_VERSION } from './update/version'
 import OpencodeStatsPanel from './ui/OpencodeStatsPanel'
 import SessionDetailsPanel from './ui/SessionDetailsPanel'
 import SessionList from './ui/SessionList'
 import OpencodeSessionGroup from './ui/OpencodeSessionGroup'
 import SearchInput from './ui/SearchInput'
 import ItemList from './ui/ItemList'
+import VersionBadge from './ui/VersionBadge'
 import RenameModal from './ui/RenameModal'
 import CommandsModal, { filterCommandEntries, getCommandEntries, type CommandId } from './ui/CommandsModal'
 import SettingsModal from './ui/SettingsModal'
@@ -101,6 +103,7 @@ export function App() {
   const { columns, rows } = useTerminalSize()
   const [toastMessage, setToastMessage] = useState('')
   const [toastVisible, setToastVisible] = useState(false)
+  const [updatedVersion, setUpdatedVersion] = useState<string | null>(null)
   const configPath = getConfigPath()
   const resolvedTheme = resolveTheme(config?.theme, config?.themes, config?.colorScheme)
   const theme = resolvedTheme.colors
@@ -109,6 +112,7 @@ export function App() {
   const currentOptionField = modalState?.type === 'setting-options' ? modalState.field : undefined
   const settingOptions = config && currentOptionField ? getSettingOptions(config, currentOptionField) : []
   const filteredSettingOptions = filterSettingsOptions(settingOptions, settingOptionsSearchQuery)
+  const hasScheduledAutoUpdateRef = useRef(false)
 
   function getSessionSelectionIndex(nextItems: Item[]): number {
     const regularItems = nextItems.filter(item => !(item.isSession && item.title.startsWith('opencode-')))
@@ -186,13 +190,25 @@ export function App() {
         setItems(projects)
         setCursor(getProjectSelectionIndex(projects))
       }
-
-      checkAndUpdate(cfg).catch(error => {
-        console.error('Auto-update check failed:', error)
-      })
     }
     init()
   }, [])
+
+  useEffect(() => {
+    if (!config || hasScheduledAutoUpdateRef.current) {
+      return
+    }
+
+    hasScheduledAutoUpdateRef.current = true
+
+    const timeout = setTimeout(() => {
+      checkAndUpdate(config).catch(error => {
+        console.error('Auto-update check failed:', error)
+      })
+    }, 1000)
+
+    return () => clearTimeout(timeout)
+  }, [config])
 
   async function refreshItems(forceViewMode?: ViewMode, nextConfig = config) {
     if (!nextConfig) return
@@ -677,7 +693,15 @@ export function App() {
 
   useEffect(() => {
     const unsubscribe = updateEvents.on(event => {
-      setToastMessage(`Update ready ${event.version}`)
+      if (event.kind === 'updated') {
+        setUpdatedVersion(event.version)
+        setToastMessage(`Updated in background to v${event.version}. Restart mux-sesh to use it.`)
+      } else if (event.kind === 'available') {
+        setToastMessage(`Update available: v${event.version}`)
+      } else {
+        setToastMessage(`Background update to v${event.version} failed.`)
+      }
+
       setToastVisible(true)
       setTimeout(() => {
         setToastVisible(false)
@@ -1043,6 +1067,7 @@ export function App() {
         )}
 
         <Toast message={toastMessage} visible={toastVisible} />
+        <VersionBadge currentVersion={CURRENT_VERSION} updatedVersion={updatedVersion} />
       </box>
     </ThemeProvider>
   )

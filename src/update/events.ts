@@ -1,4 +1,4 @@
-import type { UpdateEventListener, UpdateCompletedEvent } from '../types'
+import type { UpdateEventListener, UpdateEvent } from '../types'
 
 class UpdateEvents {
   private listeners: UpdateEventListener[] = []
@@ -14,7 +14,7 @@ class UpdateEvents {
     }
   }
 
-  emit(event: UpdateCompletedEvent) {
+  emit(event: UpdateEvent) {
     this.listeners.forEach(listener => {
       try {
         listener(event)

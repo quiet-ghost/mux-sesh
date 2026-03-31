@@ -200,8 +200,28 @@ export interface FuzzyMatch {
 
 export type InstallMethod = 'npm' | 'bun' | 'brew' | 'unknown'
 
+export type UpdateEvent =
+  | {
+      kind: 'updated'
+      currentVersion: string
+      version: string
+      installMethod: InstallMethod
+    }
+  | {
+      kind: 'available'
+      currentVersion: string
+      version: string
+      installMethod: InstallMethod
+    }
+  | {
+      kind: 'failed'
+      currentVersion: string
+      version: string
+      installMethod: InstallMethod
+    }
+
 export interface UpdateCompletedEvent {
   version: string
 }
 
-export type UpdateEventListener = (event: UpdateCompletedEvent) => void
+export type UpdateEventListener = (event: UpdateEvent) => void
