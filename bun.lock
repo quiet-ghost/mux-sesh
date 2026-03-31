@@ -7,6 +7,7 @@
       "dependencies": {
         "@opentui/core": "0.1.60",
         "@opentui/react": "0.1.60",
+        "mux-sesh": "^1.6.2",
         "react": "^19.2.2",
       },
       "devDependencies": {
@@ -150,6 +151,8 @@
     "jpeg-js": ["jpeg-js@0.4.4", "", {}, "sha512-WZzeDOEtTOBK4Mdsar0IqEU5sMr3vSV2RqkAIzUEV2BHnUfKGyswWFPFwK5EeDo93K3FohSHbLAjj0s1Wzd+dg=="],
 
     "mime": ["mime@3.0.0", "", { "bin": { "mime": "cli.js" } }, "sha512-jSCU7/VB1loIWBZe14aEYHU/+1UMEHoaO7qxCOVJOw9GgH72VAWppxNcjU+x9a2k3GSIBXNKxXQFqRvvZ7vr3A=="],
+
+    "mux-sesh": ["mux-sesh@1.6.2", "", { "dependencies": { "@opentui/core": "0.1.60", "@opentui/react": "0.1.60", "react": "^19.2.2" }, "bin": { "mux-sesh": "bin/mux-sesh" } }, "sha512-dr50rQqevRf+J+DI2wKZy6H1Z7moOwgQ0+9ZCMO6cdr9XNGEW2jxCFnS8eQHGPCKgeop54VzCFsXKRiJTNOLcA=="],
 
     "omggif": ["omggif@1.0.10", "", {}, "sha512-LMJTtvgc/nugXj0Vcrrs68Mn2D1r0zf630VNtqtpI1FEO7e+O9FP4gqs9AcnBaSEeoHIPm28u6qgPR0oyEpGSw=="],
 

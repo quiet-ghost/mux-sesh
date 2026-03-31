@@ -49,6 +49,7 @@
   "dependencies": {
     "@opentui/core": "0.1.60",
     "@opentui/react": "0.1.60",
+    "mux-sesh": "^1.6.2",
     "react": "^19.2.2"
   },
   "devDependencies": {
