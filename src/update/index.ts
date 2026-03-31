@@ -1,6 +1,6 @@
 import type { Config } from '../types'
 import { CURRENT_VERSION, getLatestVersion, isNewerVersion } from './version'
-import { canAutoUpdate, detectInstallMethod, performUpgrade } from './installation'
+import { canAutoUpdate, detectInstallMethod, getInstalledVersion, performUpgrade } from './installation'
 import { updateEvents } from './events'
 
 interface UpdateDependencies {
@@ -8,6 +8,7 @@ interface UpdateDependencies {
   isNewerVersion: typeof isNewerVersion
   detectInstallMethod: typeof detectInstallMethod
   canAutoUpdate: typeof canAutoUpdate
+  getInstalledVersion: typeof getInstalledVersion
   performUpgrade: typeof performUpgrade
   emit: typeof updateEvents.emit
 }
@@ -17,6 +18,7 @@ const defaultDependencies: UpdateDependencies = {
   isNewerVersion,
   detectInstallMethod,
   canAutoUpdate,
+  getInstalledVersion,
   performUpgrade,
   emit: updateEvents.emit.bind(updateEvents),
 }
@@ -58,7 +60,9 @@ export async function checkAndUpdate(config: Config, dependencies: Partial<Updat
   }
 
   const success = await resolvedDependencies.performUpgrade(method, latest)
-  if (success) {
+  const installedVersion = success ? await resolvedDependencies.getInstalledVersion() : null
+
+  if (success && installedVersion === latest) {
     resolvedDependencies.emit({
       kind: 'updated',
       currentVersion: CURRENT_VERSION,

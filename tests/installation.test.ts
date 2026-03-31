@@ -1,5 +1,5 @@
 import { test, expect, describe, mock } from 'bun:test'
-import { canAutoUpdate, detectInstallMethod, performUpgrade } from '../src/update/installation'
+import { canAutoUpdate, detectInstallMethod, getInstalledVersion, performUpgrade } from '../src/update/installation'
 import type { Subprocess } from 'bun'
 
 describe('installation', () => {
@@ -17,7 +17,7 @@ describe('installation', () => {
 
       Bun.spawn = mock(() => mockProcess) as typeof Bun.spawn
 
-      const method = await detectInstallMethod()
+      const method = await detectInstallMethod('/tmp/not-mux-sesh/runtime.ts')
       expect(method).toBe('npm')
 
       Bun.spawn = originalSpawn
@@ -48,7 +48,7 @@ describe('installation', () => {
         return callCount === 1 ? mockProcessNoMatch : mockProcessMatch
       }) as typeof Bun.spawn
 
-      const method = await detectInstallMethod()
+      const method = await detectInstallMethod('/tmp/not-mux-sesh/runtime.ts')
       expect(method).toBe('bun')
 
       Bun.spawn = originalSpawn
@@ -79,7 +79,7 @@ describe('installation', () => {
         return callCount <= 2 ? mockProcessNoMatch : mockProcessMatch
       }) as typeof Bun.spawn
 
-      const method = await detectInstallMethod()
+      const method = await detectInstallMethod('/tmp/not-mux-sesh/runtime.ts')
       expect(method).toBe('brew')
 
       Bun.spawn = originalSpawn
@@ -98,7 +98,7 @@ describe('installation', () => {
 
       Bun.spawn = mock(() => mockProcess) as typeof Bun.spawn
 
-      const method = await detectInstallMethod()
+      const method = await detectInstallMethod('/tmp/not-mux-sesh/runtime.ts')
       expect(method).toBe('unknown')
 
       Bun.spawn = originalSpawn
@@ -110,10 +110,32 @@ describe('installation', () => {
         throw new Error('Spawn error')
       }) as typeof Bun.spawn
 
-      const method = await detectInstallMethod()
+      const method = await detectInstallMethod('/tmp/not-mux-sesh/runtime.ts')
       expect(method).toBe('unknown')
 
       Bun.spawn = originalSpawn
+    })
+
+    test('should prefer the active bun install path over npm listings', async () => {
+      const method = await detectInstallMethod('/home/ghost/.cache/.bun/install/global/node_modules/mux-sesh/src/index.tsx')
+      expect(method).toBe('bun')
+    })
+
+    test('should detect source checkouts as source installs', async () => {
+      const method = await detectInstallMethod('/home/ghost/dev/projects/mux-sesh/.worktrees/fix-auto-upgrade/src/index.tsx')
+      expect(method).toBe('source')
+    })
+  })
+
+  describe('getInstalledVersion', () => {
+    test('should read the running package version from the runtime path', async () => {
+      const version = await getInstalledVersion('/home/ghost/dev/projects/mux-sesh/.worktrees/fix-auto-upgrade/src/index.tsx')
+      expect(version).toBe('1.6.1')
+    })
+
+    test('should return null when no package root can be found', async () => {
+      const version = await getInstalledVersion('/tmp/not-mux-sesh/runtime.ts')
+      expect(version).toBeNull()
     })
   })
 
@@ -220,8 +242,9 @@ describe('installation', () => {
       expect(canAutoUpdate('bun')).toBe(true)
     })
 
-    test('does not auto-update brew or unknown installs', () => {
+    test('does not auto-update brew, source, or unknown installs', () => {
       expect(canAutoUpdate('brew')).toBe(false)
+      expect(canAutoUpdate('source')).toBe(false)
       expect(canAutoUpdate('unknown')).toBe(false)
     })
   })
