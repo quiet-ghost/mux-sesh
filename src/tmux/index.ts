@@ -1,6 +1,22 @@
 import { spawn } from 'bun'
 import type { Item, SessionDetails, WindowInfo } from '../types'
 
+const SESSION_DETAILS_CACHE_TTL_MS = 4000
+const sessionDetailsCache = new Map<string, { details: SessionDetails; expiresAt: number }>()
+
+function stripAnsi(value: string): string {
+  return value.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '')
+}
+
+function formatPanePreview(output: string): string[] {
+  return stripAnsi(output)
+    .replace(/\r/g, '')
+    .split('\n')
+    .map(line => line.trimEnd())
+    .filter(line => line.length > 0)
+    .slice(-8)
+}
+
 export interface CreateTmuxSessionOptions {
   startupCommand?: string
 }
@@ -161,6 +177,11 @@ export async function renameTmuxSession(oldName: string, newName: string): Promi
 }
 
 export async function getSessionDetails(sessionName: string): Promise<SessionDetails> {
+  const cached = sessionDetailsCache.get(sessionName)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.details
+  }
+
   // Get session status
   const statusProc = spawn([
     'tmux',
@@ -222,10 +243,44 @@ export async function getSessionDetails(sessionName: string): Promise<SessionDet
     })
   }
 
-  return {
+  const activeWindowProc = spawn([
+    'tmux',
+    'display-message',
+    '-t',
+    sessionName,
+    '-p',
+    '#{window_index}',
+  ])
+  const activeWindowIndex = (await new Response(activeWindowProc.stdout).text()).trim()
+
+  let panePreviewLines: string[] | undefined
+  if (activeWindowIndex.length > 0) {
+    const paneProc = spawn([
+      'tmux',
+      'capture-pane',
+      '-p',
+      '-t',
+      `${sessionName}:${activeWindowIndex}`,
+      '-S',
+      '-16',
+    ])
+    const paneOutput = await new Response(paneProc.stdout).text()
+    const formatted = formatPanePreview(paneOutput)
+    panePreviewLines = formatted.length > 0 ? formatted : undefined
+  }
+
+  const details = {
     name: sessionName,
     isAttached: attached === '1',
     windowCount,
     windows,
+    panePreviewLines,
   }
+
+  sessionDetailsCache.set(sessionName, {
+    details,
+    expiresAt: Date.now() + SESSION_DETAILS_CACHE_TTL_MS,
+  })
+
+  return details
 }

@@ -8,6 +8,8 @@ import { getGitRoot, resolveProjectSession } from '../config/session-rules'
 const MAX_PREVIEW_LINES = 24
 const MAX_PREVIEW_LINE_LENGTH = 120
 const PREVIEW_COMMAND_TIMEOUT_MS = 1500
+const PROJECT_PREVIEW_CACHE_TTL_MS = 4000
+const projectPreviewCache = new Map<string, { preview: ProjectPreview; expiresAt: number }>()
 
 export interface ProjectPreview {
   path: string
@@ -184,6 +186,12 @@ export async function getProjectPreview(
   config: Config,
   linkedSessionName?: string
 ): Promise<ProjectPreview> {
+  const cacheKey = `${projectPath}::${linkedSessionName ?? ''}`
+  const cached = projectPreviewCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.preview
+  }
+
   const [resolvedSession, gitRootPath, gitBranch, linkedSession] = await Promise.all([
     resolveProjectSession(projectPath, config),
     getGitRoot(projectPath),
@@ -196,7 +204,7 @@ export async function getProjectPreview(
   const formattedCommandOutput = commandResult?.output ? formatPreviewOutput(commandResult.output) : undefined
 
   if (formattedCommandOutput && formattedCommandOutput.lines.length > 0) {
-    return {
+    const preview: ProjectPreview = {
       path: displayPath(projectPath),
       sessionName: resolvedSession.sessionName,
       source: resolvedSession.source,
@@ -212,12 +220,19 @@ export async function getProjectPreview(
         ? 'Preview output truncated to fit the panel.'
         : undefined,
     }
+
+    projectPreviewCache.set(cacheKey, {
+      preview,
+      expiresAt: Date.now() + PROJECT_PREVIEW_CACHE_TTL_MS,
+    })
+
+    return preview
   }
 
   const fallbackLines = await getDirectoryPreviewLines(projectPath)
   const formattedDirectoryOutput = formatPreviewOutput(fallbackLines.join('\n'))
 
-  return {
+  const preview: ProjectPreview = {
     path: displayPath(projectPath),
     sessionName: resolvedSession.sessionName,
     source: resolvedSession.source,
@@ -232,4 +247,11 @@ export async function getProjectPreview(
     previewNotice: commandResult?.notice ??
       (formattedDirectoryOutput.truncated ? 'Directory listing truncated to fit the panel.' : undefined),
   }
+
+  projectPreviewCache.set(cacheKey, {
+    preview,
+    expiresAt: Date.now() + PROJECT_PREVIEW_CACHE_TTL_MS,
+  })
+
+  return preview
 }

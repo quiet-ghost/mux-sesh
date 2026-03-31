@@ -8,12 +8,13 @@ import { orderProjectItems, orderSessionItems } from './items/order'
 import { annotateProjectItemsWithSessionLinks } from './projects/session-links'
 import { listTmuxSessions } from './tmux'
 import { filterHiddenSessions } from './tmux/workflows'
-import { getProjectItems } from './tmux/projects'
+import { getProjectItems, getSessionCandidateItems } from './tmux/projects'
 import { filterAndSortItems, clearMatchIndices } from './search'
 import { isGitHubURL } from './util/github'
 import { getOpencodeSessionStats } from './opencode'
 import { ThemeProvider, getPanelStyle, resolveTheme } from './styles/theme'
 import { useTerminalSize, shouldShowDetailPanel } from './util/terminal'
+import { mark, measure } from './util/perf'
 import Toast from './ui/Toast'
 import { checkAndUpdate, updateEvents } from './update'
 import { CURRENT_VERSION } from './update/version'
@@ -71,7 +72,9 @@ export function App() {
   const [viewMode, setViewMode] = useState(ViewMode.Sessions)
   const [items, setItems] = useState<Item[]>([])
   const [allItems, setAllItems] = useState<Item[]>([])
+  const [projectSourceItems, setProjectSourceItems] = useState<Item[]>([])
   const [projectItems, setProjectItems] = useState<Item[]>([])
+  const [sessionCandidateItems, setSessionCandidateItems] = useState<Item[]>([])
   const [sessionItems, setSessionItems] = useState<Item[]>([])
   const [cursor, setCursor] = useState(0)
   const [opencodeCursor, setOpencodeCursor] = useState(0)
@@ -154,9 +157,17 @@ export function App() {
     setItems(applyState)
   }
 
+  async function loadLinkedProjectItems(nextConfig: Config, liveSessions: Item[], sourceItems = projectSourceItems) {
+    return orderProjectItems(
+      await measure('linkProjectItems', () => annotateProjectItemsWithSessionLinks(sourceItems, liveSessions, nextConfig)),
+      nextConfig.sortOrder
+    )
+  }
+
   useEffect(() => {
     async function init() {
-      const cfg = await loadConfig()
+      mark('startup begin')
+      const cfg = await measure('loadConfig', loadConfig)
       setConfig(cfg)
 
       // Standard mode always starts in search mode (non-modal)
@@ -164,7 +175,9 @@ export function App() {
         setAppMode(AppMode.Search)
       }
 
-      const [sessions, listedSessions] = await Promise.all([listTmuxSessions(), getListedSessionItems(cfg)])
+      const [sessions, listedSessions] = await measure('loadSessionsAndListed', () =>
+        Promise.all([listTmuxSessions(), getListedSessionItems(cfg)])
+      )
       const visibleSessions = filterHiddenSessions(sessions, cfg.hiddenSessions)
       const combinedSessions = orderSessionItems(mergeSessionItems(visibleSessions, listedSessions), cfg.sortOrder)
 
@@ -176,20 +189,22 @@ export function App() {
         setCursor(getSessionSelectionIndex(combinedSessions))
       }
 
-      const rawProjects = await getProjectItems(cfg)
-      const projects = orderProjectItems(
-        await annotateProjectItemsWithSessionLinks(rawProjects, visibleSessions, cfg),
-        cfg.sortOrder
-      )
+      const rawProjects = await measure('getProjectItems', () => getProjectItems(cfg))
+      const orderedProjects = orderProjectItems(rawProjects, cfg.sortOrder)
 
-      setProjectItems(projects)
+      setProjectSourceItems(orderedProjects)
+      setProjectItems(orderedProjects)
 
       if (combinedSessions.length === 0) {
+        const linkedProjects = await loadLinkedProjectItems(cfg, visibleSessions, orderedProjects)
+        setProjectItems(linkedProjects)
         setViewMode(ViewMode.Projects)
-        setAllItems(projects)
-        setItems(projects)
-        setCursor(getProjectSelectionIndex(projects))
+        setAllItems(linkedProjects)
+        setItems(linkedProjects)
+        setCursor(getProjectSelectionIndex(linkedProjects))
       }
+
+      mark('startup complete')
     }
     init()
   }, [])
@@ -215,29 +230,24 @@ export function App() {
     const targetMode = forceViewMode ?? viewMode
 
     if (targetMode === ViewMode.Sessions) {
-      const sessions = await listTmuxSessions()
+      const sessions = await measure('refresh:listTmuxSessions', listTmuxSessions)
       const visibleSessions = filterHiddenSessions(sessions, nextConfig.hiddenSessions)
-      const listedSessions = await getListedSessionItems(nextConfig)
+      const listedSessions = await measure('refresh:getListedSessionItems', () => getListedSessionItems(nextConfig))
       const cleanSessions = clearMatchIndices(
         orderSessionItems(mergeSessionItems(visibleSessions, listedSessions), nextConfig.sortOrder)
       )
-      const linkedProjects = orderProjectItems(
-        await annotateProjectItemsWithSessionLinks(projectItems, visibleSessions, nextConfig),
-        nextConfig.sortOrder
-      )
       setSessionItems(cleanSessions)
-      setProjectItems(linkedProjects)
       setAllItems(cleanSessions)
       setItems(cleanSessions)
       setCursor(getSessionSelectionIndex(cleanSessions))
     } else {
-      const sessions = await listTmuxSessions()
+      const sessions = await measure('refresh:listTmuxSessions', listTmuxSessions)
       const visibleSessions = filterHiddenSessions(sessions, nextConfig.hiddenSessions)
-      const projects = orderProjectItems(
-        await annotateProjectItemsWithSessionLinks(await getProjectItems(nextConfig), visibleSessions, nextConfig),
-        nextConfig.sortOrder
-      )
-      const cleanProjects = clearMatchIndices(projects)
+      const rawProjects = await measure('refresh:getProjectItems', () => getProjectItems(nextConfig))
+      const orderedProjects = orderProjectItems(rawProjects, nextConfig.sortOrder)
+      setProjectSourceItems(orderedProjects)
+      const linkedProjects = await loadLinkedProjectItems(nextConfig, visibleSessions, orderedProjects)
+      const cleanProjects = clearMatchIndices(linkedProjects)
       setProjectItems(cleanProjects)
       setAllItems(cleanProjects)
       setItems(cleanProjects)
@@ -448,9 +458,9 @@ export function App() {
         closeModal()
         setAppMode(AppMode.NewSession)
         setViewMode(ViewMode.Projects)
-        setAllItems(projectItems)
-        setItems(projectItems)
-        setCursor(Math.max(0, projectItems.length - 1))
+        setAllItems(sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems)
+        setItems(sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems)
+        setCursor(Math.max(0, (sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems).length - 1))
         setSearchQuery('')
         return
       case 'open-settings':
@@ -562,7 +572,7 @@ export function App() {
     searchQuery,
     renameTarget,
     prefixKey: config?.prefixKey,
-    projectItems,
+    projectItems: sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems,
     sessionItems,
     prefixActive,
     prefixTimeoutRef,
@@ -726,9 +736,36 @@ export function App() {
 
   useEffect(() => {
     if (appMode === AppMode.NewSession && viewMode === ViewMode.Projects) {
-      setCursor(getProjectSelectionIndex(projectItems))
+      setCursor(getProjectSelectionIndex(sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems))
     }
-  }, [appMode, viewMode, projectItems])
+  }, [appMode, viewMode, projectSourceItems, sessionCandidateItems])
+
+  useEffect(() => {
+    if (appMode !== AppMode.NewSession || !config) {
+      return
+    }
+
+    const nextConfig = config
+    let cancelled = false
+
+    async function loadSessionCandidates() {
+      const candidates = await measure('loadSessionCandidateItems', () => getSessionCandidateItems(nextConfig))
+      if (cancelled) {
+        return
+      }
+
+      setSessionCandidateItems(candidates)
+      setAllItems(candidates)
+      setItems(candidates)
+      setCursor(getProjectSelectionIndex(candidates))
+    }
+
+    void loadSessionCandidates()
+
+    return () => {
+      cancelled = true
+    }
+  }, [appMode, config])
 
   useEffect(() => {
     if (filteredCommandEntries.length === 0) {

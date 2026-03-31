@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtemp, mkdir, rm, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
-import { applyZoxideMode, getProjectItems, parseZoxideOutput } from '../src/tmux/projects'
+import { applyZoxideMode, getProjectItems, getSessionCandidateItems, parseZoxideOutput } from '../src/tmux/projects'
 import { filterHiddenSessions, getLastSessionTarget } from '../src/tmux/workflows'
 import { getDefaultConfig } from '../src/config'
 import { annotateProjectItemsWithSessionLinks } from '../src/projects/session-links'
@@ -83,6 +83,27 @@ describe('project discovery helpers', () => {
       })
 
       expect(items.map(item => item.path)).toEqual([projectRoot])
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  test('includes plain directories as new-session candidates', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'mux-sesh-session-candidates-'))
+
+    try {
+      const projectRoot = join(root, 'work', 'current', 'SalesMaker-2')
+
+      await mkdir(projectRoot, { recursive: true })
+      await writeFile(join(projectRoot, 'notes.txt'), 'hello')
+
+      const items = await getSessionCandidateItems({
+        ...getDefaultConfig(root),
+        projectPaths: [join(root, 'work')],
+        zoxideMode: 'off',
+      })
+
+      expect(items.some(item => item.path === projectRoot)).toBe(true)
     } finally {
       await rm(root, { recursive: true, force: true })
     }
