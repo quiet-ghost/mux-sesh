@@ -28,6 +28,42 @@ describe('item ordering', () => {
     expect(orderProjectItems(items, 'live-first').map(item => item.title)).toEqual(['z-last', 'a-first'])
     expect(orderProjectItems(items, 'alphabetical').map(item => item.title)).toEqual(['a-first', 'z-last'])
   })
+
+  test('groups live worktree sessions with their parent project', () => {
+    const items: Item[] = [
+      {
+        title: 'update-session-naming',
+        desc: 'mux-sesh [worktree]',
+        path: '/home/tester/dev/projects/mux-sesh/.worktrees/update-session-naming',
+        isSession: true,
+      },
+      {
+        title: 'blackjack',
+        desc: 'projects',
+        path: '/home/tester/dev/projects/blackjack',
+        isSession: true,
+      },
+      {
+        title: 'mux-sesh',
+        desc: 'projects',
+        path: '/home/tester/dev/projects/mux-sesh',
+        isSession: true,
+      },
+      {
+        title: 'mux-sesh-config',
+        desc: 'mux-sesh [worktree]',
+        path: '/home/tester/dev/projects/mux-sesh/.worktrees/mux-sesh-config',
+        isSession: true,
+      },
+    ]
+
+    expect(orderSessionItems(items, 'live-first').map(item => item.title)).toEqual([
+      'blackjack',
+      'mux-sesh',
+      'mux-sesh-config',
+      'update-session-naming',
+    ])
+  })
 })
 
 describe('item icons', () => {

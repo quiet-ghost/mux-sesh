@@ -1,9 +1,6 @@
 import type { Config, Item, ProjectProfile } from '../types'
 import { resolveProjectSession } from './session-rules'
-
-function displayPath(path: string): string {
-  return path.replace(process.env.HOME || '', '~')
-}
+import { getPathGroupLabel } from '../util/path-display'
 
 function isListedProjectProfile(profile: ProjectProfile): boolean {
   return profile.listed === true
@@ -18,7 +15,7 @@ export async function getListedSessionItems(config: Config): Promise<Item[]> {
 
       return {
         title: resolvedSession.sessionName,
-        desc: displayPath(profile.path),
+        desc: getPathGroupLabel(profile.path),
         path: profile.path,
         isSession: false,
         itemKind: 'configured' as const,

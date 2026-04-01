@@ -50,8 +50,8 @@ export async function getGitRoot(projectPath: string): Promise<string | null> {
   }
 }
 
-function buildSessionName(projectPath: string, dirLength = 1, gitRoot: string | null): string {
-  const namingPath = normalizePathForMatching(gitRoot ?? projectPath)
+function buildSessionName(projectPath: string, dirLength = 1): string {
+  const namingPath = normalizePathForMatching(projectPath)
   const parts = namingPath.split('/').filter(Boolean)
   const segmentCount = Math.max(1, dirLength)
   const relevantParts = parts.slice(-segmentCount)
@@ -63,16 +63,14 @@ function buildSessionName(projectPath: string, dirLength = 1, gitRoot: string | 
 export async function resolveProjectSession(
   projectPath: string,
   config: Config,
-  options: ResolveProjectSessionOptions = {}
+  _options: ResolveProjectSessionOptions = {}
 ): Promise<ResolvedProjectSession> {
   const normalizedProjectPath = normalizePathForMatching(projectPath)
-  const getGitRootForPath = options.getGitRoot ?? getGitRoot
   const projectProfile = findProjectProfile(normalizedProjectPath, config)
 
   if (projectProfile) {
-    const gitRoot = await getGitRootForPath(projectPath)
     return {
-      sessionName: sanitizeSessionName(projectProfile.sessionName ?? buildSessionName(projectPath, config.dirLength, gitRoot)),
+      sessionName: sanitizeSessionName(projectProfile.sessionName ?? buildSessionName(projectPath, config.dirLength)),
       startupCommand: projectProfile.startupCommand ?? config.defaultSession?.startupCommand,
       previewCommand: projectProfile.previewCommand ?? config.defaultSession?.previewCommand,
       source: 'project',
@@ -81,19 +79,16 @@ export async function resolveProjectSession(
 
   const wildcard = findWildcard(normalizedProjectPath, config)
   if (wildcard) {
-    const gitRoot = await getGitRootForPath(projectPath)
     return {
-      sessionName: sanitizeSessionName(wildcard.sessionName ?? buildSessionName(projectPath, config.dirLength, gitRoot)),
+      sessionName: sanitizeSessionName(wildcard.sessionName ?? buildSessionName(projectPath, config.dirLength)),
       startupCommand: wildcard.startupCommand ?? config.defaultSession?.startupCommand,
       previewCommand: wildcard.previewCommand ?? config.defaultSession?.previewCommand,
       source: 'wildcard',
     }
   }
 
-  const gitRoot = await getGitRootForPath(projectPath)
-
   return {
-    sessionName: buildSessionName(projectPath, config.dirLength, gitRoot),
+    sessionName: buildSessionName(projectPath, config.dirLength),
     startupCommand: config.defaultSession?.startupCommand,
     previewCommand: config.defaultSession?.previewCommand,
     source: 'default',

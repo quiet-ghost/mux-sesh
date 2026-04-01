@@ -1,6 +1,19 @@
 import type { Item, SortOrder } from '../types'
+import { getLiveSessionSortKey } from '../util/path-display'
 
 function compareByTitle(left: Item, right: Item): number {
+  return left.title.localeCompare(right.title)
+}
+
+function compareLiveSessions(left: Item, right: Item): number {
+  const leftGroupKey = getLiveSessionSortKey(left.path, left.title)
+  const rightGroupKey = getLiveSessionSortKey(right.path, right.title)
+  const groupDifference = leftGroupKey.localeCompare(rightGroupKey)
+
+  if (groupDifference !== 0) {
+    return groupDifference
+  }
+
   return left.title.localeCompare(right.title)
 }
 
@@ -14,7 +27,7 @@ function isConfiguredSession(item: Item): boolean {
 
 function sortByGroup(items: Item[], groups: Array<'live' | 'configured'>): Item[] {
   const configuredItems = items.filter(isConfiguredSession).sort(compareByTitle)
-  const liveItems = items.filter(item => !isConfiguredSession(item)).sort(compareByTitle)
+  const liveItems = items.filter(item => !isConfiguredSession(item)).sort(compareLiveSessions)
   const groupedItems = new Map([
     ['configured', configuredItems],
     ['live', liveItems],
@@ -31,7 +44,13 @@ export function orderSessionItems(items: Item[], sortOrder: SortOrder = 'live-fi
     sortOrder === 'configured-first'
       ? sortByGroup(regularItems, ['configured', 'live'])
       : sortOrder === 'alphabetical'
-        ? [...regularItems].sort(compareByTitle)
+        ? [...regularItems].sort((left, right) => {
+            if (isConfiguredSession(left) || isConfiguredSession(right)) {
+              return compareByTitle(left, right)
+            }
+
+            return compareLiveSessions(left, right)
+          })
         : sortByGroup(regularItems, ['live', 'configured'])
 
   return [...orderedRegularItems, ...opencodeItems]
