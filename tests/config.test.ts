@@ -296,7 +296,7 @@ describe('project session resolution', () => {
     })
   })
 
-  test('uses wildcard startup and git-root-aware dir-length naming', async () => {
+  test('uses wildcard startup and selected-path dir-length naming', async () => {
     const config = normalizeConfig(
       {
         dir_length: 2,
@@ -318,7 +318,7 @@ describe('project session resolution', () => {
     })
 
     expect(resolved).toEqual({
-      sessionName: 'work_client',
+      sessionName: 'apps_web',
       startupCommand: 'bun run dev',
       previewCommand: undefined,
       source: 'wildcard',
@@ -368,7 +368,7 @@ describe('project session resolution', () => {
     expect(listedItems).toEqual([
       {
         title: 'hyprland',
-        desc: '/home/tester/dotfiles/.config/hypr',
+        desc: '.config',
         path: '/home/tester/dotfiles/.config/hypr',
         isSession: false,
         itemKind: 'configured',

@@ -63,21 +63,26 @@ export default function ItemList({
                   ) : (
                     <span style={{ fg: theme.text }}>{item.title}</span>
                   )}
+                  {item.desc ? <span style={{ fg: theme.textSubtle }}>{`  ${item.desc}`}</span> : null}
                 </>
               ) : (
                 <>
                   <span style={{ fg: icon.color }}>{icon.glyph}</span>{' '}
-                  {appMode === AppMode.NewSession ? (
-                    isSearching && hasDescMatch ? (
-                      <HighlightedText text={item.desc} matchIndices={descMatchIndices} />
-                    ) : (
-                      <span style={{ fg: theme.text }}>{item.desc}</span>
-                    )
-                  ) : isSearching && hasTitleMatch ? (
+                  {isSearching && hasTitleMatch ? (
                     <HighlightedText text={item.title} matchIndices={titleMatchIndices} />
                   ) : (
                     <span style={{ fg: theme.text }}>{item.title}</span>
                   )}
+                  {item.desc ? (
+                    <>
+                      <span style={{ fg: theme.textSubtle }}>{'  '}</span>
+                      {isSearching && hasDescMatch ? (
+                        <HighlightedText text={item.desc} matchIndices={descMatchIndices} />
+                      ) : (
+                        <span style={{ fg: theme.textSubtle }}>{item.desc}</span>
+                      )}
+                    </>
+                  ) : null}
                 </>
               )}
             </text>
@@ -89,7 +94,7 @@ export default function ItemList({
                   : `(${item.windowCount})`
                 : appMode === AppMode.NewSession
                   ? `${sessionStatusLabel}${linkedSessionLabel}`
-                  : item.desc ?? ''}
+                  : ''}
             </text>
           </box>
         )

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { formatPreviewOutput, interpolatePreviewCommand } from '../src/preview/project'
 import { getVisibleWindow } from '../src/ui/list-window'
+import { getMutedLabelColumnWidth, getMutedLabelSpacer } from '../src/ui/text-columns'
 
 describe('project preview helpers', () => {
   test('interpolates preview command placeholders with the project path', () => {
@@ -37,5 +38,23 @@ describe('list windowing', () => {
       items: ['c', 'd'],
       startIndex: 2,
     })
+  })
+})
+
+describe('text column helpers', () => {
+  test('aligns muted labels to a shared title column', () => {
+    const width = getMutedLabelColumnWidth([
+      { title: 'mux-sesh', desc: 'projects', path: '/tmp/mux-sesh', isSession: true },
+      {
+        title: 'update-session-naming',
+        desc: 'mux-sesh [worktree]',
+        path: '/tmp/update-session-naming',
+        isSession: true,
+      },
+    ])
+
+    expect(width).toBe('update-session-naming'.length)
+    expect(getMutedLabelSpacer('mux-sesh', width)).toBe(' '.repeat('update-session-naming'.length - 'mux-sesh'.length + 2))
+    expect(getMutedLabelSpacer('update-session-naming', width)).toBe('  ')
   })
 })

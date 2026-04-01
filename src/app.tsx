@@ -24,7 +24,7 @@ import SessionList from './ui/SessionList'
 import OpencodeSessionGroup from './ui/OpencodeSessionGroup'
 import SearchInput from './ui/SearchInput'
 import ItemList from './ui/ItemList'
-import VersionBadge from './ui/VersionBadge'
+import VersionBadge, { formatVersionBadge } from './ui/VersionBadge'
 import RenameModal from './ui/RenameModal'
 import CommandsModal, { filterCommandEntries, getCommandEntries, type CommandId } from './ui/CommandsModal'
 import SettingsModal from './ui/SettingsModal'
@@ -749,15 +749,26 @@ export function App() {
     let cancelled = false
 
     async function loadSessionCandidates() {
-      const candidates = await measure('loadSessionCandidateItems', () => getSessionCandidateItems(nextConfig))
+      const [candidates, sessions] = await measure('loadSessionCandidateItems', () =>
+        Promise.all([getSessionCandidateItems(nextConfig), listTmuxSessions()])
+      )
       if (cancelled) {
         return
       }
 
-      setSessionCandidateItems(candidates)
-      setAllItems(candidates)
-      setItems(candidates)
-      setCursor(getProjectSelectionIndex(candidates))
+      const visibleSessions = filterHiddenSessions(sessions, nextConfig.hiddenSessions)
+      const linkedCandidates = await measure('linkSessionCandidateItems', () =>
+        annotateProjectItemsWithSessionLinks(candidates, visibleSessions, nextConfig)
+      )
+
+      if (cancelled) {
+        return
+      }
+
+      setSessionCandidateItems(linkedCandidates)
+      setAllItems(linkedCandidates)
+      setItems(linkedCandidates)
+      setCursor(getProjectSelectionIndex(linkedCandidates))
     }
 
     void loadSessionCandidates()
@@ -892,6 +903,7 @@ export function App() {
   const activeSessions = items.filter(item => item.isSession && item.isAttached).length
   const maxVisibleItems = Math.max(8, rows - (appMode === AppMode.NewSession ? 10 : 12))
   const prefixLabel = config?.prefixKey ? `${config.prefixKey} ...` : 'direct keys'
+  const versionLabel = formatVersionBadge(CURRENT_VERSION, updatedVersion)
   const footerHint =
     appMode === AppMode.OpencodeManage
       ? `o back  d kill  ctrl+p commands  ${prefixLabel}`
@@ -905,115 +917,138 @@ export function App() {
     <ThemeProvider theme={theme}>
       <box
         style={{
-          flexDirection: 'row',
-          alignItems: 'stretch',
-          justifyContent: 'center',
+          flexDirection: 'column',
           width: '100%',
           height: '100%',
           gap: 1,
           backgroundColor: theme.background,
         }}
       >
-        <box style={listStyle}>
-          <box style={{ justifyContent: 'space-between', marginBottom: 1 }}>
-            <box style={{ flexDirection: 'column' }}>
-              <text style={{ fg: theme.text }}>mux-sesh</text>
-              <text style={{ fg: theme.textSubtle }}>{title}</text>
+        <box
+          style={{
+            flexDirection: 'row',
+            alignItems: 'stretch',
+            justifyContent: 'center',
+            width: '100%',
+            flexGrow: 1,
+            flexShrink: 1,
+            gap: 1,
+          }}
+        >
+          <box style={listStyle}>
+            <box style={{ justifyContent: 'space-between', marginBottom: 1 }}>
+              <box style={{ flexDirection: 'column' }}>
+                <text style={{ fg: theme.text }}>mux-sesh</text>
+                <text style={{ fg: theme.textSubtle }}>{title}</text>
+              </box>
+              <box style={{ flexDirection: 'column', alignItems: 'flex-end' }}>
+                <text style={{ fg: theme.textMuted }}>
+                  {viewMode === ViewMode.Sessions ? `${activeSessions}/${totalSessions} active` : `${projectItems.length} projects`}
+                </text>
+              </box>
             </box>
-            <box style={{ flexDirection: 'column', alignItems: 'flex-end' }}>
-              <text style={{ fg: theme.textMuted }}>
-                {viewMode === ViewMode.Sessions ? `${activeSessions}/${totalSessions} active` : `${projectItems.length} projects`}
-              </text>
-              <text style={{ fg: theme.textSubtle }}>{`${resolvedTheme.name} · ${resolvedTheme.mode}`}</text>
-            </box>
-          </box>
 
-          {(appMode === AppMode.Search || appMode === AppMode.NewSession) && (
-            <SearchInput
-              key={appMode}
-              appMode={appMode}
-              searchQuery={searchQuery}
-              textareaRef={textareaRef}
-              prefixActive={prefixActive}
-              onContentChange={() => {
-                if (textareaRef.current && textareaRef.current.plainText !== undefined) {
-                  setSearchQuery(textareaRef.current.plainText)
-                }
+            {(appMode === AppMode.Search || appMode === AppMode.NewSession) && (
+              <SearchInput
+                key={appMode}
+                appMode={appMode}
+                searchQuery={searchQuery}
+                textareaRef={textareaRef}
+                prefixActive={prefixActive}
+                onContentChange={() => {
+                  if (textareaRef.current && textareaRef.current.plainText !== undefined) {
+                    setSearchQuery(textareaRef.current.plainText)
+                  }
+                }}
+              />
+            )}
+
+            <box
+              style={{
+                alignSelf: 'auto',
+                flexDirection: 'column',
+                flexGrow: 0,
+                flexShrink: 0,
+                marginTop:
+                  viewMode === ViewMode.Sessions && (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
+                    ? 1
+                    : 0,
               }}
-            />
-          )}
+            >
+              {items.length === 0 ? (
+                <text style={{ fg: theme.inactive }}>
+                  {appMode === AppMode.NewSession && searchQuery && isGitHubURL(searchQuery)
+                    ? 'Clone & create session'
+                    : appMode === AppMode.NewSession && searchQuery
+                      ? `Create session: ${searchQuery}`
+                      : 'No items found'}
+                </text>
+              ) : viewMode === ViewMode.Sessions && (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage) ? (
+                <>
+                  <SessionList
+                    items={regularSessions}
+                    cursor={cursor}
+                    searchQuery={searchQuery}
+                    maxItems={maxVisibleItems}
+                    icons={config?.icons}
+                    pendingKillSessionName={pendingKillSessionName}
+                  />
 
-          <box
-            style={{
-              alignSelf: 'auto',
-              flexDirection: 'column',
-              flexGrow: 0,
-              flexShrink: 0,
-              marginTop:
-                viewMode === ViewMode.Sessions && (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
-                  ? 1
-                  : 0,
-            }}
-          >
-            {items.length === 0 ? (
-              <text style={{ fg: theme.inactive }}>
-                {appMode === AppMode.NewSession && searchQuery && isGitHubURL(searchQuery)
-                  ? 'Clone & create session'
-                  : appMode === AppMode.NewSession && searchQuery
-                    ? `Create session: ${searchQuery}`
-                    : 'No items found'}
-              </text>
-            ) : viewMode === ViewMode.Sessions && (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage) ? (
-              <>
-                <SessionList
-                  items={regularSessions}
+                  <OpencodeSessionGroup
+                    sessions={opencodeSessions}
+                    appMode={appMode}
+                    cursor={opencodeCursor}
+                    icons={config?.icons}
+                    pendingKillSessionName={pendingKillSessionName}
+                  />
+                </>
+              ) : (
+                <ItemList
+                  items={items}
                   cursor={cursor}
+                  appMode={appMode}
                   searchQuery={searchQuery}
                   maxItems={maxVisibleItems}
                   icons={config?.icons}
                   pendingKillSessionName={pendingKillSessionName}
                 />
-
-                <OpencodeSessionGroup
-                  sessions={opencodeSessions}
-                  appMode={appMode}
-                  cursor={opencodeCursor}
-                  icons={config?.icons}
-                  pendingKillSessionName={pendingKillSessionName}
-                />
-              </>
-            ) : (
-              <ItemList
-                items={items}
-                cursor={cursor}
-                appMode={appMode}
-                searchQuery={searchQuery}
-                maxItems={maxVisibleItems}
-                icons={config?.icons}
-                pendingKillSessionName={pendingKillSessionName}
-              />
-            )}
+              )}
+            </box>
           </box>
 
-          {(message || columns < 80 || footerHint) && (
-            <box style={{ flexDirection: 'column', marginTop: 1 }}>
-              {message && <text style={{ fg: theme.action }}>{message}</text>}
-              {columns < 80 && appMode !== AppMode.NewSession && (
-                <text style={{ fg: theme.textSubtle }}>Resize for the detail pane.</text>
+          {shouldShowDetailPanel(columns, appMode === AppMode.NewSession) && (
+            <>
+              {viewMode === ViewMode.Sessions && appMode === AppMode.OpencodeManage ? (
+                <OpencodeStatsPanel selectedItem={opencodeSessions[opencodeCursor]} />
+              ) : (
+                <SessionDetailsPanel selectedItem={selectedPrimaryItem} config={config} />
               )}
-              <text style={{ fg: theme.textSubtle }}>{footerHint}</text>
-            </box>
+            </>
           )}
         </box>
 
-        {shouldShowDetailPanel(columns, appMode === AppMode.NewSession) && (
-          <>
-            {viewMode === ViewMode.Sessions && appMode === AppMode.OpencodeManage ? (
-              <OpencodeStatsPanel selectedItem={opencodeSessions[opencodeCursor]} />
-            ) : (
-              <SessionDetailsPanel selectedItem={selectedPrimaryItem} config={config} />
+        {(message || columns < 80 || footerHint) && (
+          <box
+            style={{
+              backgroundColor: theme.surface,
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              paddingTop: 0.4,
+              paddingBottom: 0.4,
+              paddingLeft: 1,
+              paddingRight: versionLabel.length + 3,
+              width: '100%',
+              flexDirection: 'column',
+              flexShrink: 0,
+            }}
+          >
+            {message && <text style={{ fg: theme.action }}>{message}</text>}
+            {columns < 80 && appMode !== AppMode.NewSession && (
+              <text style={{ fg: theme.textSubtle }}>Resize for the detail pane.</text>
             )}
-          </>
+            <text style={{ fg: theme.textSubtle }}>{footerHint}</text>
+          </box>
         )}
 
         {modalState?.type === 'rename' && (

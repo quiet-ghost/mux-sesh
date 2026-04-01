@@ -5,6 +5,7 @@ import { getSessionSection } from '../items/order'
 import HighlightedText from './HighlightedText'
 import { formatSectionHeader, getItemIconPresentation } from './item-icon'
 import { getVisibleWindow } from './list-window'
+import { getMutedLabelColumnWidth, getMutedLabelSpacer } from './text-columns'
 
 interface Props {
   items: Item[]
@@ -26,6 +27,7 @@ export default function SessionList({
   const theme = useTheme()
   const isSearching = searchQuery.trim().length > 0
   const visibleWindow = getVisibleWindow(items, cursor, maxItems)
+  const mutedLabelColumnWidth = getMutedLabelColumnWidth(items)
 
   return (
     <>
@@ -41,6 +43,7 @@ export default function SessionList({
         const sectionHeader = formatSectionHeader(theme, currentSection, icons)
         const pendingKill = item.title === pendingKillSessionName
         const selected = absoluteIndex === cursor
+        const mutedLabelSpacer = item.isSession && item.desc ? getMutedLabelSpacer(item.title, mutedLabelColumnWidth) : ''
 
         return (
           <box key={i} style={{ flexDirection: 'column' }}>
@@ -68,6 +71,7 @@ export default function SessionList({
                 ) : (
                   <span style={{ fg: theme.text }}>{item.title}</span>
                 )}
+                {item.isSession && item.desc ? <span style={{ fg: theme.textSubtle }}>{`${mutedLabelSpacer}${item.desc}`}</span> : null}
               </text>
 
               <text style={{ fg: pendingKill ? theme.danger : theme.textSubtle }}>

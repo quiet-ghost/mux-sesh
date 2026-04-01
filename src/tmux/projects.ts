@@ -3,6 +3,7 @@ import { basename } from 'path'
 import { access, stat } from 'fs/promises'
 import type { Config, Item } from '../types'
 import { normalizePathForMatching } from '../util/glob'
+import { getPathContextLabel } from '../util/path-display'
 
 interface ZoxideEntry {
   score: number
@@ -34,7 +35,7 @@ function isIgnoredProjectDirectory(baseName: string): boolean {
 function toProjectItem(projectPath: string): Item {
   return {
     title: basename(projectPath),
-    desc: projectPath.replace(process.env.HOME || '', '~'),
+    desc: getPathContextLabel(projectPath),
     path: projectPath,
     isSession: false,
     itemKind: 'project',

@@ -1,5 +1,6 @@
 import { spawn } from 'bun'
 import type { Item, SessionDetails, WindowInfo } from '../types'
+import { getLiveSessionGroupLabel } from '../util/path-display'
 
 const SESSION_DETAILS_CACHE_TTL_MS = 4000
 const sessionDetailsCache = new Map<string, { details: SessionDetails; expiresAt: number }>()
@@ -47,18 +48,19 @@ export async function listTmuxSessions(): Promise<Item[]> {
     'tmux',
     'list-sessions',
     '-F',
-    '#{session_name}:#{session_attached}:#{session_windows}:#{session_created}:#{session_activity}',
+    '#{session_name}\t#{session_attached}\t#{session_windows}\t#{session_created}\t#{session_activity}\t#{session_path}',
   ])
 
   const output = await new Response(proc.stdout).text()
   const lines = output.trim().split('\n').filter(Boolean)
 
   const sessions = lines.map(line => {
-    const [name, attached, windows, created, activity] = line.split(':')
+    const [name, attached, windows, created, activity, sessionPath = ''] = line.split('\t')
+
     return {
       title: name,
-      path: name,
-      desc: '',
+      path: sessionPath,
+      desc: getLiveSessionGroupLabel(sessionPath),
       isSession: true,
       itemKind: 'tmux' as const,
       isAttached: attached === '1',
@@ -68,7 +70,7 @@ export async function listTmuxSessions(): Promise<Item[]> {
     }
   })
 
-  return sessions.sort((a, b) => a.title.localeCompare(b.title))
+  return sessions
 }
 
 export async function createTmuxSession(
