@@ -77,7 +77,6 @@ export function App() {
   const [items, setItems] = useState<Item[]>([])
   const [allItems, setAllItems] = useState<Item[]>([])
   const [projectSourceItems, setProjectSourceItems] = useState<Item[]>([])
-  const [projectItems, setProjectItems] = useState<Item[]>([])
   const [sessionCandidateItems, setSessionCandidateItems] = useState<Item[]>([])
   const [sessionItems, setSessionItems] = useState<Item[]>([])
   const [cursor, setCursor] = useState(0)
@@ -162,7 +161,6 @@ export function App() {
         await loadProjectItemsWithLinks(cfg, visibleSessions, measure)
 
       setProjectSourceItems(orderedProjects)
-      setProjectItems(linkedProjects)
 
       if (combinedSessions.length === 0) {
         setViewMode(ViewMode.Projects)
@@ -208,7 +206,6 @@ export function App() {
         await loadProjectItemsWithLinks(nextConfig, visibleSessions, measure)
 
       setProjectSourceItems(orderedProjects)
-      setProjectItems(cleanProjects)
       setAllItems(cleanProjects)
       setItems(cleanProjects)
       setCursor(getProjectSelectionIndex(cleanProjects, lastProjectSelectionRef.current))
@@ -793,7 +790,7 @@ export function App() {
                 <text style={{ fg: theme.textMuted }}>
                   {viewMode === ViewMode.Sessions
                     ? `${activeSessions}/${totalSessions} active`
-                    : `${projectItems.length} projects`}
+                    : `${projectSourceItems.length} projects`}
                 </text>
               </box>
             </box>
