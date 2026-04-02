@@ -3,12 +3,6 @@ import { useKeyboard } from '@opentui/react'
 import { useState, useEffect, useRef } from 'react'
 import { executeCommand as runCommand } from './app/commands'
 import {
-  getProjectSelectionIndex,
-  getSessionSelectionIndex,
-  loadProjectItemsWithLinks,
-  loadSessionItems,
-} from './app/data'
-import {
   useAutoUpdateScheduler,
   useBoundedCursor,
   useNewSessionProjectCursor,
@@ -33,6 +27,7 @@ import {
 } from './app/modals'
 import { showTemporaryMessage } from './app/notifications'
 import { persistConfigUpdate, runWithErrorMessage } from './app/operations'
+import { loadRefreshedViewState, loadStartupState } from './app/state'
 import {
   getAppTitle,
   getEmptyStateMessage,
@@ -150,39 +145,20 @@ export function App() {
   useEffect(() => {
     async function init() {
       mark('startup begin')
-      const cfg = await measure('loadConfig', loadConfig)
-      setConfig(cfg)
-
-      // Standard mode always starts in search mode (non-modal)
-      if (cfg.keybindMode === 'standard') {
-        setAppMode(AppMode.Search)
-      }
-
-      const { visibleSessions, sessionItems: combinedSessions } = await loadSessionItems(
-        cfg,
+      const startupState = await loadStartupState(
         measure,
-        'startup'
+        lastSessionSelectionRef.current,
+        lastProjectSelectionRef.current
       )
 
-      if (combinedSessions.length > 0) {
-        setViewMode(ViewMode.Sessions)
-        setSessionItems(combinedSessions)
-        setAllItems(combinedSessions)
-        setItems(combinedSessions)
-        setCursor(getSessionSelectionIndex(combinedSessions, lastSessionSelectionRef.current))
-      }
-
-      const { projectSourceItems: orderedProjects, projectItems: linkedProjects } =
-        await loadProjectItemsWithLinks(cfg, visibleSessions, measure)
-
-      setProjectSourceItems(orderedProjects)
-
-      if (combinedSessions.length === 0) {
-        setViewMode(ViewMode.Projects)
-        setAllItems(linkedProjects)
-        setItems(linkedProjects)
-        setCursor(getProjectSelectionIndex(linkedProjects, lastProjectSelectionRef.current))
-      }
+      setConfig(startupState.config)
+      setAppMode(startupState.appMode)
+      setViewMode(startupState.viewMode)
+      setSessionItems(startupState.sessionItems)
+      setProjectSourceItems(startupState.projectSourceItems)
+      setAllItems(startupState.items)
+      setItems(startupState.items)
+      setCursor(startupState.cursor)
 
       mark('startup complete')
     }
@@ -195,22 +171,25 @@ export function App() {
 
     const targetMode = forceViewMode ?? viewMode
 
-    if (targetMode === ViewMode.Sessions) {
-      const { sessionItems: cleanSessions } = await loadSessionItems(nextConfig, measure, 'refresh')
-      setSessionItems(cleanSessions)
-      setAllItems(cleanSessions)
-      setItems(cleanSessions)
-      setCursor(getSessionSelectionIndex(cleanSessions, lastSessionSelectionRef.current))
-    } else {
-      const { visibleSessions } = await loadSessionItems(nextConfig, measure, 'refresh-projects')
-      const { projectSourceItems: orderedProjects, projectItems: cleanProjects } =
-        await loadProjectItemsWithLinks(nextConfig, visibleSessions, measure)
+    const refreshedState = await loadRefreshedViewState(
+      targetMode,
+      nextConfig,
+      measure,
+      lastSessionSelectionRef.current,
+      lastProjectSelectionRef.current
+    )
 
-      setProjectSourceItems(orderedProjects)
-      setAllItems(cleanProjects)
-      setItems(cleanProjects)
-      setCursor(getProjectSelectionIndex(cleanProjects, lastProjectSelectionRef.current))
+    if (refreshedState.sessionItems) {
+      setSessionItems(refreshedState.sessionItems)
     }
+
+    if (refreshedState.projectSourceItems) {
+      setProjectSourceItems(refreshedState.projectSourceItems)
+    }
+
+    setAllItems(refreshedState.items)
+    setItems(refreshedState.items)
+    setCursor(refreshedState.cursor)
   }
 
   function showMessage(message: string, timeout = 2000) {

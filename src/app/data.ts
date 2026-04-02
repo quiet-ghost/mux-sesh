@@ -7,7 +7,7 @@ import { getProjectItems, getSessionCandidateItems } from '../tmux/projects'
 import { filterHiddenSessions } from '../tmux/workflows'
 import type { Config, Item } from '../types'
 
-type Measure = <T>(name: string, fn: () => Promise<T>) => Promise<T>
+export type Measure = <T>(name: string, fn: () => Promise<T>) => Promise<T>
 
 export function getSessionSelectionIndex(nextItems: Item[], selection?: string | null): number {
   const regularItems = nextItems.filter(
