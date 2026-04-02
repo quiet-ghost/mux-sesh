@@ -15,16 +15,19 @@ export default function Toast({ message, visible }: ToastProps) {
       style={{
         position: 'absolute',
         top: 1,
-        right: 1,
-        backgroundColor: theme.surfaceAlt,
-        paddingLeft: 1,
-        paddingRight: 1,
-        height: 2,
+        right: 2,
       }}
     >
-      <box>
-        <text style={{ fg: theme.secondary }}>●</text>
-        <text style={{ fg: theme.textMuted, marginLeft: 1 }}>{message}</text>
+      <box
+        style={{
+          flexDirection: 'row',
+          backgroundColor: theme.surface,
+          paddingTop: 1,
+        }}
+      >
+        <text style={{ fg: theme.action }}>▎</text>
+        <text style={{ fg: theme.text, marginLeft: 1, marginRight: 1 }}>{message}</text>
+        <text style={{ fg: theme.action }}>▎</text>
       </box>
     </box>
   )
