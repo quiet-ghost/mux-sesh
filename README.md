@@ -53,7 +53,6 @@ mux-sesh
 ```bash
 git clone https://github.com/quiet-ghost/mux-sesh.git
 cd mux-sesh
-git checkout opentui-convert
 
 # Install dependencies
 bun install
@@ -90,19 +89,31 @@ cp dist/mux-sesh ~/.local/bin/
 
 ### Standard Mode
 
-| Key       | Action                                          |
-| --------- | ----------------------------------------------- |
-| `↑` / `↓` | Navigate                                        |
-| `Ctrl+I`  | Search                                          |
-| `Ctrl+N`  | New session                                     |
-| `Ctrl+D`  | Kill selected live session                      |
-| `Ctrl+R`  | Rename selected live session                    |
-| `Ctrl+L`  | Jump to previous tmux session                   |
-| `Ctrl+G`  | Open the git-root session for the selected item |
-| `Ctrl+E`  | Edit configured session target                  |
-| `Ctrl+Q`  | Quit                                            |
+Standard mode is a search-first workflow. mux-sesh starts in search mode, keeps the query box focused, and favors a configurable prefix key for secondary actions.
 
-In search/new/rename mode, standard mode also supports `Ctrl+X` prefix commands for refresh, rename, kill, root, and opencode actions.
+| Key       | Action               |
+| --------- | -------------------- |
+| Type      | Filter immediately   |
+| `↑` / `↓` | Navigate results     |
+| `Enter`   | Select first result  |
+| `Esc`     | Clear current search |
+| `Ctrl+P`  | Open command palette |
+| `Ctrl+Q`  | Quit                 |
+
+Default prefix: `Ctrl+X`.
+
+Common prefix actions while in standard mode:
+
+| Prefix action | Result                        |
+| ------------- | ----------------------------- |
+| `n`           | New session                   |
+| `o`           | Open OpenCode session manager |
+| `s`           | Open settings                 |
+| `l`           | Jump to previous tmux session |
+| `g`           | Open git-root session         |
+| `r`           | Rename selected live session  |
+| `d`           | Kill selected live session    |
+| `Shift+R`     | Refresh sessions/projects     |
 
 ### Search Mode
 
@@ -134,8 +145,12 @@ Configuration is stored at `~/.config/mux-sesh/config.json`:
   "editor": "nvim",
   "editor_cmd": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
   "keybind_mode": "vim",
+  "prefix_key": "ctrl+x",
+  "theme": "rosepine",
+  "color_scheme": "system",
   "sort_order": "zoxide-first",
   "zoxide_mode": "rank",
+  "auto_update": true,
   "dir_length": 2,
   "hidden_sessions": ["scratch", "tmp*"],
   "icons": {
@@ -173,11 +188,16 @@ Configuration is stored at `~/.config/mux-sesh/config.json`:
 - **`editor`** - Default editor to use
 - **`editor_cmd`** - Default startup command for new sessions unless overridden
 - **`keybind_mode`** - `vim` or `standard`
+- **`prefix_key`** - Prefix used for multi-key commands in standard mode and optional vim mode workflows
+- **`theme`** - Built-in or custom theme name
+- **`color_scheme`** - `system`, `dark`, or `light`
 - **`sort_order`** - Session/project ordering: `live-first`, `configured-first`, `zoxide-first`, or `alphabetical`
 - **`zoxide_mode`** - `off`, `rank`, or `merge` for zoxide-aware project ordering
+- **`auto_update`** - Enable or disable background update checks
 - **`dir_length`** - Number of path segments used when generating session names from git roots or project paths
 - **`hidden_sessions`** - Glob patterns for live tmux sessions to hide from the list
 - **`icons`** - Global icons for tmux, configured, project, and opencode rows
+- **`themes`** - Optional custom theme definitions keyed by name
 - **`default_session`** - Fallback startup and preview commands
 - **`projects`** - Exact path rules with optional `session_name`, `startup_command`, `preview_command`, `listed`, and `icon`
 - **`wildcards`** - Pattern-based defaults for matching projects

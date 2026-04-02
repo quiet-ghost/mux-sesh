@@ -142,15 +142,6 @@
         },
         "previewCommand": {
           "type": "string"
-        },
-        "listed": {
-          "type": "boolean"
-        },
-        "listed": {
-          "type": "boolean"
-        },
-        "icon": {
-          "type": "string"
         }
       },
       "additionalProperties": false
