@@ -1,5 +1,5 @@
 import type { TextareaRenderable } from '@opentui/core'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import {
   useAutoUpdateScheduler,
   useBoundedCursor,
@@ -22,7 +22,7 @@ import { AppScreen } from './app/screen'
 import { showTemporaryMessage } from './app/notifications'
 import { applyOpencodeState, loadOpencodeSessionStats } from './app/opencode'
 import { createAppHandlers, handleKillSessionWithFeedback } from './app/handlers'
-import { loadRefreshedViewState, loadStartupState } from './app/state'
+import { applyRefreshedViewState, loadRefreshedViewState, useAppStartup } from './app/state'
 import { AppMode, ViewMode, type Item, type Config, type OpencodeStatsState } from './types'
 import { getConfigPath, saveConfig } from './config'
 import { getOpencodeSessionStats } from './opencode'
@@ -97,28 +97,20 @@ export function App() {
     applyOpencodeState(sessionName, nextState, setSessionItems, setAllItems, setItems)
   }
 
-  useEffect(() => {
-    async function init() {
-      mark('startup begin')
-      const startupState = await loadStartupState(
-        measure,
-        lastSessionSelectionRef.current,
-        lastProjectSelectionRef.current
-      )
-
-      setConfig(startupState.config)
-      setAppMode(startupState.appMode)
-      setViewMode(startupState.viewMode)
-      setSessionItems(startupState.sessionItems)
-      setProjectSourceItems(startupState.projectSourceItems)
-      setAllItems(startupState.items)
-      setItems(startupState.items)
-      setCursor(startupState.cursor)
-
-      mark('startup complete')
-    }
-    init()
-  }, [])
+  useAppStartup(
+    measure,
+    lastSessionSelectionRef,
+    lastProjectSelectionRef,
+    mark,
+    setConfig,
+    setAppMode,
+    setViewMode,
+    setSessionItems,
+    setProjectSourceItems,
+    setAllItems,
+    setItems,
+    setCursor
+  )
 
   useAutoUpdateScheduler(config, hasScheduledAutoUpdateRef)
   async function refreshItems(forceViewMode?: ViewMode, nextConfig = config) {
@@ -134,17 +126,14 @@ export function App() {
       lastProjectSelectionRef.current
     )
 
-    if (refreshedState.sessionItems) {
-      setSessionItems(refreshedState.sessionItems)
-    }
-
-    if (refreshedState.projectSourceItems) {
-      setProjectSourceItems(refreshedState.projectSourceItems)
-    }
-
-    setAllItems(refreshedState.items)
-    setItems(refreshedState.items)
-    setCursor(refreshedState.cursor)
+    applyRefreshedViewState(
+      refreshedState,
+      setSessionItems,
+      setProjectSourceItems,
+      setAllItems,
+      setItems,
+      setCursor
+    )
   }
 
   function showMessage(message: string, timeout = 2000) {

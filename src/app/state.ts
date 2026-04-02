@@ -1,3 +1,4 @@
+import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { loadConfig } from '../config'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
 import {
@@ -89,4 +90,77 @@ export async function loadRefreshedViewState(
     projectSourceItems,
     cursor: getProjectSelectionIndex(projectItems, lastProjectSelection),
   }
+}
+
+export function applyRefreshedViewState(
+  refreshedState: RefreshedViewState,
+  setSessionItems: Dispatch<SetStateAction<Item[]>>,
+  setProjectSourceItems: Dispatch<SetStateAction<Item[]>>,
+  setAllItems: Dispatch<SetStateAction<Item[]>>,
+  setItems: Dispatch<SetStateAction<Item[]>>,
+  setCursor: Dispatch<SetStateAction<number>>
+) {
+  if (refreshedState.sessionItems) {
+    setSessionItems(refreshedState.sessionItems)
+  }
+
+  if (refreshedState.projectSourceItems) {
+    setProjectSourceItems(refreshedState.projectSourceItems)
+  }
+
+  setAllItems(refreshedState.items)
+  setItems(refreshedState.items)
+  setCursor(refreshedState.cursor)
+}
+
+export function useAppStartup(
+  measure: Measure,
+  lastSessionSelectionRef: MutableRefObject<string | null>,
+  lastProjectSelectionRef: MutableRefObject<string | null>,
+  mark: (label: string) => void,
+  setConfig: Dispatch<SetStateAction<Config | null>>,
+  setAppMode: Dispatch<SetStateAction<AppMode>>,
+  setViewMode: Dispatch<SetStateAction<ViewMode>>,
+  setSessionItems: Dispatch<SetStateAction<Item[]>>,
+  setProjectSourceItems: Dispatch<SetStateAction<Item[]>>,
+  setAllItems: Dispatch<SetStateAction<Item[]>>,
+  setItems: Dispatch<SetStateAction<Item[]>>,
+  setCursor: Dispatch<SetStateAction<number>>
+) {
+  useEffect(() => {
+    async function init() {
+      mark('startup begin')
+      const startupState = await loadStartupState(
+        measure,
+        lastSessionSelectionRef.current,
+        lastProjectSelectionRef.current
+      )
+
+      setConfig(startupState.config)
+      setAppMode(startupState.appMode)
+      setViewMode(startupState.viewMode)
+      setSessionItems(startupState.sessionItems)
+      setProjectSourceItems(startupState.projectSourceItems)
+      setAllItems(startupState.items)
+      setItems(startupState.items)
+      setCursor(startupState.cursor)
+
+      mark('startup complete')
+    }
+
+    void init()
+  }, [
+    lastProjectSelectionRef,
+    lastSessionSelectionRef,
+    mark,
+    measure,
+    setAllItems,
+    setAppMode,
+    setConfig,
+    setCursor,
+    setItems,
+    setProjectSourceItems,
+    setSessionItems,
+    setViewMode,
+  ])
 }
