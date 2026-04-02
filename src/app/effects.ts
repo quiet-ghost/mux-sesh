@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useEffectEvent,
-  type Dispatch,
-  type MutableRefObject,
-  type SetStateAction,
-} from 'react'
+import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { checkAndUpdate, updateEvents } from '../update'
 import { showTemporaryToast } from './notifications'
 import { clearMatchIndices, filterAndSortItems } from '../search'
@@ -279,23 +273,24 @@ export function useOpencodeStatsPolling(
   selectedOpencodeSessionName: string | undefined,
   loadOpencodeStatsForSession: (sessionName: string) => Promise<unknown>
 ) {
-  const loadStats = useEffectEvent(loadOpencodeStatsForSession)
+  const loadStatsRef = useRef(loadOpencodeStatsForSession)
+  loadStatsRef.current = loadOpencodeStatsForSession
 
   useEffect(() => {
     if (!selectedOpencodeSessionName) {
       return
     }
 
-    void loadStats(selectedOpencodeSessionName)
+    void loadStatsRef.current(selectedOpencodeSessionName)
 
     const interval = setInterval(() => {
-      void loadStats(selectedOpencodeSessionName)
+      void loadStatsRef.current(selectedOpencodeSessionName)
     }, 2000)
 
     return () => {
       clearInterval(interval)
     }
-  }, [loadStats, selectedOpencodeSessionName])
+  }, [selectedOpencodeSessionName])
 }
 
 interface UseAppBehaviorsOptions {
