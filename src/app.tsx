@@ -1,6 +1,5 @@
 import type { TextareaRenderable } from '@opentui/core'
 import { useState, useEffect, useRef } from 'react'
-import { executeCommand as runCommand } from './app/commands'
 import {
   useAutoUpdateScheduler,
   useBoundedCursor,
@@ -18,6 +17,7 @@ import { createAppControls } from './app/controls'
 import { getSessionCommandState, getSettingsState } from './app/derived'
 import { useAppKeyboard } from './app/keyboard'
 import { AppModalsLayer } from './app/modals-layer'
+import { AppScreen } from './app/screen'
 import { type ModalState } from './app/modals'
 import { showTemporaryMessage } from './app/notifications'
 import { applyOpencodeState, loadOpencodeSessionStats } from './app/opencode'
@@ -34,30 +34,12 @@ import {
   handleSettingsEditorSubmitWithFeedback,
 } from './app/handlers'
 import { loadRefreshedViewState, loadStartupState } from './app/state'
-import { syncTextareaValue } from './app/textarea'
-import {
-  getAppTitle,
-  getEmptyStateMessage,
-  getFooterHint,
-  getListStyle,
-  getStatusLabel,
-} from './app/view'
 import { AppMode, ViewMode, type Item, type Config, type OpencodeStatsState } from './types'
 import { getConfigPath, saveConfig } from './config'
-import { isGitHubURL } from './util/github'
 import { getOpencodeSessionStats } from './opencode'
 import { ThemeProvider, resolveTheme } from './styles/theme'
-import { useTerminalSize, shouldShowDetailPanel } from './util/terminal'
+import { useTerminalSize } from './util/terminal'
 import { mark, measure } from './util/perf'
-import Toast from './ui/Toast'
-import { CURRENT_VERSION } from './update/version'
-import OpencodeStatsPanel from './ui/OpencodeStatsPanel'
-import SessionDetailsPanel from './ui/SessionDetailsPanel'
-import SessionList from './ui/SessionList'
-import OpencodeSessionGroup from './ui/OpencodeSessionGroup'
-import SearchInput from './ui/SearchInput'
-import ItemList from './ui/ItemList'
-import VersionBadge, { formatVersionBadge } from './ui/VersionBadge'
 import { getSettingEditorTitle, isOptionSetting, type SettingsFieldId } from './settings'
 
 export function App() {
@@ -460,191 +442,69 @@ export function App() {
 
   useOpencodeStatsPolling(selectedOpencodeSessionName, loadOpencodeStatsForSession)
 
-  const title = getAppTitle(appMode, viewMode)
-  const listStyle = getListStyle(theme, appMode)
-
-  const totalSessions = sessionItems.filter(item => item.isSession).length
-  const activeSessions = items.filter(item => item.isSession && item.isAttached).length
-  const maxVisibleItems = Math.max(8, rows - (appMode === AppMode.NewSession ? 10 : 12))
-  const versionLabel = formatVersionBadge(CURRENT_VERSION, updatedVersion)
-  const footerHint = getFooterHint(appMode, config?.prefixKey)
-
   return (
     <ThemeProvider theme={theme}>
-      <box
-        style={{
-          flexDirection: 'column',
-          width: '100%',
-          height: '100%',
-          gap: 1,
-          backgroundColor: theme.background,
-        }}
-      >
-        <box
-          style={{
-            flexDirection: 'row',
-            alignItems: 'stretch',
-            justifyContent: 'center',
-            width: '100%',
-            flexGrow: 1,
-            flexShrink: 1,
-            gap: 1,
-          }}
-        >
-          <box style={listStyle}>
-            <box style={{ justifyContent: 'space-between', marginBottom: 1 }}>
-              <box style={{ flexDirection: 'column' }}>
-                <text style={{ fg: theme.text }}>mux-sesh</text>
-                <text style={{ fg: theme.textSubtle }}>{title}</text>
-              </box>
-              <box style={{ flexDirection: 'column', alignItems: 'flex-end' }}>
-                <text style={{ fg: theme.textMuted }}>
-                  {getStatusLabel(
-                    viewMode,
-                    activeSessions,
-                    totalSessions,
-                    projectSourceItems.length
-                  )}
-                </text>
-              </box>
-            </box>
+      <AppScreen
+        theme={theme}
+        appMode={appMode}
+        viewMode={viewMode}
+        config={config}
+        items={items}
+        regularSessions={regularSessions}
+        opencodeSessions={opencodeSessions}
+        selectedPrimaryItem={selectedPrimaryItem}
+        cursor={cursor}
+        opencodeCursor={opencodeCursor}
+        searchQuery={searchQuery}
+        prefixActive={prefixActive}
+        pendingKillSessionName={pendingKillSessionName}
+        projectCount={projectSourceItems.length}
+        sessionItems={sessionItems}
+        rows={rows}
+        columns={columns}
+        textareaRef={textareaRef}
+        setSearchQuery={setSearchQuery}
+        message={message}
+        toastMessage={toastMessage}
+        toastVisible={toastVisible}
+        updatedVersion={updatedVersion}
+      />
 
-            {(appMode === AppMode.Search || appMode === AppMode.NewSession) && (
-              <SearchInput
-                key={appMode}
-                appMode={appMode}
-                searchQuery={searchQuery}
-                textareaRef={textareaRef}
-                prefixActive={prefixActive}
-                onContentChange={() => syncTextareaValue(textareaRef, setSearchQuery)}
-              />
-            )}
-
-            <box
-              style={{
-                alignSelf: 'auto',
-                flexDirection: 'column',
-                flexGrow: 0,
-                flexShrink: 0,
-                marginTop:
-                  viewMode === ViewMode.Sessions &&
-                  (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
-                    ? 1
-                    : 0,
-              }}
-            >
-              {items.length === 0 ? (
-                <text style={{ fg: theme.inactive }}>
-                  {getEmptyStateMessage(appMode, searchQuery, isGitHubURL(searchQuery))}
-                </text>
-              ) : viewMode === ViewMode.Sessions &&
-                (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage) ? (
-                <>
-                  <SessionList
-                    items={regularSessions}
-                    cursor={cursor}
-                    searchQuery={searchQuery}
-                    maxItems={maxVisibleItems}
-                    icons={config?.icons}
-                    pendingKillSessionName={pendingKillSessionName}
-                  />
-
-                  <OpencodeSessionGroup
-                    sessions={opencodeSessions}
-                    appMode={appMode}
-                    cursor={opencodeCursor}
-                    icons={config?.icons}
-                    pendingKillSessionName={pendingKillSessionName}
-                  />
-                </>
-              ) : (
-                <ItemList
-                  items={items}
-                  cursor={cursor}
-                  appMode={appMode}
-                  searchQuery={searchQuery}
-                  maxItems={maxVisibleItems}
-                  icons={config?.icons}
-                  pendingKillSessionName={pendingKillSessionName}
-                />
-              )}
-            </box>
-          </box>
-
-          {shouldShowDetailPanel(columns, appMode === AppMode.NewSession) && (
-            <>
-              {viewMode === ViewMode.Sessions && appMode === AppMode.OpencodeManage ? (
-                <OpencodeStatsPanel selectedItem={opencodeSessions[opencodeCursor]} />
-              ) : (
-                <SessionDetailsPanel selectedItem={selectedPrimaryItem} config={config} />
-              )}
-            </>
-          )}
-        </box>
-
-        {(message || columns < 80 || footerHint) && (
-          <box
-            style={{
-              backgroundColor: theme.surface,
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              paddingTop: 0.4,
-              paddingBottom: 0.4,
-              paddingLeft: 1,
-              paddingRight: versionLabel.length + 3,
-              width: '100%',
-              flexDirection: 'column',
-              flexShrink: 0,
-            }}
-          >
-            {message && <text style={{ fg: theme.action }}>{message}</text>}
-            {columns < 80 && appMode !== AppMode.NewSession && (
-              <text style={{ fg: theme.textSubtle }}>Resize for the detail pane.</text>
-            )}
-            <text style={{ fg: theme.textSubtle }}>{footerHint}</text>
-          </box>
-        )}
-
-        <AppModalsLayer
-          modalState={modalState}
-          columns={columns}
-          rows={rows}
-          configPath={configPath}
-          themeId={resolvedTheme.id}
-          themeName={resolvedTheme.name}
-          colorMode={resolvedTheme.mode}
-          filteredCommandEntries={filteredCommandEntries}
-          commandsCursor={commandsCursor}
-          commandsSearchQuery={commandsSearchQuery}
-          setCommandsCursor={setCommandsCursor}
-          setCommandsSearchQuery={setCommandsSearchQuery}
-          filteredSettingsEntries={filteredSettingsEntries}
-          settingsCursor={settingsCursor}
-          settingsSearchQuery={settingsSearchQuery}
-          setSettingsCursor={setSettingsCursor}
-          setSettingsSearchQuery={setSettingsSearchQuery}
-          filteredSettingOptions={filteredSettingOptions}
-          settingOptionsCursor={settingOptionsCursor}
-          settingOptionsSearchQuery={settingOptionsSearchQuery}
-          setSettingOptionsCursor={setSettingOptionsCursor}
-          setSettingOptionsSearchQuery={setSettingOptionsSearchQuery}
-          settingEditorValue={settingEditorValue}
-          settingEditorError={settingEditorError}
-          setSettingEditorValue={setSettingEditorValue}
-          modalInputValue={modalInputValue}
-          setModalInputValue={setModalInputValue}
-          commandsSearchTextareaRef={commandsSearchTextareaRef}
-          settingsSearchTextareaRef={settingsSearchTextareaRef}
-          settingOptionsSearchTextareaRef={settingOptionsSearchTextareaRef}
-          settingEditorTextareaRef={settingEditorTextareaRef}
-          modalTextareaRef={modalTextareaRef}
-          getSettingEditorTitle={getSettingEditorTitle}
-        />
-
-        <Toast message={toastMessage} visible={toastVisible} />
-        <VersionBadge currentVersion={CURRENT_VERSION} updatedVersion={updatedVersion} />
-      </box>
+      <AppModalsLayer
+        modalState={modalState}
+        columns={columns}
+        rows={rows}
+        configPath={configPath}
+        themeId={resolvedTheme.id}
+        themeName={resolvedTheme.name}
+        colorMode={resolvedTheme.mode}
+        filteredCommandEntries={filteredCommandEntries}
+        commandsCursor={commandsCursor}
+        commandsSearchQuery={commandsSearchQuery}
+        setCommandsCursor={setCommandsCursor}
+        setCommandsSearchQuery={setCommandsSearchQuery}
+        filteredSettingsEntries={filteredSettingsEntries}
+        settingsCursor={settingsCursor}
+        settingsSearchQuery={settingsSearchQuery}
+        setSettingsCursor={setSettingsCursor}
+        setSettingsSearchQuery={setSettingsSearchQuery}
+        filteredSettingOptions={filteredSettingOptions}
+        settingOptionsCursor={settingOptionsCursor}
+        settingOptionsSearchQuery={settingOptionsSearchQuery}
+        setSettingOptionsCursor={setSettingOptionsCursor}
+        setSettingOptionsSearchQuery={setSettingOptionsSearchQuery}
+        settingEditorValue={settingEditorValue}
+        settingEditorError={settingEditorError}
+        setSettingEditorValue={setSettingEditorValue}
+        modalInputValue={modalInputValue}
+        setModalInputValue={setModalInputValue}
+        commandsSearchTextareaRef={commandsSearchTextareaRef}
+        settingsSearchTextareaRef={settingsSearchTextareaRef}
+        settingOptionsSearchTextareaRef={settingOptionsSearchTextareaRef}
+        settingEditorTextareaRef={settingEditorTextareaRef}
+        modalTextareaRef={modalTextareaRef}
+        getSettingEditorTitle={getSettingEditorTitle}
+      />
     </ThemeProvider>
   )
 }
