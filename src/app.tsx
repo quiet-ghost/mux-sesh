@@ -14,21 +14,25 @@ import {
   useSessionCandidateLoader,
   useUpdateEventToasts,
 } from './app/effects'
+import { createAppControls } from './app/controls'
 import { getSessionCommandState, getSettingsState } from './app/derived'
 import { useAppKeyboard } from './app/keyboard'
 import { AppModalsLayer } from './app/modals-layer'
-import {
-  closeModal as resetModalState,
-  openCommandsModal as showCommandsModal,
-  openRenameModal as showRenameModal,
-  openSettingEditor as showSettingEditor,
-  openSettingOptions as showSettingOptions,
-  openSettingsModal as showSettingsModal,
-  type ModalState,
-} from './app/modals'
+import { type ModalState } from './app/modals'
 import { showTemporaryMessage } from './app/notifications'
 import { applyOpencodeState, loadOpencodeSessionStats } from './app/opencode'
-import { persistConfigUpdate, runWithErrorMessage } from './app/operations'
+import {
+  executeAppCommand,
+  handleEditTargetWithFeedback,
+  handleKillSessionWithFeedback,
+  handleLastSessionWithFeedback,
+  handleNewSessionSubmitWithSearch,
+  handleRenameSubmitWithFeedback,
+  handleRootSessionWithFeedback,
+  handleSelectItem,
+  handleSettingOptionSubmitWithFeedback,
+  handleSettingsEditorSubmitWithFeedback,
+} from './app/handlers'
 import { loadRefreshedViewState, loadStartupState } from './app/state'
 import { syncTextareaValue } from './app/textarea'
 import {
@@ -54,23 +58,7 @@ import OpencodeSessionGroup from './ui/OpencodeSessionGroup'
 import SearchInput from './ui/SearchInput'
 import ItemList from './ui/ItemList'
 import VersionBadge, { formatVersionBadge } from './ui/VersionBadge'
-import {
-  applyEditorSetting,
-  applyOptionSetting,
-  getSettingEditorTitle,
-  isOptionSetting,
-  type SettingsFieldId,
-} from './settings'
-import {} from './handlers/keyboard'
-import {
-  handleSelect as actionHandleSelect,
-  handleKillSession as actionKillSession,
-  handleLastSession as actionHandleLastSession,
-  handleRenameSubmit as actionRenameSubmit,
-  handleNewSessionSubmit as actionNewSessionSubmit,
-  handleRootSession as actionHandleRootSession,
-  handleEditTarget as actionHandleEditTarget,
-} from './handlers/actions'
+import { getSettingEditorTitle, isOptionSetting, type SettingsFieldId } from './settings'
 
 export function App() {
   const [appMode, setAppMode] = useState(AppMode.Normal)
@@ -206,172 +194,130 @@ export function App() {
   )
 
   async function handleKillSessionWrapper(sessionName: string) {
-    setPendingKillSessionName(null)
-
-    await actionKillSession(sessionName, {
-      onSuccess: msg => showMessage(msg),
-      onError: msg => showMessage(msg, 3000),
+    await handleKillSessionWithFeedback(sessionName, {
+      config,
+      items,
+      sessionItems,
+      cursor,
+      showMessage,
       refreshItems,
+      setPendingKillSessionName,
     })
   }
 
   async function handleSelectWrapper(item: Item) {
-    await actionHandleSelect(item, config)
+    await handleSelectItem(item, config)
   }
 
   async function handleLastSessionWrapper() {
-    await runWithErrorMessage(
-      () => actionHandleLastSession(sessionItems),
-      'Failed to switch to the previous session',
-      showMessage
-    )
-  }
-
-  async function handleRootSessionWrapper(item?: Item) {
-    await runWithErrorMessage(
-      () => actionHandleRootSession(item, config),
-      'Failed to open the root session',
-      showMessage
-    )
-  }
-
-  async function handleEditTargetWrapper(item?: Item) {
-    await runWithErrorMessage(
-      () => actionHandleEditTarget(item, config),
-      'Failed to edit target',
-      showMessage
-    )
-  }
-
-  function clearPendingKill() {
-    setPendingKillSessionName(null)
-  }
-
-  function requestKillSession(sessionName: string) {
-    if (pendingKillSessionName === sessionName) {
-      void handleKillSessionWrapper(sessionName)
-      return
-    }
-
-    setPendingKillSessionName(sessionName)
-  }
-
-  function openRenameModal(sessionName: string) {
-    showRenameModal(
-      sessionName,
-      clearPendingKill,
-      setRenameTarget,
-      setModalInputValue,
-      setModalState
-    )
-  }
-
-  function openCommandsModal() {
-    showCommandsModal(clearPendingKill, setCommandsSearchQuery, setCommandsCursor, setModalState)
-  }
-
-  function openSettingsModal() {
-    showSettingsModal(
+    await handleLastSessionWithFeedback({
       config,
-      clearPendingKill,
-      setSettingEditorError,
-      setSettingsSearchQuery,
-      setSettingsCursor,
-      setModalState
-    )
-  }
-
-  function openSettingOptions(field: SettingsFieldId) {
-    showSettingOptions(field, setSettingOptionsSearchQuery, setSettingOptionsCursor, setModalState)
-  }
-
-  function openSettingEditor(field: SettingsFieldId) {
-    showSettingEditor(config, field, setSettingEditorError, setSettingEditorValue, setModalState)
-  }
-
-  function closeModal() {
-    resetModalState({
-      setModalState,
-      setModalInputValue,
-      setCommandsSearchQuery,
-      setCommandsCursor,
-      setSettingsSearchQuery,
-      setSettingsCursor,
-      setSettingOptionsSearchQuery,
-      setSettingOptionsCursor,
-      setSettingEditorValue,
-      setSettingEditorError,
-      setRenameTarget,
+      items,
+      sessionItems,
+      cursor,
+      showMessage,
+      refreshItems,
     })
   }
 
+  async function handleRootSessionWrapper(item?: Item) {
+    await handleRootSessionWithFeedback(item, {
+      config,
+      items,
+      sessionItems,
+      cursor,
+      showMessage,
+      refreshItems,
+    })
+  }
+
+  async function handleEditTargetWrapper(item?: Item) {
+    await handleEditTargetWithFeedback(item, {
+      config,
+      items,
+      sessionItems,
+      cursor,
+      showMessage,
+      refreshItems,
+    })
+  }
+
+  const {
+    clearPendingKill,
+    requestKillSession,
+    openRenameModal,
+    openCommandsModal,
+    openSettingsModal,
+    openSettingOptions,
+    openSettingEditor,
+    closeModal,
+  } = createAppControls({
+    config,
+    pendingKillSessionName,
+    handleKillSession: handleKillSessionWrapper,
+    setPendingKillSessionName,
+    setRenameTarget,
+    setModalInputValue,
+    setModalState,
+    setCommandsSearchQuery,
+    setCommandsCursor,
+    setSettingEditorError,
+    setSettingsSearchQuery,
+    setSettingsCursor,
+    setSettingOptionsSearchQuery,
+    setSettingOptionsCursor,
+    setSettingEditorValue,
+  })
+
   async function handleRenameSubmit() {
     const newName = (modalTextareaRef.current?.plainText ?? modalInputValue).trim()
-    if (newName && newName !== renameTarget) {
-      await actionRenameSubmit(renameTarget, newName, {
-        onSuccess: msg => showMessage(msg),
-        onError: msg => showMessage(msg, 3000),
-        refreshItems,
-      })
-    }
-
-    closeModal()
+    await handleRenameSubmitWithFeedback(renameTarget, newName, closeModal, {
+      showMessage,
+      refreshItems,
+    })
   }
 
   async function handleNewSessionSubmit() {
     const searchTerm = searchQuery.trim()
-    if (!searchTerm) return
-
-    await runWithErrorMessage(
-      () => actionNewSessionSubmit(searchTerm, config, items, cursor),
-      'Failed to create session',
-      showMessage
-    )
+    await handleNewSessionSubmitWithSearch(searchTerm, {
+      config,
+      items,
+      sessionItems,
+      cursor,
+      showMessage,
+      refreshItems,
+    })
   }
 
   async function handleSettingsEditorSubmit(field: SettingsFieldId) {
-    if (!config) {
-      return
-    }
-
-    try {
-      const rawText = settingEditorTextareaRef.current?.plainText ?? settingEditorValue
-      const nextConfig = applyEditorSetting(config, field, rawText, process.env.HOME || '~')
-
-      setSettingEditorError('')
-      await persistConfigUpdate(
-        nextConfig,
-        `${getSettingEditorTitle(field)} updated`,
-        saveConfig,
-        setConfig,
-        refreshItems,
-        showMessage
-      )
-      openSettingsModal()
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to save settings'
-      setSettingEditorError(errorMessage)
-    }
+    await handleSettingsEditorSubmitWithFeedback(field, {
+      config,
+      saveConfig,
+      setConfig,
+      setSettingEditorError,
+      openSettingsModal,
+      settingEditorValue,
+      settingEditorPlainText: settingEditorTextareaRef.current?.plainText,
+      refreshItems,
+      showMessage,
+    })
   }
 
   async function handleSettingOptionSubmit(field: SettingsFieldId, value: string) {
-    if (!config) {
-      return
-    }
-
-    const nextConfig = applyOptionSetting(config, field, value)
-    await persistConfigUpdate(
-      nextConfig,
-      `${getSettingEditorTitle(field)} updated`,
+    await handleSettingOptionSubmitWithFeedback(field, value, {
+      config,
       saveConfig,
       setConfig,
+      setSettingEditorError,
+      openSettingsModal,
+      settingEditorValue,
       refreshItems,
-      showMessage
-    )
+      showMessage,
+    })
   }
 
-  async function executeCommand(commandID: Parameters<typeof runCommand>[0]) {
-    await runCommand(commandID, {
+  async function executeCommand(commandID: Parameters<typeof executeAppCommand>[0]) {
+    await executeAppCommand(commandID, {
       appMode,
       viewMode,
       cursor,
