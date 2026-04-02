@@ -21,6 +21,7 @@ import {
   useUpdateEventToasts,
 } from './app/effects'
 import { handleModalKeyboard } from './app/modal-keyboard'
+import { AppModalsLayer } from './app/modals-layer'
 import {
   closeModal as resetModalState,
   openCommandsModal as showCommandsModal,
@@ -56,11 +57,7 @@ import OpencodeSessionGroup from './ui/OpencodeSessionGroup'
 import SearchInput from './ui/SearchInput'
 import ItemList from './ui/ItemList'
 import VersionBadge, { formatVersionBadge } from './ui/VersionBadge'
-import RenameModal from './ui/RenameModal'
-import CommandsModal, { filterCommandEntries, getCommandEntries } from './ui/CommandsModal'
-import SettingsModal from './ui/SettingsModal'
-import SettingOptionsModal from './ui/SettingOptionsModal'
-import SettingEditorModal from './ui/SettingEditorModal'
+import { filterCommandEntries, getCommandEntries } from './ui/CommandsModal'
 import {
   applyEditorSetting,
   applyOptionSetting,
@@ -762,90 +759,41 @@ export function App() {
           </box>
         )}
 
-        {modalState?.type === 'rename' && (
-          <RenameModal
-            target={modalState.target}
-            initialValue={modalInputValue}
-            columns={columns}
-            textareaRef={modalTextareaRef}
-            onContentChange={() => {
-              if (modalTextareaRef.current?.plainText !== undefined) {
-                setModalInputValue(modalTextareaRef.current.plainText)
-              }
-            }}
-          />
-        )}
-
-        {modalState?.type === 'commands' && (
-          <CommandsModal
-            columns={columns}
-            themeId={resolvedTheme.id}
-            entries={filteredCommandEntries}
-            cursor={commandsCursor}
-            searchQuery={commandsSearchQuery}
-            textareaRef={commandsSearchTextareaRef}
-            onContentChange={() => {
-              if (commandsSearchTextareaRef.current?.plainText !== undefined) {
-                setCommandsSearchQuery(commandsSearchTextareaRef.current.plainText)
-                setCommandsCursor(0)
-              }
-            }}
-          />
-        )}
-
-        {modalState?.type === 'settings' && config && (
-          <SettingsModal
-            configPath={configPath}
-            themeName={resolvedTheme.name}
-            colorMode={resolvedTheme.mode}
-            columns={columns}
-            entries={filteredSettingsEntries}
-            cursor={settingsCursor}
-            searchQuery={settingsSearchQuery}
-            textareaRef={settingsSearchTextareaRef}
-            onContentChange={() => {
-              if (settingsSearchTextareaRef.current?.plainText !== undefined) {
-                setSettingsSearchQuery(settingsSearchTextareaRef.current.plainText)
-                setSettingsCursor(0)
-              }
-            }}
-          />
-        )}
-
-        {modalState?.type === 'setting-options' && (
-          <SettingOptionsModal
-            title={getSettingEditorTitle(modalState.field)}
-            description="Select an option to apply it immediately"
-            columns={columns}
-            options={filteredSettingOptions}
-            cursor={settingOptionsCursor}
-            searchQuery={settingOptionsSearchQuery}
-            textareaRef={settingOptionsSearchTextareaRef}
-            onContentChange={() => {
-              if (settingOptionsSearchTextareaRef.current?.plainText !== undefined) {
-                setSettingOptionsSearchQuery(settingOptionsSearchTextareaRef.current.plainText)
-                setSettingOptionsCursor(0)
-              }
-            }}
-          />
-        )}
-
-        {modalState?.type === 'setting-editor' && (
-          <SettingEditorModal
-            title={getSettingEditorTitle(modalState.field)}
-            description="Edit value and press Enter to apply immediately"
-            value={settingEditorValue}
-            error={settingEditorError}
-            columns={columns}
-            rows={rows}
-            textareaRef={settingEditorTextareaRef}
-            onContentChange={() => {
-              if (settingEditorTextareaRef.current?.plainText !== undefined) {
-                setSettingEditorValue(settingEditorTextareaRef.current.plainText)
-              }
-            }}
-          />
-        )}
+        <AppModalsLayer
+          modalState={modalState}
+          columns={columns}
+          rows={rows}
+          configPath={configPath}
+          themeId={resolvedTheme.id}
+          themeName={resolvedTheme.name}
+          colorMode={resolvedTheme.mode}
+          filteredCommandEntries={filteredCommandEntries}
+          commandsCursor={commandsCursor}
+          commandsSearchQuery={commandsSearchQuery}
+          setCommandsCursor={setCommandsCursor}
+          setCommandsSearchQuery={setCommandsSearchQuery}
+          filteredSettingsEntries={filteredSettingsEntries}
+          settingsCursor={settingsCursor}
+          settingsSearchQuery={settingsSearchQuery}
+          setSettingsCursor={setSettingsCursor}
+          setSettingsSearchQuery={setSettingsSearchQuery}
+          filteredSettingOptions={filteredSettingOptions}
+          settingOptionsCursor={settingOptionsCursor}
+          settingOptionsSearchQuery={settingOptionsSearchQuery}
+          setSettingOptionsCursor={setSettingOptionsCursor}
+          setSettingOptionsSearchQuery={setSettingOptionsSearchQuery}
+          settingEditorValue={settingEditorValue}
+          settingEditorError={settingEditorError}
+          setSettingEditorValue={setSettingEditorValue}
+          modalInputValue={modalInputValue}
+          setModalInputValue={setModalInputValue}
+          commandsSearchTextareaRef={commandsSearchTextareaRef}
+          settingsSearchTextareaRef={settingsSearchTextareaRef}
+          settingOptionsSearchTextareaRef={settingOptionsSearchTextareaRef}
+          settingEditorTextareaRef={settingEditorTextareaRef}
+          modalTextareaRef={modalTextareaRef}
+          getSettingEditorTitle={getSettingEditorTitle}
+        />
 
         <Toast message={toastMessage} visible={toastVisible} />
         <VersionBadge currentVersion={CURRENT_VERSION} updatedVersion={updatedVersion} />
