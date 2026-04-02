@@ -268,3 +268,24 @@ export function useSearchFiltering(
     setCursor(0)
   }, [allItems, appMode, searchQuery, setCursor, setItems])
 }
+
+export function useOpencodeStatsPolling(
+  selectedOpencodeSessionName: string | undefined,
+  loadOpencodeStatsForSession: (sessionName: string) => Promise<unknown>
+) {
+  useEffect(() => {
+    if (!selectedOpencodeSessionName) {
+      return
+    }
+
+    void loadOpencodeStatsForSession(selectedOpencodeSessionName)
+
+    const interval = setInterval(() => {
+      void loadOpencodeStatsForSession(selectedOpencodeSessionName)
+    }, 2000)
+
+    return () => {
+      clearInterval(interval)
+    }
+  }, [loadOpencodeStatsForSession, selectedOpencodeSessionName])
+}

@@ -3,6 +3,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { SettingsEntry, SettingsOption, SettingsFieldId } from '../settings'
 import type { CommandEntry } from '../ui/CommandsModal'
 import type { ModalState } from './modals'
+import { syncTextareaValue } from './textarea'
 import CommandsModal from '../ui/CommandsModal'
 import RenameModal from '../ui/RenameModal'
 import SettingEditorModal from '../ui/SettingEditorModal'
@@ -43,20 +44,6 @@ interface Props {
   settingEditorTextareaRef: MutableRefObject<TextareaRenderable | null>
   modalTextareaRef: MutableRefObject<TextareaRenderable | null>
   getSettingEditorTitle: (field: SettingsFieldId) => string
-}
-
-function setTextareaValue(
-  textareaRef: MutableRefObject<TextareaRenderable | null>,
-  setValue: Dispatch<SetStateAction<string>>,
-  resetCursor?: Dispatch<SetStateAction<number>>
-) {
-  const value = textareaRef.current?.plainText
-  if (value === undefined) {
-    return
-  }
-
-  setValue(value)
-  resetCursor?.(0)
 }
 
 export function AppModalsLayer({
@@ -102,7 +89,7 @@ export function AppModalsLayer({
           initialValue={modalInputValue}
           columns={columns}
           textareaRef={modalTextareaRef}
-          onContentChange={() => setTextareaValue(modalTextareaRef, setModalInputValue)}
+          onContentChange={() => syncTextareaValue(modalTextareaRef, setModalInputValue)}
         />
       )}
 
@@ -115,7 +102,7 @@ export function AppModalsLayer({
           searchQuery={commandsSearchQuery}
           textareaRef={commandsSearchTextareaRef}
           onContentChange={() =>
-            setTextareaValue(commandsSearchTextareaRef, setCommandsSearchQuery, setCommandsCursor)
+            syncTextareaValue(commandsSearchTextareaRef, setCommandsSearchQuery, setCommandsCursor)
           }
         />
       )}
@@ -131,7 +118,7 @@ export function AppModalsLayer({
           searchQuery={settingsSearchQuery}
           textareaRef={settingsSearchTextareaRef}
           onContentChange={() =>
-            setTextareaValue(settingsSearchTextareaRef, setSettingsSearchQuery, setSettingsCursor)
+            syncTextareaValue(settingsSearchTextareaRef, setSettingsSearchQuery, setSettingsCursor)
           }
         />
       )}
@@ -146,7 +133,7 @@ export function AppModalsLayer({
           searchQuery={settingOptionsSearchQuery}
           textareaRef={settingOptionsSearchTextareaRef}
           onContentChange={() =>
-            setTextareaValue(
+            syncTextareaValue(
               settingOptionsSearchTextareaRef,
               setSettingOptionsSearchQuery,
               setSettingOptionsCursor
@@ -164,7 +151,7 @@ export function AppModalsLayer({
           columns={columns}
           rows={rows}
           textareaRef={settingEditorTextareaRef}
-          onContentChange={() => setTextareaValue(settingEditorTextareaRef, setSettingEditorValue)}
+          onContentChange={() => syncTextareaValue(settingEditorTextareaRef, setSettingEditorValue)}
         />
       )}
     </>

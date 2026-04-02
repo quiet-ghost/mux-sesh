@@ -7,6 +7,7 @@ import {
   useBoundedCursor,
   useNewSessionProjectCursor,
   useNormalModeSessionReset,
+  useOpencodeStatsPolling,
   usePendingKillReset,
   useResetCursorOnValue,
   useSearchFiltering,
@@ -14,6 +15,7 @@ import {
   useSessionCandidateLoader,
   useUpdateEventToasts,
 } from './app/effects'
+import { getSessionCommandState, getSettingsState } from './app/derived'
 import { handleModalKeyboard } from './app/modal-keyboard'
 import { AppModalsLayer } from './app/modals-layer'
 import {
@@ -26,18 +28,19 @@ import {
   type ModalState,
 } from './app/modals'
 import { showTemporaryMessage } from './app/notifications'
+import { applyOpencodeState, loadOpencodeSessionStats } from './app/opencode'
 import { persistConfigUpdate, runWithErrorMessage } from './app/operations'
 import { loadRefreshedViewState, loadStartupState } from './app/state'
+import { syncTextareaValue } from './app/textarea'
 import {
   getAppTitle,
   getEmptyStateMessage,
   getFooterHint,
   getListStyle,
   getStatusLabel,
-  splitVisibleSessions,
 } from './app/view'
 import { AppMode, ViewMode, type Item, type Config, type OpencodeStatsState } from './types'
-import { getConfigPath, loadConfig, saveConfig } from './config'
+import { getConfigPath, saveConfig } from './config'
 import { isGitHubURL } from './util/github'
 import { getOpencodeSessionStats } from './opencode'
 import { ThemeProvider, resolveTheme } from './styles/theme'
@@ -52,15 +55,10 @@ import OpencodeSessionGroup from './ui/OpencodeSessionGroup'
 import SearchInput from './ui/SearchInput'
 import ItemList from './ui/ItemList'
 import VersionBadge, { formatVersionBadge } from './ui/VersionBadge'
-import { filterCommandEntries, getCommandEntries } from './ui/CommandsModal'
 import {
   applyEditorSetting,
   applyOptionSetting,
-  filterSettingsEntries,
-  filterSettingsOptions,
   getSettingEditorTitle,
-  getSettingsEntries,
-  getSettingOptions,
   isOptionSetting,
   type SettingsFieldId,
 } from './settings'
@@ -123,23 +121,16 @@ export function App() {
   const configPath = getConfigPath()
   const resolvedTheme = resolveTheme(config?.theme, config?.themes, config?.colorScheme)
   const theme = resolvedTheme.colors
-  const settingsEntries = config ? getSettingsEntries(config) : []
-  const filteredSettingsEntries = filterSettingsEntries(settingsEntries, settingsSearchQuery)
-  const currentOptionField = modalState?.type === 'setting-options' ? modalState.field : undefined
-  const settingOptions =
-    config && currentOptionField ? getSettingOptions(config, currentOptionField) : []
-  const filteredSettingOptions = filterSettingsOptions(settingOptions, settingOptionsSearchQuery)
+  const { filteredSettingsEntries, filteredSettingOptions } = getSettingsState(
+    config,
+    modalState,
+    settingsSearchQuery,
+    settingOptionsSearchQuery
+  )
   const hasScheduledAutoUpdateRef = useRef(false)
 
   function updateOpencodeState(sessionName: string, nextState: OpencodeStatsState) {
-    const applyState = (existingItems: Item[]) =>
-      existingItems.map(item =>
-        item.title === sessionName ? { ...item, opencodeState: nextState } : item
-      )
-
-    setSessionItems(applyState)
-    setAllItems(applyState)
-    setItems(applyState)
+    applyOpencodeState(sessionName, nextState, setSessionItems, setAllItems, setItems)
   }
 
   useEffect(() => {
@@ -197,50 +188,29 @@ export function App() {
   }
 
   async function loadOpencodeStatsForSession(sessionName: string) {
-    updateOpencodeState(sessionName, { status: 'loading' })
-
-    try {
-      const stats = await getOpencodeSessionStats(sessionName)
-
-      if (stats) {
-        updateOpencodeState(sessionName, { status: 'ready', stats })
-        return stats
-      }
-
-      updateOpencodeState(sessionName, {
-        status: 'missing',
-        message: `No OpenCode stats found for '${sessionName}'`,
-      })
-      return null
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : `Failed to load stats for '${sessionName}'`
-      updateOpencodeState(sessionName, { status: 'error', message: errorMessage })
-      showMessage(errorMessage, 4000)
-      return null
-    }
+    return loadOpencodeSessionStats(
+      sessionName,
+      getOpencodeSessionStats,
+      updateOpencodeState,
+      showMessage
+    )
   }
 
-  const sessionSplit =
-    viewMode === ViewMode.Sessions &&
-    (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
-      ? splitVisibleSessions(items)
-      : { regularSessions: items, opencodeSessions: [] }
-  const regularSessions = sessionSplit.regularSessions
-  const opencodeSessions = sessionSplit.opencodeSessions
-  const selectedOpencodeSessionName =
-    appMode === AppMode.OpencodeManage ? opencodeSessions[opencodeCursor]?.title : undefined
-  const selectedPrimaryItem =
-    viewMode === ViewMode.Sessions && appMode === AppMode.Normal
-      ? regularSessions[cursor]
-      : items[cursor]
-  const commandEntries = getCommandEntries(
+  const {
+    regularSessions,
+    opencodeSessions,
+    selectedOpencodeSessionName,
+    selectedPrimaryItem,
+    filteredCommandEntries,
+  } = getSessionCommandState(
     appMode,
-    config?.keybindMode,
-    config?.prefixKey,
-    selectedPrimaryItem
+    viewMode,
+    items,
+    cursor,
+    opencodeCursor,
+    config,
+    commandsSearchQuery
   )
-  const filteredCommandEntries = filterCommandEntries(commandEntries, commandsSearchQuery)
 
   async function handleKillSessionWrapper(sessionName: string) {
     setPendingKillSessionName(null)
@@ -572,21 +542,7 @@ export function App() {
   )
   useSearchFiltering(appMode, searchQuery, allItems, setItems, setCursor)
 
-  useEffect(() => {
-    if (!selectedOpencodeSessionName) {
-      return
-    }
-
-    void loadOpencodeStatsForSession(selectedOpencodeSessionName)
-
-    const interval = setInterval(() => {
-      void loadOpencodeStatsForSession(selectedOpencodeSessionName)
-    }, 2000)
-
-    return () => {
-      clearInterval(interval)
-    }
-  }, [selectedOpencodeSessionName])
+  useOpencodeStatsPolling(selectedOpencodeSessionName, loadOpencodeStatsForSession)
 
   const title = getAppTitle(appMode, viewMode)
   const listStyle = getListStyle(theme, appMode)
@@ -644,11 +600,7 @@ export function App() {
                 searchQuery={searchQuery}
                 textareaRef={textareaRef}
                 prefixActive={prefixActive}
-                onContentChange={() => {
-                  if (textareaRef.current && textareaRef.current.plainText !== undefined) {
-                    setSearchQuery(textareaRef.current.plainText)
-                  }
-                }}
+                onContentChange={() => syncTextareaValue(textareaRef, setSearchQuery)}
               />
             )}
 
