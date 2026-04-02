@@ -6,9 +6,20 @@ import {
   getProjectSelectionIndex,
   getSessionSelectionIndex,
   loadProjectItemsWithLinks,
-  loadSessionCandidateItems,
   loadSessionItems,
 } from './app/data'
+import {
+  useAutoUpdateScheduler,
+  useBoundedCursor,
+  useNewSessionProjectCursor,
+  useNormalModeSessionReset,
+  usePendingKillReset,
+  useResetCursorOnValue,
+  useSearchFiltering,
+  useSelectionMemory,
+  useSessionCandidateLoader,
+  useUpdateEventToasts,
+} from './app/effects'
 import { handleModalKeyboard } from './app/modal-keyboard'
 import {
   closeModal as resetModalState,
@@ -19,17 +30,16 @@ import {
   openSettingsModal as showSettingsModal,
   type ModalState,
 } from './app/modals'
-import { showTemporaryMessage, showTemporaryToast } from './app/notifications'
+import { showTemporaryMessage } from './app/notifications'
+import { persistConfigUpdate, runWithErrorMessage } from './app/operations'
 import { AppMode, ViewMode, type Item, type Config, type OpencodeStatsState } from './types'
 import { getConfigPath, loadConfig, saveConfig } from './config'
-import { filterAndSortItems, clearMatchIndices } from './search'
 import { isGitHubURL } from './util/github'
 import { getOpencodeSessionStats } from './opencode'
 import { ThemeProvider, getPanelStyle, resolveTheme } from './styles/theme'
 import { useTerminalSize, shouldShowDetailPanel } from './util/terminal'
 import { mark, measure } from './util/perf'
 import Toast from './ui/Toast'
-import { checkAndUpdate, updateEvents } from './update'
 import { CURRENT_VERSION } from './update/version'
 import OpencodeStatsPanel from './ui/OpencodeStatsPanel'
 import SessionDetailsPanel from './ui/SessionDetailsPanel'
@@ -174,21 +184,7 @@ export function App() {
     init()
   }, [])
 
-  useEffect(() => {
-    if (!config || hasScheduledAutoUpdateRef.current) {
-      return
-    }
-
-    hasScheduledAutoUpdateRef.current = true
-
-    const timeout = setTimeout(() => {
-      checkAndUpdate(config).catch(error => {
-        console.error('Auto-update check failed:', error)
-      })
-    }, 1000)
-
-    return () => clearTimeout(timeout)
-  }, [config])
+  useAutoUpdateScheduler(config, hasScheduledAutoUpdateRef)
   async function refreshItems(forceViewMode?: ViewMode, nextConfig = config) {
     if (!nextConfig) return
 
@@ -214,10 +210,6 @@ export function App() {
 
   function showMessage(message: string, timeout = 2000) {
     showTemporaryMessage(setMessage, message, timeout)
-  }
-
-  function showToast(message: string, timeout = 5000) {
-    showTemporaryToast(setToastMessage, setToastVisible, message, timeout)
   }
 
   async function loadOpencodeStatsForSession(sessionName: string) {
@@ -285,32 +277,27 @@ export function App() {
   }
 
   async function handleLastSessionWrapper() {
-    try {
-      await actionHandleLastSession(sessionItems)
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to switch to the previous session'
-      showMessage(errorMessage, 3000)
-    }
+    await runWithErrorMessage(
+      () => actionHandleLastSession(sessionItems),
+      'Failed to switch to the previous session',
+      showMessage
+    )
   }
 
   async function handleRootSessionWrapper(item?: Item) {
-    try {
-      await actionHandleRootSession(item, config)
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to open the root session'
-      showMessage(errorMessage, 3000)
-    }
+    await runWithErrorMessage(
+      () => actionHandleRootSession(item, config),
+      'Failed to open the root session',
+      showMessage
+    )
   }
 
   async function handleEditTargetWrapper(item?: Item) {
-    try {
-      await actionHandleEditTarget(item, config)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to edit target'
-      showMessage(errorMessage, 3000)
-    }
+    await runWithErrorMessage(
+      () => actionHandleEditTarget(item, config),
+      'Failed to edit target',
+      showMessage
+    )
   }
 
   function clearPendingKill() {
@@ -392,19 +379,11 @@ export function App() {
     const searchTerm = searchQuery.trim()
     if (!searchTerm) return
 
-    try {
-      await actionNewSessionSubmit(searchTerm, config, items, cursor)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create session'
-      showMessage(errorMessage, 3000)
-    }
-  }
-
-  async function applyAndPersistConfig(nextConfig: Config, successMessage: string) {
-    await saveConfig(nextConfig)
-    setConfig(nextConfig)
-    await refreshItems(undefined, nextConfig)
-    showMessage(successMessage)
+    await runWithErrorMessage(
+      () => actionNewSessionSubmit(searchTerm, config, items, cursor),
+      'Failed to create session',
+      showMessage
+    )
   }
 
   async function handleSettingsEditorSubmit(field: SettingsFieldId) {
@@ -417,7 +396,14 @@ export function App() {
       const nextConfig = applyEditorSetting(config, field, rawText, process.env.HOME || '~')
 
       setSettingEditorError('')
-      await applyAndPersistConfig(nextConfig, `${getSettingEditorTitle(field)} updated`)
+      await persistConfigUpdate(
+        nextConfig,
+        `${getSettingEditorTitle(field)} updated`,
+        saveConfig,
+        setConfig,
+        refreshItems,
+        showMessage
+      )
       openSettingsModal()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to save settings'
@@ -431,7 +417,14 @@ export function App() {
     }
 
     const nextConfig = applyOptionSetting(config, field, value)
-    await applyAndPersistConfig(nextConfig, `${getSettingEditorTitle(field)} updated`)
+    await persistConfigUpdate(
+      nextConfig,
+      `${getSettingEditorTitle(field)} updated`,
+      saveConfig,
+      setConfig,
+      refreshItems,
+      showMessage
+    )
   }
 
   async function executeCommand(commandID: Parameters<typeof runCommand>[0]) {
@@ -547,161 +540,57 @@ export function App() {
     }
   })
 
-  useEffect(() => {
-    const unsubscribe = updateEvents.on(event => {
-      if (event.kind === 'updated') {
-        setUpdatedVersion(event.version)
-        showToast(`Updated in background to v${event.version}. Restart mux-sesh to use it.`)
-      } else if (event.kind === 'available') {
-        showToast(`Update available: v${event.version}`)
-      } else {
-        showToast(`Background update to v${event.version} failed.`)
-      }
-    })
-    return unsubscribe
-  }, [])
-
-  useEffect(() => {
-    if (appMode === AppMode.Search && searchQuery === '') {
-      setItems(allItems)
-    }
-  }, [appMode, searchQuery, allItems])
-
-  useEffect(() => {
-    if (appMode === AppMode.Normal && viewMode === ViewMode.Sessions) {
-      // Clear match indices when returning to normal mode
-      const cleanSessions = clearMatchIndices(sessionItems)
-      setAllItems(cleanSessions)
-      setItems(cleanSessions)
-      setCursor(getSessionSelectionIndex(cleanSessions, lastSessionSelectionRef.current))
-    }
-  }, [appMode, viewMode, sessionItems])
-
-  useEffect(() => {
-    if (appMode === AppMode.NewSession && viewMode === ViewMode.Projects) {
-      setCursor(
-        getProjectSelectionIndex(
-          sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems,
-          lastProjectSelectionRef.current
-        )
-      )
-    }
-  }, [appMode, viewMode, projectSourceItems, sessionCandidateItems])
-
-  useEffect(() => {
-    if (appMode !== AppMode.NewSession || !config) {
-      return
-    }
-
-    const nextConfig = config
-    let cancelled = false
-
-    async function loadSessionCandidates() {
-      const linkedCandidates = await loadSessionCandidateItems(nextConfig, measure)
-      if (cancelled) {
-        return
-      }
-
-      setSessionCandidateItems(linkedCandidates)
-      setAllItems(linkedCandidates)
-      setItems(linkedCandidates)
-      setCursor(getProjectSelectionIndex(linkedCandidates, lastProjectSelectionRef.current))
-    }
-
-    void loadSessionCandidates()
-
-    return () => {
-      cancelled = true
-    }
-  }, [appMode, config])
-
-  useEffect(() => {
-    if (filteredCommandEntries.length === 0) {
-      setCommandsCursor(0)
-      return
-    }
-
-    setCommandsCursor(current => Math.min(current, filteredCommandEntries.length - 1))
-  }, [filteredCommandEntries.length])
-
-  useEffect(() => {
-    setCommandsCursor(0)
-  }, [commandsSearchQuery])
-
-  useEffect(() => {
-    if (filteredSettingsEntries.length === 0) {
-      setSettingsCursor(0)
-      return
-    }
-
-    setSettingsCursor(current => Math.min(current, filteredSettingsEntries.length - 1))
-  }, [filteredSettingsEntries.length])
-
-  useEffect(() => {
-    if (filteredSettingOptions.length === 0) {
-      setSettingOptionsCursor(0)
-      return
-    }
-
-    setSettingOptionsCursor(current => Math.min(current, filteredSettingOptions.length - 1))
-  }, [filteredSettingOptions.length])
-
-  useEffect(() => {
-    const selectedItem = appMode === AppMode.NewSession ? items[cursor] : selectedPrimaryItem
-
-    if (!selectedItem) {
-      return
-    }
-
-    if (appMode === AppMode.NewSession || viewMode === ViewMode.Projects) {
-      if (!selectedItem.isSession) {
-        lastProjectSelectionRef.current = selectedItem.path
-      }
-      return
-    }
-
-    if (viewMode === ViewMode.Sessions && appMode === AppMode.Normal) {
-      lastSessionSelectionRef.current = selectedItem.title
-    }
-  }, [appMode, viewMode, cursor, items, selectedPrimaryItem])
-
-  useEffect(() => {
-    if (!pendingKillSessionName) {
-      return
-    }
-
-    const selectedSessionName =
-      appMode === AppMode.OpencodeManage
-        ? opencodeSessions[opencodeCursor]?.title
-        : viewMode === ViewMode.Sessions
-          ? regularSessions[cursor]?.title
-          : undefined
-
-    if (selectedSessionName !== pendingKillSessionName) {
-      setPendingKillSessionName(null)
-    }
-  }, [
+  useUpdateEventToasts(setUpdatedVersion, setToastMessage, setToastVisible)
+  useNormalModeSessionReset(
     appMode,
-    cursor,
-    opencodeCursor,
-    opencodeSessions,
-    pendingKillSessionName,
-    regularSessions,
     viewMode,
-  ])
-
-  useEffect(() => {
-    if (appMode === AppMode.Search || appMode === AppMode.NewSession) {
-      if (searchQuery.trim()) {
-        const filtered = filterAndSortItems(allItems, searchQuery)
-        setItems(filtered)
-        setCursor(0)
-      } else {
-        setItems(allItems)
-        setCursor(0)
-      }
-    }
-  }, [searchQuery, appMode, allItems])
+    sessionItems,
+    lastSessionSelectionRef,
+    setAllItems,
+    setItems,
+    setCursor
+  )
+  useNewSessionProjectCursor(
+    appMode,
+    viewMode,
+    projectSourceItems,
+    sessionCandidateItems,
+    lastProjectSelectionRef,
+    setCursor
+  )
+  useSessionCandidateLoader(
+    appMode,
+    config,
+    lastProjectSelectionRef,
+    setSessionCandidateItems,
+    setAllItems,
+    setItems,
+    setCursor
+  )
+  useBoundedCursor(filteredCommandEntries.length, setCommandsCursor)
+  useResetCursorOnValue(commandsSearchQuery, setCommandsCursor)
+  useBoundedCursor(filteredSettingsEntries.length, setSettingsCursor)
+  useBoundedCursor(filteredSettingOptions.length, setSettingOptionsCursor)
+  useSelectionMemory(
+    appMode,
+    viewMode,
+    cursor,
+    items,
+    selectedPrimaryItem,
+    lastProjectSelectionRef,
+    lastSessionSelectionRef
+  )
+  usePendingKillReset(
+    pendingKillSessionName,
+    appMode,
+    viewMode,
+    opencodeSessions,
+    opencodeCursor,
+    regularSessions,
+    cursor,
+    setPendingKillSessionName
+  )
+  useSearchFiltering(appMode, searchQuery, allItems, setItems, setCursor)
 
   useEffect(() => {
     if (!selectedOpencodeSessionName) {
