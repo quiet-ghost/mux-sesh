@@ -1,4 +1,3 @@
-
 Agent Guidelines for mux-sesh using opentui
 
 Default to using Bun instead of Node.js.
@@ -27,10 +26,10 @@ Use bun test to run tests from the packages directories for a specific package.
 import { test, expect } from "bun:test";
 
 test("hello world", () => {
-  expect(1).toBe(1);
+expect(1).toBe(1);
 });
 
-For more information, read the Bun API docs in node_modules/bun-types/docs/**.md.
+For more information, read the Bun API docs in node_modules/bun-types/docs/\*\*.md.
 Build/Test Commands
 
 To build the project (before running typescript tests), run bun run build FROM THE REPO ROOT to make sure all packages are built correctly.

@@ -33,7 +33,13 @@ export default function SettingEditorModal({
   }, [textareaRef])
 
   return (
-    <Modal title={title} description={description} footer='Enter apply' columns={columns} preferredWidth={88}>
+    <Modal
+      title={title}
+      description={description}
+      footer="Enter apply"
+      columns={columns}
+      preferredWidth={88}
+    >
       {error && <text style={{ fg: theme.danger, marginBottom: 1 }}>{error}</text>}
 
       <box
@@ -42,7 +48,12 @@ export default function SettingEditorModal({
           height: Math.max(6, rows - 16),
         }}
       >
-        <textarea ref={textareaRef} initialValue={value} onContentChange={onContentChange} focused />
+        <textarea
+          ref={textareaRef}
+          initialValue={value}
+          onContentChange={onContentChange}
+          focused
+        />
       </box>
     </Modal>
   )

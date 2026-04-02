@@ -38,24 +38,33 @@ export default function SettingsModal({
 
   return (
     <Modal
-      title='Settings'
-      description='Search for a setting, then open its option or editor screen'
-      footer='↑/↓ navigate  enter open  esc close'
+      title="Settings"
+      description="Search for a setting, then open its option or editor screen"
+      footer="↑/↓ navigate  enter open  esc close"
       columns={columns}
       preferredWidth={74}
     >
       <box style={{ flexDirection: 'column', marginBottom: 1 }}>
         <text style={{ fg: theme.textMuted }}>Path: {configPath}</text>
-        <text style={{ fg: theme.textMuted }}>{themeName} ({colorMode})</text>
+        <text style={{ fg: theme.textMuted }}>
+          {themeName} ({colorMode})
+        </text>
       </box>
 
-      <box style={{ backgroundColor: theme.surfaceAlt, paddingLeft: 1, paddingRight: 1, marginBottom: 1 }}>
+      <box
+        style={{
+          backgroundColor: theme.surfaceAlt,
+          paddingLeft: 1,
+          paddingRight: 1,
+          marginBottom: 1,
+        }}
+      >
         <textarea
           ref={textareaRef}
           initialValue={searchQuery}
           onContentChange={onContentChange}
           focused
-          placeholder='Search settings'
+          placeholder="Search settings"
         />
       </box>
 
@@ -78,7 +87,9 @@ export default function SettingsModal({
                 }}
               >
                 <text style={{ fg: active ? theme.selectionText : theme.text }}>{entry.label}</text>
-                <text style={{ fg: active ? theme.selectionText : theme.textMuted }}>{entry.value}</text>
+                <text style={{ fg: active ? theme.selectionText : theme.textMuted }}>
+                  {entry.value}
+                </text>
               </box>
             )
           })

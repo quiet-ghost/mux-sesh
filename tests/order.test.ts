@@ -8,7 +8,13 @@ describe('item ordering', () => {
   test('orders sessions by source when configured-first is requested', () => {
     const items: Item[] = [
       { title: 'work', desc: '', path: 'work', isSession: true },
-      { title: 'hyprland', desc: '~/.config/hypr', path: '/tmp/hypr', isSession: false, itemKind: 'configured' },
+      {
+        title: 'hyprland',
+        desc: '~/.config/hypr',
+        path: '/tmp/hypr',
+        isSession: false,
+        itemKind: 'configured',
+      },
       { title: 'dev', desc: '', path: 'dev', isSession: true },
     ]
 
@@ -25,8 +31,14 @@ describe('item ordering', () => {
       { title: 'a-first', desc: '', path: '/tmp/a-first', isSession: false },
     ]
 
-    expect(orderProjectItems(items, 'live-first').map(item => item.title)).toEqual(['z-last', 'a-first'])
-    expect(orderProjectItems(items, 'alphabetical').map(item => item.title)).toEqual(['a-first', 'z-last'])
+    expect(orderProjectItems(items, 'live-first').map(item => item.title)).toEqual([
+      'z-last',
+      'a-first',
+    ])
+    expect(orderProjectItems(items, 'alphabetical').map(item => item.title)).toEqual([
+      'a-first',
+      'z-last',
+    ])
   })
 
   test('groups live worktree sessions with their parent project', () => {

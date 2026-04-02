@@ -1,4 +1,4 @@
-name: Format Check
+name: format
 
 on:
   pull_request:
@@ -8,11 +8,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
 
       - name: Check formatting
-        run: |
-          bunx prettier --check "src/**/*.{ts,tsx}" || echo "No formatting issues (or Prettier not configured)"
+        run: bun run format:check

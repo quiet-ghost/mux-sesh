@@ -3,7 +3,11 @@ export interface VisibleWindow<T> {
   startIndex: number
 }
 
-export function getVisibleWindow<T>(items: T[], cursor: number, maxItems: number): VisibleWindow<T> {
+export function getVisibleWindow<T>(
+  items: T[],
+  cursor: number,
+  maxItems: number
+): VisibleWindow<T> {
   if (items.length === 0) {
     return {
       items: [],

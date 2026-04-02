@@ -11,7 +11,13 @@ interface Props {
   onContentChange: () => void
 }
 
-export default function RenameModal({ target, initialValue, columns, textareaRef, onContentChange }: Props) {
+export default function RenameModal({
+  target,
+  initialValue,
+  columns,
+  textareaRef,
+  onContentChange,
+}: Props) {
   const theme = useTheme()
 
   useEffect(() => {
@@ -28,14 +34,19 @@ export default function RenameModal({ target, initialValue, columns, textareaRef
 
   return (
     <Modal
-      title='Rename Session'
+      title="Rename Session"
       description={`Update ${target}`}
-      footer='Enter apply'
+      footer="Enter apply"
       columns={columns}
       preferredWidth={60}
     >
       <box style={{ backgroundColor: theme.surfaceAlt, height: 3 }}>
-        <textarea ref={textareaRef} initialValue={initialValue} onContentChange={onContentChange} focused />
+        <textarea
+          ref={textareaRef}
+          initialValue={initialValue}
+          onContentChange={onContentChange}
+          focused
+        />
       </box>
     </Modal>
   )

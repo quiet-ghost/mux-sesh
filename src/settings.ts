@@ -39,7 +39,12 @@ export interface SettingsOption {
 const COLOR_SCHEME_OPTIONS: ThemeColorScheme[] = ['system', 'dark', 'light']
 const KEYBIND_OPTIONS: KeybindMode[] = ['vim', 'standard']
 const PREFIX_OPTIONS = ['ctrl+x', 'ctrl+space', 'space', ',', ';'] as const
-const SORT_ORDER_OPTIONS: SortOrder[] = ['live-first', 'configured-first', 'zoxide-first', 'alphabetical']
+const SORT_ORDER_OPTIONS: SortOrder[] = [
+  'live-first',
+  'configured-first',
+  'zoxide-first',
+  'alphabetical',
+]
 const ZOXIDE_OPTIONS: ZoxideMode[] = ['off', 'rank', 'merge']
 
 function formatJSON(value: unknown): string {
@@ -62,7 +67,10 @@ function themeOptions(): SettingsOption[] {
   }))
 }
 
-function choiceOptions(values: readonly string[], descriptions?: Partial<Record<string, string>>): SettingsOption[] {
+function choiceOptions(
+  values: readonly string[],
+  descriptions?: Partial<Record<string, string>>
+): SettingsOption[] {
   return values.map(value => ({
     value,
     label: value,
@@ -321,7 +329,12 @@ export function applyOptionSetting(config: Config, field: SettingsFieldId, value
   }
 }
 
-export function applyEditorSetting(config: Config, field: SettingsFieldId, value: string, homeDir: string): Config {
+export function applyEditorSetting(
+  config: Config,
+  field: SettingsFieldId,
+  value: string,
+  homeDir: string
+): Config {
   const raw = serializeConfig(config)
   const trimmed = value.trim()
 
@@ -337,13 +350,17 @@ export function applyEditorSetting(config: Config, field: SettingsFieldId, value
       break
     case 'defaultStartupCommand':
       raw.default_session = {
-        ...(typeof raw.default_session === 'object' && raw.default_session ? raw.default_session : {}),
+        ...(typeof raw.default_session === 'object' && raw.default_session
+          ? raw.default_session
+          : {}),
         startup_command: value,
       }
       break
     case 'defaultPreviewCommand':
       raw.default_session = {
-        ...(typeof raw.default_session === 'object' && raw.default_session ? raw.default_session : {}),
+        ...(typeof raw.default_session === 'object' && raw.default_session
+          ? raw.default_session
+          : {}),
         preview_command: trimmed.length > 0 ? value : undefined,
       }
       break

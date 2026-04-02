@@ -26,7 +26,11 @@ import SearchInput from './ui/SearchInput'
 import ItemList from './ui/ItemList'
 import VersionBadge, { formatVersionBadge } from './ui/VersionBadge'
 import RenameModal from './ui/RenameModal'
-import CommandsModal, { filterCommandEntries, getCommandEntries, type CommandId } from './ui/CommandsModal'
+import CommandsModal, {
+  filterCommandEntries,
+  getCommandEntries,
+  type CommandId,
+} from './ui/CommandsModal'
 import SettingsModal from './ui/SettingsModal'
 import SettingOptionsModal from './ui/SettingOptionsModal'
 import SettingEditorModal from './ui/SettingEditorModal'
@@ -113,12 +117,15 @@ export function App() {
   const settingsEntries = config ? getSettingsEntries(config) : []
   const filteredSettingsEntries = filterSettingsEntries(settingsEntries, settingsSearchQuery)
   const currentOptionField = modalState?.type === 'setting-options' ? modalState.field : undefined
-  const settingOptions = config && currentOptionField ? getSettingOptions(config, currentOptionField) : []
+  const settingOptions =
+    config && currentOptionField ? getSettingOptions(config, currentOptionField) : []
   const filteredSettingOptions = filterSettingsOptions(settingOptions, settingOptionsSearchQuery)
   const hasScheduledAutoUpdateRef = useRef(false)
 
   function getSessionSelectionIndex(nextItems: Item[]): number {
-    const regularItems = nextItems.filter(item => !(item.isSession && item.title.startsWith('opencode-')))
+    const regularItems = nextItems.filter(
+      item => !(item.isSession && item.title.startsWith('opencode-'))
+    )
     if (regularItems.length === 0) {
       return 0
     }
@@ -157,9 +164,15 @@ export function App() {
     setItems(applyState)
   }
 
-  async function loadLinkedProjectItems(nextConfig: Config, liveSessions: Item[], sourceItems = projectSourceItems) {
+  async function loadLinkedProjectItems(
+    nextConfig: Config,
+    liveSessions: Item[],
+    sourceItems = projectSourceItems
+  ) {
     return orderProjectItems(
-      await measure('linkProjectItems', () => annotateProjectItemsWithSessionLinks(sourceItems, liveSessions, nextConfig)),
+      await measure('linkProjectItems', () =>
+        annotateProjectItemsWithSessionLinks(sourceItems, liveSessions, nextConfig)
+      ),
       nextConfig.sortOrder
     )
   }
@@ -179,7 +192,10 @@ export function App() {
         Promise.all([listTmuxSessions(), getListedSessionItems(cfg)])
       )
       const visibleSessions = filterHiddenSessions(sessions, cfg.hiddenSessions)
-      const combinedSessions = orderSessionItems(mergeSessionItems(visibleSessions, listedSessions), cfg.sortOrder)
+      const combinedSessions = orderSessionItems(
+        mergeSessionItems(visibleSessions, listedSessions),
+        cfg.sortOrder
+      )
 
       if (combinedSessions.length > 0) {
         setViewMode(ViewMode.Sessions)
@@ -232,7 +248,9 @@ export function App() {
     if (targetMode === ViewMode.Sessions) {
       const sessions = await measure('refresh:listTmuxSessions', listTmuxSessions)
       const visibleSessions = filterHiddenSessions(sessions, nextConfig.hiddenSessions)
-      const listedSessions = await measure('refresh:getListedSessionItems', () => getListedSessionItems(nextConfig))
+      const listedSessions = await measure('refresh:getListedSessionItems', () =>
+        getListedSessionItems(nextConfig)
+      )
       const cleanSessions = clearMatchIndices(
         orderSessionItems(mergeSessionItems(visibleSessions, listedSessions), nextConfig.sortOrder)
       )
@@ -243,10 +261,16 @@ export function App() {
     } else {
       const sessions = await measure('refresh:listTmuxSessions', listTmuxSessions)
       const visibleSessions = filterHiddenSessions(sessions, nextConfig.hiddenSessions)
-      const rawProjects = await measure('refresh:getProjectItems', () => getProjectItems(nextConfig))
+      const rawProjects = await measure('refresh:getProjectItems', () =>
+        getProjectItems(nextConfig)
+      )
       const orderedProjects = orderProjectItems(rawProjects, nextConfig.sortOrder)
       setProjectSourceItems(orderedProjects)
-      const linkedProjects = await loadLinkedProjectItems(nextConfig, visibleSessions, orderedProjects)
+      const linkedProjects = await loadLinkedProjectItems(
+        nextConfig,
+        visibleSessions,
+        orderedProjects
+      )
       const cleanProjects = clearMatchIndices(linkedProjects)
       setProjectItems(cleanProjects)
       setAllItems(cleanProjects)
@@ -272,7 +296,8 @@ export function App() {
       })
       return null
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Failed to load stats for '${sessionName}'`
+      const errorMessage =
+        error instanceof Error ? error.message : `Failed to load stats for '${sessionName}'`
       updateOpencodeState(sessionName, { status: 'error', message: errorMessage })
       setMessage(errorMessage)
       setTimeout(() => setMessage(''), 4000)
@@ -294,8 +319,15 @@ export function App() {
   const selectedOpencodeSessionName =
     appMode === AppMode.OpencodeManage ? opencodeSessions[opencodeCursor]?.title : undefined
   const selectedPrimaryItem =
-    viewMode === ViewMode.Sessions && appMode === AppMode.Normal ? regularSessions[cursor] : items[cursor]
-  const commandEntries = getCommandEntries(appMode, config?.keybindMode, config?.prefixKey, selectedPrimaryItem)
+    viewMode === ViewMode.Sessions && appMode === AppMode.Normal
+      ? regularSessions[cursor]
+      : items[cursor]
+  const commandEntries = getCommandEntries(
+    appMode,
+    config?.keybindMode,
+    config?.prefixKey,
+    selectedPrimaryItem
+  )
   const filteredCommandEntries = filterCommandEntries(commandEntries, commandsSearchQuery)
 
   async function handleKillSessionWrapper(sessionName: string) {
@@ -322,7 +354,8 @@ export function App() {
     try {
       await actionHandleLastSession(sessionItems)
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to switch to the previous session'
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to switch to the previous session'
       setMessage(errorMessage)
       setTimeout(() => setMessage(''), 3000)
     }
@@ -332,7 +365,8 @@ export function App() {
     try {
       await actionHandleRootSession(item, config)
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to open the root session'
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to open the root session'
       setMessage(errorMessage)
       setTimeout(() => setMessage(''), 3000)
     }
@@ -460,7 +494,13 @@ export function App() {
         setViewMode(ViewMode.Projects)
         setAllItems(sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems)
         setItems(sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems)
-        setCursor(Math.max(0, (sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems).length - 1))
+        setCursor(
+          Math.max(
+            0,
+            (sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems).length -
+              1
+          )
+        )
         setSearchQuery('')
         return
       case 'open-settings':
@@ -478,7 +518,11 @@ export function App() {
         return
       case 'rename-session': {
         const target =
-          appMode === AppMode.OpencodeManage ? opencodeSessions[opencodeCursor] : viewMode === ViewMode.Sessions ? regularSessions[cursor] : undefined
+          appMode === AppMode.OpencodeManage
+            ? opencodeSessions[opencodeCursor]
+            : viewMode === ViewMode.Sessions
+              ? regularSessions[cursor]
+              : undefined
         if (target?.isSession) {
           openRenameModal(target.title)
         }
@@ -486,7 +530,11 @@ export function App() {
       }
       case 'kill-session': {
         const target =
-          appMode === AppMode.OpencodeManage ? opencodeSessions[opencodeCursor] : viewMode === ViewMode.Sessions ? regularSessions[cursor] : undefined
+          appMode === AppMode.OpencodeManage
+            ? opencodeSessions[opencodeCursor]
+            : viewMode === ViewMode.Sessions
+              ? regularSessions[cursor]
+              : undefined
         if (target?.isSession) {
           closeModal()
           requestKillSession(target.title)
@@ -570,19 +618,16 @@ export function App() {
     cursor,
     opencodeCursor,
     searchQuery,
-    renameTarget,
     prefixKey: config?.prefixKey,
     projectItems: sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems,
     sessionItems,
     prefixActive,
     prefixTimeoutRef,
-    textareaRef,
     setAppMode,
     setViewMode,
     setCursor,
     setOpencodeCursor,
     setSearchQuery,
-    setRenameTarget,
     setAllItems,
     setItems,
     setPrefixActive,
@@ -736,7 +781,11 @@ export function App() {
 
   useEffect(() => {
     if (appMode === AppMode.NewSession && viewMode === ViewMode.Projects) {
-      setCursor(getProjectSelectionIndex(sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems))
+      setCursor(
+        getProjectSelectionIndex(
+          sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems
+        )
+      )
     }
   }, [appMode, viewMode, projectSourceItems, sessionCandidateItems])
 
@@ -843,7 +892,15 @@ export function App() {
     if (selectedSessionName !== pendingKillSessionName) {
       setPendingKillSessionName(null)
     }
-  }, [appMode, cursor, opencodeCursor, opencodeSessions, pendingKillSessionName, regularSessions, viewMode])
+  }, [
+    appMode,
+    cursor,
+    opencodeCursor,
+    opencodeSessions,
+    pendingKillSessionName,
+    regularSessions,
+    viewMode,
+  ])
 
   useEffect(() => {
     if (appMode === AppMode.Search || appMode === AppMode.NewSession) {
@@ -943,7 +1000,9 @@ export function App() {
               </box>
               <box style={{ flexDirection: 'column', alignItems: 'flex-end' }}>
                 <text style={{ fg: theme.textMuted }}>
-                  {viewMode === ViewMode.Sessions ? `${activeSessions}/${totalSessions} active` : `${projectItems.length} projects`}
+                  {viewMode === ViewMode.Sessions
+                    ? `${activeSessions}/${totalSessions} active`
+                    : `${projectItems.length} projects`}
                 </text>
               </box>
             </box>
@@ -970,7 +1029,8 @@ export function App() {
                 flexGrow: 0,
                 flexShrink: 0,
                 marginTop:
-                  viewMode === ViewMode.Sessions && (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
+                  viewMode === ViewMode.Sessions &&
+                  (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
                     ? 1
                     : 0,
               }}
@@ -983,7 +1043,8 @@ export function App() {
                       ? `Create session: ${searchQuery}`
                       : 'No items found'}
                 </text>
-              ) : viewMode === ViewMode.Sessions && (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage) ? (
+              ) : viewMode === ViewMode.Sessions &&
+                (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage) ? (
                 <>
                   <SessionList
                     items={regularSessions}
@@ -1104,7 +1165,7 @@ export function App() {
         {modalState?.type === 'setting-options' && (
           <SettingOptionsModal
             title={getSettingEditorTitle(modalState.field)}
-            description='Select an option to apply it immediately'
+            description="Select an option to apply it immediately"
             columns={columns}
             options={filteredSettingOptions}
             cursor={settingOptionsCursor}
@@ -1122,7 +1183,7 @@ export function App() {
         {modalState?.type === 'setting-editor' && (
           <SettingEditorModal
             title={getSettingEditorTitle(modalState.field)}
-            description='Edit value and press Enter to apply immediately'
+            description="Edit value and press Enter to apply immediately"
             value={settingEditorValue}
             error={settingEditorError}
             columns={columns}

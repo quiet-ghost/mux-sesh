@@ -46,7 +46,11 @@ describe('search', () => {
   test('prefers an exact project root match over a weaker path match', () => {
     const results = filterAndSortItems(
       [
-        createItem({ title: 'highlight-helper', path: '/tmp/highlight-helper', desc: '~/dev/highlight-helper' }),
+        createItem({
+          title: 'highlight-helper',
+          path: '/tmp/highlight-helper',
+          desc: '~/dev/highlight-helper',
+        }),
         createItem({
           title: 'notes',
           path: '/tmp/misc/notes',

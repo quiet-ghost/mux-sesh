@@ -24,7 +24,9 @@ export default function VersionBadge({ currentVersion, updatedVersion }: Version
         right: 1,
       }}
     >
-      <text style={{ fg: theme.textSubtle }}>{formatVersionBadge(currentVersion, updatedVersion)}</text>
+      <text style={{ fg: theme.textSubtle }}>
+        {formatVersionBadge(currentVersion, updatedVersion)}
+      </text>
     </box>
   )
 }

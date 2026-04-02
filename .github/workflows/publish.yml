@@ -84,19 +84,19 @@ jobs:
           release_name: Release v${{ steps.version.outputs.version }}
           body: |
             ## Release v${{ steps.version.outputs.version }}
-            
+
             ### Installation
-            
+
             ```bash
             # Install with Bun
             bun install -g mux-sesh
-            
+
             # Or with npm
             npm install -g mux-sesh
             ```
-            
+
             ### Prerequisites
-            
+
             - [Bun](https://bun.sh) >= 1.0.0
             - [Zig](https://ziglang.org) (for building OpenTUI)
             - tmux

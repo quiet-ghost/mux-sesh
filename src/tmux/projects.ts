@@ -15,7 +15,15 @@ interface DiscoveryCacheEntry {
   items: Item[]
 }
 
-const PROJECT_MARKERS = ['.git', '.jj', 'package.json', 'Cargo.toml', 'go.mod', 'pyproject.toml', 'flake.nix']
+const PROJECT_MARKERS = [
+  '.git',
+  '.jj',
+  'package.json',
+  'Cargo.toml',
+  'go.mod',
+  'pyproject.toml',
+  'flake.nix',
+]
 const DISCOVERY_CACHE_TTL_MS = 15000
 const PROJECT_SCAN_DEPTH = 3
 const SESSION_CANDIDATE_SCAN_DEPTH = 5
@@ -104,7 +112,10 @@ function isWithinProjectRoots(projectPath: string, projectRoots: string[]): bool
 
   return projectRoots.some(projectRoot => {
     const normalizedRoot = normalizePathForMatching(projectRoot)
-    return normalizedProjectPath === normalizedRoot || normalizedProjectPath.startsWith(`${normalizedRoot}/`)
+    return (
+      normalizedProjectPath === normalizedRoot ||
+      normalizedProjectPath.startsWith(`${normalizedRoot}/`)
+    )
   })
 }
 
@@ -113,7 +124,9 @@ function rankItemsByZoxide(items: Item[], entries: ZoxideEntry[], config: Config
     return items.sort((a, b) => a.title.localeCompare(b.title))
   }
 
-  const zoxideScores = new Map(entries.map(entry => [normalizePathForMatching(entry.path), entry.score]))
+  const zoxideScores = new Map(
+    entries.map(entry => [normalizePathForMatching(entry.path), entry.score])
+  )
 
   return [...items].sort((left, right) => {
     const scoreDifference =
@@ -155,7 +168,10 @@ export function applyZoxideMode(items: Item[], entries: ZoxideEntry[], config: C
   return [...rankedItems, ...mergedItems]
 }
 
-async function getZoxideEntries(projectRoots: string[], requireProjectMarker: boolean): Promise<ZoxideEntry[]> {
+async function getZoxideEntries(
+  projectRoots: string[],
+  requireProjectMarker: boolean
+): Promise<ZoxideEntry[]> {
   try {
     const proc = spawn(['zoxide', 'query', '--list', '--score'])
     const output = await new Response(proc.stdout).text()
@@ -165,16 +181,22 @@ async function getZoxideEntries(projectRoots: string[], requireProjectMarker: bo
       return []
     }
 
-    const entriesWithinRoots = parseZoxideOutput(output).filter(entry => isWithinProjectRoots(entry.path, projectRoots))
+    const entriesWithinRoots = parseZoxideOutput(output).filter(entry =>
+      isWithinProjectRoots(entry.path, projectRoots)
+    )
 
     if (!requireProjectMarker) {
       return entriesWithinRoots.filter(entry => !isIgnoredProjectDirectory(basename(entry.path)))
     }
 
-    const projectCandidatePaths = await filterProjectCandidatePaths(entriesWithinRoots.map(entry => entry.path))
+    const projectCandidatePaths = await filterProjectCandidatePaths(
+      entriesWithinRoots.map(entry => entry.path)
+    )
     const projectCandidates = new Set(projectCandidatePaths)
 
-    return entriesWithinRoots.filter(entry => projectCandidates.has(normalizePathForMatching(entry.path)))
+    return entriesWithinRoots.filter(entry =>
+      projectCandidates.has(normalizePathForMatching(entry.path))
+    )
   } catch {
     return []
   }
@@ -253,7 +275,8 @@ export async function getProjectItems(config: Config): Promise<Item[]> {
       .filter(path => !isIgnoredProjectDirectory(basename(path)))
       .map(toProjectItem)
 
-    const zoxideEntries = config.zoxideMode === 'off' ? [] : await getZoxideEntries(existingPaths, true)
+    const zoxideEntries =
+      config.zoxideMode === 'off' ? [] : await getZoxideEntries(existingPaths, true)
     return applyZoxideMode(items, zoxideEntries, config)
   })
 }
@@ -270,7 +293,8 @@ export async function getSessionCandidateItems(config: Config): Promise<Item[]> 
     const scannedPaths = await scanDirectories(existingPaths, SESSION_CANDIDATE_SCAN_DEPTH)
     const candidatePaths = filterSessionCandidatePaths(scannedPaths)
     const items = candidatePaths.map(toProjectItem)
-    const zoxideEntries = config.zoxideMode === 'off' ? [] : await getZoxideEntries(existingPaths, false)
+    const zoxideEntries =
+      config.zoxideMode === 'off' ? [] : await getZoxideEntries(existingPaths, false)
 
     return applyZoxideMode(items, zoxideEntries, config)
   })

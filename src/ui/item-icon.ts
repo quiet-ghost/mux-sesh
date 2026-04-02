@@ -14,7 +14,11 @@ function getIconConfig(icons?: IconConfig): IconConfig {
   }
 }
 
-export function getItemIconPresentation(theme: ThemeColors, item: Item, icons?: IconConfig): ItemIconPresentation {
+export function getItemIconPresentation(
+  theme: ThemeColors,
+  item: Item,
+  icons?: IconConfig
+): ItemIconPresentation {
   const resolvedIcons = getIconConfig(icons)
 
   if (item.itemKind === 'configured') {

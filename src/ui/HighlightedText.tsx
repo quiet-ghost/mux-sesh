@@ -10,11 +10,7 @@ interface Props {
  * Renders text with highlighted characters at specified indices
  * Used for fuzzy search match visualization (like fzf/telescope)
  */
-export default function HighlightedText({
-  text,
-  matchIndices = [],
-  highlightColor,
-}: Props) {
+export default function HighlightedText({ text, matchIndices = [], highlightColor }: Props) {
   const theme = useTheme()
   const resolvedHighlightColor = highlightColor ?? theme.action
 

@@ -71,7 +71,9 @@ async function detectInstallMethodFromPath(runtimePath: string): Promise<Install
   return (await findPackageRoot(normalizedPath)) ? 'source' : 'unknown'
 }
 
-export async function detectInstallMethod(runtimePath = getDefaultRuntimePath()): Promise<InstallMethod> {
+export async function detectInstallMethod(
+  runtimePath = getDefaultRuntimePath()
+): Promise<InstallMethod> {
   const activeMethod = await detectInstallMethodFromPath(runtimePath)
   if (activeMethod !== 'unknown') {
     return activeMethod
@@ -111,7 +113,9 @@ export function canAutoUpdate(method: InstallMethod): boolean {
   return method === 'npm' || method === 'bun'
 }
 
-export async function getInstalledVersion(runtimePath = getDefaultRuntimePath()): Promise<string | null> {
+export async function getInstalledVersion(
+  runtimePath = getDefaultRuntimePath()
+): Promise<string | null> {
   const packageRoot = await findPackageRoot(runtimePath)
 
   if (!packageRoot) {

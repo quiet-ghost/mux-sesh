@@ -260,7 +260,9 @@ export function getMostRecentSessionRowFromDatabase(
   return getSessionRow(database, directory)
 }
 
-export async function getMostRecentSessionRow(directory: string): Promise<OpencodeSessionRow | null> {
+export async function getMostRecentSessionRow(
+  directory: string
+): Promise<OpencodeSessionRow | null> {
   return withDatabase(database => getMostRecentSessionRowFromDatabase(database, directory))
 }
 
@@ -309,11 +311,18 @@ export function getMostRecentSessionTitleForDirectoryFromDatabase(
   return statement.get(directory)?.title ?? null
 }
 
-export async function getMostRecentSessionTitleForDirectory(directory: string): Promise<string | null> {
-  return withDatabase(database => getMostRecentSessionTitleForDirectoryFromDatabase(database, directory))
+export async function getMostRecentSessionTitleForDirectory(
+  directory: string
+): Promise<string | null> {
+  return withDatabase(database =>
+    getMostRecentSessionTitleForDirectoryFromDatabase(database, directory)
+  )
 }
 
-export function getMessageCountBySessionFromDatabase(database: Database, sessionID: string): number {
+export function getMessageCountBySessionFromDatabase(
+  database: Database,
+  sessionID: string
+): number {
   return getMessageAggregate(database, sessionID).messageCount
 }
 
@@ -321,7 +330,10 @@ export async function getMessageCountBySession(sessionID: string): Promise<numbe
   return withDatabase(database => getMessageCountBySessionFromDatabase(database, sessionID))
 }
 
-export function getMessageCountByDirectoryFromDatabase(database: Database, directory: string): number {
+export function getMessageCountByDirectoryFromDatabase(
+  database: Database,
+  directory: string
+): number {
   const statement = database.query<{ messageCount: number }, [string]>(`
     SELECT COUNT(m.id) AS messageCount
     FROM message m
@@ -336,7 +348,10 @@ export async function getMessageCountByDirectory(directory: string): Promise<num
   return withDatabase(database => getMessageCountByDirectoryFromDatabase(database, directory))
 }
 
-export function getAssistantCostTotalBySessionFromDatabase(database: Database, sessionID: string): number {
+export function getAssistantCostTotalBySessionFromDatabase(
+  database: Database,
+  sessionID: string
+): number {
   return getMessageAggregate(database, sessionID).totalCost
 }
 

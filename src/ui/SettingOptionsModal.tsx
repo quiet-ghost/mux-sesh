@@ -35,9 +35,28 @@ export default function SettingOptionsModal({
   }, [textareaRef])
 
   return (
-    <Modal title={title} description={description} footer='↑/↓ navigate  enter apply  esc back' columns={columns} preferredWidth={68}>
-      <box style={{ backgroundColor: theme.surfaceAlt, paddingLeft: 1, paddingRight: 1, marginBottom: 1 }}>
-        <textarea ref={textareaRef} initialValue={searchQuery} onContentChange={onContentChange} focused placeholder='Filter options' />
+    <Modal
+      title={title}
+      description={description}
+      footer="↑/↓ navigate  enter apply  esc back"
+      columns={columns}
+      preferredWidth={68}
+    >
+      <box
+        style={{
+          backgroundColor: theme.surfaceAlt,
+          paddingLeft: 1,
+          paddingRight: 1,
+          marginBottom: 1,
+        }}
+      >
+        <textarea
+          ref={textareaRef}
+          initialValue={searchQuery}
+          onContentChange={onContentChange}
+          focused
+          placeholder="Filter options"
+        />
       </box>
 
       <box style={{ flexDirection: 'column' }}>
@@ -58,8 +77,12 @@ export default function SettingOptionsModal({
                   paddingRight: 1,
                 }}
               >
-                <text style={{ fg: active ? theme.selectionText : theme.text }}>{option.label}</text>
-                <text style={{ fg: active ? theme.selectionText : theme.textMuted }}>{option.value}</text>
+                <text style={{ fg: active ? theme.selectionText : theme.text }}>
+                  {option.label}
+                </text>
+                <text style={{ fg: active ? theme.selectionText : theme.textMuted }}>
+                  {option.value}
+                </text>
               </box>
             )
           })

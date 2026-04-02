@@ -1,5 +1,9 @@
 import { describe, expect, mock, test } from 'bun:test'
-import { handleSearchMode, type KeyboardHandlerContext, type KeyboardInput } from '../src/handlers/keyboard'
+import {
+  handleSearchMode,
+  type KeyboardHandlerContext,
+  type KeyboardInput,
+} from '../src/handlers/keyboard'
 import { AppMode, ViewMode, type Item } from '../src/types'
 
 function createItem(overrides: Partial<Item> = {}): Item {
@@ -24,12 +28,10 @@ function createContext(overrides: Partial<KeyboardHandlerContext> = {}): Keyboar
     cursor: 0,
     opencodeCursor: 0,
     searchQuery: '',
-    renameTarget: '',
     projectItems: [],
     sessionItems: items,
     prefixActive: true,
     prefixTimeoutRef: { current: null },
-    textareaRef: { current: null },
     setAppMode: mock(() => {}),
     setViewMode: mock(() => {}),
     setCursor: mock(() => 0),
@@ -49,6 +51,7 @@ function createContext(overrides: Partial<KeyboardHandlerContext> = {}): Keyboar
     handleEditTarget: mock(async () => {}),
     openRenameModal: mock(() => {}),
     openCommandsModal: mock(() => {}),
+    openSettingsModal: mock(() => {}),
     loadOpencodeStatsForSession: mock(async () => null),
     setMessage: mock(() => {}),
     ...overrides,

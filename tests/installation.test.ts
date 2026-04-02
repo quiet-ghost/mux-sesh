@@ -1,5 +1,11 @@
 import { test, expect, describe, mock } from 'bun:test'
-import { canAutoUpdate, detectInstallMethod, getInstalledVersion, performUpgrade } from '../src/update/installation'
+import {
+  canAutoUpdate,
+  detectInstallMethod,
+  getInstalledVersion,
+  performUpgrade,
+} from '../src/update/installation'
+import { CURRENT_VERSION } from '../src/update/version'
 import type { Subprocess } from 'bun'
 
 describe('installation', () => {
@@ -117,20 +123,26 @@ describe('installation', () => {
     })
 
     test('should prefer the active bun install path over npm listings', async () => {
-      const method = await detectInstallMethod('/home/ghost/.cache/.bun/install/global/node_modules/mux-sesh/src/index.tsx')
+      const method = await detectInstallMethod(
+        '/home/ghost/.cache/.bun/install/global/node_modules/mux-sesh/src/index.tsx'
+      )
       expect(method).toBe('bun')
     })
 
     test('should detect source checkouts as source installs', async () => {
-      const method = await detectInstallMethod('/home/ghost/dev/projects/mux-sesh/.worktrees/fix-auto-upgrade/src/index.tsx')
+      const method = await detectInstallMethod(
+        '/home/ghost/dev/projects/mux-sesh/.worktrees/fix-auto-upgrade/src/index.tsx'
+      )
       expect(method).toBe('source')
     })
   })
 
   describe('getInstalledVersion', () => {
     test('should read the running package version from the runtime path', async () => {
-      const version = await getInstalledVersion('/home/ghost/dev/projects/mux-sesh/.worktrees/fix-auto-upgrade/src/index.tsx')
-      expect(version).toBe('1.6.1')
+      const version = await getInstalledVersion(
+        '/home/ghost/dev/projects/mux-sesh/.worktrees/fix-auto-upgrade/src/index.tsx'
+      )
+      expect(version).toBe(CURRENT_VERSION)
     })
 
     test('should return null when no package root can be found', async () => {
@@ -153,7 +165,7 @@ describe('installation', () => {
         exitCode: 0,
       } as unknown as Subprocess
 
-      Bun.spawn = mock((cmd) => {
+      Bun.spawn = mock(cmd => {
         capturedCommand = cmd as string[]
         return mockProcess
       }) as typeof Bun.spawn
@@ -173,7 +185,7 @@ describe('installation', () => {
         exitCode: 0,
       } as unknown as Subprocess
 
-      Bun.spawn = mock((cmd) => {
+      Bun.spawn = mock(cmd => {
         capturedCommand = cmd as string[]
         return mockProcess
       }) as typeof Bun.spawn
@@ -193,7 +205,7 @@ describe('installation', () => {
         exitCode: 0,
       } as unknown as Subprocess
 
-      Bun.spawn = mock((cmd) => {
+      Bun.spawn = mock(cmd => {
         capturedCommand = cmd as string[]
         return mockProcess
       }) as typeof Bun.spawn

@@ -109,7 +109,14 @@ export async function createTmuxSession(
     await createProc.exited
 
     if (options.startupCommand) {
-      const startupProc = spawn(['tmux', 'send-keys', '-t', sessionName, options.startupCommand, 'Enter'])
+      const startupProc = spawn([
+        'tmux',
+        'send-keys',
+        '-t',
+        sessionName,
+        options.startupCommand,
+        'Enter',
+      ])
       await startupProc.exited
     }
   }

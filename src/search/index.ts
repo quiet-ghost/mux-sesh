@@ -108,7 +108,10 @@ function calculateItemBonus(item: Item, query: string): number {
     bonus += 1200
   }
 
-  if (item.path.toLowerCase().endsWith(`/${normalizedQuery}`) || description.endsWith(`/${normalizedQuery}`)) {
+  if (
+    item.path.toLowerCase().endsWith(`/${normalizedQuery}`) ||
+    description.endsWith(`/${normalizedQuery}`)
+  ) {
     bonus += 2000
   }
 

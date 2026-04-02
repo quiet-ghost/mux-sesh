@@ -2,7 +2,6 @@ export enum AppMode {
   Normal,
   Search,
   NewSession,
-  Rename,
   OpencodeManage,
 }
 

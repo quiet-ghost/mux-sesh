@@ -1,6 +1,11 @@
 import type { Config } from '../types'
 import { CURRENT_VERSION, getLatestVersion, isNewerVersion } from './version'
-import { canAutoUpdate, detectInstallMethod, getInstalledVersion, performUpgrade } from './installation'
+import {
+  canAutoUpdate,
+  detectInstallMethod,
+  getInstalledVersion,
+  performUpgrade,
+} from './installation'
 import { updateEvents } from './events'
 
 interface UpdateDependencies {
@@ -28,7 +33,10 @@ function truthy(key: string): boolean {
   return value === 'true' || value === '1'
 }
 
-export async function checkAndUpdate(config: Config, dependencies: Partial<UpdateDependencies> = {}): Promise<void> {
+export async function checkAndUpdate(
+  config: Config,
+  dependencies: Partial<UpdateDependencies> = {}
+): Promise<void> {
   const resolvedDependencies = {
     ...defaultDependencies,
     ...dependencies,
