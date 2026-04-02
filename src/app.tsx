@@ -1,18 +1,6 @@
 import { useRef } from 'react'
 import { useAppCoreState } from './app/core-state'
-import {
-  useAutoUpdateScheduler,
-  useBoundedCursor,
-  useNewSessionProjectCursor,
-  useNormalModeSessionReset,
-  useOpencodeStatsPolling,
-  usePendingKillReset,
-  useResetCursorOnValue,
-  useSearchFiltering,
-  useSelectionMemory,
-  useSessionCandidateLoader,
-  useUpdateEventToasts,
-} from './app/effects'
+import { useAutoUpdateScheduler, useAppBehaviors } from './app/effects'
 import { createAppControls } from './app/controls'
 import { getSessionCommandState, getSettingsState } from './app/derived'
 import { useAppKeyboard } from './app/keyboard'
@@ -302,59 +290,42 @@ export function App() {
     setMessage,
   })
 
-  useUpdateEventToasts(setUpdatedVersion, setToastMessage, setToastVisible)
-  useNormalModeSessionReset(
+  useAppBehaviors({
     appMode,
     viewMode,
+    config,
     sessionItems,
-    lastSessionSelectionRef,
-    setAllItems,
-    setItems,
-    setCursor
-  )
-  useNewSessionProjectCursor(
-    appMode,
-    viewMode,
     projectSourceItems,
     sessionCandidateItems,
+    lastSessionSelectionRef,
     lastProjectSelectionRef,
-    setCursor
-  )
-  useSessionCandidateLoader(
-    appMode,
-    config,
-    lastProjectSelectionRef,
-    setSessionCandidateItems,
     setAllItems,
     setItems,
-    setCursor
-  )
-  useBoundedCursor(filteredCommandEntries.length, setCommandsCursor)
-  useResetCursorOnValue(commandsSearchQuery, setCommandsCursor)
-  useBoundedCursor(filteredSettingsEntries.length, setSettingsCursor)
-  useBoundedCursor(filteredSettingOptions.length, setSettingOptionsCursor)
-  useSelectionMemory(
-    appMode,
-    viewMode,
+    setCursor,
+    setSessionCandidateItems,
+    filteredCommandEntriesLength: filteredCommandEntries.length,
+    setCommandsCursor,
+    commandsSearchQuery,
+    filteredSettingsEntriesLength: filteredSettingsEntries.length,
+    setSettingsCursor,
+    filteredSettingOptionsLength: filteredSettingOptions.length,
+    setSettingOptionsCursor,
     cursor,
     items,
     selectedPrimaryItem,
-    lastProjectSelectionRef,
-    lastSessionSelectionRef
-  )
-  usePendingKillReset(
     pendingKillSessionName,
-    appMode,
-    viewMode,
     opencodeSessions,
     opencodeCursor,
     regularSessions,
-    cursor,
-    setPendingKillSessionName
-  )
-  useSearchFiltering(appMode, searchQuery, allItems, setItems, setCursor)
-
-  useOpencodeStatsPolling(selectedOpencodeSessionName, loadOpencodeStatsForSession)
+    setPendingKillSessionName,
+    searchQuery,
+    allItems,
+    selectedOpencodeSessionName,
+    loadOpencodeStatsForSession,
+    setUpdatedVersion,
+    setToastMessage,
+    setToastVisible,
+  })
 
   return (
     <ThemeProvider theme={theme}>

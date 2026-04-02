@@ -297,3 +297,101 @@ export function useOpencodeStatsPolling(
     }
   }, [loadStats, selectedOpencodeSessionName])
 }
+
+interface UseAppBehaviorsOptions {
+  appMode: AppMode
+  viewMode: ViewMode
+  config: Config | null
+  sessionItems: Item[]
+  projectSourceItems: Item[]
+  sessionCandidateItems: Item[]
+  lastSessionSelectionRef: MutableRefObject<string | null>
+  lastProjectSelectionRef: MutableRefObject<string | null>
+  setAllItems: Dispatch<SetStateAction<Item[]>>
+  setItems: Dispatch<SetStateAction<Item[]>>
+  setCursor: Dispatch<SetStateAction<number>>
+  setSessionCandidateItems: Dispatch<SetStateAction<Item[]>>
+  filteredCommandEntriesLength: number
+  setCommandsCursor: Dispatch<SetStateAction<number>>
+  commandsSearchQuery: string
+  filteredSettingsEntriesLength: number
+  setSettingsCursor: Dispatch<SetStateAction<number>>
+  filteredSettingOptionsLength: number
+  setSettingOptionsCursor: Dispatch<SetStateAction<number>>
+  cursor: number
+  items: Item[]
+  selectedPrimaryItem: Item | undefined
+  pendingKillSessionName: string | null
+  opencodeSessions: Item[]
+  opencodeCursor: number
+  regularSessions: Item[]
+  setPendingKillSessionName: Dispatch<SetStateAction<string | null>>
+  searchQuery: string
+  allItems: Item[]
+  selectedOpencodeSessionName: string | undefined
+  loadOpencodeStatsForSession: (sessionName: string) => Promise<unknown>
+  setUpdatedVersion: Dispatch<SetStateAction<string | null>>
+  setToastMessage: Dispatch<SetStateAction<string>>
+  setToastVisible: Dispatch<SetStateAction<boolean>>
+}
+
+export function useAppBehaviors(options: UseAppBehaviorsOptions) {
+  useUpdateEventToasts(options.setUpdatedVersion, options.setToastMessage, options.setToastVisible)
+  useNormalModeSessionReset(
+    options.appMode,
+    options.viewMode,
+    options.sessionItems,
+    options.lastSessionSelectionRef,
+    options.setAllItems,
+    options.setItems,
+    options.setCursor
+  )
+  useNewSessionProjectCursor(
+    options.appMode,
+    options.viewMode,
+    options.projectSourceItems,
+    options.sessionCandidateItems,
+    options.lastProjectSelectionRef,
+    options.setCursor
+  )
+  useSessionCandidateLoader(
+    options.appMode,
+    options.config,
+    options.lastProjectSelectionRef,
+    options.setSessionCandidateItems,
+    options.setAllItems,
+    options.setItems,
+    options.setCursor
+  )
+  useBoundedCursor(options.filteredCommandEntriesLength, options.setCommandsCursor)
+  useResetCursorOnValue(options.commandsSearchQuery, options.setCommandsCursor)
+  useBoundedCursor(options.filteredSettingsEntriesLength, options.setSettingsCursor)
+  useBoundedCursor(options.filteredSettingOptionsLength, options.setSettingOptionsCursor)
+  useSelectionMemory(
+    options.appMode,
+    options.viewMode,
+    options.cursor,
+    options.items,
+    options.selectedPrimaryItem,
+    options.lastProjectSelectionRef,
+    options.lastSessionSelectionRef
+  )
+  usePendingKillReset(
+    options.pendingKillSessionName,
+    options.appMode,
+    options.viewMode,
+    options.opencodeSessions,
+    options.opencodeCursor,
+    options.regularSessions,
+    options.cursor,
+    options.setPendingKillSessionName
+  )
+  useSearchFiltering(
+    options.appMode,
+    options.searchQuery,
+    options.allItems,
+    options.setItems,
+    options.setCursor
+  )
+  useOpencodeStatsPolling(options.selectedOpencodeSessionName, options.loadOpencodeStatsForSession)
+}
