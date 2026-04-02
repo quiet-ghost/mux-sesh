@@ -1,6 +1,10 @@
 import { describe, expect, mock, test } from 'bun:test'
+import { createAppControls } from '../src/app/controls'
 import { getDefaultConfig } from '../src/config'
 import { getProjectSelectionIndex, getSessionSelectionIndex } from '../src/app/data'
+import { getSessionCommandState, getSettingsState } from '../src/app/derived'
+import { createAppHandlers } from '../src/app/handlers'
+import { applyOpencodeState, loadOpencodeSessionStats } from '../src/app/opencode'
 import { persistConfigUpdate, runWithErrorMessage } from '../src/app/operations'
 import {
   getAppTitle,
@@ -50,6 +54,50 @@ describe('app data helpers', () => {
   })
 })
 
+describe('app derived helpers', () => {
+  test('builds session command state from current app view', () => {
+    const config = getDefaultConfig('/home/tester')
+    const items: Item[] = [
+      { title: 'alpha', desc: '', path: '/tmp/alpha', isSession: true },
+      { title: 'opencode-alpha', desc: '', path: '/tmp/opencode', isSession: true },
+    ]
+
+    const state = getSessionCommandState(
+      AppMode.Normal,
+      ViewMode.Sessions,
+      items,
+      0,
+      0,
+      config,
+      'ref'
+    )
+
+    expect(state.regularSessions).toHaveLength(1)
+    expect(state.opencodeSessions).toHaveLength(1)
+    expect(state.selectedPrimaryItem?.title).toBe('alpha')
+    expect(state.filteredCommandEntries.some(entry => entry.id === 'refresh')).toBe(true)
+  })
+
+  test('builds settings state for setting option filtering', () => {
+    const config = getDefaultConfig('/home/tester')
+    const state = getSettingsState(
+      config,
+      { type: 'setting-options', field: 'keybindMode' },
+      'theme',
+      'stan'
+    )
+
+    expect(state.filteredSettingsEntries.some(entry => entry.id === 'theme')).toBe(true)
+    expect(state.filteredSettingOptions).toEqual([
+      {
+        value: 'standard',
+        label: 'standard',
+        description: 'Arrow keys with prefixed commands',
+      },
+    ])
+  })
+})
+
 describe('app operation helpers', () => {
   test('reports fallback errors through the shared message helper', async () => {
     const showMessage = mock(() => {})
@@ -86,5 +134,230 @@ describe('app operation helpers', () => {
     expect(setConfig).toHaveBeenCalledWith(nextConfig)
     expect(refreshItems).toHaveBeenCalledWith(undefined, nextConfig)
     expect(showMessage).toHaveBeenCalledWith('updated')
+  })
+})
+
+describe('app controls', () => {
+  test('requests kill on first press and confirms on second press', async () => {
+    const baseOptions = {
+      config: getDefaultConfig('/home/tester'),
+      handleKillSession: mock(async () => {}),
+      setPendingKillSessionName: mock(() => {}),
+      setRenameTarget: mock(() => {}),
+      setModalInputValue: mock(() => {}),
+      setModalState: mock(() => {}),
+      setCommandsSearchQuery: mock(() => {}),
+      setCommandsCursor: mock(() => {}),
+      setSettingEditorError: mock(() => {}),
+      setSettingsSearchQuery: mock(() => {}),
+      setSettingsCursor: mock(() => {}),
+      setSettingOptionsSearchQuery: mock(() => {}),
+      setSettingOptionsCursor: mock(() => {}),
+      setSettingEditorValue: mock(() => {}),
+    }
+
+    const firstControls = createAppControls({
+      ...baseOptions,
+      pendingKillSessionName: null,
+    })
+    firstControls.requestKillSession('alpha')
+    expect(baseOptions.setPendingKillSessionName).toHaveBeenCalledWith('alpha')
+
+    const secondControls = createAppControls({
+      ...baseOptions,
+      pendingKillSessionName: 'alpha',
+    })
+    secondControls.requestKillSession('alpha')
+    await Promise.resolve()
+    expect(baseOptions.handleKillSession).toHaveBeenCalledWith('alpha')
+  })
+
+  test('opening rename clears pending kill and seeds modal state', () => {
+    const options = {
+      config: getDefaultConfig('/home/tester'),
+      pendingKillSessionName: null,
+      handleKillSession: mock(async () => {}),
+      setPendingKillSessionName: mock(() => {}),
+      setRenameTarget: mock(() => {}),
+      setModalInputValue: mock(() => {}),
+      setModalState: mock(() => {}),
+      setCommandsSearchQuery: mock(() => {}),
+      setCommandsCursor: mock(() => {}),
+      setSettingEditorError: mock(() => {}),
+      setSettingsSearchQuery: mock(() => {}),
+      setSettingsCursor: mock(() => {}),
+      setSettingOptionsSearchQuery: mock(() => {}),
+      setSettingOptionsCursor: mock(() => {}),
+      setSettingEditorValue: mock(() => {}),
+    }
+
+    createAppControls(options).openRenameModal('beta')
+
+    expect(options.setPendingKillSessionName).toHaveBeenCalledWith(null)
+    expect(options.setRenameTarget).toHaveBeenCalledWith('beta')
+    expect(options.setModalInputValue).toHaveBeenCalledWith('beta')
+    expect(options.setModalState).toHaveBeenCalledWith({ type: 'rename', target: 'beta' })
+  })
+})
+
+describe('app opencode helpers', () => {
+  test('applies opencode state across all item collections', () => {
+    let sessionItems: Item[] = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
+    let allItems: Item[] = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
+    let items: Item[] = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
+
+    applyOpencodeState(
+      'alpha',
+      { status: 'missing', message: 'not found' },
+      update => {
+        sessionItems = typeof update === 'function' ? update(sessionItems) : update
+      },
+      update => {
+        allItems = typeof update === 'function' ? update(allItems) : update
+      },
+      update => {
+        items = typeof update === 'function' ? update(items) : update
+      }
+    )
+
+    expect(sessionItems[0]?.opencodeState).toEqual({ status: 'missing', message: 'not found' })
+    expect(allItems[0]?.opencodeState).toEqual({ status: 'missing', message: 'not found' })
+    expect(items[0]?.opencodeState).toEqual({ status: 'missing', message: 'not found' })
+  })
+
+  test('loads opencode stats and reports failures through shared callbacks', async () => {
+    const updateState = mock(() => {})
+    const showMessage = mock(() => {})
+
+    const stats = await loadOpencodeSessionStats(
+      'alpha',
+      async () => ({ sessionID: '1', title: 'alpha' }),
+      updateState,
+      showMessage
+    )
+
+    expect(stats).toEqual({ sessionID: '1', title: 'alpha' })
+    expect(updateState).toHaveBeenCalledWith('alpha', { status: 'loading' })
+    expect(updateState).toHaveBeenCalledWith('alpha', {
+      status: 'ready',
+      stats: { sessionID: '1', title: 'alpha' },
+    })
+
+    const failingUpdateState = mock(() => {})
+    const failingShowMessage = mock(() => {})
+    await loadOpencodeSessionStats(
+      'beta',
+      async () => {
+        throw new Error('boom')
+      },
+      failingUpdateState,
+      failingShowMessage
+    )
+
+    expect(failingUpdateState).toHaveBeenCalledWith('beta', { status: 'loading' })
+    expect(failingUpdateState).toHaveBeenCalledWith('beta', {
+      status: 'error',
+      message: 'boom',
+    })
+    expect(failingShowMessage).toHaveBeenCalledWith('boom', 4000)
+  })
+})
+
+describe('app handler factory', () => {
+  test('executes refresh command through shared handler wiring', async () => {
+    const config = getDefaultConfig('/home/tester')
+    const closeModal = mock(() => {})
+    const refreshItems = mock(async () => {})
+    const showMessage = mock(() => {})
+
+    const handlers = createAppHandlers({
+      appMode: AppMode.Normal,
+      viewMode: ViewMode.Sessions,
+      config,
+      items: [],
+      sessionItems: [],
+      cursor: 0,
+      showMessage,
+      refreshItems,
+      opencodeCursor: 0,
+      regularSessions: [],
+      opencodeSessions: [],
+      selectedPrimaryItem: undefined,
+      sessionCandidateItems: [],
+      projectSourceItems: [],
+      closeModal,
+      openRenameModal: mock(() => {}),
+      openSettingsModal: mock(() => {}),
+      requestKillSession: mock(() => {}),
+      setAppMode: mock(() => {}),
+      setViewMode: mock(() => {}),
+      setAllItems: mock(() => {}),
+      setItems: mock(() => {}),
+      setCursor: mock(() => {}),
+      setSearchQuery: mock(() => {}),
+      setOpencodeCursor: mock(() => {}),
+      setPendingKillSessionName: mock(() => {}),
+      saveConfig: mock(async () => {}),
+      setConfig: mock(() => {}),
+      setSettingEditorError: mock(() => {}),
+      settingEditorValue: '',
+      settingEditorPlainText: undefined,
+      renameTarget: 'alpha',
+      renamedValue: 'alpha-2',
+      searchTerm: '',
+      loadOpencodeStatsForSession: mock(async () => null),
+    })
+
+    await handlers.executeCommand('refresh')
+
+    expect(closeModal).toHaveBeenCalled()
+    expect(refreshItems).toHaveBeenCalled()
+    expect(showMessage).toHaveBeenCalledWith('Refreshed')
+  })
+
+  test('rename submit closes modal when name is unchanged', async () => {
+    const closeModal = mock(() => {})
+
+    const handlers = createAppHandlers({
+      appMode: AppMode.Normal,
+      viewMode: ViewMode.Sessions,
+      config: getDefaultConfig('/home/tester'),
+      items: [],
+      sessionItems: [],
+      cursor: 0,
+      showMessage: mock(() => {}),
+      refreshItems: mock(async () => {}),
+      opencodeCursor: 0,
+      regularSessions: [],
+      opencodeSessions: [],
+      selectedPrimaryItem: undefined,
+      sessionCandidateItems: [],
+      projectSourceItems: [],
+      closeModal,
+      openRenameModal: mock(() => {}),
+      openSettingsModal: mock(() => {}),
+      requestKillSession: mock(() => {}),
+      setAppMode: mock(() => {}),
+      setViewMode: mock(() => {}),
+      setAllItems: mock(() => {}),
+      setItems: mock(() => {}),
+      setCursor: mock(() => {}),
+      setSearchQuery: mock(() => {}),
+      setOpencodeCursor: mock(() => {}),
+      setPendingKillSessionName: mock(() => {}),
+      saveConfig: mock(async () => {}),
+      setConfig: mock(() => {}),
+      setSettingEditorError: mock(() => {}),
+      settingEditorValue: '',
+      settingEditorPlainText: undefined,
+      renameTarget: 'alpha',
+      renamedValue: 'alpha',
+      searchTerm: '',
+      loadOpencodeStatsForSession: mock(async () => null),
+    })
+
+    await handlers.handleRenameSubmit()
+
+    expect(closeModal).toHaveBeenCalled()
   })
 })

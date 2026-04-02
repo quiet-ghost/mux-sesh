@@ -1,6 +1,6 @@
 import { executeCommand as runCommand } from './commands'
 import { persistConfigUpdate, runWithErrorMessage } from './operations'
-import type { Config, Item, ViewMode } from '../types'
+import { AppMode, type Config, type Item, type OpencodeSessionStats, type ViewMode } from '../types'
 import type { SettingsFieldId } from '../settings'
 import { applyEditorSetting, applyOptionSetting, getSettingEditorTitle } from '../settings'
 import {
@@ -172,4 +172,154 @@ export async function executeAppCommand(
   options: Parameters<typeof runCommand>[1]
 ): Promise<void> {
   await runCommand(commandID, options)
+}
+
+interface CreateAppHandlersOptions extends SharedHandlerOptions {
+  appMode: AppMode
+  viewMode: ViewMode
+  opencodeCursor: number
+  regularSessions: Item[]
+  opencodeSessions: Item[]
+  selectedPrimaryItem?: Item
+  sessionCandidateItems: Item[]
+  projectSourceItems: Item[]
+  closeModal: () => void
+  openRenameModal: (sessionName: string) => void
+  openSettingsModal: () => void
+  requestKillSession: (sessionName: string) => void
+  setAppMode: (mode: AppMode) => void
+  setViewMode: (mode: ViewMode) => void
+  setAllItems: (items: Item[]) => void
+  setItems: (items: Item[]) => void
+  setCursor: (cursor: number) => void
+  setSearchQuery: (value: string) => void
+  setOpencodeCursor: (cursor: number) => void
+  setPendingKillSessionName: (sessionName: string | null) => void
+  saveConfig: (config: Config) => Promise<void>
+  setConfig: (config: Config) => void
+  setSettingEditorError: (message: string) => void
+  settingEditorValue: string
+  settingEditorPlainText?: string
+  renameTarget: string
+  renamedValue: string
+  searchTerm: string
+  loadOpencodeStatsForSession: (sessionName: string) => Promise<OpencodeSessionStats | null>
+}
+
+export function createAppHandlers(options: CreateAppHandlersOptions) {
+  const sharedOptions: SharedHandlerOptions = {
+    config: options.config,
+    items: options.items,
+    sessionItems: options.sessionItems,
+    cursor: options.cursor,
+    showMessage: options.showMessage,
+    refreshItems: options.refreshItems,
+  }
+
+  async function handleKillSessionWrapper(sessionName: string) {
+    await handleKillSessionWithFeedback(sessionName, {
+      ...sharedOptions,
+      setPendingKillSessionName: options.setPendingKillSessionName,
+    })
+  }
+
+  async function handleSelectWrapper(item: Item) {
+    await handleSelectItem(item, options.config)
+  }
+
+  async function handleLastSessionWrapper() {
+    await handleLastSessionWithFeedback(sharedOptions)
+  }
+
+  async function handleRootSessionWrapper(item?: Item) {
+    await handleRootSessionWithFeedback(item, sharedOptions)
+  }
+
+  async function handleEditTargetWrapper(item?: Item) {
+    await handleEditTargetWithFeedback(item, sharedOptions)
+  }
+
+  async function handleRenameSubmit() {
+    await handleRenameSubmitWithFeedback(
+      options.renameTarget,
+      options.renamedValue,
+      options.closeModal,
+      sharedOptions
+    )
+  }
+
+  async function handleNewSessionSubmit() {
+    await handleNewSessionSubmitWithSearch(options.searchTerm, sharedOptions)
+  }
+
+  async function handleSettingsEditorSubmit(field: SettingsFieldId) {
+    await handleSettingsEditorSubmitWithFeedback(field, {
+      config: options.config,
+      saveConfig: options.saveConfig,
+      setConfig: options.setConfig,
+      setSettingEditorError: options.setSettingEditorError,
+      openSettingsModal: options.openSettingsModal,
+      settingEditorValue: options.settingEditorValue,
+      settingEditorPlainText: options.settingEditorPlainText,
+      refreshItems: options.refreshItems,
+      showMessage: options.showMessage,
+    })
+  }
+
+  async function handleSettingOptionSubmit(field: SettingsFieldId, value: string) {
+    await handleSettingOptionSubmitWithFeedback(field, value, {
+      config: options.config,
+      saveConfig: options.saveConfig,
+      setConfig: options.setConfig,
+      setSettingEditorError: options.setSettingEditorError,
+      openSettingsModal: options.openSettingsModal,
+      settingEditorValue: options.settingEditorValue,
+      refreshItems: options.refreshItems,
+      showMessage: options.showMessage,
+    })
+  }
+
+  async function executeCommand(commandID: Parameters<typeof executeAppCommand>[0]) {
+    await executeAppCommand(commandID, {
+      appMode: options.appMode,
+      viewMode: options.viewMode,
+      cursor: options.cursor,
+      opencodeCursor: options.opencodeCursor,
+      regularSessions: options.regularSessions,
+      opencodeSessions: options.opencodeSessions,
+      selectedPrimaryItem: options.selectedPrimaryItem,
+      sessionCandidateItems: options.sessionCandidateItems,
+      projectSourceItems: options.projectSourceItems,
+      closeModal: options.closeModal,
+      openRenameModal: options.openRenameModal,
+      openSettingsModal: options.openSettingsModal,
+      requestKillSession: options.requestKillSession,
+      setAppMode: options.setAppMode,
+      setViewMode: options.setViewMode,
+      setAllItems: options.setAllItems,
+      setItems: options.setItems,
+      setCursor: options.setCursor,
+      setSearchQuery: options.setSearchQuery,
+      setOpencodeCursor: options.setOpencodeCursor,
+      refreshItems: forceViewMode => options.refreshItems(forceViewMode),
+      handleLastSession: handleLastSessionWrapper,
+      handleRootSession: handleRootSessionWrapper,
+      handleEditTarget: handleEditTargetWrapper,
+      loadOpencodeStatsForSession: options.loadOpencodeStatsForSession,
+      showMessage: options.showMessage,
+    })
+  }
+
+  return {
+    handleKillSessionWrapper,
+    handleSelectWrapper,
+    handleLastSessionWrapper,
+    handleRootSessionWrapper,
+    handleEditTargetWrapper,
+    handleRenameSubmit,
+    handleNewSessionSubmit,
+    handleSettingsEditorSubmit,
+    handleSettingOptionSubmit,
+    executeCommand,
+  }
 }

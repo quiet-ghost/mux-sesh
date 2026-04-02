@@ -16,23 +16,12 @@ import {
 import { createAppControls } from './app/controls'
 import { getSessionCommandState, getSettingsState } from './app/derived'
 import { useAppKeyboard } from './app/keyboard'
+import { useAppModalState } from './app/modal-state'
 import { AppModalsLayer } from './app/modals-layer'
 import { AppScreen } from './app/screen'
-import { type ModalState } from './app/modals'
 import { showTemporaryMessage } from './app/notifications'
 import { applyOpencodeState, loadOpencodeSessionStats } from './app/opencode'
-import {
-  executeAppCommand,
-  handleEditTargetWithFeedback,
-  handleKillSessionWithFeedback,
-  handleLastSessionWithFeedback,
-  handleNewSessionSubmitWithSearch,
-  handleRenameSubmitWithFeedback,
-  handleRootSessionWithFeedback,
-  handleSelectItem,
-  handleSettingOptionSubmitWithFeedback,
-  handleSettingsEditorSubmitWithFeedback,
-} from './app/handlers'
+import { createAppHandlers, handleKillSessionWithFeedback } from './app/handlers'
 import { loadRefreshedViewState, loadStartupState } from './app/state'
 import { AppMode, ViewMode, type Item, type Config, type OpencodeStatsState } from './types'
 import { getConfigPath, saveConfig } from './config'
@@ -56,25 +45,37 @@ export function App() {
   const [message, setMessage] = useState('')
   const [renameTarget, setRenameTarget] = useState('')
   const [config, setConfig] = useState<Config | null>(null)
-  const [modalState, setModalState] = useState<ModalState>(null)
-  const [modalInputValue, setModalInputValue] = useState('')
-  const [commandsCursor, setCommandsCursor] = useState(0)
-  const [commandsSearchQuery, setCommandsSearchQuery] = useState('')
-  const [settingsCursor, setSettingsCursor] = useState(0)
-  const [settingsSearchQuery, setSettingsSearchQuery] = useState('')
-  const [settingOptionsCursor, setSettingOptionsCursor] = useState(0)
-  const [settingOptionsSearchQuery, setSettingOptionsSearchQuery] = useState('')
-  const [settingEditorValue, setSettingEditorValue] = useState('')
-  const [settingEditorError, setSettingEditorError] = useState('')
   const [pendingKillSessionName, setPendingKillSessionName] = useState<string | null>(null)
   const [prefixActive, setPrefixActive] = useState(false)
   const prefixTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const textareaRef = useRef<TextareaRenderable | null>(null)
-  const modalTextareaRef = useRef<TextareaRenderable | null>(null)
-  const commandsSearchTextareaRef = useRef<TextareaRenderable | null>(null)
-  const settingsSearchTextareaRef = useRef<TextareaRenderable | null>(null)
-  const settingOptionsSearchTextareaRef = useRef<TextareaRenderable | null>(null)
-  const settingEditorTextareaRef = useRef<TextareaRenderable | null>(null)
+  const {
+    modalState,
+    setModalState,
+    modalInputValue,
+    setModalInputValue,
+    commandsCursor,
+    setCommandsCursor,
+    commandsSearchQuery,
+    setCommandsSearchQuery,
+    settingsCursor,
+    setSettingsCursor,
+    settingsSearchQuery,
+    setSettingsSearchQuery,
+    settingOptionsCursor,
+    setSettingOptionsCursor,
+    settingOptionsSearchQuery,
+    setSettingOptionsSearchQuery,
+    settingEditorValue,
+    setSettingEditorValue,
+    settingEditorError,
+    setSettingEditorError,
+    modalTextareaRef,
+    commandsSearchTextareaRef,
+    settingsSearchTextareaRef,
+    settingOptionsSearchTextareaRef,
+    settingEditorTextareaRef,
+  } = useAppModalState()
   const lastSessionSelectionRef = useRef<string | null>(null)
   const lastProjectSelectionRef = useRef<string | null>(null)
   const { columns, rows } = useTerminalSize()
@@ -175,55 +176,6 @@ export function App() {
     commandsSearchQuery
   )
 
-  async function handleKillSessionWrapper(sessionName: string) {
-    await handleKillSessionWithFeedback(sessionName, {
-      config,
-      items,
-      sessionItems,
-      cursor,
-      showMessage,
-      refreshItems,
-      setPendingKillSessionName,
-    })
-  }
-
-  async function handleSelectWrapper(item: Item) {
-    await handleSelectItem(item, config)
-  }
-
-  async function handleLastSessionWrapper() {
-    await handleLastSessionWithFeedback({
-      config,
-      items,
-      sessionItems,
-      cursor,
-      showMessage,
-      refreshItems,
-    })
-  }
-
-  async function handleRootSessionWrapper(item?: Item) {
-    await handleRootSessionWithFeedback(item, {
-      config,
-      items,
-      sessionItems,
-      cursor,
-      showMessage,
-      refreshItems,
-    })
-  }
-
-  async function handleEditTargetWrapper(item?: Item) {
-    await handleEditTargetWithFeedback(item, {
-      config,
-      items,
-      sessionItems,
-      cursor,
-      showMessage,
-      refreshItems,
-    })
-  }
-
   const {
     clearPendingKill,
     requestKillSession,
@@ -236,7 +188,16 @@ export function App() {
   } = createAppControls({
     config,
     pendingKillSessionName,
-    handleKillSession: handleKillSessionWrapper,
+    handleKillSession: sessionName =>
+      handleKillSessionWithFeedback(sessionName, {
+        config,
+        items,
+        sessionItems,
+        cursor,
+        showMessage,
+        refreshItems,
+        setPendingKillSessionName,
+      }),
     setPendingKillSessionName,
     setRenameTarget,
     setModalInputValue,
@@ -250,84 +211,54 @@ export function App() {
     setSettingOptionsCursor,
     setSettingEditorValue,
   })
-
-  async function handleRenameSubmit() {
-    const newName = (modalTextareaRef.current?.plainText ?? modalInputValue).trim()
-    await handleRenameSubmitWithFeedback(renameTarget, newName, closeModal, {
-      showMessage,
-      refreshItems,
-    })
-  }
-
-  async function handleNewSessionSubmit() {
-    const searchTerm = searchQuery.trim()
-    await handleNewSessionSubmitWithSearch(searchTerm, {
-      config,
-      items,
-      sessionItems,
-      cursor,
-      showMessage,
-      refreshItems,
-    })
-  }
-
-  async function handleSettingsEditorSubmit(field: SettingsFieldId) {
-    await handleSettingsEditorSubmitWithFeedback(field, {
-      config,
-      saveConfig,
-      setConfig,
-      setSettingEditorError,
-      openSettingsModal,
-      settingEditorValue,
-      settingEditorPlainText: settingEditorTextareaRef.current?.plainText,
-      refreshItems,
-      showMessage,
-    })
-  }
-
-  async function handleSettingOptionSubmit(field: SettingsFieldId, value: string) {
-    await handleSettingOptionSubmitWithFeedback(field, value, {
-      config,
-      saveConfig,
-      setConfig,
-      setSettingEditorError,
-      openSettingsModal,
-      settingEditorValue,
-      refreshItems,
-      showMessage,
-    })
-  }
-
-  async function executeCommand(commandID: Parameters<typeof executeAppCommand>[0]) {
-    await executeAppCommand(commandID, {
-      appMode,
-      viewMode,
-      cursor,
-      opencodeCursor,
-      regularSessions,
-      opencodeSessions,
-      selectedPrimaryItem,
-      sessionCandidateItems,
-      projectSourceItems,
-      closeModal,
-      openRenameModal,
-      openSettingsModal,
-      requestKillSession,
-      setAppMode,
-      setViewMode,
-      setAllItems,
-      setItems,
-      setCursor,
-      setSearchQuery,
-      setOpencodeCursor,
-      refreshItems,
-      handleLastSession: handleLastSessionWrapper,
-      handleRootSession: handleRootSessionWrapper,
-      handleEditTarget: handleEditTargetWrapper,
-      loadOpencodeStatsForSession,
-      showMessage,
-    })
-  }
+  const {
+    handleKillSessionWrapper,
+    handleSelectWrapper,
+    handleLastSessionWrapper,
+    handleRootSessionWrapper,
+    handleEditTargetWrapper,
+    handleRenameSubmit,
+    handleNewSessionSubmit,
+    handleSettingsEditorSubmit,
+    handleSettingOptionSubmit,
+    executeCommand,
+  } = createAppHandlers({
+    appMode,
+    viewMode,
+    config,
+    items,
+    sessionItems,
+    cursor,
+    showMessage,
+    refreshItems,
+    opencodeCursor,
+    regularSessions,
+    opencodeSessions,
+    selectedPrimaryItem,
+    sessionCandidateItems,
+    projectSourceItems,
+    closeModal,
+    openRenameModal,
+    openSettingsModal,
+    requestKillSession,
+    setAppMode,
+    setViewMode,
+    setAllItems,
+    setItems,
+    setCursor,
+    setSearchQuery,
+    setOpencodeCursor,
+    setPendingKillSessionName,
+    saveConfig,
+    setConfig,
+    setSettingEditorError,
+    settingEditorValue,
+    settingEditorPlainText: settingEditorTextareaRef.current?.plainText,
+    renameTarget,
+    renamedValue: (modalTextareaRef.current?.plainText ?? modalInputValue).trim(),
+    searchTerm: searchQuery.trim(),
+    loadOpencodeStatsForSession,
+  })
 
   useAppKeyboard({
     appMode,
