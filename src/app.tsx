@@ -19,11 +19,10 @@ import { useAppKeyboard } from './app/keyboard'
 import { useAppModalState } from './app/modal-state'
 import { AppModalsLayer } from './app/modals-layer'
 import { AppScreen } from './app/screen'
-import { showTemporaryMessage } from './app/notifications'
-import { applyOpencodeState, loadOpencodeSessionStats } from './app/opencode'
+import { createAppRuntime } from './app/runtime'
 import { createAppHandlers, handleKillSessionWithFeedback } from './app/handlers'
-import { applyRefreshedViewState, loadRefreshedViewState, useAppStartup } from './app/state'
-import { AppMode, ViewMode, type Item, type Config, type OpencodeStatsState } from './types'
+import { useAppStartup } from './app/state'
+import { AppMode, ViewMode, type Item, type Config } from './types'
 import { getConfigPath, saveConfig } from './config'
 import { getOpencodeSessionStats } from './opencode'
 import { ThemeProvider, resolveTheme } from './styles/theme'
@@ -93,10 +92,6 @@ export function App() {
   )
   const hasScheduledAutoUpdateRef = useRef(false)
 
-  function updateOpencodeState(sessionName: string, nextState: OpencodeStatsState) {
-    applyOpencodeState(sessionName, nextState, setSessionItems, setAllItems, setItems)
-  }
-
   useAppStartup(
     measure,
     lastSessionSelectionRef,
@@ -113,41 +108,20 @@ export function App() {
   )
 
   useAutoUpdateScheduler(config, hasScheduledAutoUpdateRef)
-  async function refreshItems(forceViewMode?: ViewMode, nextConfig = config) {
-    if (!nextConfig) return
-
-    const targetMode = forceViewMode ?? viewMode
-
-    const refreshedState = await loadRefreshedViewState(
-      targetMode,
-      nextConfig,
-      measure,
-      lastSessionSelectionRef.current,
-      lastProjectSelectionRef.current
-    )
-
-    applyRefreshedViewState(
-      refreshedState,
-      setSessionItems,
-      setProjectSourceItems,
-      setAllItems,
-      setItems,
-      setCursor
-    )
-  }
-
-  function showMessage(message: string, timeout = 2000) {
-    showTemporaryMessage(setMessage, message, timeout)
-  }
-
-  async function loadOpencodeStatsForSession(sessionName: string) {
-    return loadOpencodeSessionStats(
-      sessionName,
-      getOpencodeSessionStats,
-      updateOpencodeState,
-      showMessage
-    )
-  }
+  const { showMessage, refreshItems, loadOpencodeStatsForSession } = createAppRuntime({
+    config,
+    viewMode,
+    measure,
+    lastSessionSelectionRef,
+    lastProjectSelectionRef,
+    setSessionItems,
+    setProjectSourceItems,
+    setAllItems,
+    setItems,
+    setCursor,
+    setMessage,
+    getOpencodeSessionStats,
+  })
 
   const {
     regularSessions,
