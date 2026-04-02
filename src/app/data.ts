@@ -56,12 +56,7 @@ export async function loadProjectItemsWithLinks(
   measure: Measure,
   sourceItems?: Item[]
 ): Promise<{ projectSourceItems: Item[]; projectItems: Item[] }> {
-  const projectSourceItems =
-    sourceItems ??
-    orderProjectItems(
-      await measure('projects:getProjectItems', () => getProjectItems(config)),
-      config.sortOrder
-    )
+  const projectSourceItems = sourceItems ?? (await loadProjectSourceItems(config, measure))
 
   const projectItems = clearMatchIndices(
     orderProjectItems(
@@ -76,6 +71,13 @@ export async function loadProjectItemsWithLinks(
     projectSourceItems,
     projectItems,
   }
+}
+
+export async function loadProjectSourceItems(config: Config, measure: Measure): Promise<Item[]> {
+  return orderProjectItems(
+    await measure('projects:getProjectItems', () => getProjectItems(config)),
+    config.sortOrder
+  )
 }
 
 export async function loadSessionCandidateItems(config: Config, measure: Measure): Promise<Item[]> {

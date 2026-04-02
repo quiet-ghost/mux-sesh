@@ -4,62 +4,17 @@ import { AppMode, ViewMode, type Config, type Item } from '../types'
 import {
   getProjectSelectionIndex,
   getSessionSelectionIndex,
+  loadProjectSourceItems,
   loadProjectItemsWithLinks,
   loadSessionItems,
   type Measure,
 } from './data'
-
-export interface StartupState {
-  config: Config
-  appMode: AppMode
-  viewMode: ViewMode
-  items: Item[]
-  sessionItems: Item[]
-  projectSourceItems: Item[]
-  cursor: number
-}
 
 export interface RefreshedViewState {
   items: Item[]
   cursor: number
   sessionItems?: Item[]
   projectSourceItems?: Item[]
-}
-
-export async function loadStartupState(
-  measure: Measure,
-  lastSessionSelection?: string | null,
-  lastProjectSelection?: string | null
-): Promise<StartupState> {
-  const config = await measure('loadConfig', loadConfig)
-  const { visibleSessions, sessionItems } = await loadSessionItems(config, measure, 'startup')
-  const { projectSourceItems, projectItems } = await loadProjectItemsWithLinks(
-    config,
-    visibleSessions,
-    measure
-  )
-
-  if (sessionItems.length > 0) {
-    return {
-      config,
-      appMode: config.keybindMode === 'standard' ? AppMode.Search : AppMode.Normal,
-      viewMode: ViewMode.Sessions,
-      items: sessionItems,
-      sessionItems,
-      projectSourceItems,
-      cursor: getSessionSelectionIndex(sessionItems, lastSessionSelection),
-    }
-  }
-
-  return {
-    config,
-    appMode: config.keybindMode === 'standard' ? AppMode.Search : AppMode.Normal,
-    viewMode: ViewMode.Projects,
-    items: projectItems,
-    sessionItems,
-    projectSourceItems,
-    cursor: getProjectSelectionIndex(projectItems, lastProjectSelection),
-  }
 }
 
 export async function loadRefreshedViewState(
@@ -128,27 +83,64 @@ export function useAppStartup(
   setCursor: Dispatch<SetStateAction<number>>
 ) {
   useEffect(() => {
+    let cancelled = false
+
     async function init() {
       mark('startup begin')
-      const startupState = await loadStartupState(
-        measure,
-        lastSessionSelectionRef.current,
-        lastProjectSelectionRef.current
+      const config = await measure('loadConfig', loadConfig)
+      if (cancelled) {
+        return
+      }
+
+      const startupAppMode = config.keybindMode === 'standard' ? AppMode.Search : AppMode.Normal
+      setConfig(config)
+      setAppMode(startupAppMode)
+
+      const { visibleSessions, sessionItems } = await loadSessionItems(config, measure, 'startup')
+      if (cancelled) {
+        return
+      }
+
+      setSessionItems(sessionItems)
+
+      if (sessionItems.length > 0) {
+        setViewMode(ViewMode.Sessions)
+        setAllItems(sessionItems)
+        setItems(sessionItems)
+        setCursor(getSessionSelectionIndex(sessionItems, lastSessionSelectionRef.current))
+        mark('startup complete')
+
+        const projectSourceItems = await loadProjectSourceItems(config, measure)
+        if (cancelled) {
+          return
+        }
+
+        setProjectSourceItems(projectSourceItems)
+        return
+      }
+
+      const { projectSourceItems, projectItems } = await loadProjectItemsWithLinks(
+        config,
+        visibleSessions,
+        measure
       )
+      if (cancelled) {
+        return
+      }
 
-      setConfig(startupState.config)
-      setAppMode(startupState.appMode)
-      setViewMode(startupState.viewMode)
-      setSessionItems(startupState.sessionItems)
-      setProjectSourceItems(startupState.projectSourceItems)
-      setAllItems(startupState.items)
-      setItems(startupState.items)
-      setCursor(startupState.cursor)
-
+      setViewMode(ViewMode.Projects)
+      setProjectSourceItems(projectSourceItems)
+      setAllItems(projectItems)
+      setItems(projectItems)
+      setCursor(getProjectSelectionIndex(projectItems, lastProjectSelectionRef.current))
       mark('startup complete')
     }
 
     void init()
+
+    return () => {
+      cancelled = true
+    }
   }, [
     lastProjectSelectionRef,
     lastSessionSelectionRef,
