@@ -1,5 +1,5 @@
-import type { TextareaRenderable } from '@opentui/core'
-import { useState, useRef } from 'react'
+import { useRef } from 'react'
+import { useAppCoreState } from './app/core-state'
 import {
   useAutoUpdateScheduler,
   useBoundedCursor,
@@ -22,7 +22,7 @@ import { AppScreen } from './app/screen'
 import { createAppRuntime } from './app/runtime'
 import { createAppHandlers, handleKillSessionWithFeedback } from './app/handlers'
 import { useAppStartup } from './app/state'
-import { AppMode, ViewMode, type Item, type Config } from './types'
+import { AppMode, ViewMode } from './types'
 import { getConfigPath, saveConfig } from './config'
 import { getOpencodeSessionStats } from './opencode'
 import { ThemeProvider, resolveTheme } from './styles/theme'
@@ -31,23 +31,48 @@ import { mark, measure } from './util/perf'
 import { getSettingEditorTitle, isOptionSetting, type SettingsFieldId } from './settings'
 
 export function App() {
-  const [appMode, setAppMode] = useState(AppMode.Normal)
-  const [viewMode, setViewMode] = useState(ViewMode.Sessions)
-  const [items, setItems] = useState<Item[]>([])
-  const [allItems, setAllItems] = useState<Item[]>([])
-  const [projectSourceItems, setProjectSourceItems] = useState<Item[]>([])
-  const [sessionCandidateItems, setSessionCandidateItems] = useState<Item[]>([])
-  const [sessionItems, setSessionItems] = useState<Item[]>([])
-  const [cursor, setCursor] = useState(0)
-  const [opencodeCursor, setOpencodeCursor] = useState(0)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [message, setMessage] = useState('')
-  const [renameTarget, setRenameTarget] = useState('')
-  const [config, setConfig] = useState<Config | null>(null)
-  const [pendingKillSessionName, setPendingKillSessionName] = useState<string | null>(null)
-  const [prefixActive, setPrefixActive] = useState(false)
-  const prefixTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const textareaRef = useRef<TextareaRenderable | null>(null)
+  const {
+    appMode,
+    setAppMode,
+    viewMode,
+    setViewMode,
+    items,
+    setItems,
+    allItems,
+    setAllItems,
+    projectSourceItems,
+    setProjectSourceItems,
+    sessionCandidateItems,
+    setSessionCandidateItems,
+    sessionItems,
+    setSessionItems,
+    cursor,
+    setCursor,
+    opencodeCursor,
+    setOpencodeCursor,
+    searchQuery,
+    setSearchQuery,
+    message,
+    setMessage,
+    renameTarget,
+    setRenameTarget,
+    config,
+    setConfig,
+    pendingKillSessionName,
+    setPendingKillSessionName,
+    prefixActive,
+    setPrefixActive,
+    prefixTimeoutRef,
+    textareaRef,
+    lastSessionSelectionRef,
+    lastProjectSelectionRef,
+    toastMessage,
+    setToastMessage,
+    toastVisible,
+    setToastVisible,
+    updatedVersion,
+    setUpdatedVersion,
+  } = useAppCoreState()
   const {
     modalState,
     setModalState,
@@ -75,12 +100,7 @@ export function App() {
     settingOptionsSearchTextareaRef,
     settingEditorTextareaRef,
   } = useAppModalState()
-  const lastSessionSelectionRef = useRef<string | null>(null)
-  const lastProjectSelectionRef = useRef<string | null>(null)
   const { columns, rows } = useTerminalSize()
-  const [toastMessage, setToastMessage] = useState('')
-  const [toastVisible, setToastVisible] = useState(false)
-  const [updatedVersion, setUpdatedVersion] = useState<string | null>(null)
   const configPath = getConfigPath()
   const resolvedTheme = resolveTheme(config?.theme, config?.themes, config?.colorScheme)
   const theme = resolvedTheme.colors
