@@ -1,13 +1,10 @@
 import { spawn } from 'bun'
 import type { Item, SessionDetails, WindowInfo } from '../types'
+import { stripAnsi } from '../util/ansi'
 import { getLiveSessionGroupLabel } from '../util/path-display'
 
 const SESSION_DETAILS_CACHE_TTL_MS = 4000
 const sessionDetailsCache = new Map<string, { details: SessionDetails; expiresAt: number }>()
-
-function stripAnsi(value: string): string {
-  return value.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '')
-}
 
 function formatPanePreview(output: string): string[] {
   return stripAnsi(output)

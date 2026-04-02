@@ -1,14 +1,19 @@
 import type { TextareaRenderable } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
 import { useState, useEffect, useRef } from 'react'
+import {
+  getProjectSelectionIndex,
+  getSessionSelectionIndex,
+  loadProjectItemsWithLinks,
+  loadSessionItems,
+} from './app/data'
+import { showTemporaryMessage, showTemporaryToast } from './app/notifications'
 import { AppMode, ViewMode, type Item, type Config, type OpencodeStatsState } from './types'
 import { getConfigPath, loadConfig, saveConfig } from './config'
-import { getListedSessionItems, mergeSessionItems } from './config/listed-sessions'
-import { orderProjectItems, orderSessionItems } from './items/order'
 import { annotateProjectItemsWithSessionLinks } from './projects/session-links'
 import { listTmuxSessions } from './tmux'
+import { getSessionCandidateItems } from './tmux/projects'
 import { filterHiddenSessions } from './tmux/workflows'
-import { getProjectItems, getSessionCandidateItems } from './tmux/projects'
 import { filterAndSortItems, clearMatchIndices } from './search'
 import { isGitHubURL } from './util/github'
 import { getOpencodeSessionStats } from './opencode'
@@ -122,37 +127,6 @@ export function App() {
   const filteredSettingOptions = filterSettingsOptions(settingOptions, settingOptionsSearchQuery)
   const hasScheduledAutoUpdateRef = useRef(false)
 
-  function getSessionSelectionIndex(nextItems: Item[]): number {
-    const regularItems = nextItems.filter(
-      item => !(item.isSession && item.title.startsWith('opencode-'))
-    )
-    if (regularItems.length === 0) {
-      return 0
-    }
-
-    const selection = lastSessionSelectionRef.current
-    if (!selection) {
-      return 0
-    }
-
-    const index = regularItems.findIndex(item => item.title === selection)
-    return index >= 0 ? index : 0
-  }
-
-  function getProjectSelectionIndex(nextItems: Item[]): number {
-    if (nextItems.length === 0) {
-      return 0
-    }
-
-    const selection = lastProjectSelectionRef.current
-    if (!selection) {
-      return 0
-    }
-
-    const index = nextItems.findIndex(item => item.path === selection)
-    return index >= 0 ? index : 0
-  }
-
   function updateOpencodeState(sessionName: string, nextState: OpencodeStatsState) {
     const applyState = (existingItems: Item[]) =>
       existingItems.map(item =>
@@ -162,19 +136,6 @@ export function App() {
     setSessionItems(applyState)
     setAllItems(applyState)
     setItems(applyState)
-  }
-
-  async function loadLinkedProjectItems(
-    nextConfig: Config,
-    liveSessions: Item[],
-    sourceItems = projectSourceItems
-  ) {
-    return orderProjectItems(
-      await measure('linkProjectItems', () =>
-        annotateProjectItemsWithSessionLinks(sourceItems, liveSessions, nextConfig)
-      ),
-      nextConfig.sortOrder
-    )
   }
 
   useEffect(() => {
@@ -188,13 +149,10 @@ export function App() {
         setAppMode(AppMode.Search)
       }
 
-      const [sessions, listedSessions] = await measure('loadSessionsAndListed', () =>
-        Promise.all([listTmuxSessions(), getListedSessionItems(cfg)])
-      )
-      const visibleSessions = filterHiddenSessions(sessions, cfg.hiddenSessions)
-      const combinedSessions = orderSessionItems(
-        mergeSessionItems(visibleSessions, listedSessions),
-        cfg.sortOrder
+      const { visibleSessions, sessionItems: combinedSessions } = await loadSessionItems(
+        cfg,
+        measure,
+        'startup'
       )
 
       if (combinedSessions.length > 0) {
@@ -202,22 +160,20 @@ export function App() {
         setSessionItems(combinedSessions)
         setAllItems(combinedSessions)
         setItems(combinedSessions)
-        setCursor(getSessionSelectionIndex(combinedSessions))
+        setCursor(getSessionSelectionIndex(combinedSessions, lastSessionSelectionRef.current))
       }
 
-      const rawProjects = await measure('getProjectItems', () => getProjectItems(cfg))
-      const orderedProjects = orderProjectItems(rawProjects, cfg.sortOrder)
+      const { projectSourceItems: orderedProjects, projectItems: linkedProjects } =
+        await loadProjectItemsWithLinks(cfg, visibleSessions, measure)
 
       setProjectSourceItems(orderedProjects)
-      setProjectItems(orderedProjects)
+      setProjectItems(linkedProjects)
 
       if (combinedSessions.length === 0) {
-        const linkedProjects = await loadLinkedProjectItems(cfg, visibleSessions, orderedProjects)
-        setProjectItems(linkedProjects)
         setViewMode(ViewMode.Projects)
         setAllItems(linkedProjects)
         setItems(linkedProjects)
-        setCursor(getProjectSelectionIndex(linkedProjects))
+        setCursor(getProjectSelectionIndex(linkedProjects, lastProjectSelectionRef.current))
       }
 
       mark('startup complete')
@@ -246,37 +202,30 @@ export function App() {
     const targetMode = forceViewMode ?? viewMode
 
     if (targetMode === ViewMode.Sessions) {
-      const sessions = await measure('refresh:listTmuxSessions', listTmuxSessions)
-      const visibleSessions = filterHiddenSessions(sessions, nextConfig.hiddenSessions)
-      const listedSessions = await measure('refresh:getListedSessionItems', () =>
-        getListedSessionItems(nextConfig)
-      )
-      const cleanSessions = clearMatchIndices(
-        orderSessionItems(mergeSessionItems(visibleSessions, listedSessions), nextConfig.sortOrder)
-      )
+      const { sessionItems: cleanSessions } = await loadSessionItems(nextConfig, measure, 'refresh')
       setSessionItems(cleanSessions)
       setAllItems(cleanSessions)
       setItems(cleanSessions)
-      setCursor(getSessionSelectionIndex(cleanSessions))
+      setCursor(getSessionSelectionIndex(cleanSessions, lastSessionSelectionRef.current))
     } else {
-      const sessions = await measure('refresh:listTmuxSessions', listTmuxSessions)
-      const visibleSessions = filterHiddenSessions(sessions, nextConfig.hiddenSessions)
-      const rawProjects = await measure('refresh:getProjectItems', () =>
-        getProjectItems(nextConfig)
-      )
-      const orderedProjects = orderProjectItems(rawProjects, nextConfig.sortOrder)
+      const { visibleSessions } = await loadSessionItems(nextConfig, measure, 'refresh-projects')
+      const { projectSourceItems: orderedProjects, projectItems: cleanProjects } =
+        await loadProjectItemsWithLinks(nextConfig, visibleSessions, measure)
+
       setProjectSourceItems(orderedProjects)
-      const linkedProjects = await loadLinkedProjectItems(
-        nextConfig,
-        visibleSessions,
-        orderedProjects
-      )
-      const cleanProjects = clearMatchIndices(linkedProjects)
       setProjectItems(cleanProjects)
       setAllItems(cleanProjects)
       setItems(cleanProjects)
-      setCursor(getProjectSelectionIndex(cleanProjects))
+      setCursor(getProjectSelectionIndex(cleanProjects, lastProjectSelectionRef.current))
     }
+  }
+
+  function showMessage(message: string, timeout = 2000) {
+    showTemporaryMessage(setMessage, message, timeout)
+  }
+
+  function showToast(message: string, timeout = 5000) {
+    showTemporaryToast(setToastMessage, setToastVisible, message, timeout)
   }
 
   async function loadOpencodeStatsForSession(sessionName: string) {
@@ -299,8 +248,7 @@ export function App() {
       const errorMessage =
         error instanceof Error ? error.message : `Failed to load stats for '${sessionName}'`
       updateOpencodeState(sessionName, { status: 'error', message: errorMessage })
-      setMessage(errorMessage)
-      setTimeout(() => setMessage(''), 4000)
+      showMessage(errorMessage, 4000)
       return null
     }
   }
@@ -334,14 +282,8 @@ export function App() {
     setPendingKillSessionName(null)
 
     await actionKillSession(sessionName, {
-      onSuccess: msg => {
-        setMessage(msg)
-        setTimeout(() => setMessage(''), 2000)
-      },
-      onError: msg => {
-        setMessage(msg)
-        setTimeout(() => setMessage(''), 3000)
-      },
+      onSuccess: msg => showMessage(msg),
+      onError: msg => showMessage(msg, 3000),
       refreshItems,
     })
   }
@@ -356,8 +298,7 @@ export function App() {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to switch to the previous session'
-      setMessage(errorMessage)
-      setTimeout(() => setMessage(''), 3000)
+      showMessage(errorMessage, 3000)
     }
   }
 
@@ -367,8 +308,7 @@ export function App() {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to open the root session'
-      setMessage(errorMessage)
-      setTimeout(() => setMessage(''), 3000)
+      showMessage(errorMessage, 3000)
     }
   }
 
@@ -377,8 +317,7 @@ export function App() {
       await actionHandleEditTarget(item, config)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to edit target'
-      setMessage(errorMessage)
-      setTimeout(() => setMessage(''), 3000)
+      showMessage(errorMessage, 3000)
     }
   }
 
@@ -453,14 +392,8 @@ export function App() {
     const newName = (modalTextareaRef.current?.plainText ?? modalInputValue).trim()
     if (newName && newName !== renameTarget) {
       await actionRenameSubmit(renameTarget, newName, {
-        onSuccess: msg => {
-          setMessage(msg)
-          setTimeout(() => setMessage(''), 2000)
-        },
-        onError: msg => {
-          setMessage(msg)
-          setTimeout(() => setMessage(''), 3000)
-        },
+        onSuccess: msg => showMessage(msg),
+        onError: msg => showMessage(msg, 3000),
         refreshItems,
       })
     }
@@ -476,8 +409,7 @@ export function App() {
       await actionNewSessionSubmit(searchTerm, config, items, cursor)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create session'
-      setMessage(errorMessage)
-      setTimeout(() => setMessage(''), 3000)
+      showMessage(errorMessage, 3000)
     }
   }
 
@@ -564,8 +496,7 @@ export function App() {
       case 'refresh':
         closeModal()
         await refreshItems()
-        setMessage('Refreshed')
-        setTimeout(() => setMessage(''), 2000)
+        showMessage('Refreshed')
         return
       case 'back':
         closeModal()
@@ -578,8 +509,7 @@ export function App() {
     await saveConfig(nextConfig)
     setConfig(nextConfig)
     await refreshItems(undefined, nextConfig)
-    setMessage(successMessage)
-    setTimeout(() => setMessage(''), 2000)
+    showMessage(successMessage)
   }
 
   async function handleSettingsEditorSubmit(field: SettingsFieldId) {
@@ -749,16 +679,12 @@ export function App() {
     const unsubscribe = updateEvents.on(event => {
       if (event.kind === 'updated') {
         setUpdatedVersion(event.version)
-        setToastMessage(`Updated in background to v${event.version}. Restart mux-sesh to use it.`)
+        showToast(`Updated in background to v${event.version}. Restart mux-sesh to use it.`)
       } else if (event.kind === 'available') {
-        setToastMessage(`Update available: v${event.version}`)
+        showToast(`Update available: v${event.version}`)
       } else {
-        setToastMessage(`Background update to v${event.version} failed.`)
+        showToast(`Background update to v${event.version} failed.`)
       }
-      setToastVisible(true)
-      setTimeout(() => {
-        setToastVisible(false)
-      }, 5000)
     })
     return unsubscribe
   }, [])
@@ -775,7 +701,7 @@ export function App() {
       const cleanSessions = clearMatchIndices(sessionItems)
       setAllItems(cleanSessions)
       setItems(cleanSessions)
-      setCursor(getSessionSelectionIndex(cleanSessions))
+      setCursor(getSessionSelectionIndex(cleanSessions, lastSessionSelectionRef.current))
     }
   }, [appMode, viewMode, sessionItems])
 
@@ -783,7 +709,8 @@ export function App() {
     if (appMode === AppMode.NewSession && viewMode === ViewMode.Projects) {
       setCursor(
         getProjectSelectionIndex(
-          sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems
+          sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems,
+          lastProjectSelectionRef.current
         )
       )
     }
@@ -817,7 +744,7 @@ export function App() {
       setSessionCandidateItems(linkedCandidates)
       setAllItems(linkedCandidates)
       setItems(linkedCandidates)
-      setCursor(getProjectSelectionIndex(linkedCandidates))
+      setCursor(getProjectSelectionIndex(linkedCandidates, lastProjectSelectionRef.current))
     }
 
     void loadSessionCandidates()

@@ -3,6 +3,7 @@ import { basename, join } from 'path'
 import { spawn } from 'bun'
 import { getSessionDetails } from '../tmux'
 import type { Config, SessionDetails } from '../types'
+import { stripAnsi } from '../util/ansi'
 import { getGitRoot, resolveProjectSession } from '../config/session-rules'
 
 const MAX_PREVIEW_LINES = 24
@@ -38,10 +39,6 @@ interface PackageSummary {
 
 function displayPath(path: string): string {
   return path.replace(process.env.HOME || '', '~')
-}
-
-function stripAnsi(value: string): string {
-  return value.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '')
 }
 
 export function interpolatePreviewCommand(
