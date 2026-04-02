@@ -1,43 +1,18 @@
 import { spawn } from 'bun'
 import type { Item, SessionDetails, WindowInfo } from '../types'
-import { stripAnsi } from '../util/ansi'
 import { getLiveSessionGroupLabel } from '../util/path-display'
+import {
+  formatPanePreview,
+  formatWindowCommand,
+  readTmuxValue,
+  sanitizeTmuxSessionName,
+} from './helpers'
 
 const SESSION_DETAILS_CACHE_TTL_MS = 4000
 const sessionDetailsCache = new Map<string, { details: SessionDetails; expiresAt: number }>()
 
-function formatPanePreview(output: string): string[] {
-  return stripAnsi(output)
-    .replace(/\r/g, '')
-    .split('\n')
-    .map(line => line.trimEnd())
-    .filter(line => line.length > 0)
-    .slice(-8)
-}
-
 export interface CreateTmuxSessionOptions {
   startupCommand?: string
-}
-
-function sanitizeSessionName(name: string): string {
-  return name.replace(/\./g, '_').replace(/ /g, '_')
-}
-
-async function readTmuxValue(args: string[], errorMessage: string): Promise<string> {
-  const proc = spawn(args)
-  const output = await new Response(proc.stdout).text()
-  await proc.exited
-
-  if (proc.exitCode !== 0) {
-    throw new Error(errorMessage)
-  }
-
-  const value = output.trim()
-  if (!value) {
-    throw new Error(errorMessage)
-  }
-
-  return value
 }
 
 export async function listTmuxSessions(): Promise<Item[]> {
@@ -75,7 +50,7 @@ export async function createTmuxSession(
   path: string,
   options: CreateTmuxSessionOptions = {}
 ): Promise<void> {
-  const sessionName = sanitizeSessionName(name)
+  const sessionName = sanitizeTmuxSessionName(name)
   const insideTmux = !!process.env.TMUX
 
   // Check if tmux is running
@@ -123,7 +98,7 @@ export async function createTmuxSession(
 }
 
 export async function createNamedTmuxSession(name: string): Promise<void> {
-  const sessionName = sanitizeSessionName(name)
+  const sessionName = sanitizeTmuxSessionName(name)
   const insideTmux = !!process.env.TMUX
 
   const tmuxRunning = spawn(['pgrep', 'tmux'])
@@ -177,7 +152,7 @@ export async function killTmuxSession(name: string): Promise<void> {
 }
 
 export async function renameTmuxSession(oldName: string, newName: string): Promise<void> {
-  const sanitizedName = sanitizeSessionName(newName)
+  const sanitizedName = sanitizeTmuxSessionName(newName)
   const proc = spawn(['tmux', 'rename-session', '-t', oldName, sanitizedName])
   await proc.exited
 }
@@ -245,7 +220,7 @@ export async function getSessionDetails(sessionName: string): Promise<SessionDet
       index,
       name,
       currentPath: displayPath,
-      currentCommand: ['bash', 'zsh', 'fish'].includes(currentCommand) ? '' : currentCommand,
+      currentCommand: formatWindowCommand(currentCommand),
     })
   }
 

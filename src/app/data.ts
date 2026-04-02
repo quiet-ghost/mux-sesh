@@ -3,7 +3,7 @@ import { orderProjectItems, orderSessionItems } from '../items/order'
 import { annotateProjectItemsWithSessionLinks } from '../projects/session-links'
 import { clearMatchIndices } from '../search'
 import { listTmuxSessions } from '../tmux'
-import { getProjectItems } from '../tmux/projects'
+import { getProjectItems, getSessionCandidateItems } from '../tmux/projects'
 import { filterHiddenSessions } from '../tmux/workflows'
 import type { Config, Item } from '../types'
 
@@ -76,4 +76,15 @@ export async function loadProjectItemsWithLinks(
     projectSourceItems,
     projectItems,
   }
+}
+
+export async function loadSessionCandidateItems(config: Config, measure: Measure): Promise<Item[]> {
+  const [candidates, sessions] = await measure('loadSessionCandidateItems', () =>
+    Promise.all([getSessionCandidateItems(config), listTmuxSessions()])
+  )
+
+  const visibleSessions = filterHiddenSessions(sessions, config.hiddenSessions)
+  return measure('linkSessionCandidateItems', () =>
+    annotateProjectItemsWithSessionLinks(candidates, visibleSessions, config)
+  )
 }

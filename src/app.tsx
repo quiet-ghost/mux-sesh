@@ -1,19 +1,27 @@
 import type { TextareaRenderable } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
 import { useState, useEffect, useRef } from 'react'
+import { executeCommand as runCommand } from './app/commands'
 import {
   getProjectSelectionIndex,
   getSessionSelectionIndex,
   loadProjectItemsWithLinks,
+  loadSessionCandidateItems,
   loadSessionItems,
 } from './app/data'
+import { handleModalKeyboard } from './app/modal-keyboard'
+import {
+  closeModal as resetModalState,
+  openCommandsModal as showCommandsModal,
+  openRenameModal as showRenameModal,
+  openSettingEditor as showSettingEditor,
+  openSettingOptions as showSettingOptions,
+  openSettingsModal as showSettingsModal,
+  type ModalState,
+} from './app/modals'
 import { showTemporaryMessage, showTemporaryToast } from './app/notifications'
 import { AppMode, ViewMode, type Item, type Config, type OpencodeStatsState } from './types'
 import { getConfigPath, loadConfig, saveConfig } from './config'
-import { annotateProjectItemsWithSessionLinks } from './projects/session-links'
-import { listTmuxSessions } from './tmux'
-import { getSessionCandidateItems } from './tmux/projects'
-import { filterHiddenSessions } from './tmux/workflows'
 import { filterAndSortItems, clearMatchIndices } from './search'
 import { isGitHubURL } from './util/github'
 import { getOpencodeSessionStats } from './opencode'
@@ -31,11 +39,7 @@ import SearchInput from './ui/SearchInput'
 import ItemList from './ui/ItemList'
 import VersionBadge, { formatVersionBadge } from './ui/VersionBadge'
 import RenameModal from './ui/RenameModal'
-import CommandsModal, {
-  filterCommandEntries,
-  getCommandEntries,
-  type CommandId,
-} from './ui/CommandsModal'
+import CommandsModal, { filterCommandEntries, getCommandEntries } from './ui/CommandsModal'
 import SettingsModal from './ui/SettingsModal'
 import SettingOptionsModal from './ui/SettingOptionsModal'
 import SettingEditorModal from './ui/SettingEditorModal'
@@ -45,7 +49,6 @@ import {
   filterSettingsEntries,
   filterSettingsOptions,
   getSettingEditorTitle,
-  getSettingEditorValue,
   getSettingsEntries,
   getSettingOptions,
   isOptionSetting,
@@ -67,14 +70,6 @@ import {
   handleRootSession as actionHandleRootSession,
   handleEditTarget as actionHandleEditTarget,
 } from './handlers/actions'
-
-type ModalState =
-  | { type: 'rename'; target: string }
-  | { type: 'commands' }
-  | { type: 'settings' }
-  | { type: 'setting-options'; field: SettingsFieldId }
-  | { type: 'setting-editor'; field: SettingsFieldId }
-  | null
 
 export function App() {
   const [appMode, setAppMode] = useState(AppMode.Normal)
@@ -335,57 +330,52 @@ export function App() {
   }
 
   function openRenameModal(sessionName: string) {
-    clearPendingKill()
-    setRenameTarget(sessionName)
-    setModalInputValue(sessionName)
-    setModalState({ type: 'rename', target: sessionName })
+    showRenameModal(
+      sessionName,
+      clearPendingKill,
+      setRenameTarget,
+      setModalInputValue,
+      setModalState
+    )
   }
 
   function openCommandsModal() {
-    clearPendingKill()
-    setCommandsSearchQuery('')
-    setCommandsCursor(0)
-    setModalState({ type: 'commands' })
+    showCommandsModal(clearPendingKill, setCommandsSearchQuery, setCommandsCursor, setModalState)
   }
 
   function openSettingsModal() {
-    if (!config) {
-      return
-    }
-
-    clearPendingKill()
-    setSettingEditorError('')
-    setSettingsSearchQuery('')
-    setSettingsCursor(0)
-    setModalState({ type: 'settings' })
+    showSettingsModal(
+      config,
+      clearPendingKill,
+      setSettingEditorError,
+      setSettingsSearchQuery,
+      setSettingsCursor,
+      setModalState
+    )
   }
 
   function openSettingOptions(field: SettingsFieldId) {
-    setSettingOptionsSearchQuery('')
-    setSettingOptionsCursor(0)
-    setModalState({ type: 'setting-options', field })
+    showSettingOptions(field, setSettingOptionsSearchQuery, setSettingOptionsCursor, setModalState)
   }
 
   function openSettingEditor(field: SettingsFieldId) {
-    if (!config) {
-      return
-    }
-
-    setSettingEditorError('')
-    setSettingEditorValue(getSettingEditorValue(config, field))
-    setModalState({ type: 'setting-editor', field })
+    showSettingEditor(config, field, setSettingEditorError, setSettingEditorValue, setModalState)
   }
 
   function closeModal() {
-    setModalState(null)
-    setModalInputValue('')
-    setCommandsSearchQuery('')
-    setCommandsCursor(0)
-    setSettingsSearchQuery('')
-    setSettingOptionsSearchQuery('')
-    setSettingEditorValue('')
-    setSettingEditorError('')
-    setRenameTarget('')
+    resetModalState({
+      setModalState,
+      setModalInputValue,
+      setCommandsSearchQuery,
+      setCommandsCursor,
+      setSettingsSearchQuery,
+      setSettingsCursor,
+      setSettingOptionsSearchQuery,
+      setSettingOptionsCursor,
+      setSettingEditorValue,
+      setSettingEditorError,
+      setRenameTarget,
+    })
   }
 
   async function handleRenameSubmit() {
@@ -410,98 +400,6 @@ export function App() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create session'
       showMessage(errorMessage, 3000)
-    }
-  }
-
-  async function executeCommand(commandID: CommandId) {
-    switch (commandID) {
-      case 'search':
-        closeModal()
-        setAppMode(AppMode.Search)
-        setSearchQuery('')
-        return
-      case 'new-session':
-        closeModal()
-        setAppMode(AppMode.NewSession)
-        setViewMode(ViewMode.Projects)
-        setAllItems(sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems)
-        setItems(sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems)
-        setCursor(
-          Math.max(
-            0,
-            (sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems).length -
-              1
-          )
-        )
-        setSearchQuery('')
-        return
-      case 'open-settings':
-        openSettingsModal()
-        return
-      case 'view-projects':
-        closeModal()
-        setViewMode(ViewMode.Projects)
-        await refreshItems(ViewMode.Projects)
-        return
-      case 'view-sessions':
-        closeModal()
-        setViewMode(ViewMode.Sessions)
-        await refreshItems(ViewMode.Sessions)
-        return
-      case 'rename-session': {
-        const target =
-          appMode === AppMode.OpencodeManage
-            ? opencodeSessions[opencodeCursor]
-            : viewMode === ViewMode.Sessions
-              ? regularSessions[cursor]
-              : undefined
-        if (target?.isSession) {
-          openRenameModal(target.title)
-        }
-        return
-      }
-      case 'kill-session': {
-        const target =
-          appMode === AppMode.OpencodeManage
-            ? opencodeSessions[opencodeCursor]
-            : viewMode === ViewMode.Sessions
-              ? regularSessions[cursor]
-              : undefined
-        if (target?.isSession) {
-          closeModal()
-          requestKillSession(target.title)
-        }
-        return
-      }
-      case 'last-session':
-        closeModal()
-        await handleLastSessionWrapper()
-        return
-      case 'root-session':
-        closeModal()
-        await handleRootSessionWrapper(selectedPrimaryItem)
-        return
-      case 'edit-target':
-        closeModal()
-        await handleEditTargetWrapper(selectedPrimaryItem)
-        return
-      case 'open-opencode':
-        closeModal()
-        if (viewMode === ViewMode.Sessions && opencodeSessions.length > 0) {
-          setAppMode(AppMode.OpencodeManage)
-          setOpencodeCursor(0)
-          await loadOpencodeStatsForSession(opencodeSessions[0].title)
-        }
-        return
-      case 'refresh':
-        closeModal()
-        await refreshItems()
-        showMessage('Refreshed')
-        return
-      case 'back':
-        closeModal()
-        setAppMode(AppMode.Normal)
-        return
     }
   }
 
@@ -537,6 +435,37 @@ export function App() {
 
     const nextConfig = applyOptionSetting(config, field, value)
     await applyAndPersistConfig(nextConfig, `${getSettingEditorTitle(field)} updated`)
+  }
+
+  async function executeCommand(commandID: Parameters<typeof runCommand>[0]) {
+    await runCommand(commandID, {
+      appMode,
+      viewMode,
+      cursor,
+      opencodeCursor,
+      regularSessions,
+      opencodeSessions,
+      selectedPrimaryItem,
+      sessionCandidateItems,
+      projectSourceItems,
+      closeModal,
+      openRenameModal,
+      openSettingsModal,
+      requestKillSession,
+      setAppMode,
+      setViewMode,
+      setAllItems,
+      setItems,
+      setCursor,
+      setSearchQuery,
+      setOpencodeCursor,
+      refreshItems,
+      handleLastSession: handleLastSessionWrapper,
+      handleRootSession: handleRootSessionWrapper,
+      handleEditTarget: handleEditTargetWrapper,
+      loadOpencodeStatsForSession,
+      showMessage,
+    })
   }
 
   const keyboardContext: KeyboardHandlerContext = {
@@ -579,84 +508,30 @@ export function App() {
   useKeyboard(key => {
     const keybindMode = config?.keybindMode || 'vim'
 
-    if (modalState?.type === 'rename') {
-      if (key.name === 'return') {
-        void handleRenameSubmit()
-      } else if (key.name === 'escape') {
-        closeModal()
-      }
-      return
-    }
-
-    if (modalState?.type === 'commands') {
-      if (key.name === 'escape' || key.name === 'q') {
-        closeModal()
-      } else if (key.name === 'down' || key.name === 'j') {
-        setCommandsCursor(current => Math.min(current + 1, filteredCommandEntries.length - 1))
-      } else if (key.name === 'up' || key.name === 'k') {
-        setCommandsCursor(current => Math.max(current - 1, 0))
-      } else if (key.name === 'return') {
-        const command = filteredCommandEntries[commandsCursor]
-        if (!command) {
-          return
-        }
-        void executeCommand(command.id)
-      }
-      return
-    }
-
-    if (modalState?.type === 'settings') {
-      if (key.name === 'escape') {
-        closeModal()
-      } else if (key.name === 'down' || key.name === 'j') {
-        setSettingsCursor(current => Math.min(current + 1, filteredSettingsEntries.length - 1))
-      } else if (key.name === 'up' || key.name === 'k') {
-        setSettingsCursor(current => Math.max(current - 1, 0))
-      } else if (key.name === 'return') {
-        const entry = filteredSettingsEntries[settingsCursor]
-        if (!entry) {
-          return
-        }
-
-        if (isOptionSetting(entry.id)) {
-          openSettingOptions(entry.id)
-        } else {
-          openSettingEditor(entry.id)
-        }
-      } else if (key.name === 'e') {
-        const entry = filteredSettingsEntries[settingsCursor]
-        if (!entry) return
-        if (isOptionSetting(entry.id)) {
-          openSettingOptions(entry.id)
-        } else {
-          openSettingEditor(entry.id)
-        }
-      }
-      return
-    }
-
-    if (modalState?.type === 'setting-options') {
-      if (key.name === 'escape') {
-        setModalState({ type: 'settings' })
-      } else if (key.name === 'down' || key.name === 'j') {
-        setSettingOptionsCursor(current => Math.min(current + 1, filteredSettingOptions.length - 1))
-      } else if (key.name === 'up' || key.name === 'k') {
-        setSettingOptionsCursor(current => Math.max(current - 1, 0))
-      } else if (key.name === 'return') {
-        const option = filteredSettingOptions[settingOptionsCursor]
-        if (!option) return
-        void handleSettingOptionSubmit(modalState.field, option.value)
-      }
-      return
-    }
-
-    if (modalState?.type === 'setting-editor') {
-      if (key.name === 'escape') {
-        setModalState({ type: 'settings' })
-        setSettingEditorError('')
-      } else if (key.name === 'return') {
-        void handleSettingsEditorSubmit(modalState.field)
-      }
+    if (
+      handleModalKeyboard(key, {
+        modalState,
+        filteredCommandEntries,
+        commandsCursor,
+        setCommandsCursor,
+        filteredSettingsEntries,
+        settingsCursor,
+        setSettingsCursor,
+        filteredSettingOptions,
+        settingOptionsCursor,
+        setSettingOptionsCursor,
+        closeModal,
+        openSettingOptions,
+        openSettingEditor,
+        isOptionSetting,
+        setModalState,
+        setSettingEditorError,
+        executeCommand,
+        handleSettingOptionSubmit,
+        handleSettingsEditorSubmit,
+        handleRenameSubmit,
+      })
+    ) {
       return
     }
 
@@ -725,18 +600,7 @@ export function App() {
     let cancelled = false
 
     async function loadSessionCandidates() {
-      const [candidates, sessions] = await measure('loadSessionCandidateItems', () =>
-        Promise.all([getSessionCandidateItems(nextConfig), listTmuxSessions()])
-      )
-      if (cancelled) {
-        return
-      }
-
-      const visibleSessions = filterHiddenSessions(sessions, nextConfig.hiddenSessions)
-      const linkedCandidates = await measure('linkSessionCandidateItems', () =>
-        annotateProjectItemsWithSessionLinks(candidates, visibleSessions, nextConfig)
-      )
-
+      const linkedCandidates = await loadSessionCandidateItems(nextConfig, measure)
       if (cancelled) {
         return
       }
