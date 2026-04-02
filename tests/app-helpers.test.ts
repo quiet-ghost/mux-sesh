@@ -6,6 +6,8 @@ import { getSessionCommandState, getSettingsState } from '../src/app/derived'
 import { createAppHandlers } from '../src/app/handlers'
 import { applyOpencodeState, loadOpencodeSessionStats } from '../src/app/opencode'
 import { persistConfigUpdate, runWithErrorMessage } from '../src/app/operations'
+import { createAppRuntime } from '../src/app/runtime'
+import { applyRefreshedViewState } from '../src/app/state'
 import {
   getAppTitle,
   getEmptyStateMessage,
@@ -137,6 +139,38 @@ describe('app operation helpers', () => {
   })
 })
 
+describe('app state helpers', () => {
+  test('applies refreshed state to all affected collections', () => {
+    const setSessionItems = mock(() => {})
+    const setProjectSourceItems = mock(() => {})
+    const setAllItems = mock(() => {})
+    const setItems = mock(() => {})
+    const setCursor = mock(() => {})
+    const refreshedItems = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
+    const refreshedProjects = [{ title: 'proj', desc: '', path: '/tmp/p', isSession: false }]
+
+    applyRefreshedViewState(
+      {
+        items: refreshedItems,
+        cursor: 2,
+        sessionItems: refreshedItems,
+        projectSourceItems: refreshedProjects,
+      },
+      setSessionItems,
+      setProjectSourceItems,
+      setAllItems,
+      setItems,
+      setCursor
+    )
+
+    expect(setSessionItems).toHaveBeenCalledWith(refreshedItems)
+    expect(setProjectSourceItems).toHaveBeenCalledWith(refreshedProjects)
+    expect(setAllItems).toHaveBeenCalledWith(refreshedItems)
+    expect(setItems).toHaveBeenCalledWith(refreshedItems)
+    expect(setCursor).toHaveBeenCalledWith(2)
+  })
+})
+
 describe('app controls', () => {
   test('requests kill on first press and confirms on second press', async () => {
     const baseOptions = {
@@ -260,6 +294,58 @@ describe('app opencode helpers', () => {
       message: 'boom',
     })
     expect(failingShowMessage).toHaveBeenCalledWith('boom', 4000)
+  })
+})
+
+describe('app runtime helpers', () => {
+  test('shows messages through shared setter timing helper', () => {
+    const setMessage = mock(() => {})
+    const runtime = createAppRuntime({
+      config: getDefaultConfig('/home/tester'),
+      viewMode: ViewMode.Sessions,
+      measure: async (_name, fn) => fn(),
+      lastSessionSelectionRef: { current: null },
+      lastProjectSelectionRef: { current: null },
+      setSessionItems: mock(() => {}),
+      setProjectSourceItems: mock(() => {}),
+      setAllItems: mock(() => {}),
+      setItems: mock(() => {}),
+      setCursor: mock(() => {}),
+      setMessage,
+      getOpencodeSessionStats: async () => null,
+    })
+
+    runtime.showMessage('hello')
+
+    expect(setMessage).toHaveBeenCalledWith('hello')
+  })
+
+  test('loads opencode stats through shared runtime callbacks', async () => {
+    const setSessionItems = mock(() => {})
+    const setAllItems = mock(() => {})
+    const setItems = mock(() => {})
+
+    const runtime = createAppRuntime({
+      config: getDefaultConfig('/home/tester'),
+      viewMode: ViewMode.Sessions,
+      measure: async (_name, fn) => fn(),
+      lastSessionSelectionRef: { current: null },
+      lastProjectSelectionRef: { current: null },
+      setSessionItems,
+      setProjectSourceItems: mock(() => {}),
+      setAllItems,
+      setItems,
+      setCursor: mock(() => {}),
+      setMessage: mock(() => {}),
+      getOpencodeSessionStats: async () => ({ sessionID: '1', title: 'alpha' }),
+    })
+
+    const stats = await runtime.loadOpencodeStatsForSession('alpha')
+
+    expect(stats).toEqual({ sessionID: '1', title: 'alpha' })
+    expect(setSessionItems).toHaveBeenCalled()
+    expect(setAllItems).toHaveBeenCalled()
+    expect(setItems).toHaveBeenCalled()
   })
 })
 
