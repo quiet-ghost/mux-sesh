@@ -8,6 +8,8 @@ import {
 import { CURRENT_VERSION } from '../src/update/version'
 import type { Subprocess } from 'bun'
 
+const sourceRuntimePath = new URL('../src/index.tsx', import.meta.url).pathname
+
 describe('installation', () => {
   describe('detectInstallMethod', () => {
     test('should detect npm installation', async () => {
@@ -130,18 +132,14 @@ describe('installation', () => {
     })
 
     test('should detect source checkouts as source installs', async () => {
-      const method = await detectInstallMethod(
-        '/home/ghost/dev/projects/mux-sesh/.worktrees/fix-auto-upgrade/src/index.tsx'
-      )
+      const method = await detectInstallMethod(sourceRuntimePath)
       expect(method).toBe('source')
     })
   })
 
   describe('getInstalledVersion', () => {
     test('should read the running package version from the runtime path', async () => {
-      const version = await getInstalledVersion(
-        '/home/ghost/dev/projects/mux-sesh/.worktrees/fix-auto-upgrade/src/index.tsx'
-      )
+      const version = await getInstalledVersion(sourceRuntimePath)
       expect(version).toBe(CURRENT_VERSION)
     })
 
