@@ -46,9 +46,6 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "New version: $VERSION"
 
-      - name: Build
-        run: bun run build
-
       - name: Commit version bump
         run: |
           git config user.name "github-actions[bot]"
