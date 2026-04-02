@@ -1,5 +1,4 @@
 import type { TextareaRenderable } from '@opentui/core'
-import { useKeyboard } from '@opentui/react'
 import { useState, useEffect, useRef } from 'react'
 import { executeCommand as runCommand } from './app/commands'
 import {
@@ -16,7 +15,7 @@ import {
   useUpdateEventToasts,
 } from './app/effects'
 import { getSessionCommandState, getSettingsState } from './app/derived'
-import { handleModalKeyboard } from './app/modal-keyboard'
+import { useAppKeyboard } from './app/keyboard'
 import { AppModalsLayer } from './app/modals-layer'
 import {
   closeModal as resetModalState,
@@ -62,13 +61,7 @@ import {
   isOptionSetting,
   type SettingsFieldId,
 } from './settings'
-import {
-  type KeyboardHandlerContext,
-  handleNormalMode,
-  handleOpencodeManageMode,
-  handleSearchMode,
-  handleNewSessionMode,
-} from './handlers/keyboard'
+import {} from './handlers/keyboard'
 import {
   handleSelect as actionHandleSelect,
   handleKillSession as actionKillSession,
@@ -408,20 +401,54 @@ export function App() {
     })
   }
 
-  const keyboardContext: KeyboardHandlerContext = {
+  useAppKeyboard({
     appMode,
     viewMode,
+    config,
     items,
     regularSessions,
     opencodeSessions,
+    sessionItems,
+    sessionCandidateItems,
+    projectSourceItems,
     cursor,
     opencodeCursor,
     searchQuery,
-    prefixKey: config?.prefixKey,
-    projectItems: sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems,
-    sessionItems,
     prefixActive,
     prefixTimeoutRef,
+    modalState,
+    filteredCommandEntries,
+    commandsCursor,
+    setCommandsCursor,
+    filteredSettingsEntries,
+    settingsCursor,
+    setSettingsCursor,
+    filteredSettingOptions,
+    settingOptionsCursor,
+    setSettingOptionsCursor,
+    setModalState,
+    setSettingEditorError,
+    executeCommand,
+    handleSettingOptionSubmit,
+    handleSettingsEditorSubmit,
+    handleRenameSubmit,
+    handleNewSessionSubmit,
+    isOptionSetting,
+    openSettingOptions,
+    openSettingEditor,
+    closeModal,
+    clearPendingKill,
+    requestKillSession,
+    openRenameModal,
+    openCommandsModal,
+    openSettingsModal,
+    refreshItems,
+    handleSelect: handleSelectWrapper,
+    handleKillSession: handleKillSessionWrapper,
+    handleLastSession: handleLastSessionWrapper,
+    handleRootSession: handleRootSessionWrapper,
+    handleEditTarget: handleEditTargetWrapper,
+    loadOpencodeStatsForSession,
     setAppMode,
     setViewMode,
     setCursor,
@@ -430,64 +457,7 @@ export function App() {
     setAllItems,
     setItems,
     setPrefixActive,
-    refreshItems,
-    requestKillSession,
-    clearPendingKill,
-    handleSelect: handleSelectWrapper,
-    handleKillSession: handleKillSessionWrapper,
-    handleLastSession: handleLastSessionWrapper,
-    handleRootSession: handleRootSessionWrapper,
-    handleEditTarget: handleEditTargetWrapper,
-    openRenameModal,
-    openCommandsModal,
-    openSettingsModal,
-    loadOpencodeStatsForSession,
     setMessage,
-  }
-
-  useKeyboard(key => {
-    const keybindMode = config?.keybindMode || 'vim'
-
-    if (
-      handleModalKeyboard(key, {
-        modalState,
-        filteredCommandEntries,
-        commandsCursor,
-        setCommandsCursor,
-        filteredSettingsEntries,
-        settingsCursor,
-        setSettingsCursor,
-        filteredSettingOptions,
-        settingOptionsCursor,
-        setSettingOptionsCursor,
-        closeModal,
-        openSettingOptions,
-        openSettingEditor,
-        isOptionSetting,
-        setModalState,
-        setSettingEditorError,
-        executeCommand,
-        handleSettingOptionSubmit,
-        handleSettingsEditorSubmit,
-        handleRenameSubmit,
-      })
-    ) {
-      return
-    }
-
-    if (appMode === AppMode.Normal) {
-      handleNormalMode(key, keyboardContext, keybindMode)
-    } else if (appMode === AppMode.Search) {
-      handleSearchMode(key, keyboardContext, keybindMode)
-    } else if (appMode === AppMode.NewSession) {
-      if (key.name === 'return') {
-        void handleNewSessionSubmit()
-      } else {
-        handleNewSessionMode(key, keyboardContext, keybindMode)
-      }
-    } else if (appMode === AppMode.OpencodeManage) {
-      handleOpencodeManageMode(key, keyboardContext, keybindMode)
-    }
   })
 
   useUpdateEventToasts(setUpdatedVersion, setToastMessage, setToastVisible)
