@@ -1,8 +1,8 @@
 import type { TextareaRenderable } from '@opentui/core'
-import { useEffect } from 'react'
 import { useTheme } from '../styles/theme'
 import type { SettingsOption } from '../settings'
 import Modal from './Modal'
+import { useTextareaFocus } from './use-textarea-focus'
 
 interface Props {
   title: string
@@ -27,12 +27,7 @@ export default function SettingOptionsModal({
 }: Props) {
   const theme = useTheme()
   const selected = options[cursor]
-
-  useEffect(() => {
-    queueMicrotask(() => {
-      textareaRef.current?.focus()
-    })
-  }, [textareaRef])
+  useTextareaFocus(textareaRef, [])
 
   return (
     <Modal

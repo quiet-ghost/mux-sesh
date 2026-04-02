@@ -1,7 +1,7 @@
 import type { TextareaRenderable } from '@opentui/core'
-import { useEffect } from 'react'
 import { useTheme } from '../styles/theme'
 import Modal from './Modal'
+import { useTextareaFocus } from './use-textarea-focus'
 
 interface Props {
   title: string
@@ -25,12 +25,7 @@ export default function SettingEditorModal({
   onContentChange,
 }: Props) {
   const theme = useTheme()
-
-  useEffect(() => {
-    queueMicrotask(() => {
-      textareaRef.current?.focus()
-    })
-  }, [textareaRef])
+  useTextareaFocus(textareaRef, [])
 
   return (
     <Modal
