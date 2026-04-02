@@ -32,11 +32,19 @@ import {
 } from './app/modals'
 import { showTemporaryMessage } from './app/notifications'
 import { persistConfigUpdate, runWithErrorMessage } from './app/operations'
+import {
+  getAppTitle,
+  getEmptyStateMessage,
+  getFooterHint,
+  getListStyle,
+  getStatusLabel,
+  splitVisibleSessions,
+} from './app/view'
 import { AppMode, ViewMode, type Item, type Config, type OpencodeStatsState } from './types'
 import { getConfigPath, loadConfig, saveConfig } from './config'
 import { isGitHubURL } from './util/github'
 import { getOpencodeSessionStats } from './opencode'
-import { ThemeProvider, getPanelStyle, resolveTheme } from './styles/theme'
+import { ThemeProvider, resolveTheme } from './styles/theme'
 import { useTerminalSize, shouldShowDetailPanel } from './util/terminal'
 import { mark, measure } from './util/perf'
 import Toast from './ui/Toast'
@@ -237,17 +245,13 @@ export function App() {
     }
   }
 
-  const regularSessions =
+  const sessionSplit =
     viewMode === ViewMode.Sessions &&
     (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
-      ? items.filter(item => !(item.isSession && item.title.startsWith('opencode-')))
-      : items
-
-  const opencodeSessions =
-    viewMode === ViewMode.Sessions &&
-    (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
-      ? items.filter(item => item.isSession && item.title.startsWith('opencode-'))
-      : []
+      ? splitVisibleSessions(items)
+      : { regularSessions: items, opencodeSessions: [] }
+  const regularSessions = sessionSplit.regularSessions
+  const opencodeSessions = sessionSplit.opencodeSessions
   const selectedOpencodeSessionName =
     appMode === AppMode.OpencodeManage ? opencodeSessions[opencodeCursor]?.title : undefined
   const selectedPrimaryItem =
@@ -608,44 +612,14 @@ export function App() {
     }
   }, [selectedOpencodeSessionName])
 
-  const title =
-    appMode === AppMode.Search
-      ? 'Search'
-      : appMode === AppMode.NewSession
-        ? 'New Session'
-        : appMode === AppMode.OpencodeManage
-          ? 'OpenCode Sessions'
-          : viewMode === ViewMode.Projects
-            ? 'Projects'
-            : 'Sessions'
-
-  const listStyle =
-    appMode === AppMode.NewSession
-      ? {
-          ...getPanelStyle(theme, 'full'),
-          flexGrow: 1,
-          flexShrink: 1,
-        }
-      : {
-          ...getPanelStyle(theme, 'split'),
-          flexGrow: 1,
-          flexShrink: 1,
-          minWidth: 40,
-        }
+  const title = getAppTitle(appMode, viewMode)
+  const listStyle = getListStyle(theme, appMode)
 
   const totalSessions = sessionItems.filter(item => item.isSession).length
   const activeSessions = items.filter(item => item.isSession && item.isAttached).length
   const maxVisibleItems = Math.max(8, rows - (appMode === AppMode.NewSession ? 10 : 12))
-  const prefixLabel = config?.prefixKey ? `${config.prefixKey} ...` : 'direct keys'
   const versionLabel = formatVersionBadge(CURRENT_VERSION, updatedVersion)
-  const footerHint =
-    appMode === AppMode.OpencodeManage
-      ? `o back  d kill  ctrl+p commands  ${prefixLabel}`
-      : appMode === AppMode.NewSession
-        ? 'enter create  esc cancel'
-        : appMode === AppMode.Search
-          ? 'enter select  esc cancel'
-          : `enter select  i search  n new  o opencode  d kill  ctrl+p commands  ${prefixLabel}`
+  const footerHint = getFooterHint(appMode, config?.prefixKey)
 
   return (
     <ThemeProvider theme={theme}>
@@ -677,9 +651,12 @@ export function App() {
               </box>
               <box style={{ flexDirection: 'column', alignItems: 'flex-end' }}>
                 <text style={{ fg: theme.textMuted }}>
-                  {viewMode === ViewMode.Sessions
-                    ? `${activeSessions}/${totalSessions} active`
-                    : `${projectSourceItems.length} projects`}
+                  {getStatusLabel(
+                    viewMode,
+                    activeSessions,
+                    totalSessions,
+                    projectSourceItems.length
+                  )}
                 </text>
               </box>
             </box>
@@ -714,11 +691,7 @@ export function App() {
             >
               {items.length === 0 ? (
                 <text style={{ fg: theme.inactive }}>
-                  {appMode === AppMode.NewSession && searchQuery && isGitHubURL(searchQuery)
-                    ? 'Clone & create session'
-                    : appMode === AppMode.NewSession && searchQuery
-                      ? `Create session: ${searchQuery}`
-                      : 'No items found'}
+                  {getEmptyStateMessage(appMode, searchQuery, isGitHubURL(searchQuery))}
                 </text>
               ) : viewMode === ViewMode.Sessions &&
                 (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage) ? (
