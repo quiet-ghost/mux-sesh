@@ -18,7 +18,6 @@ screenshot.png
 .gitignore
 .editorconfig
 bunfig.toml
-tsconfig.json
 
 # Test files
 *.test.ts
