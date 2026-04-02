@@ -2,37 +2,31 @@ import { spawn } from 'bun'
 import type { Item, Config } from '../types'
 import {
   switchTmuxSession,
-  createTmuxSession,
   killTmuxSession,
   renameTmuxSession,
   createNamedTmuxSession,
   getCurrentTmuxSessionName,
-  getTmuxSessionDirectory,
-} from '../tmux/index'
-import { getGitRoot, resolveProjectSession } from '../config/session-rules'
+} from '../tmux'
 import { getLastSessionTarget } from '../tmux/workflows'
 import { isGitHubURL, cloneGitHubRepo } from '../util/github'
 import { requestShutdown } from '../util/shutdown'
-
-function quoteShellArg(value: string): string {
-  return `'${value.replaceAll("'", "'\\''")}'`
-}
+import {
+  buildEditorCommand,
+  getNextSessionName,
+  getRootSessionPath,
+  openProjectSession,
+  requireConfig,
+  requireConfiguredItem,
+} from './action-helpers'
 
 export async function handleSelect(item: Item, config: Config | null) {
   if (item.isSession) {
     await switchTmuxSession(item.title)
     await requestShutdown(0)
-  } else {
-    if (!config) {
-      throw new Error('Config is not loaded yet')
-    }
-
-    const resolvedSession = await resolveProjectSession(item.path, config)
-    await createTmuxSession(resolvedSession.sessionName, item.path, {
-      startupCommand: resolvedSession.startupCommand,
-    })
-    await requestShutdown(0)
+    return
   }
+
+  await openProjectSession(item.path, requireConfig(config))
 }
 
 export async function handleKillSession(
@@ -61,15 +55,17 @@ export async function handleRenameSubmit(
     refreshItems: () => Promise<void>
   }
 ) {
-  const trimmedName = newName.trim()
-  if (trimmedName && trimmedName !== renameTarget) {
-    try {
-      await renameTmuxSession(renameTarget, trimmedName)
-      callbacks.onSuccess(`Session renamed to '${trimmedName}'`)
-      await callbacks.refreshItems()
-    } catch (error) {
-      callbacks.onError(`Error renaming session: ${error}`)
-    }
+  const nextSessionName = getNextSessionName(renameTarget, newName)
+  if (!nextSessionName) {
+    return
+  }
+
+  try {
+    await renameTmuxSession(renameTarget, nextSessionName)
+    callbacks.onSuccess(`Session renamed to '${nextSessionName}'`)
+    await callbacks.refreshItems()
+  } catch (error) {
+    callbacks.onError(`Error renaming session: ${error}`)
   }
 }
 
@@ -85,25 +81,13 @@ export async function handleNewSessionSubmit(
     try {
       if (!config) return
       const clonedPath = await cloneGitHubRepo(searchTerm, config)
-      const resolvedSession = await resolveProjectSession(clonedPath, config)
-      await createTmuxSession(resolvedSession.sessionName, clonedPath, {
-        startupCommand: resolvedSession.startupCommand,
-      })
-      await requestShutdown(0)
+      await openProjectSession(clonedPath, config)
     } catch (error) {
       throw new Error(`Error cloning repository: ${error}`)
     }
   } else if (items.length > 0 && cursor < items.length) {
     const selectedItem = items[cursor]
-    if (!config) {
-      throw new Error('Config is not loaded yet')
-    }
-
-    const resolvedSession = await resolveProjectSession(selectedItem.path, config)
-    await createTmuxSession(resolvedSession.sessionName, selectedItem.path, {
-      startupCommand: resolvedSession.startupCommand,
-    })
-    await requestShutdown(0)
+    await openProjectSession(selectedItem.path, requireConfig(config))
   } else {
     await createNamedTmuxSession(searchTerm)
     await requestShutdown(0)
@@ -127,37 +111,22 @@ export async function handleRootSession(item: Item | undefined, config: Config |
     throw new Error('No session or project is selected')
   }
 
-  if (!config) {
-    throw new Error('Config is not loaded yet')
-  }
-
-  const itemPath = item.isSession ? await getTmuxSessionDirectory(item.title) : item.path
-  const rootPath = (await getGitRoot(itemPath)) ?? itemPath
-  const resolvedSession = await resolveProjectSession(rootPath, config)
-
-  await createTmuxSession(resolvedSession.sessionName, rootPath, {
-    startupCommand: resolvedSession.startupCommand,
-  })
-  await requestShutdown(0)
+  await openProjectSession(await getRootSessionPath(item), requireConfig(config))
 }
 
 export async function handleEditTarget(item: Item | undefined, config: Config | null) {
-  if (!item || item.itemKind !== 'configured') {
-    throw new Error('Select a configured session to edit its target')
-  }
-
-  if (!config) {
-    throw new Error('Config is not loaded yet')
-  }
-
-  const command = `${config.editor} ${quoteShellArg(item.path)}`
+  const configuredItem = requireConfiguredItem(item)
+  const loadedConfig = requireConfig(config)
+  const command = buildEditorCommand(loadedConfig.editor, configuredItem.path)
 
   if (process.env.TMUX) {
-    const proc = spawn(['tmux', 'new-window', '-c', item.path, command], { stderr: 'pipe' })
+    const proc = spawn(['tmux', 'new-window', '-c', configuredItem.path, command], {
+      stderr: 'pipe',
+    })
     await proc.exited
 
     if (proc.exitCode !== 0) {
-      throw new Error(`Failed to open editor for '${item.title}'`)
+      throw new Error(`Failed to open editor for '${configuredItem.title}'`)
     }
 
     await requestShutdown(0)
@@ -165,7 +134,7 @@ export async function handleEditTarget(item: Item | undefined, config: Config | 
   }
 
   spawn(['sh', '-lc', command], {
-    cwd: item.path,
+    cwd: configuredItem.path,
     stdin: 'inherit',
     stdout: 'inherit',
     stderr: 'inherit',
