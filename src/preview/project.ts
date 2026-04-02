@@ -3,6 +3,7 @@ import { basename, join } from 'path'
 import { spawn } from 'bun'
 import { getSessionDetails } from '../tmux'
 import type { Config, SessionDetails } from '../types'
+import { stripAnsi } from '../util/ansi'
 import { getGitRoot, resolveProjectSession } from '../config/session-rules'
 
 const MAX_PREVIEW_LINES = 24
@@ -40,11 +41,10 @@ function displayPath(path: string): string {
   return path.replace(process.env.HOME || '', '~')
 }
 
-function stripAnsi(value: string): string {
-  return value.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '')
-}
-
-export function interpolatePreviewCommand(command: string | undefined, projectPath: string): string | undefined {
+export function interpolatePreviewCommand(
+  command: string | undefined,
+  projectPath: string
+): string | undefined {
   if (!command) {
     return undefined
   }
@@ -52,13 +52,20 @@ export function interpolatePreviewCommand(command: string | undefined, projectPa
   return command.replaceAll('{}', projectPath)
 }
 
-export function formatPreviewOutput(output: string, maxLines = MAX_PREVIEW_LINES): FormattedPreviewOutput {
+export function formatPreviewOutput(
+  output: string,
+  maxLines = MAX_PREVIEW_LINES
+): FormattedPreviewOutput {
   const cleanedLines = stripAnsi(output)
     .replace(/\r/g, '')
     .split('\n')
     .map(line => line.trimEnd())
     .filter(line => line.length > 0)
-    .map(line => (line.length > MAX_PREVIEW_LINE_LENGTH ? `${line.slice(0, MAX_PREVIEW_LINE_LENGTH - 1)}…` : line))
+    .map(line =>
+      line.length > MAX_PREVIEW_LINE_LENGTH
+        ? `${line.slice(0, MAX_PREVIEW_LINE_LENGTH - 1)}…`
+        : line
+    )
 
   if (cleanedLines.length === 0) {
     return {
@@ -118,7 +125,11 @@ async function getDirectoryPreviewLines(projectPath: string): Promise<string[]> 
 
     const visibleEntries = entries
       .filter(entry => !entry.name.startsWith('.'))
-      .sort((left, right) => Number(right.isDirectory()) - Number(left.isDirectory()) || left.name.localeCompare(right.name))
+      .sort(
+        (left, right) =>
+          Number(right.isDirectory()) - Number(left.isDirectory()) ||
+          left.name.localeCompare(right.name)
+      )
       .slice(0, 16)
 
     const lines: string[] = []
@@ -149,7 +160,10 @@ async function getDirectoryPreviewLines(projectPath: string): Promise<string[]> 
   }
 }
 
-async function runPreviewCommand(command: string, cwd: string): Promise<{ output?: string; notice?: string }> {
+async function runPreviewCommand(
+  command: string,
+  cwd: string
+): Promise<{ output?: string; notice?: string }> {
   try {
     const proc = spawn(['sh', '-lc', command], {
       cwd,
@@ -196,12 +210,21 @@ export async function getProjectPreview(
     resolveProjectSession(projectPath, config),
     getGitRoot(projectPath),
     getGitBranch(projectPath),
-    linkedSessionName ? getSessionDetails(linkedSessionName).catch(() => null) : Promise.resolve(null),
+    linkedSessionName
+      ? getSessionDetails(linkedSessionName).catch(() => null)
+      : Promise.resolve(null),
   ])
 
-  const resolvedPreviewCommand = interpolatePreviewCommand(resolvedSession.previewCommand, projectPath)
-  const commandResult = resolvedPreviewCommand ? await runPreviewCommand(resolvedPreviewCommand, projectPath) : undefined
-  const formattedCommandOutput = commandResult?.output ? formatPreviewOutput(commandResult.output) : undefined
+  const resolvedPreviewCommand = interpolatePreviewCommand(
+    resolvedSession.previewCommand,
+    projectPath
+  )
+  const commandResult = resolvedPreviewCommand
+    ? await runPreviewCommand(resolvedPreviewCommand, projectPath)
+    : undefined
+  const formattedCommandOutput = commandResult?.output
+    ? formatPreviewOutput(commandResult.output)
+    : undefined
 
   if (formattedCommandOutput && formattedCommandOutput.lines.length > 0) {
     const preview: ProjectPreview = {
@@ -244,8 +267,11 @@ export async function getProjectPreview(
     previewKind: 'directory',
     previewLabel: 'Directory Listing',
     previewLines: formattedDirectoryOutput.lines,
-    previewNotice: commandResult?.notice ??
-      (formattedDirectoryOutput.truncated ? 'Directory listing truncated to fit the panel.' : undefined),
+    previewNotice:
+      commandResult?.notice ??
+      (formattedDirectoryOutput.truncated
+        ? 'Directory listing truncated to fit the panel.'
+        : undefined),
   }
 
   projectPreviewCache.set(cacheKey, {

@@ -42,6 +42,10 @@ export function globToRegExp(pattern: string, options: MatchGlobOptions = {}): R
   return new RegExp(regex)
 }
 
-export function matchesGlob(value: string, pattern: string, options: MatchGlobOptions = {}): boolean {
+export function matchesGlob(
+  value: string,
+  pattern: string,
+  options: MatchGlobOptions = {}
+): boolean {
   return globToRegExp(pattern, options).test(value)
 }

@@ -1,6 +1,6 @@
 import type { TextareaRenderable } from '@opentui/core'
-import { useEffect } from 'react'
 import { useTheme } from '../styles/theme'
+import { useTextareaFocus } from './use-textarea-focus'
 import { AppMode, type Item, type KeybindMode } from '../types'
 import Modal from './Modal'
 
@@ -46,7 +46,8 @@ export function getCommandEntries(
   prefixKey: string | undefined,
   selectedItem?: Item
 ): CommandEntry[] {
-  const commandKey = (suffix: string, fallback: string) => (prefixKey ? prefixed(prefixKey, suffix) : fallback)
+  const commandKey = (suffix: string, fallback: string) =>
+    prefixKey ? prefixed(prefixKey, suffix) : fallback
   const prefixCategory = prefixKey ? `Prefix ${prefixKey}` : 'Prefix'
 
   if (appMode === AppMode.OpencodeManage) {
@@ -54,7 +55,12 @@ export function getCommandEntries(
       { id: 'back', category: 'Direct', title: 'Back', keybind: 'esc' },
       { id: 'kill-session', category: 'Direct', title: 'Kill session', keybind: 'd' },
       { id: 'open-settings', category: 'Direct', title: 'Open settings', keybind: 'ctrl+p' },
-      { id: 'rename-session', category: prefixCategory, title: 'Rename session', keybind: commandKey('r', 'r') },
+      {
+        id: 'rename-session',
+        category: prefixCategory,
+        title: 'Rename session',
+        keybind: commandKey('r', 'r'),
+      },
     ]
   }
 
@@ -64,15 +70,52 @@ export function getCommandEntries(
     { id: 'open-opencode', category: 'Direct', title: 'Open OpenCode sessions', keybind: 'o' },
     { id: 'kill-session', category: 'Direct', title: 'Kill session', keybind: 'd' },
     { id: 'open-settings', category: 'Direct', title: 'Open settings', keybind: 'ctrl+p' },
-    { id: 'view-projects', category: prefixCategory, title: 'Show projects', keybind: commandKey('p', 'p') },
-    { id: 'view-sessions', category: prefixCategory, title: 'Show sessions', keybind: commandKey('s', 's') },
-    { id: 'rename-session', category: prefixCategory, title: 'Rename session', keybind: commandKey('r', 'r') },
-    { id: 'last-session', category: prefixCategory, title: 'Last session', keybind: commandKey('l', 'l') },
-    { id: 'root-session', category: prefixCategory, title: 'Root session', keybind: commandKey('g', 'g') },
+    {
+      id: 'view-projects',
+      category: prefixCategory,
+      title: 'Show projects',
+      keybind: commandKey('p', 'p'),
+    },
+    {
+      id: 'view-sessions',
+      category: prefixCategory,
+      title: 'Show sessions',
+      keybind: commandKey('s', 's'),
+    },
+    {
+      id: 'rename-session',
+      category: prefixCategory,
+      title: 'Rename session',
+      keybind: commandKey('r', 'r'),
+    },
+    {
+      id: 'last-session',
+      category: prefixCategory,
+      title: 'Last session',
+      keybind: commandKey('l', 'l'),
+    },
+    {
+      id: 'root-session',
+      category: prefixCategory,
+      title: 'Root session',
+      keybind: commandKey('g', 'g'),
+    },
     ...(selectedItem?.itemKind === 'configured'
-      ? [{ id: 'edit-target' as const, category: prefixCategory, title: 'Edit target', keybind: commandKey('e', 'e') }]
+      ? [
+          {
+            id: 'edit-target' as const,
+            category: prefixCategory,
+            title: 'Edit target',
+            keybind: commandKey('e', 'e'),
+          },
+        ]
       : []),
-    { id: 'refresh', category: prefixCategory, title: 'Refresh', keybind: commandKey('shift+r', 'R') },
+    {
+      id: 'refresh',
+      category: prefixCategory,
+      title: 'Refresh',
+      keybind: commandKey('shift+r', 'R'),
+    },
   ]
 }
 
@@ -99,17 +142,31 @@ export default function CommandsModal({
   onContentChange,
 }: Props) {
   const theme = useTheme()
-
-  useEffect(() => {
-    queueMicrotask(() => {
-      textareaRef.current?.focus()
-    })
-  }, [textareaRef])
+  useTextareaFocus(textareaRef, [])
 
   return (
-    <Modal title='Commands' description={themeId} footer='↑/↓ navigate  enter run  esc close' columns={columns} preferredWidth={68}>
-      <box style={{ backgroundColor: theme.surfaceAlt, paddingLeft: 1, paddingRight: 1, marginBottom: 1 }}>
-        <textarea ref={textareaRef} initialValue={searchQuery} onContentChange={onContentChange} focused placeholder='Search' />
+    <Modal
+      title="Commands"
+      description={themeId}
+      footer="↑/↓ navigate  enter run  esc close"
+      columns={columns}
+      preferredWidth={68}
+    >
+      <box
+        style={{
+          backgroundColor: theme.surfaceAlt,
+          paddingLeft: 1,
+          paddingRight: 1,
+          marginBottom: 1,
+        }}
+      >
+        <textarea
+          ref={textareaRef}
+          initialValue={searchQuery}
+          onContentChange={onContentChange}
+          focused
+          placeholder="Search"
+        />
       </box>
 
       <box style={{ flexDirection: 'column' }}>
@@ -122,7 +179,11 @@ export default function CommandsModal({
 
             return (
               <box key={`${row.category}:${row.id}`} style={{ flexDirection: 'column' }}>
-                {showCategory && <text style={{ fg: theme.accent, marginTop: index === 0 ? 0 : 1 }}>{row.category}</text>}
+                {showCategory && (
+                  <text style={{ fg: theme.accent, marginTop: index === 0 ? 0 : 1 }}>
+                    {row.category}
+                  </text>
+                )}
                 <box
                   style={{
                     flexDirection: 'row',
@@ -132,8 +193,12 @@ export default function CommandsModal({
                     paddingRight: 1,
                   }}
                 >
-                  <text style={{ fg: selected ? theme.selectionText : theme.text }}>{row.title}</text>
-                  <text style={{ fg: selected ? theme.selectionText : theme.textMuted }}>{row.keybind}</text>
+                  <text style={{ fg: selected ? theme.selectionText : theme.text }}>
+                    {row.title}
+                  </text>
+                  <text style={{ fg: selected ? theme.selectionText : theme.textMuted }}>
+                    {row.keybind}
+                  </text>
                 </box>
               </box>
             )

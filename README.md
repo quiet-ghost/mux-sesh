@@ -8,17 +8,17 @@
 
 ## Features
 
--  **Fuzzy search** - Find sessions and projects instantly
--  **Lightning fast** - Built with Bun and OpenTUI
--  **Beautiful UI** - Catppuccin-themed interface
--  **Vim keybindings** - Navigate with j/k or arrow keys
--  **Project scanning** - Browse and create sessions from local directories
--  **Config-driven sessions** - Exact project rules, wildcard rules, and listed config targets
--  **Session-aware project picker** - See when a project will attach to an existing tmux session vs create a new one
--  **Rich previews** - Preview commands with directory fallback and live tmux context for running projects
--  **GitHub integration** - Clone repos directly from URLs
--  **Quick select** - Use number keys (1-9) for instant switching
--  **Session management** - Create, switch, kill, and rename sessions
+- **Fuzzy search** - Find sessions and projects instantly
+- **Lightning fast** - Built with Bun and OpenTUI
+- **Beautiful UI** - Catppuccin-themed interface
+- **Vim keybindings** - Navigate with j/k or arrow keys
+- **Project scanning** - Browse and create sessions from local directories
+- **Config-driven sessions** - Exact project rules, wildcard rules, and listed config targets
+- **Session-aware project picker** - See when a project will attach to an existing tmux session vs create a new one
+- **Rich previews** - Preview commands with directory fallback and live tmux context for running projects
+- **GitHub integration** - Clone repos directly from URLs
+- **Quick select** - Use number keys (1-9) for instant switching
+- **Session management** - Create, switch, kill, and rename sessions
 
 ## Installation
 
@@ -53,7 +53,6 @@ mux-sesh
 ```bash
 git clone https://github.com/quiet-ghost/mux-sesh.git
 cd mux-sesh
-git checkout opentui-convert
 
 # Install dependencies
 bun install
@@ -70,54 +69,70 @@ cp dist/mux-sesh ~/.local/bin/
 ## Keybindings
 
 ### Normal Mode
-| Key | Action |
-|-----|--------|
-| `j` / `k` or `↑` / `↓` | Navigate up/down |
-| `1-9` | Quick select session/project |
-| `Enter` | Switch to session / Create from project |
-| `i` | Enter search mode |
-| `n` | Create new session |
-| `d` | Kill selected session |
-| `r` | Rename selected session |
-| `l` | Jump to previous tmux session |
-| `g` | Open the git-root session for the selected item |
-| `e` | Edit configured session target |
-| `R` | Refresh list |
-| `s` | Switch to sessions view |
-| `p` | Switch to projects view |
-| `q` or `Esc` | Quit |
+
+| Key                    | Action                                          |
+| ---------------------- | ----------------------------------------------- |
+| `j` / `k` or `↑` / `↓` | Navigate up/down                                |
+| `1-9`                  | Quick select session/project                    |
+| `Enter`                | Switch to session / Create from project         |
+| `i`                    | Enter search mode                               |
+| `n`                    | Create new session                              |
+| `d`                    | Kill selected session                           |
+| `r`                    | Rename selected session                         |
+| `l`                    | Jump to previous tmux session                   |
+| `g`                    | Open the git-root session for the selected item |
+| `e`                    | Edit configured session target                  |
+| `R`                    | Refresh list                                    |
+| `s`                    | Switch to sessions view                         |
+| `p`                    | Switch to projects view                         |
+| `q` or `Esc`           | Quit                                            |
 
 ### Standard Mode
-| Key | Action |
-|-----|--------|
-| `↑` / `↓` | Navigate |
-| `Ctrl+I` | Search |
-| `Ctrl+N` | New session |
-| `Ctrl+D` | Kill selected live session |
-| `Ctrl+R` | Rename selected live session |
-| `Ctrl+L` | Jump to previous tmux session |
-| `Ctrl+G` | Open the git-root session for the selected item |
-| `Ctrl+E` | Edit configured session target |
-| `Ctrl+Q` | Quit |
 
-In search/new/rename mode, standard mode also supports `Ctrl+X` prefix commands for refresh, rename, kill, root, and opencode actions.
+Standard mode is a search-first workflow. mux-sesh starts in search mode, keeps the query box focused, and favors a configurable prefix key for secondary actions.
+
+| Key       | Action               |
+| --------- | -------------------- |
+| Type      | Filter immediately   |
+| `↑` / `↓` | Navigate results     |
+| `Enter`   | Select first result  |
+| `Esc`     | Clear current search |
+| `Ctrl+P`  | Open command palette |
+| `Ctrl+Q`  | Quit                 |
+
+Default prefix: `Ctrl+X`.
+
+Common prefix actions while in standard mode:
+
+| Prefix action | Result                        |
+| ------------- | ----------------------------- |
+| `n`           | New session                   |
+| `o`           | Open OpenCode session manager |
+| `s`           | Open settings                 |
+| `l`           | Jump to previous tmux session |
+| `g`           | Open git-root session         |
+| `r`           | Rename selected live session  |
+| `d`           | Kill selected live session    |
+| `Shift+R`     | Refresh sessions/projects     |
 
 ### Search Mode
-| Key | Action |
-|-----|--------|
+
+| Key            | Action                   |
+| -------------- | ------------------------ |
 | Type to search | Filter sessions/projects |
-| `Enter` | Select first result |
-| `↑` / `↓` | Navigate results |
-| `Esc` | Cancel search |
+| `Enter`        | Select first result      |
+| `↑` / `↓`      | Navigate results         |
+| `Esc`          | Cancel search            |
 
 ### New Session Mode
-| Key | Action |
-|-----|--------|
-| Type project name | Filter projects |
-| Paste GitHub URL | Clone and create session |
-| Type custom name | Create named session |
-| `Enter` | Confirm selection |
-| `Esc` | Cancel |
+
+| Key               | Action                   |
+| ----------------- | ------------------------ |
+| Type project name | Filter projects          |
+| Paste GitHub URL  | Clone and create session |
+| Type custom name  | Create named session     |
+| `Enter`           | Confirm selection        |
+| `Esc`             | Cancel                   |
 
 ## Configuration
 
@@ -130,8 +145,12 @@ Configuration is stored at `~/.config/mux-sesh/config.json`:
   "editor": "nvim",
   "editor_cmd": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
   "keybind_mode": "vim",
+  "prefix_key": "ctrl+x",
+  "theme": "rosepine",
+  "color_scheme": "system",
   "sort_order": "zoxide-first",
   "zoxide_mode": "rank",
+  "auto_update": true,
   "dir_length": 2,
   "hidden_sessions": ["scratch", "tmp*"],
   "icons": {
@@ -169,11 +188,16 @@ Configuration is stored at `~/.config/mux-sesh/config.json`:
 - **`editor`** - Default editor to use
 - **`editor_cmd`** - Default startup command for new sessions unless overridden
 - **`keybind_mode`** - `vim` or `standard`
+- **`prefix_key`** - Prefix used for multi-key commands in standard mode and optional vim mode workflows
+- **`theme`** - Built-in or custom theme name
+- **`color_scheme`** - `system`, `dark`, or `light`
 - **`sort_order`** - Session/project ordering: `live-first`, `configured-first`, `zoxide-first`, or `alphabetical`
 - **`zoxide_mode`** - `off`, `rank`, or `merge` for zoxide-aware project ordering
+- **`auto_update`** - Enable or disable background update checks
 - **`dir_length`** - Number of path segments used when generating session names from git roots or project paths
 - **`hidden_sessions`** - Glob patterns for live tmux sessions to hide from the list
 - **`icons`** - Global icons for tmux, configured, project, and opencode rows
+- **`themes`** - Optional custom theme definitions keyed by name
 - **`default_session`** - Fallback startup and preview commands
 - **`projects`** - Exact path rules with optional `session_name`, `startup_command`, `preview_command`, `listed`, and `icon`
 - **`wildcards`** - Pattern-based defaults for matching projects
@@ -238,6 +262,7 @@ bind-key -n M-w popup -E -w 62% -h 70% "mux-sesh"
 ```
 
 After adding the binding, reload your tmux config:
+
 ```bash
 tmux source-file ~/.tmux.conf
 ```
@@ -245,12 +270,14 @@ tmux source-file ~/.tmux.conf
 Now you can press `Alt+w` from anywhere in tmux (including inside nvim) to launch mux-sesh.
 
 **Alternative Integration:**
+
 - **From Neovim**: Use [mux-manager](https://github.com/quiet-ghost/mux-manager) - a Telescope-based tmux session manager that integrates directly into Neovim
 - **With prefix**: Use `bind-key f popup -E -w 80% -h 80% "mux-sesh"` if you prefer requiring the tmux prefix key first
 
 ## Usage Examples
 
 ### Quick Session Switching
+
 ```bash
 # Open mux-sesh
 mux-sesh
@@ -260,6 +287,7 @@ mux-sesh
 ```
 
 ### Create Session from Project
+
 ```bash
 mux-sesh
 
@@ -270,6 +298,7 @@ mux-sesh
 ```
 
 ### Jump to Root / Last / Edit Target
+
 ```bash
 mux-sesh
 
@@ -279,6 +308,7 @@ mux-sesh
 ```
 
 ### Clone from GitHub
+
 ```bash
 mux-sesh
 
@@ -291,6 +321,7 @@ mux-sesh
 ```
 
 ### Search Existing Sessions
+
 ```bash
 mux-sesh
 
@@ -310,9 +341,9 @@ mux-sesh uses the beautiful [Catppuccin](https://github.com/catppuccin/catppucci
 - **Key**: `#f9e2af` (Yellow)
 - **Action**: `#cba6f7` (Mauve)
 
- **Cross-Platform** - Works on Linux, macOS, Windows
+  **Cross-Platform** - Works on Linux, macOS, Windows
 
-##  Development
+## Development
 
 ```bash
 # Install dependencies
@@ -328,7 +359,7 @@ bun run typecheck
 bun run build
 ```
 
-##  Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
@@ -338,17 +369,17 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-##  License
+## License
 
 MIT License - see [LICENSE](./LICENSE) for details.
 
-##  Acknowledgments
+## Acknowledgments
 
 - Inspired by [ThePrimeagen's tmux-sessionizer](https://github.com/ThePrimeagen/.dotfiles/blob/master/bin/.local/scripts/tmux-sessionizer)
 - Built with [OpenTUI](https://github.com/anomalyco/opentui)
 - UI design inspired by [nvim telescope plugin](https://github.com/nvim-telescope/telescope.nvim)
 
-##  Related Projects
+## Related Projects
 
 - [mux-manager](https://github.com/quiet-ghost/mux-manager) - Telescope-based tmux session manager for Neovim
 

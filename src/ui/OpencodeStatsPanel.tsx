@@ -32,7 +32,8 @@ export default function OpencodeStatsPanel({ selectedItem }: Props) {
           setGlobalStatsState({ status: 'ready', stats })
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to load global OpenCode stats'
+        const message =
+          error instanceof Error ? error.message : 'Failed to load global OpenCode stats'
         if (!disposed) {
           setGlobalStatsState({ status: 'error', message })
         }
@@ -56,7 +57,9 @@ export default function OpencodeStatsPanel({ selectedItem }: Props) {
   const lastMessageTokens = sessionStats?.lastMessageTokens ?? 0
   const contextLimit = sessionStats?.contextLimit ?? 200000
   const contextPercentage =
-    lastMessageTokens > 0 && contextLimit > 0 ? Math.round((lastMessageTokens / contextLimit) * 100) : 0
+    lastMessageTokens > 0 && contextLimit > 0
+      ? Math.round((lastMessageTokens / contextLimit) * 100)
+      : 0
   const sessionCost = sessionStats?.sessionTotalCost ?? 0
 
   const panelStyle = {
@@ -78,7 +81,8 @@ export default function OpencodeStatsPanel({ selectedItem }: Props) {
           {sessionState?.status === 'ready' ? (
             <>
               <text>
-                Messages: <span style={{ fg: theme.active }}>{sessionState.stats.messageCount ?? 0}</span>
+                Messages:{' '}
+                <span style={{ fg: theme.active }}>{sessionState.stats.messageCount ?? 0}</span>
               </text>
               <text>
                 Cost: <span style={{ fg: theme.action }}>${sessionCost.toFixed(2)}</span>
@@ -102,30 +106,50 @@ export default function OpencodeStatsPanel({ selectedItem }: Props) {
           {globalStatsState.status === 'ready' ? (
             <>
               <text>
-                Sessions: <span style={{ fg: theme.active }}>{globalStatsState.stats.totalSessions ?? 0}</span>
+                Sessions:{' '}
+                <span style={{ fg: theme.active }}>
+                  {globalStatsState.stats.totalSessions ?? 0}
+                </span>
               </text>
               <text>
-                Messages: <span style={{ fg: theme.active }}>{globalStatsState.stats.totalMessages ?? 0}</span>
+                Messages:{' '}
+                <span style={{ fg: theme.active }}>
+                  {globalStatsState.stats.totalMessages ?? 0}
+                </span>
               </text>
               <text>
-                Total Cost: <span style={{ fg: theme.action }}>{globalStatsState.stats.totalCost ?? '$0.00'}</span>
+                Total Cost:{' '}
+                <span style={{ fg: theme.action }}>
+                  {globalStatsState.stats.totalCost ?? '$0.00'}
+                </span>
               </text>
               <text>
-                Cost/Day: <span style={{ fg: theme.text }}>{globalStatsState.stats.costPerDay ?? '$0.00'}</span>
+                Cost/Day:{' '}
+                <span style={{ fg: theme.text }}>
+                  {globalStatsState.stats.costPerDay ?? '$0.00'}
+                </span>
               </text>
 
               <text style={{ fg: theme.key, marginTop: 1, marginBottom: 1 }}>Token Usage</text>
               <text>
-                Input: <span style={{ fg: theme.text }}>{globalStatsState.stats.inputTokens ?? '0'}</span>
+                Input:{' '}
+                <span style={{ fg: theme.text }}>{globalStatsState.stats.inputTokens ?? '0'}</span>
               </text>
               <text>
-                Output: <span style={{ fg: theme.text }}>{globalStatsState.stats.outputTokens ?? '0'}</span>
+                Output:{' '}
+                <span style={{ fg: theme.text }}>{globalStatsState.stats.outputTokens ?? '0'}</span>
               </text>
               <text>
-                Cache Read: <span style={{ fg: theme.inactive }}>{globalStatsState.stats.cacheRead ?? '0'}</span>
+                Cache Read:{' '}
+                <span style={{ fg: theme.inactive }}>
+                  {globalStatsState.stats.cacheRead ?? '0'}
+                </span>
               </text>
               <text>
-                Cache Write: <span style={{ fg: theme.inactive }}>{globalStatsState.stats.cacheWrite ?? '0'}</span>
+                Cache Write:{' '}
+                <span style={{ fg: theme.inactive }}>
+                  {globalStatsState.stats.cacheWrite ?? '0'}
+                </span>
               </text>
             </>
           ) : globalStatsState.status === 'error' ? (
@@ -149,7 +173,9 @@ export default function OpencodeStatsPanel({ selectedItem }: Props) {
               </text>
             )}
 
-            {sessionStats.directory && <text style={{ marginBottom: 1, fg: theme.fileTree }}>{sessionStats.directory}</text>}
+            {sessionStats.directory && (
+              <text style={{ marginBottom: 1, fg: theme.fileTree }}>{sessionStats.directory}</text>
+            )}
 
             {sessionStats.sessionCount !== undefined && (
               <text>
@@ -165,7 +191,8 @@ export default function OpencodeStatsPanel({ selectedItem }: Props) {
 
             {sessionStats.filesModified !== undefined && sessionStats.filesModified > 0 && (
               <text>
-                Files Modified: <span style={{ fg: theme.action }}>{sessionStats.filesModified}</span>
+                Files Modified:{' '}
+                <span style={{ fg: theme.action }}>{sessionStats.filesModified}</span>
               </text>
             )}
 
@@ -177,13 +204,19 @@ export default function OpencodeStatsPanel({ selectedItem }: Props) {
 
             {sessionStats.createdAt && (
               <text style={{ marginTop: 1 }}>
-                Created: <span style={{ fg: theme.inactive }}>{formatSessionAge(sessionStats.createdAt)}</span>
+                Created:{' '}
+                <span style={{ fg: theme.inactive }}>
+                  {formatSessionAge(sessionStats.createdAt)}
+                </span>
               </text>
             )}
 
             {sessionStats.updatedAt && (
               <text>
-                Updated: <span style={{ fg: theme.inactive }}>{formatSessionAge(sessionStats.updatedAt)}</span>
+                Updated:{' '}
+                <span style={{ fg: theme.inactive }}>
+                  {formatSessionAge(sessionStats.updatedAt)}
+                </span>
               </text>
             )}
           </box>

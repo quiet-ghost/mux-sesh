@@ -11,7 +11,14 @@ interface Props {
   children: ReactNode
 }
 
-export default function Modal({ title, description, footer, columns, preferredWidth, children }: Props) {
+export default function Modal({
+  title,
+  description,
+  footer,
+  columns,
+  preferredWidth,
+  children,
+}: Props) {
   const theme = useTheme()
 
   return (

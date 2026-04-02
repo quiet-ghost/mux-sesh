@@ -1,7 +1,7 @@
 import type { TextareaRenderable } from '@opentui/core'
-import { useEffect } from 'react'
 import { useTheme } from '../styles/theme'
 import Modal from './Modal'
+import { useTextareaFocus } from './use-textarea-focus'
 
 interface Props {
   target: string
@@ -11,31 +11,31 @@ interface Props {
   onContentChange: () => void
 }
 
-export default function RenameModal({ target, initialValue, columns, textareaRef, onContentChange }: Props) {
+export default function RenameModal({
+  target,
+  initialValue,
+  columns,
+  textareaRef,
+  onContentChange,
+}: Props) {
   const theme = useTheme()
-
-  useEffect(() => {
-    queueMicrotask(() => {
-      const textarea = textareaRef.current
-      if (!textarea) {
-        return
-      }
-
-      textarea.focus()
-      textarea.gotoLineEnd()
-    })
-  }, [target, textareaRef])
+  useTextareaFocus(textareaRef, [target], { gotoLineEnd: true })
 
   return (
     <Modal
-      title='Rename Session'
+      title="Rename Session"
       description={`Update ${target}`}
-      footer='Enter apply'
+      footer="Enter apply"
       columns={columns}
       preferredWidth={60}
     >
       <box style={{ backgroundColor: theme.surfaceAlt, height: 3 }}>
-        <textarea ref={textareaRef} initialValue={initialValue} onContentChange={onContentChange} focused />
+        <textarea
+          ref={textareaRef}
+          initialValue={initialValue}
+          onContentChange={onContentChange}
+          focused
+        />
       </box>
     </Modal>
   )

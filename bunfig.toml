@@ -1,7 +1,6 @@
 [install]
-# Don't install peer dependencies automatically
+exact = true
 peer = true
 
-[run]
-# Automatically restart when files change (for development)
-watch = true
+[test]
+preload = ["./tests/preload.ts"]

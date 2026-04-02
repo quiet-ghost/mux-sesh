@@ -43,12 +43,19 @@ export default function SessionList({
         const sectionHeader = formatSectionHeader(theme, currentSection, icons)
         const pendingKill = item.title === pendingKillSessionName
         const selected = absoluteIndex === cursor
-        const mutedLabelSpacer = item.isSession && item.desc ? getMutedLabelSpacer(item.title, mutedLabelColumnWidth) : ''
+        const mutedLabelSpacer =
+          item.isSession && item.desc ? getMutedLabelSpacer(item.title, mutedLabelColumnWidth) : ''
 
         return (
           <box key={i} style={{ flexDirection: 'column' }}>
             {showSectionHeader && (
-              <text style={{ fg: theme.textSubtle, marginTop: absoluteIndex === 0 ? 0 : 1, marginBottom: 1 }}>
+              <text
+                style={{
+                  fg: theme.textSubtle,
+                  marginTop: absoluteIndex === 0 ? 0 : 1,
+                  marginBottom: 1,
+                }}
+              >
                 <span style={{ fg: sectionHeader.color }}>{sectionHeader.text}</span>
               </text>
             )}
@@ -57,21 +64,31 @@ export default function SessionList({
               style={{
                 flexDirection: 'row',
                 justifyContent: 'space-between',
-                backgroundColor: pendingKill ? theme.dangerSurface : selected ? theme.surfaceAlt : 'transparent',
+                backgroundColor: pendingKill
+                  ? theme.dangerSurface
+                  : selected
+                    ? theme.surfaceAlt
+                    : 'transparent',
                 paddingLeft: 1,
                 paddingRight: 1,
               }}
             >
               <text>
-                <span style={{ fg: selected ? theme.primary : theme.textSubtle }}>{selected ? '› ' : '  '}</span>
-                <span style={{ fg: item.isAttached ? theme.active : theme.inactive }}>{item.isAttached ? '●' : '○'}</span>
+                <span style={{ fg: selected ? theme.primary : theme.textSubtle }}>
+                  {selected ? '› ' : '  '}
+                </span>
+                <span style={{ fg: item.isAttached ? theme.active : theme.inactive }}>
+                  {item.isAttached ? '●' : '○'}
+                </span>
                 <span style={{ fg: icon.color }}>{icon.glyph ? ` ${icon.glyph}` : ''}</span>{' '}
                 {isSearching && matchIndices && matchIndices.length > 0 ? (
                   <HighlightedText text={item.title} matchIndices={matchIndices} />
                 ) : (
                   <span style={{ fg: theme.text }}>{item.title}</span>
                 )}
-                {item.isSession && item.desc ? <span style={{ fg: theme.textSubtle }}>{`${mutedLabelSpacer}${item.desc}`}</span> : null}
+                {item.isSession && item.desc ? (
+                  <span style={{ fg: theme.textSubtle }}>{`${mutedLabelSpacer}${item.desc}`}</span>
+                ) : null}
               </text>
 
               <text style={{ fg: pendingKill ? theme.danger : theme.textSubtle }}>

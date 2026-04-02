@@ -1,4 +1,3 @@
-
 Agent Guidelines for mux-sesh using opentui
 
 Default to using Bun instead of Node.js.
@@ -22,22 +21,22 @@ APIs
 
 Testing
 
-Use bun test to run tests from the packages directories for a specific package.
+Use `bun test` from the repo root.
 
 import { test, expect } from "bun:test";
 
 test("hello world", () => {
-  expect(1).toBe(1);
+expect(1).toBe(1);
 });
 
-For more information, read the Bun API docs in node_modules/bun-types/docs/**.md.
+For more information, read the Bun API docs in node_modules/bun-types/docs/\*\*.md.
 Build/Test Commands
 
-To build the project (before running typescript tests), run bun run build FROM THE REPO ROOT to make sure all packages are built correctly.
+Run `bun run typecheck` for type checking.
 
-To run native tests for packages/core, run bun run test:native FROM THE packages/core DIRECTORY.
+Run `bun test` for the test suite.
 
-To filter native tests, use: bun run test:native -Dtest-filter="test name" FROM THE packages/core DIRECTORY.
+Run `bun run build` only when you need the compiled CLI binary in `dist/mux-sesh`.
 Typescript Code Style
 
     Runtime: Bun with TypeScript

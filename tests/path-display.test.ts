@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test'
-import { getLiveSessionGroupLabel, getLiveSessionSortKey, getPathContextLabel, getPathGroupLabel } from '../src/util/path-display'
+import {
+  getLiveSessionGroupLabel,
+  getLiveSessionSortKey,
+  getPathContextLabel,
+  getPathGroupLabel,
+} from '../src/util/path-display'
 
 describe('path display helpers', () => {
   test('returns the parent directory name for grouping', () => {
@@ -9,13 +14,17 @@ describe('path display helpers', () => {
   })
 
   test('uses the parent project name for worktree grouping', () => {
-    expect(getPathGroupLabel('/home/tester/dev/projects/mux-sesh/.worktrees/update-session-naming')).toBe('mux-sesh')
+    expect(
+      getPathGroupLabel('/home/tester/dev/projects/mux-sesh/.worktrees/update-session-naming')
+    ).toBe('mux-sesh')
   })
 
   test('marks live session worktrees in the group label', () => {
-    expect(getLiveSessionGroupLabel('/home/tester/dev/projects/mux-sesh/.worktrees/update-session-naming')).toBe(
-      'mux-sesh [worktree]'
-    )
+    expect(
+      getLiveSessionGroupLabel(
+        '/home/tester/dev/projects/mux-sesh/.worktrees/update-session-naming'
+      )
+    ).toBe('mux-sesh [worktree]')
   })
 
   test('collapses direct home children to tilde', () => {
@@ -35,18 +44,21 @@ describe('path display helpers', () => {
 
     try {
       expect(getPathContextLabel('/home/tester/dev/projects/blackjack')).toBe('~/dev/projects')
-      expect(getPathContextLabel('/home/tester/dev/projects/mux-sesh/.worktrees/update-session-naming')).toBe(
-        '~/dev/projects/mux-sesh [worktree]'
-      )
+      expect(
+        getPathContextLabel('/home/tester/dev/projects/mux-sesh/.worktrees/update-session-naming')
+      ).toBe('~/dev/projects/mux-sesh [worktree]')
     } finally {
       process.env.HOME = originalHome
     }
   })
 
   test('uses the parent project as the live session sort key for worktrees', () => {
-    expect(getLiveSessionSortKey('/home/tester/dev/projects/mux-sesh/.worktrees/update-session-naming', 'update-session-naming')).toBe(
-      'mux-sesh'
-    )
+    expect(
+      getLiveSessionSortKey(
+        '/home/tester/dev/projects/mux-sesh/.worktrees/update-session-naming',
+        'update-session-naming'
+      )
+    ).toBe('mux-sesh')
     expect(getLiveSessionSortKey('/home/tester/dev/projects/mux-sesh', 'mux-sesh')).toBe('mux-sesh')
   })
 })

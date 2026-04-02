@@ -54,7 +54,9 @@ describe('text column helpers', () => {
     ])
 
     expect(width).toBe('update-session-naming'.length)
-    expect(getMutedLabelSpacer('mux-sesh', width)).toBe(' '.repeat('update-session-naming'.length - 'mux-sesh'.length + 2))
+    expect(getMutedLabelSpacer('mux-sesh', width)).toBe(
+      ' '.repeat('update-session-naming'.length - 'mux-sesh'.length + 2)
+    )
     expect(getMutedLabelSpacer('update-session-naming', width)).toBe('  ')
   })
 })

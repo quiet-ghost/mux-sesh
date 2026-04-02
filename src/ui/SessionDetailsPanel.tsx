@@ -52,29 +52,40 @@ function ProjectPreviewView({ preview }: { preview: ProjectPreview }) {
       <text style={{ fg: theme.fileTree, marginTop: 1 }}>{preview.path}</text>
 
       <box style={{ flexDirection: 'column', marginTop: 1 }}>
-        <MetaRow label='Source' value={formatSourceLabel(preview.source)} color={theme.action} />
-        {preview.gitBranch && <MetaRow label='Branch' value={preview.gitBranch} color={theme.active} />}
-        {preview.startupCommand && <MetaRow label='Startup' value={preview.startupCommand} color={theme.program} />}
-        {preview.previewCommand && <MetaRow label='Preview' value={preview.previewCommand} color={theme.action} />}
+        <MetaRow label="Source" value={formatSourceLabel(preview.source)} color={theme.action} />
+        {preview.gitBranch && (
+          <MetaRow label="Branch" value={preview.gitBranch} color={theme.active} />
+        )}
+        {preview.startupCommand && (
+          <MetaRow label="Startup" value={preview.startupCommand} color={theme.program} />
+        )}
+        {preview.previewCommand && (
+          <MetaRow label="Preview" value={preview.previewCommand} color={theme.action} />
+        )}
       </box>
 
       {preview.linkedSession && (
         <box style={{ flexDirection: 'column', marginTop: 1 }}>
           <SectionLabel>Live session</SectionLabel>
           <MetaRow
-            label='Status'
+            label="Status"
             value={preview.linkedSession.isAttached ? 'attached' : 'detached'}
             color={preview.linkedSession.isAttached ? theme.active : theme.textMuted}
           />
-          <MetaRow label='Windows' value={String(preview.linkedSession.windowCount)} />
+          <MetaRow label="Windows" value={String(preview.linkedSession.windowCount)} />
         </box>
       )}
 
       <SectionLabel>{preview.previewLabel}</SectionLabel>
-      {preview.previewNotice && <text style={{ fg: theme.textSubtle, marginTop: 1 }}>{preview.previewNotice}</text>}
+      {preview.previewNotice && (
+        <text style={{ fg: theme.textSubtle, marginTop: 1 }}>{preview.previewNotice}</text>
+      )}
       <box style={{ flexDirection: 'column', marginTop: 1 }}>
         {preview.previewLines.slice(0, 12).map((line, index) => (
-          <text key={`${preview.previewKind}:${index}:${line}`} style={{ fg: line.endsWith('/') ? theme.fileTree : theme.textMuted }}>
+          <text
+            key={`${preview.previewKind}:${index}:${line}`}
+            style={{ fg: line.endsWith('/') ? theme.fileTree : theme.textMuted }}
+          >
             {line}
           </text>
         ))}
@@ -91,8 +102,12 @@ function SessionDetailsView({ details }: { details: SessionDetails }) {
       <text style={{ fg: theme.secondary }}>{details.name}</text>
 
       <box style={{ flexDirection: 'column', marginTop: 1 }}>
-        <MetaRow label='Status' value={details.isAttached ? 'active' : 'inactive'} color={details.isAttached ? theme.active : theme.textMuted} />
-        <MetaRow label='Windows' value={String(details.windowCount)} />
+        <MetaRow
+          label="Status"
+          value={details.isAttached ? 'active' : 'inactive'}
+          color={details.isAttached ? theme.active : theme.textMuted}
+        />
+        <MetaRow label="Windows" value={String(details.windowCount)} />
       </box>
 
       <SectionLabel>Windows</SectionLabel>
@@ -101,10 +116,17 @@ function SessionDetailsView({ details }: { details: SessionDetails }) {
           <text style={{ fg: theme.textMuted }}>No windows found</text>
         ) : (
           details.windows.map(win => (
-            <box key={`${win.index}:${win.name}`} style={{ flexDirection: 'column', marginBottom: 1 }}>
-              <text style={{ fg: theme.text }}>{win.index}: {win.name}</text>
+            <box
+              key={`${win.index}:${win.name}`}
+              style={{ flexDirection: 'column', marginBottom: 1 }}
+            >
+              <text style={{ fg: theme.text }}>
+                {win.index}: {win.name}
+              </text>
               {win.currentPath && <text style={{ fg: theme.fileTree }}>{win.currentPath}</text>}
-              {win.currentCommand && <text style={{ fg: theme.textSubtle }}>{win.currentCommand}</text>}
+              {win.currentCommand && (
+                <text style={{ fg: theme.textSubtle }}>{win.currentCommand}</text>
+              )}
             </box>
           ))
         )}
@@ -157,7 +179,11 @@ export default function SessionDetailsPanel({ selectedItem, config }: Props) {
           return
         }
 
-        const details = await getProjectPreview(selectedItem.path, config, selectedItem.linkedSessionName)
+        const details = await getProjectPreview(
+          selectedItem.path,
+          config,
+          selectedItem.linkedSessionName
+        )
         if (!cancelled) {
           setDetailState({ status: 'project', details })
         }
@@ -188,7 +214,9 @@ export default function SessionDetailsPanel({ selectedItem, config }: Props) {
       {detailState.status === 'idle' ? (
         <>
           <text style={{ fg: theme.textMuted }}>Nothing selected</text>
-          <text style={{ fg: theme.textSubtle, marginTop: 1 }}>Pick a session or project to see details.</text>
+          <text style={{ fg: theme.textSubtle, marginTop: 1 }}>
+            Pick a session or project to see details.
+          </text>
         </>
       ) : detailState.status === 'loading' ? (
         <>

@@ -2,7 +2,12 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtemp, mkdir, rm, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
-import { applyZoxideMode, getProjectItems, getSessionCandidateItems, parseZoxideOutput } from '../src/tmux/projects'
+import {
+  applyZoxideMode,
+  getProjectItems,
+  getSessionCandidateItems,
+  parseZoxideOutput,
+} from '../src/tmux/projects'
 import { filterHiddenSessions, getLastSessionTarget } from '../src/tmux/workflows'
 import { getDefaultConfig } from '../src/config'
 import { annotateProjectItemsWithSessionLinks } from '../src/projects/session-links'
@@ -47,7 +52,9 @@ describe('project discovery helpers', () => {
       projectPaths: ['/home/tester/dev'],
     }
 
-    const items: Item[] = [{ title: 'web', desc: '~/dev/web', path: '/home/tester/dev/web', isSession: false }]
+    const items: Item[] = [
+      { title: 'web', desc: '~/dev/web', path: '/home/tester/dev/web', isSession: false },
+    ]
 
     const merged = applyZoxideMode(
       items,
@@ -74,7 +81,10 @@ describe('project discovery helpers', () => {
       const nestedDir = join(projectRoot, 'app')
 
       await mkdir(nestedDir, { recursive: true })
-      await writeFile(join(projectRoot, 'package.json'), JSON.stringify({ name: 'highlight-helper' }))
+      await writeFile(
+        join(projectRoot, 'package.json'),
+        JSON.stringify({ name: 'highlight-helper' })
+      )
 
       const items = await getProjectItems({
         ...getDefaultConfig(root),

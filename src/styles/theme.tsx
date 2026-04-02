@@ -59,7 +59,8 @@ function readableText(background: string) {
   return luminance(background) > 150 ? '#171717' : '#f5f5f5'
 }
 
-const EXACT_TUI_THEME_COLORS: Partial<Record<string, Record<'light' | 'dark', ThemeColors>>> = TUI_THEME_COLORS
+const EXACT_TUI_THEME_COLORS: Partial<Record<string, Record<'light' | 'dark', ThemeColors>>> =
+  TUI_THEME_COLORS
 
 function mix(colorA: string, colorB: string, ratio: number) {
   const from = hexToRgb(colorA)

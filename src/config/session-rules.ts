@@ -70,7 +70,9 @@ export async function resolveProjectSession(
 
   if (projectProfile) {
     return {
-      sessionName: sanitizeSessionName(projectProfile.sessionName ?? buildSessionName(projectPath, config.dirLength)),
+      sessionName: sanitizeSessionName(
+        projectProfile.sessionName ?? buildSessionName(projectPath, config.dirLength)
+      ),
       startupCommand: projectProfile.startupCommand ?? config.defaultSession?.startupCommand,
       previewCommand: projectProfile.previewCommand ?? config.defaultSession?.previewCommand,
       source: 'project',
@@ -80,7 +82,9 @@ export async function resolveProjectSession(
   const wildcard = findWildcard(normalizedProjectPath, config)
   if (wildcard) {
     return {
-      sessionName: sanitizeSessionName(wildcard.sessionName ?? buildSessionName(projectPath, config.dirLength)),
+      sessionName: sanitizeSessionName(
+        wildcard.sessionName ?? buildSessionName(projectPath, config.dirLength)
+      ),
       startupCommand: wildcard.startupCommand ?? config.defaultSession?.startupCommand,
       previewCommand: wildcard.previewCommand ?? config.defaultSession?.previewCommand,
       source: 'wildcard',

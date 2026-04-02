@@ -1,5 +1,4 @@
 import { join } from 'path'
-import { mkdir } from 'fs/promises'
 import type {
   Config,
   IconConfig,
@@ -46,7 +45,9 @@ function asStringArray(value: unknown): string[] | undefined {
     return undefined
   }
 
-  const strings = value.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0)
+  const strings = value.filter(
+    (entry): entry is string => typeof entry === 'string' && entry.length > 0
+  )
   return strings.length > 0 ? strings : undefined
 }
 
@@ -59,7 +60,10 @@ function asZoxideMode(value: unknown): ZoxideMode | undefined {
 }
 
 function asSortOrder(value: unknown): SortOrder | undefined {
-  return value === 'live-first' || value === 'configured-first' || value === 'zoxide-first' || value === 'alphabetical'
+  return value === 'live-first' ||
+    value === 'configured-first' ||
+    value === 'zoxide-first' ||
+    value === 'alphabetical'
     ? value
     : undefined
 }
@@ -277,21 +281,30 @@ export function normalizeConfig(rawConfig: unknown, homeDir = process.env.HOME |
         ? 'opencode'
         : requestedTheme
   const implicitColorScheme =
-    requestedTheme === 'opencode-light' ? 'light' : requestedTheme === 'opencode-dark' ? 'dark' : undefined
+    requestedTheme === 'opencode-light'
+      ? 'light'
+      : requestedTheme === 'opencode-dark'
+        ? 'dark'
+        : undefined
 
-  const projectPaths = (asStringArray(raw.project_paths) ?? asStringArray(raw.projectPaths) ?? defaultConfig.projectPaths).map(
-    projectPath => expandHomePath(projectPath, homeDir)
-  )
+  const projectPaths = (
+    asStringArray(raw.project_paths) ??
+    asStringArray(raw.projectPaths) ??
+    defaultConfig.projectPaths
+  ).map(projectPath => expandHomePath(projectPath, homeDir))
   const reposPath = expandHomePath(
     asString(raw.repos_path) ?? asString(raw.reposPath) ?? defaultConfig.reposPath,
     homeDir
   )
   const editor = asString(raw.editor) ?? defaultConfig.editor
   const editorCmd = asString(raw.editor_cmd) ?? asString(raw.editorCmd) ?? defaultConfig.editorCmd
-  const keybindMode = asKeybindMode(raw.keybind_mode) ?? asKeybindMode(raw.keybindMode) ?? defaultConfig.keybindMode
+  const keybindMode =
+    asKeybindMode(raw.keybind_mode) ?? asKeybindMode(raw.keybindMode) ?? defaultConfig.keybindMode
   const prefixKey = asString(raw.prefix_key) ?? asString(raw.prefixKey) ?? defaultConfig.prefixKey
-  const zoxideMode = asZoxideMode(raw.zoxide_mode) ?? asZoxideMode(raw.zoxideMode) ?? defaultConfig.zoxideMode
-  const sortOrder = asSortOrder(raw.sort_order) ?? asSortOrder(raw.sortOrder) ?? defaultConfig.sortOrder
+  const zoxideMode =
+    asZoxideMode(raw.zoxide_mode) ?? asZoxideMode(raw.zoxideMode) ?? defaultConfig.zoxideMode
+  const sortOrder =
+    asSortOrder(raw.sort_order) ?? asSortOrder(raw.sortOrder) ?? defaultConfig.sortOrder
   const theme = normalizedTheme ?? defaultConfig.theme
   const colorScheme =
     asThemeColorScheme(raw.color_scheme) ??
@@ -299,11 +312,17 @@ export function normalizeConfig(rawConfig: unknown, homeDir = process.env.HOME |
     implicitColorScheme ??
     defaultConfig.colorScheme
   const themes = normalizeThemes(raw.themes) ?? defaultConfig.themes
-  const autoUpdate = asBoolean(raw.auto_update) ?? asBoolean(raw.autoUpdate) ?? defaultConfig.autoUpdate
-  const dirLength = asPositiveInteger(raw.dir_length) ?? asPositiveInteger(raw.dirLength) ?? defaultConfig.dirLength
-  const hiddenSessions = asStringArray(raw.hidden_sessions) ?? asStringArray(raw.hiddenSessions) ?? defaultConfig.hiddenSessions
+  const autoUpdate =
+    asBoolean(raw.auto_update) ?? asBoolean(raw.autoUpdate) ?? defaultConfig.autoUpdate
+  const dirLength =
+    asPositiveInteger(raw.dir_length) ?? asPositiveInteger(raw.dirLength) ?? defaultConfig.dirLength
+  const hiddenSessions =
+    asStringArray(raw.hidden_sessions) ??
+    asStringArray(raw.hiddenSessions) ??
+    defaultConfig.hiddenSessions
   const icons = normalizeIcons(raw.icons) ?? defaultConfig.icons
-  const configuredDefaultSession = normalizeSessionDefaults(raw.default_session) ?? normalizeSessionDefaults(raw.defaultSession)
+  const configuredDefaultSession =
+    normalizeSessionDefaults(raw.default_session) ?? normalizeSessionDefaults(raw.defaultSession)
   const defaultSession = {
     startupCommand: configuredDefaultSession?.startupCommand ?? editorCmd,
     previewCommand: configuredDefaultSession?.previewCommand,
@@ -418,30 +437,5 @@ export function serializeConfig(config: Config): Record<string, unknown> {
   }
 }
 
-
-export async function loadConfig(): Promise<Config> {
-  const configDir = join(process.env.HOME!, '.config', 'mux-sesh')
-  const configPath = join(configDir, 'config.json')
-
-  try {
-    const file = Bun.file(configPath)
-    return normalizeConfig(await file.json(), process.env.HOME || '~')
-  } catch {
-    // Config doesn't exist, create default
-    const defaultConfig = getDefaultConfig()
-    await saveConfig(defaultConfig)
-    return defaultConfig
-  }
-}
-
-export async function saveConfig(config: Config): Promise<void> {
-  const configDir = join(process.env.HOME!, '.config', 'mux-sesh')
-  const configPath = join(configDir, 'config.json')
-
-  await mkdir(configDir, { recursive: true })
-  await Bun.write(configPath, JSON.stringify(serializeConfig(config), null, 2))
-}
-
-export function getConfigPath(): string {
-  return join(process.env.HOME!, '.config', 'mux-sesh', 'config.json')
-}
+export { getConfigDir, getConfigPath, getHomeDir } from './paths'
+export { loadConfig, saveConfig } from './store'

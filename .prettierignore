@@ -1,6 +1,5 @@
 node_modules
 dist
 bun.lock
-*.md
 .git
-.github
+tsconfig.tsbuildinfo

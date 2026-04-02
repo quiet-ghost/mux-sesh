@@ -1,9 +1,9 @@
-name: Test
+name: test
 
 on:
   pull_request:
   push:
-    branches: 
+    branches:
       - master
 
 jobs:
@@ -11,14 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
 
-      - name: Install dependencies
-        run: bun install
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
 
       - name: Run tests
-        run: bun test || echo "No tests found (skipping)"
-        # When you add tests, remove the "|| echo" part
+        run: bun test
