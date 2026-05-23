@@ -32,6 +32,7 @@ describe('settings metadata', () => {
       'defaultPreviewCommand',
       'projectPaths',
       'hiddenSessions',
+      'pinnedSessions',
       'icons',
       'projects',
       'wildcards',

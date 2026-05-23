@@ -12,6 +12,7 @@ export type CommandId =
   | 'view-sessions'
   | 'rename-session'
   | 'kill-session'
+  | 'toggle-pin-session'
   | 'last-session'
   | 'root-session'
   | 'edit-target'
@@ -69,6 +70,16 @@ export function getCommandEntries(
     { id: 'new-session', category: 'Direct', title: 'New session', keybind: 'n' },
     { id: 'open-opencode', category: 'Direct', title: 'Open OpenCode sessions', keybind: 'o' },
     { id: 'kill-session', category: 'Direct', title: 'Kill session', keybind: 'd' },
+    ...(selectedItem && (selectedItem.isSession || selectedItem.itemKind === 'configured')
+      ? [
+          {
+            id: 'toggle-pin-session' as const,
+            category: 'Direct',
+            title: selectedItem.isPinned ? 'Unpin session' : 'Pin session',
+            keybind: 'ctrl+f',
+          },
+        ]
+      : []),
     { id: 'open-settings', category: 'Direct', title: 'Open settings', keybind: 'ctrl+p' },
     {
       id: 'view-projects',

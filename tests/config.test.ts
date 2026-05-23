@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { getDefaultConfig, normalizeConfig } from '../src/config'
+import { getDefaultConfig, normalizeConfig, serializeConfig } from '../src/config'
 import { getListedSessionItems, mergeSessionItems } from '../src/config/listed-sessions'
 import { resolveProjectSession } from '../src/config/session-rules'
 
@@ -50,6 +50,7 @@ describe('config normalization', () => {
         auto_update: false,
         dir_length: 3,
         hidden_sessions: ['scratch', 'tmp*'],
+        pinned_sessions: ['main', 'main', 'work'],
         icons: {
           tmux: 'T',
           configured: 'C',
@@ -123,6 +124,7 @@ describe('config normalization', () => {
     expect(config.autoUpdate).toBe(false)
     expect(config.dirLength).toBe(3)
     expect(config.hiddenSessions).toEqual(['scratch', 'tmp*'])
+    expect(config.pinnedSessions).toEqual(['main', 'work'])
     expect(config.icons).toEqual({
       tmux: 'T',
       configured: 'C',
@@ -151,6 +153,7 @@ describe('config normalization', () => {
         previewCommand: undefined,
       },
     ])
+    expect(serializeConfig(config).pinned_sessions).toEqual(['main', 'work'])
   })
 
   test('defaults session startup to editor command when not provided', () => {

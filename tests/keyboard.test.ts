@@ -44,6 +44,7 @@ function createContext(overrides: Partial<KeyboardHandlerContext> = {}): Keyboar
     setPrefixActive: mock(() => {}),
     refreshItems: mock(async () => {}),
     requestKillSession: mock(() => {}),
+    togglePinnedSession: mock(async () => {}),
     clearPendingKill: mock(() => {}),
     handleSelect: mock(async () => {}),
     handleKillSession: mock(async () => {}),
@@ -110,6 +111,19 @@ describe('keyboard shortcuts', () => {
     handleNormalMode({ name: '2' }, ctx, 'vim')
 
     expect(ctx.handleSelect).toHaveBeenCalledWith(secondRegular)
+  })
+
+  test('toggles pinned session from normal mode with Ctrl+F', () => {
+    const ctx = createContext({
+      appMode: AppMode.Normal,
+      prefixActive: false,
+      viewMode: ViewMode.Sessions,
+    })
+
+    handleNormalMode({ name: 'f', ctrl: true }, ctx, 'vim')
+
+    expect(ctx.clearPendingKill).toHaveBeenCalledTimes(1)
+    expect(ctx.togglePinnedSession).toHaveBeenCalledWith('session-1')
   })
 
   test('enters opencode manage mode from standard search prefix action', () => {

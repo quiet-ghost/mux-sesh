@@ -1,3 +1,4 @@
+import type { SessionSection } from '../items/order'
 import type { IconConfig, Item, ThemeColors } from '../types'
 
 export interface ItemIconPresentation {
@@ -52,12 +53,14 @@ export function getItemIconPresentation(
 
 export function getSessionSectionPresentation(
   theme: ThemeColors,
-  section: 'live' | 'configured' | 'opencode',
+  section: SessionSection | 'opencode',
   icons?: IconConfig
 ): ItemIconPresentation & { label: string } {
   const resolvedIcons = getIconConfig(icons)
 
   switch (section) {
+    case 'pinned':
+      return { glyph: '', color: theme.accent, label: 'Pinned' }
     case 'configured':
       return { glyph: resolvedIcons.configured, color: theme.action, label: 'Configured' }
     case 'opencode':
@@ -69,7 +72,7 @@ export function getSessionSectionPresentation(
 
 export function formatSectionHeader(
   theme: ThemeColors,
-  section: 'live' | 'configured' | 'opencode',
+  section: SessionSection | 'opencode',
   icons?: IconConfig
 ): ItemIconPresentation & { text: string } {
   const presentation = getSessionSectionPresentation(theme, section, icons)

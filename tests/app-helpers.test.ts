@@ -3,7 +3,7 @@ import { createAppControls } from '../src/app/controls'
 import { getDefaultConfig } from '../src/config'
 import { getProjectSelectionIndex, getSessionSelectionIndex } from '../src/app/data'
 import { getSessionCommandState, getSettingsState } from '../src/app/derived'
-import { createAppHandlers } from '../src/app/handlers'
+import { createAppHandlers, getPinnedSessionsAfterToggle } from '../src/app/handlers'
 import { applyOpencodeState, loadOpencodeSessionStats } from '../src/app/opencode'
 import { persistConfigUpdate, runWithErrorMessage } from '../src/app/operations'
 import { createAppRuntime } from '../src/app/runtime'
@@ -101,6 +101,16 @@ describe('app derived helpers', () => {
 })
 
 describe('app operation helpers', () => {
+  test('toggles pinned session names while preserving order', () => {
+    const config = {
+      ...getDefaultConfig('/home/tester'),
+      pinnedSessions: ['main'],
+    }
+
+    expect(getPinnedSessionsAfterToggle(config, 'work')).toEqual(['main', 'work'])
+    expect(getPinnedSessionsAfterToggle(config, 'main')).toEqual([])
+  })
+
   test('reports fallback errors through the shared message helper', async () => {
     const showMessage = mock(() => {})
 

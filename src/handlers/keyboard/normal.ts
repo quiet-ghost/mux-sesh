@@ -111,6 +111,15 @@ export function handleNormalMode(
     return
   }
 
+  if (key.ctrl && keyName === 'f') {
+    const item = ctx.viewMode === ViewMode.Sessions ? ctx.regularSessions[ctx.cursor] : undefined
+    if (item) {
+      ctx.clearPendingKill()
+      void ctx.togglePinnedSession(item.title)
+    }
+    return
+  }
+
   if (!ctx.prefixKey && !isStandard && keyName === 'l') {
     ctx.clearPendingKill()
     void ctx.handleLastSession()

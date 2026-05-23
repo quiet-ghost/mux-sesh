@@ -142,6 +142,7 @@ export interface Item {
   isSession: boolean
   itemKind?: ItemKind
   icon?: string
+  isPinned?: boolean
   isAttached?: boolean
   linkedSessionName?: string
   linkedSessionAttached?: boolean
@@ -162,6 +163,7 @@ export interface Config {
   autoUpdate?: boolean
   dirLength?: number
   hiddenSessions?: string[]
+  pinnedSessions?: string[]
   zoxideMode?: ZoxideMode
   sortOrder?: SortOrder
   theme?: string

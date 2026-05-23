@@ -52,6 +52,7 @@ interface UseAppKeyboardOptions {
   closeModal: () => void
   clearPendingKill: () => void
   requestKillSession: (sessionName: string) => void
+  togglePinnedSession: (sessionName: string) => Promise<void>
   openRenameModal: (sessionName: string) => void
   openCommandsModal: () => void
   openSettingsModal: () => void
@@ -101,6 +102,7 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     setPrefixActive: options.setPrefixActive,
     refreshItems: options.refreshItems,
     requestKillSession: options.requestKillSession,
+    togglePinnedSession: options.togglePinnedSession,
     clearPendingKill: options.clearPendingKill,
     handleSelect: options.handleSelect,
     handleKillSession: options.handleKillSession,
