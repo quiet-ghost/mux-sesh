@@ -193,6 +193,7 @@ export function useAppController() {
     handleNewSessionSubmit,
     handleSettingsEditorSubmit,
     handleSettingOptionSubmit,
+    handleTogglePinnedSessionWrapper,
     executeCommand,
   } = createAppHandlers({
     appMode,
@@ -270,6 +271,7 @@ export function useAppController() {
     closeModal,
     clearPendingKill,
     requestKillSession,
+    togglePinnedSession: handleTogglePinnedSessionWrapper,
     openRenameModal,
     openCommandsModal,
     openSettingsModal,

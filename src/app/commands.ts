@@ -15,6 +15,7 @@ interface ExecuteCommandContext {
   openRenameModal: (sessionName: string) => void
   openSettingsModal: () => void
   requestKillSession: (sessionName: string) => void
+  togglePinnedSession: (sessionName: string) => Promise<void>
   setAppMode: (mode: AppMode) => void
   setViewMode: (mode: ViewMode) => void
   setAllItems: (items: Item[]) => void
@@ -84,6 +85,15 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
       if (target?.isSession) {
         ctx.closeModal()
         ctx.requestKillSession(target.title)
+      }
+      return
+    }
+    case 'toggle-pin-session': {
+      const target =
+        ctx.viewMode === ViewMode.Sessions ? ctx.regularSessions[ctx.cursor] : undefined
+      if (target) {
+        ctx.closeModal()
+        await ctx.togglePinnedSession(target.title)
       }
       return
     }

@@ -31,6 +31,7 @@ export interface KeyboardHandlerContext {
   setPrefixActive: (active: boolean) => void
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config) => Promise<void>
   requestKillSession: (sessionName: string) => void
+  togglePinnedSession: (sessionName: string) => Promise<void>
   clearPendingKill: () => void
   handleSelect: (item: Item) => Promise<void>
   handleKillSession: (sessionName: string) => Promise<void>

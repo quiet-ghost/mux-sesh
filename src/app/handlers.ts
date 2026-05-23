@@ -167,6 +167,39 @@ export async function handleSettingOptionSubmitWithFeedback(
   )
 }
 
+export function getPinnedSessionsAfterToggle(config: Config, sessionName: string): string[] {
+  const pinnedSessions = config.pinnedSessions ?? []
+
+  return pinnedSessions.includes(sessionName)
+    ? pinnedSessions.filter(pinnedSession => pinnedSession !== sessionName)
+    : [...pinnedSessions, sessionName]
+}
+
+export async function handleTogglePinnedSessionWithFeedback(
+  sessionName: string,
+  options: SettingsHandlerOptions
+): Promise<void> {
+  if (!options.config) {
+    return
+  }
+
+  const pinnedSessions = getPinnedSessionsAfterToggle(options.config, sessionName)
+  const nextConfig = {
+    ...options.config,
+    pinnedSessions,
+  }
+  const isPinned = pinnedSessions.includes(sessionName)
+
+  await persistConfigUpdate(
+    nextConfig,
+    `Session '${sessionName}' ${isPinned ? 'pinned' : 'unpinned'}`,
+    options.saveConfig,
+    options.setConfig,
+    options.refreshItems,
+    options.showMessage
+  )
+}
+
 export async function executeAppCommand(
   commandID: Parameters<typeof runCommand>[0],
   options: Parameters<typeof runCommand>[1]
@@ -279,6 +312,19 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     })
   }
 
+  async function handleTogglePinnedSessionWrapper(sessionName: string) {
+    await handleTogglePinnedSessionWithFeedback(sessionName, {
+      config: options.config,
+      saveConfig: options.saveConfig,
+      setConfig: options.setConfig,
+      setSettingEditorError: options.setSettingEditorError,
+      openSettingsModal: options.openSettingsModal,
+      settingEditorValue: options.settingEditorValue,
+      refreshItems: options.refreshItems,
+      showMessage: options.showMessage,
+    })
+  }
+
   async function executeCommand(commandID: Parameters<typeof executeAppCommand>[0]) {
     await executeAppCommand(commandID, {
       appMode: options.appMode,
@@ -294,6 +340,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       openRenameModal: options.openRenameModal,
       openSettingsModal: options.openSettingsModal,
       requestKillSession: options.requestKillSession,
+      togglePinnedSession: handleTogglePinnedSessionWrapper,
       setAppMode: options.setAppMode,
       setViewMode: options.setViewMode,
       setAllItems: options.setAllItems,
@@ -320,6 +367,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     handleNewSessionSubmit,
     handleSettingsEditorSubmit,
     handleSettingOptionSubmit,
+    handleTogglePinnedSessionWrapper,
     executeCommand,
   }
 }

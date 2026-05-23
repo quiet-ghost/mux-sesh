@@ -18,6 +18,7 @@ export type SettingsFieldId =
   | 'defaultPreviewCommand'
   | 'projectPaths'
   | 'hiddenSessions'
+  | 'pinnedSessions'
   | 'icons'
   | 'projects'
   | 'wildcards'
@@ -299,6 +300,18 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
     getEditorValue: config => formatJSON(config.hiddenSessions ?? []),
     applyEditor: (raw, value) => {
       raw.hidden_sessions = JSON.parse(value) as unknown
+    },
+  },
+  {
+    id: 'pinnedSessions',
+    label: 'Pinned Sessions',
+    hint: 'JSON array of session names',
+    kind: 'json',
+    title: 'Pinned Sessions',
+    getValue: config => `${config.pinnedSessions?.length ?? 0} pinned`,
+    getEditorValue: config => formatJSON(config.pinnedSessions ?? []),
+    applyEditor: (raw, value) => {
+      raw.pinned_sessions = JSON.parse(value) as unknown
     },
   },
   {

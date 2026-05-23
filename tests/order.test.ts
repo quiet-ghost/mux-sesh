@@ -76,6 +76,20 @@ describe('item ordering', () => {
       'update-session-naming',
     ])
   })
+
+  test('keeps pinned sessions at the top in config order', () => {
+    const items: Item[] = [
+      { title: 'work', desc: '', path: 'work', isSession: true },
+      { title: 'main', desc: '', path: 'main', isSession: true },
+      { title: 'side', desc: '', path: 'side', isSession: true },
+    ]
+
+    const ordered = orderSessionItems(items, 'live-first', ['main', 'missing'])
+
+    expect(ordered.map(item => item.title)).toEqual(['main', 'side', 'work'])
+    expect(ordered[0]?.isPinned).toBe(true)
+    expect(ordered[1]?.isPinned).toBe(false)
+  })
 })
 
 describe('item icons', () => {

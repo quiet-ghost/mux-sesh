@@ -41,7 +41,11 @@ export async function loadSessionItems(
     getListedSessionItems(config)
   )
   const sessionItems = clearMatchIndices(
-    orderSessionItems(mergeSessionItems(visibleSessions, listedSessions), config.sortOrder)
+    orderSessionItems(
+      mergeSessionItems(visibleSessions, listedSessions),
+      config.sortOrder,
+      config.pinnedSessions
+    )
   )
 
   return {

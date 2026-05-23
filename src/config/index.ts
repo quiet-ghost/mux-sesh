@@ -51,6 +51,24 @@ function asStringArray(value: unknown): string[] | undefined {
   return strings.length > 0 ? strings : undefined
 }
 
+function uniqueStrings(values?: string[]): string[] | undefined {
+  if (!values || values.length === 0) {
+    return undefined
+  }
+
+  const seen = new Set<string>()
+  const unique = values.filter(value => {
+    if (seen.has(value)) {
+      return false
+    }
+
+    seen.add(value)
+    return true
+  })
+
+  return unique.length > 0 ? unique : undefined
+}
+
 function asKeybindMode(value: unknown): KeybindMode | undefined {
   return value === 'vim' || value === 'standard' ? value : undefined
 }
@@ -320,6 +338,9 @@ export function normalizeConfig(rawConfig: unknown, homeDir = process.env.HOME |
     asStringArray(raw.hidden_sessions) ??
     asStringArray(raw.hiddenSessions) ??
     defaultConfig.hiddenSessions
+  const pinnedSessions =
+    uniqueStrings(asStringArray(raw.pinned_sessions) ?? asStringArray(raw.pinnedSessions)) ??
+    defaultConfig.pinnedSessions
   const icons = normalizeIcons(raw.icons) ?? defaultConfig.icons
   const configuredDefaultSession =
     normalizeSessionDefaults(raw.default_session) ?? normalizeSessionDefaults(raw.defaultSession)
@@ -343,6 +364,7 @@ export function normalizeConfig(rawConfig: unknown, homeDir = process.env.HOME |
     autoUpdate,
     dirLength,
     hiddenSessions,
+    pinnedSessions,
     icons,
     defaultSession,
     projects: normalizeProjectProfiles(raw.projects, homeDir) ?? defaultConfig.projects,
@@ -366,6 +388,7 @@ export function getDefaultConfig(homeDir = process.env.HOME || '~'): Config {
     autoUpdate: true,
     dirLength: 1,
     hiddenSessions: [],
+    pinnedSessions: [],
     icons: DEFAULT_ICONS,
     defaultSession: {
       startupCommand: DEFAULT_EDITOR_COMMAND,
@@ -401,6 +424,7 @@ export function serializeConfig(config: Config): Record<string, unknown> {
     auto_update: config.autoUpdate,
     dir_length: config.dirLength,
     hidden_sessions: config.hiddenSessions,
+    pinned_sessions: config.pinnedSessions,
     icons: config.icons,
     default_session: config.defaultSession
       ? {

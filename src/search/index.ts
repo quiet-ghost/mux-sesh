@@ -120,6 +120,10 @@ function calculateItemBonus(item: Item, query: string): number {
     bonus -= depth * 2
   }
 
+  if (item.isPinned) {
+    bonus += 50000
+  }
+
   return bonus
 }
 
