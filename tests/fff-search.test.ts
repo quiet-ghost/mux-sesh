@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import type { FileItem, MixedSearchResult, Score } from '@ff-labs/fff-bun'
 import {
+  combineFileSearchResults,
   mapMixedResultToScoredItems,
-  mergeFileSearchItems,
   mergeScoredItems,
 } from '../src/search/fff'
 import type { Item } from '../src/types'
@@ -143,17 +143,53 @@ describe('fff result merging', () => {
   test('keeps local results when fff finds nothing', () => {
     const local = [makeItem('/dev/local', 'project')]
 
-    expect(mergeFileSearchItems([], local)).toBe(local)
+    expect(combineFileSearchResults([], local, 'local')).toBe(local)
+  })
+})
+
+describe('combined file search ranking', () => {
+  test('ranks exact local matches above fff file noise', () => {
+    const local = [makeItem('/home/tester/dev/mux-sesh', 'project')]
+    const fffItems = [
+      makeItem('/home/tester/dev/mux-sesh/tests/mux-sesh-helpers.test.ts', 'file'),
+      makeItem('/home/tester/dev/mux-sesh/src/mux-sesh.schema.json', 'file'),
+    ]
+
+    const combined = combineFileSearchResults(fffItems, local, 'mux-sesh')
+
+    expect(combined[0]?.path).toBe('/home/tester/dev/mux-sesh')
   })
 
-  test('puts fff results first and keeps unmatched local items', () => {
-    const fffItems = [makeItem('/dev/a/todo.md', 'file'), makeItem('/dev/a', 'project')]
-    const local = [makeItem('/dev/a', 'project'), makeItem('/dev/zoxide-extra', 'project')]
+  test('attaches highlight indices to fff items through local scoring', () => {
+    const fffItems = [makeItem('/dev/notes/todo.md', 'file')]
 
-    expect(mergeFileSearchItems(fffItems, local).map(item => item.path)).toEqual([
-      '/dev/a/todo.md',
-      '/dev/a',
-      '/dev/zoxide-extra',
-    ])
+    const combined = combineFileSearchResults(fffItems, [], 'todo')
+
+    expect(combined[0]?.searchMatch?.titleIndices).toEqual([0, 1, 2, 3])
+  })
+
+  test('keeps typo-only fff matches at the end without highlights', () => {
+    const local = [makeItem('/dev/schema-tools', 'project')]
+    const fffItems = [makeItem('/dev/lib/schema.rs', 'file')]
+
+    const combined = combineFileSearchResults(fffItems, local, 'shcema')
+
+    expect(combined.map(item => item.path)).toEqual(['/dev/lib/schema.rs'])
+    expect(combined[0]?.searchMatch).toBeUndefined()
+  })
+
+  test('prefers the local item when fff returns the same path', () => {
+    const local = [
+      {
+        ...makeItem('/dev/mux-sesh', 'project'),
+        linkedSessionName: 'mux-sesh',
+      },
+    ]
+    const fffItems = [makeItem('/dev/mux-sesh', 'project')]
+
+    const combined = combineFileSearchResults(fffItems, local, 'mux')
+
+    expect(combined).toHaveLength(1)
+    expect(combined[0]?.linkedSessionName).toBe('mux-sesh')
   })
 })

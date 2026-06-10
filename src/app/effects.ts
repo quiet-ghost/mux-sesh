@@ -2,7 +2,7 @@ import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateA
 import { checkAndUpdate, updateEvents } from '../update'
 import { showTemporaryToast } from './notifications'
 import { clearMatchIndices, filterAndSortItems } from '../search'
-import { mergeFileSearchItems, searchFilesAndDirectories, warmFileSearch } from '../search/fff'
+import { combineFileSearchResults, searchFilesAndDirectories, warmFileSearch } from '../search/fff'
 import { annotateProjectItemsWithSessionLinks } from '../projects/session-links'
 import {
   getProjectSelectionIndex,
@@ -314,7 +314,7 @@ export function useNewSessionFileSearch(
         return
       }
 
-      setItems(current => mergeFileSearchItems(annotated, current))
+      setItems(current => combineFileSearchResults(annotated, current, query))
       setCursor(0)
     }
 

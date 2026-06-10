@@ -176,6 +176,13 @@ export function clearMatchIndices(items: Item[]): Item[] {
   return items.map(item => withSearchMatch(item))
 }
 
+export function scoreSearchItems(items: Item[], query: string): SearchResult[] {
+  return items.flatMap(item => {
+    const result = buildSearchResult(item, query)
+    return result ? [result] : []
+  })
+}
+
 export function filterAndSortItems(items: Item[], query: string): Item[] {
   if (!query.trim()) {
     return clearMatchIndices(items)

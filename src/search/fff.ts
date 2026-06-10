@@ -1,6 +1,7 @@
 import { basename, join } from 'path'
 import { homedir } from 'os'
 import type { FileFinder, MixedSearchResult } from '@ff-labs/fff-bun'
+import { scoreSearchItems } from './index'
 import type { Config, Item } from '../types'
 
 declare global {
@@ -142,13 +143,27 @@ export function mergeScoredItems(results: ScoredItem[][], limit: number): Item[]
     .slice(0, limit)
 }
 
-export function mergeFileSearchItems(fileSearchItems: Item[], localItems: Item[]): Item[] {
+export function combineFileSearchResults(
+  fileSearchItems: Item[],
+  localItems: Item[],
+  query: string
+): Item[] {
   if (fileSearchItems.length === 0) {
     return localItems
   }
 
-  const seenPaths = new Set(fileSearchItems.map(item => item.path))
-  return [...fileSearchItems, ...localItems.filter(item => !seenPaths.has(item.path))]
+  const localPaths = new Set(localItems.map(item => item.path))
+  const newFileSearchItems = fileSearchItems.filter(item => !localPaths.has(item.path))
+  const candidates = [...localItems, ...newFileSearchItems]
+
+  const scored = scoreSearchItems(candidates, query).sort((left, right) => right.score - left.score)
+  const scoredPaths = new Set(scored.map(result => result.item.path))
+
+  // fff matched these (typo-resistant) even though the local matcher rejected
+  // them; keep them visible at the bottom in fff ranking order.
+  const typoOnlyItems = newFileSearchItems.filter(item => !scoredPaths.has(item.path))
+
+  return [...scored.map(result => result.item), ...typoOnlyItems]
 }
 
 async function searchRoot(root: string, query: string, limit: number): Promise<ScoredItem[]> {
