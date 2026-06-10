@@ -1,10 +1,11 @@
-import { readdir } from 'fs/promises'
-import { basename, join } from 'path'
+import { readdir, stat } from 'fs/promises'
+import { basename, dirname, join } from 'path'
 import { spawn } from 'bun'
 import { getSessionDetails } from '../tmux'
 import type { Config, SessionDetails } from '../types'
 import { stripAnsi } from '../util/ansi'
 import { getGitRoot, resolveProjectSession } from '../config/session-rules'
+import { resolveFileSession } from '../files/target'
 
 const MAX_PREVIEW_LINES = 24
 const MAX_PREVIEW_LINE_LENGTH = 120
@@ -15,13 +16,13 @@ const projectPreviewCache = new Map<string, { preview: ProjectPreview; expiresAt
 export interface ProjectPreview {
   path: string
   sessionName: string
-  source: 'project' | 'wildcard' | 'default'
+  source: 'project' | 'wildcard' | 'default' | 'file'
   startupCommand?: string
   previewCommand?: string
   gitRoot?: string
   gitBranch?: string
   linkedSession?: SessionDetails
-  previewKind: 'command' | 'directory'
+  previewKind: 'command' | 'directory' | 'file'
   previewLabel: string
   previewLines: string[]
   previewNotice?: string
@@ -272,6 +273,84 @@ export async function getProjectPreview(
       (formattedDirectoryOutput.truncated
         ? 'Directory listing truncated to fit the panel.'
         : undefined),
+  }
+
+  projectPreviewCache.set(cacheKey, {
+    preview,
+    expiresAt: Date.now() + PROJECT_PREVIEW_CACHE_TTL_MS,
+  })
+
+  return preview
+}
+
+const FILE_PREVIEW_MAX_BYTES = 16 * 1024
+
+async function getFilePreviewLines(
+  filePath: string
+): Promise<{ lines: string[]; notice?: string }> {
+  try {
+    const fileInfo = await stat(filePath)
+    const bytes = new Uint8Array(
+      await Bun.file(filePath).slice(0, FILE_PREVIEW_MAX_BYTES).arrayBuffer()
+    )
+
+    if (bytes.includes(0)) {
+      return {
+        lines: [`${basename(filePath)} (${fileInfo.size} bytes)`],
+        notice: 'Binary file; preview skipped.',
+      }
+    }
+
+    const formatted = formatPreviewOutput(new TextDecoder().decode(bytes))
+    return {
+      lines: formatted.lines.length > 0 ? formatted.lines : ['(empty file)'],
+      notice:
+        formatted.truncated || fileInfo.size > FILE_PREVIEW_MAX_BYTES
+          ? 'File preview truncated to fit the panel.'
+          : undefined,
+    }
+  } catch {
+    return {
+      lines: [basename(filePath)],
+      notice: 'Unable to read file contents.',
+    }
+  }
+}
+
+export async function getFilePreview(
+  filePath: string,
+  config: Config,
+  linkedSessionName?: string
+): Promise<ProjectPreview> {
+  const cacheKey = `file::${filePath}::${linkedSessionName ?? ''}`
+  const cached = projectPreviewCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.preview
+  }
+
+  const parentDirectory = dirname(filePath)
+  const resolvedSession = resolveFileSession(filePath, config)
+  const [gitRootPath, gitBranch, linkedSession, fileLines] = await Promise.all([
+    getGitRoot(parentDirectory),
+    getGitBranch(parentDirectory),
+    linkedSessionName
+      ? getSessionDetails(linkedSessionName).catch(() => null)
+      : Promise.resolve(null),
+    getFilePreviewLines(filePath),
+  ])
+
+  const preview: ProjectPreview = {
+    path: displayPath(filePath),
+    sessionName: resolvedSession.sessionName,
+    source: 'file',
+    startupCommand: resolvedSession.startupCommand,
+    gitRoot: gitRootPath ? displayPath(gitRootPath) : undefined,
+    gitBranch,
+    linkedSession: linkedSession ?? undefined,
+    previewKind: 'file',
+    previewLabel: 'File Preview',
+    previewLines: fileLines.lines,
+    previewNotice: fileLines.notice,
   }
 
   projectPreviewCache.set(cacheKey, {
