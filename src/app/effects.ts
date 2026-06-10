@@ -2,12 +2,15 @@ import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateA
 import { checkAndUpdate, updateEvents } from '../update'
 import { showTemporaryToast } from './notifications'
 import { clearMatchIndices, filterAndSortItems } from '../search'
+import { combineFileSearchResults, searchFilesAndDirectories, warmFileSearch } from '../search/fff'
+import { annotateProjectItemsWithSessionLinks } from '../projects/session-links'
 import {
   getProjectSelectionIndex,
   getSessionSelectionIndex,
   loadSessionCandidateItems,
 } from './data'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
+import { isGitHubURL } from '../util/github'
 import { measure } from '../util/perf'
 
 export function useAutoUpdateScheduler(
@@ -269,6 +272,60 @@ export function useSearchFiltering(
   }, [allItems, appMode, searchQuery, setCursor, setItems])
 }
 
+export function useNewSessionFileSearch(
+  appMode: AppMode,
+  config: Config | null,
+  searchQuery: string,
+  sessionItems: Item[],
+  setItems: Dispatch<SetStateAction<Item[]>>,
+  setCursor: Dispatch<SetStateAction<number>>
+) {
+  const sessionItemsRef = useRef(sessionItems)
+  sessionItemsRef.current = sessionItems
+
+  useEffect(() => {
+    if (appMode !== AppMode.NewSession || !config) {
+      return
+    }
+
+    const nextConfig = config
+    const query = searchQuery.trim()
+
+    if (!query || isGitHubURL(query)) {
+      void warmFileSearch(nextConfig)
+      return
+    }
+
+    let cancelled = false
+
+    async function runFileSearch() {
+      const fileSearchItems = await searchFilesAndDirectories(query, nextConfig)
+      if (cancelled || fileSearchItems.length === 0) {
+        return
+      }
+
+      const liveSessions = sessionItemsRef.current.filter(item => item.isSession)
+      const annotated = await annotateProjectItemsWithSessionLinks(
+        fileSearchItems,
+        liveSessions,
+        nextConfig
+      )
+      if (cancelled) {
+        return
+      }
+
+      setItems(current => combineFileSearchResults(annotated, current, query))
+      setCursor(0)
+    }
+
+    void runFileSearch()
+
+    return () => {
+      cancelled = true
+    }
+  }, [appMode, config, searchQuery, setCursor, setItems])
+}
+
 export function useOpencodeStatsPolling(
   selectedOpencodeSessionName: string | undefined,
   loadOpencodeStatsForSession: (sessionName: string) => Promise<unknown>
@@ -385,6 +442,14 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.appMode,
     options.searchQuery,
     options.allItems,
+    options.setItems,
+    options.setCursor
+  )
+  useNewSessionFileSearch(
+    options.appMode,
+    options.config,
+    options.searchQuery,
+    options.sessionItems,
     options.setItems,
     options.setCursor
   )

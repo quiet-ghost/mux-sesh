@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getProjectPreview, type ProjectPreview } from '../preview/project'
+import { getFilePreview, getProjectPreview, type ProjectPreview } from '../preview/project'
+import { isFileItem } from '../files/target'
 import { getSessionDetails } from '../tmux'
 import { getDetailPanelStyle, useTheme } from '../styles/theme'
 import type { Config, Item, SessionDetails } from '../types'
@@ -24,6 +25,8 @@ function formatSourceLabel(source: ProjectPreview['source']): string {
       return 'Wildcard rule'
     case 'default':
       return 'Default rule'
+    case 'file':
+      return 'File target'
   }
 }
 
@@ -179,11 +182,9 @@ export default function SessionDetailsPanel({ selectedItem, config }: Props) {
           return
         }
 
-        const details = await getProjectPreview(
-          selectedItem.path,
-          config,
-          selectedItem.linkedSessionName
-        )
+        const details = isFileItem(selectedItem)
+          ? await getFilePreview(selectedItem.path, config, selectedItem.linkedSessionName)
+          : await getProjectPreview(selectedItem.path, config, selectedItem.linkedSessionName)
         if (!cancelled) {
           setDetailState({ status: 'project', details })
         }

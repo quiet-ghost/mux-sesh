@@ -6,6 +6,8 @@ export interface ItemIconPresentation {
   color: string
 }
 
+const FILE_ITEM_GLYPH = '  '
+
 function getIconConfig(icons?: IconConfig): IconConfig {
   return {
     tmux: icons?.tmux ?? '',
@@ -26,6 +28,17 @@ export function getItemIconPresentation(
     return {
       glyph: item.icon ?? resolvedIcons.configured,
       color: theme.action,
+    }
+  }
+
+  if (item.itemKind === 'file') {
+    return {
+      glyph: item.icon ?? FILE_ITEM_GLYPH,
+      color: item.linkedSessionAttached
+        ? theme.active
+        : item.linkedSessionName
+          ? theme.inactive
+          : theme.fileTree,
     }
   }
 

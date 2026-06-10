@@ -150,6 +150,35 @@ describe('project discovery helpers', () => {
     expect(annotated[0]?.linkedSessionName).toBe('projects_highlight-helper')
     expect(annotated[0]?.linkedSessionAttached).toBe(true)
   })
+
+  test('annotates file items using file session naming', async () => {
+    const config = getDefaultConfig('/home/tester')
+
+    const annotated = await annotateProjectItemsWithSessionLinks(
+      [
+        {
+          title: 'todo.md',
+          desc: '~/notes',
+          path: '/home/tester/notes/todo.md',
+          isSession: false,
+          itemKind: 'file',
+        },
+      ],
+      [
+        {
+          title: 'notes_todo_md',
+          desc: '',
+          path: 'notes_todo_md',
+          isSession: true,
+          isAttached: false,
+        },
+      ],
+      config
+    )
+
+    expect(annotated[0]?.linkedSessionName).toBe('notes_todo_md')
+    expect(annotated[0]?.linkedSessionAttached).toBe(false)
+  })
 })
 
 describe('session workflow helpers', () => {

@@ -1,5 +1,6 @@
 import type { Config, Item } from '../types'
 import { resolveProjectSession } from '../config/session-rules'
+import { buildFileSessionName, isFileItem } from '../files/target'
 
 export async function annotateProjectItemsWithSessionLinks(
   projectItems: Item[],
@@ -10,8 +11,10 @@ export async function annotateProjectItemsWithSessionLinks(
 
   return Promise.all(
     projectItems.map(async projectItem => {
-      const resolvedSession = await resolveProjectSession(projectItem.path, config)
-      const linkedSession = liveSessionsByTitle.get(resolvedSession.sessionName)
+      const sessionName = isFileItem(projectItem)
+        ? buildFileSessionName(projectItem.path)
+        : (await resolveProjectSession(projectItem.path, config)).sessionName
+      const linkedSession = liveSessionsByTitle.get(sessionName)
 
       if (!linkedSession) {
         return {

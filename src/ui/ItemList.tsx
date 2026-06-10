@@ -37,7 +37,11 @@ export default function ItemList({
         const hasTitleMatch = titleMatchIndices && titleMatchIndices.length > 0
         const hasDescMatch = descMatchIndices && descMatchIndices.length > 0
         const icon = getItemIconPresentation(theme, item, icons)
-        const sessionStatusLabel = item.linkedSessionName ? 'attach' : 'create'
+        const sessionStatusLabel = item.linkedSessionName
+          ? 'attach'
+          : item.itemKind === 'file'
+            ? 'open'
+            : 'create'
         const linkedSessionLabel = item.linkedSessionName ? ` -> ${item.linkedSessionName}` : ''
         const pendingKill = item.isSession && item.title === pendingKillSessionName
         const selected = absoluteIndex === cursor

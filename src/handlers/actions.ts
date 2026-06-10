@@ -8,12 +8,14 @@ import {
   getCurrentTmuxSessionName,
 } from '../tmux'
 import { getLastSessionTarget } from '../tmux/workflows'
+import { isFileItem, resolveTypedPathTarget } from '../files/target'
 import { isGitHubURL, cloneGitHubRepo } from '../util/github'
 import { requestShutdown } from '../util/shutdown'
 import {
   buildEditorCommand,
   getNextSessionName,
   getRootSessionPath,
+  openFileSession,
   openProjectSession,
   requireConfig,
   requireConfiguredItem,
@@ -23,6 +25,11 @@ export async function handleSelect(item: Item, config: Config | null) {
   if (item.isSession) {
     await switchTmuxSession(item.title)
     await requestShutdown(0)
+    return
+  }
+
+  if (isFileItem(item)) {
+    await openFileSession(item.path, requireConfig(config))
     return
   }
 
@@ -85,13 +92,33 @@ export async function handleNewSessionSubmit(
     } catch (error) {
       throw new Error(`Error cloning repository: ${error}`)
     }
-  } else if (items.length > 0 && cursor < items.length) {
-    const selectedItem = items[cursor]
-    await openProjectSession(selectedItem.path, requireConfig(config))
-  } else {
-    await createNamedTmuxSession(searchTerm)
-    await requestShutdown(0)
+    return
   }
+
+  const typedTarget = await resolveTypedPathTarget(searchTerm)
+  if (typedTarget) {
+    if (typedTarget.kind === 'file') {
+      await openFileSession(typedTarget.path, requireConfig(config))
+      return
+    }
+
+    await openProjectSession(typedTarget.path, requireConfig(config))
+    return
+  }
+
+  if (items.length > 0 && cursor < items.length) {
+    const selectedItem = items[cursor]
+    if (isFileItem(selectedItem)) {
+      await openFileSession(selectedItem.path, requireConfig(config))
+      return
+    }
+
+    await openProjectSession(selectedItem.path, requireConfig(config))
+    return
+  }
+
+  await createNamedTmuxSession(searchTerm)
+  await requestShutdown(0)
 }
 
 export async function handleLastSession(items: Item[]) {

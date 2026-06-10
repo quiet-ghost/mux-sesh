@@ -1,5 +1,7 @@
+import { dirname } from 'path'
 import type { Config, Item } from '../types'
 import { getGitRoot, resolveProjectSession } from '../config/session-rules'
+import { isFileItem, resolveFileSession } from '../files/target'
 import { createTmuxSession, getTmuxSessionDirectory } from '../tmux'
 import { requestShutdown } from '../util/shutdown'
 
@@ -44,7 +46,16 @@ export async function openProjectSession(projectPath: string, config: Config): P
   await requestShutdown(0)
 }
 
+export async function openFileSession(filePath: string, config: Config): Promise<void> {
+  const resolvedSession = resolveFileSession(filePath, config)
+  await createTmuxSession(resolvedSession.sessionName, resolvedSession.cwd, {
+    startupCommand: resolvedSession.startupCommand,
+  })
+  await requestShutdown(0)
+}
+
 export async function getRootSessionPath(item: Item): Promise<string> {
   const itemPath = item.isSession ? await getTmuxSessionDirectory(item.title) : item.path
-  return (await getGitRoot(itemPath)) ?? itemPath
+  const searchRoot = !item.isSession && isFileItem(item) ? dirname(itemPath) : itemPath
+  return (await getGitRoot(searchRoot)) ?? searchRoot
 }

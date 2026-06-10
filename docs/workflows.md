@@ -56,6 +56,44 @@ Enter
 
 If the project is already linked to a tmux session, mux-sesh attaches to it. Otherwise it creates a new session.
 
+## Create A Session From A File
+
+The new-session flow also searches files under your `project_paths` as you type.
+
+```text
+n
+type a file name (typo-resistant)
+Enter
+```
+
+Selecting a file:
+
+- creates a tmux session in the file's parent directory
+- opens the file with your configured `editor` (for example `nvim '/path/to/file'`)
+- attaches to the existing session if one is already running for that file
+
+You can also type a path directly:
+
+```text
+n
+~/notes/todo.md
+Enter
+```
+
+File search is powered by [fff](https://github.com/dmtrKovalenko/fff) and runs entirely locally. If the native fff library is unavailable, mux-sesh falls back to directory-only candidates. Set `MUX_SESH_DISABLE_FFF=1` to force the fallback.
+
+To customize how files open, set a `default_session.startup_command` containing a `{file}` placeholder:
+
+```json
+{
+  "default_session": {
+    "startup_command": "nvim {file}"
+  }
+}
+```
+
+`{dir}` is also available and expands to the file's parent directory. Both are shell-quoted automatically.
+
 ## Clone From GitHub
 
 The new-session flow also accepts GitHub URLs.

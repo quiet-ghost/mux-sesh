@@ -12,7 +12,7 @@ export enum ViewMode {
 
 export type KeybindMode = 'vim' | 'standard'
 export type ZoxideMode = 'off' | 'rank' | 'merge'
-export type ItemKind = 'tmux' | 'configured' | 'project'
+export type ItemKind = 'tmux' | 'configured' | 'project' | 'file'
 export type SortOrder = 'live-first' | 'configured-first' | 'zoxide-first' | 'alphabetical'
 
 export interface IconConfig {

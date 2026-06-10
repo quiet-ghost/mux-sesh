@@ -79,6 +79,12 @@ You only need to set the values you want to change. Everything else falls back t
 - `preview_command` renders in the details panel when it succeeds.
 - If you do not set `startup_command`, it falls back to `editor_cmd`.
 
+For file targets picked in the new-session flow:
+
+- If `startup_command` contains `{file}`, `{dir}`, or `{}`, the placeholders are interpolated with shell-quoted paths.
+- Otherwise the file opens with `editor` plus the quoted file path (for example `nvim '/path/to/file'`).
+- File search roots come from `project_paths`. Set `MUX_SESH_DISABLE_FFF=1` to disable fff-backed file search.
+
 ## Project Rules
 
 Use `projects` for exact path matches and `wildcards` for broader defaults.
