@@ -1,6 +1,10 @@
 import type { OpencodeStats } from './types'
 import { getGlobalStats } from './sqlite'
 
+const GLOBAL_STATS_CACHE_TTL_MS = 10_000
+
+let globalStatsCache: { stats: OpencodeStats; expiresAt: number } | null = null
+
 function formatTokenCount(value: number): string {
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
@@ -9,6 +13,10 @@ function formatTokenCount(value: number): string {
 }
 
 export async function getGlobalOpencodeStats(): Promise<OpencodeStats> {
+  if (globalStatsCache && globalStatsCache.expiresAt > Date.now()) {
+    return globalStatsCache.stats
+  }
+
   const stats = await getGlobalStats()
 
   const totalCost = stats.totalCost
@@ -17,7 +25,7 @@ export async function getGlobalOpencodeStats(): Promise<OpencodeStats> {
   const daySpan = Math.max(1, Math.ceil((newestUpdatedAt - oldestCreatedAt) / 86_400_000))
   const costPerDay = totalCost / daySpan
 
-  return {
+  const formattedStats = {
     totalSessions: stats.totalSessions,
     totalMessages: stats.totalMessages,
     totalCost: `$${totalCost.toFixed(2)}`,
@@ -27,4 +35,11 @@ export async function getGlobalOpencodeStats(): Promise<OpencodeStats> {
     cacheRead: formatTokenCount(stats.cacheRead),
     cacheWrite: formatTokenCount(stats.cacheWrite),
   }
+
+  globalStatsCache = {
+    stats: formattedStats,
+    expiresAt: Date.now() + GLOBAL_STATS_CACHE_TTL_MS,
+  }
+
+  return formattedStats
 }

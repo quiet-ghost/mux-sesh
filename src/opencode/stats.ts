@@ -5,6 +5,7 @@ import {
 } from './session'
 import type { OpencodeStats } from './types'
 import { getTmuxSessionDirectory } from '../tmux'
+import { getHomeDir } from '../config/paths'
 
 export async function getOpencodeSessionStats(
   tmuxSessionName: string
@@ -16,7 +17,7 @@ export async function getOpencodeSessionStats(
     return activeSession
   }
 
-  const homeDir = process.env.HOME || '/home/ghost'
+  const homeDir = getHomeDir()
   if (tmuxDirectory === homeDir) {
     return getAggregatedOpencodeStats(tmuxDirectory)
   }

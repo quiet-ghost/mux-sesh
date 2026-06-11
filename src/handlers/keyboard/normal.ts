@@ -1,4 +1,5 @@
 import { AppMode, ViewMode, type KeybindMode } from '../../types'
+import { clampCursorIndex } from '../../ui/list-window'
 import { requestShutdown } from '../../util/shutdown'
 import {
   activatePrefix,
@@ -177,17 +178,22 @@ export function handleNormalMode(
   if (keyName === 'down' || (!isStandard && keyName === 'j')) {
     ctx.clearPendingKill()
     if (ctx.viewMode === ViewMode.Sessions) {
-      ctx.setCursor(cursor => Math.min(cursor + 1, ctx.regularSessions.length - 1))
+      ctx.setCursor(cursor => clampCursorIndex(ctx.regularSessions.length, cursor + 1))
       return
     }
 
-    ctx.setCursor(cursor => Math.min(cursor + 1, ctx.items.length - 1))
+    ctx.setCursor(cursor => clampCursorIndex(ctx.items.length, cursor + 1))
     return
   }
 
   if (keyName === 'up' || (!isStandard && keyName === 'k')) {
     ctx.clearPendingKill()
-    ctx.setCursor(cursor => Math.max(cursor - 1, 0))
+    ctx.setCursor(cursor =>
+      clampCursorIndex(
+        ctx.viewMode === ViewMode.Sessions ? ctx.regularSessions.length : ctx.items.length,
+        cursor - 1
+      )
+    )
     return
   }
 

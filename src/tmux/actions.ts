@@ -1,6 +1,8 @@
 import { spawn } from 'bun'
 import { sanitizeTmuxSessionName } from './helpers'
 
+type SpawnOptions = Parameters<typeof spawn>[1]
+
 export interface CreateTmuxSessionOptions {
   startupCommand?: string
 }
@@ -18,8 +20,43 @@ async function tmuxSessionExists(sessionName: string): Promise<boolean> {
 }
 
 async function switchClient(sessionName: string): Promise<void> {
-  const proc = spawn(['tmux', 'switch-client', '-t', sessionName])
+  await runTmuxCommand(
+    ['tmux', 'switch-client', '-t', sessionName],
+    `Failed to switch to tmux session '${sessionName}'`
+  )
+}
+
+async function runTmuxCommand(
+  command: string[],
+  errorMessage: string,
+  options?: SpawnOptions
+): Promise<void> {
+  const proc = spawn(command, options)
+  const stderrPromise =
+    proc.stderr instanceof ReadableStream ? new Response(proc.stderr).text() : Promise.resolve('')
   await proc.exited
+  const stderr = (await stderrPromise).trim()
+
+  if (proc.exitCode !== 0) {
+    throw new Error(stderr ? `${errorMessage}: ${stderr}` : errorMessage)
+  }
+}
+
+async function openTmuxSession(sessionName: string): Promise<void> {
+  if (process.env.TMUX) {
+    await switchClient(sessionName)
+    return
+  }
+
+  await runTmuxCommand(
+    ['tmux', 'attach-session', '-t', sessionName],
+    `Failed to attach tmux session '${sessionName}'`,
+    {
+      stdin: 'inherit',
+      stdout: 'inherit',
+      stderr: 'inherit',
+    }
+  )
 }
 
 export async function createTmuxSession(
@@ -36,33 +73,29 @@ export async function createTmuxSession(
       command.push(options.startupCommand)
     }
 
-    const proc = spawn(command, {
+    await runTmuxCommand(command, `Failed to create tmux session '${sessionName}'`, {
       stdin: 'inherit',
       stdout: 'inherit',
       stderr: 'inherit',
     })
-    await proc.exited
     return
   }
 
   if (!(await tmuxSessionExists(sessionName))) {
-    const createProc = spawn(['tmux', 'new-session', '-d', '-s', sessionName, '-c', path])
-    await createProc.exited
+    await runTmuxCommand(
+      ['tmux', 'new-session', '-d', '-s', sessionName, '-c', path],
+      `Failed to create tmux session '${sessionName}'`
+    )
 
     if (options.startupCommand) {
-      const startupProc = spawn([
-        'tmux',
-        'send-keys',
-        '-t',
-        sessionName,
-        options.startupCommand,
-        'Enter',
-      ])
-      await startupProc.exited
+      await runTmuxCommand(
+        ['tmux', 'send-keys', '-t', sessionName, options.startupCommand, 'Enter'],
+        `Failed to run startup command for tmux session '${sessionName}'`
+      )
     }
   }
 
-  await switchClient(sessionName)
+  await openTmuxSession(sessionName)
 }
 
 export async function createNamedTmuxSession(name: string): Promise<void> {
@@ -70,34 +103,43 @@ export async function createNamedTmuxSession(name: string): Promise<void> {
   const insideTmux = !!process.env.TMUX
 
   if (!insideTmux && !(await isTmuxRunning())) {
-    const proc = spawn(['tmux', 'new-session', '-s', sessionName], {
-      stdin: 'inherit',
-      stdout: 'inherit',
-      stderr: 'inherit',
-    })
-    await proc.exited
+    await runTmuxCommand(
+      ['tmux', 'new-session', '-s', sessionName],
+      `Failed to create tmux session '${sessionName}'`,
+      {
+        stdin: 'inherit',
+        stdout: 'inherit',
+        stderr: 'inherit',
+      }
+    )
     return
   }
 
   if (!(await tmuxSessionExists(sessionName))) {
-    const createProc = spawn(['tmux', 'new-session', '-d', '-s', sessionName])
-    await createProc.exited
+    await runTmuxCommand(
+      ['tmux', 'new-session', '-d', '-s', sessionName],
+      `Failed to create tmux session '${sessionName}'`
+    )
   }
 
-  await switchClient(sessionName)
+  await openTmuxSession(sessionName)
 }
 
 export async function switchTmuxSession(name: string): Promise<void> {
-  await switchClient(name)
+  await openTmuxSession(name)
 }
 
 export async function killTmuxSession(name: string): Promise<void> {
-  const proc = spawn(['tmux', 'kill-session', '-t', name])
-  await proc.exited
+  await runTmuxCommand(
+    ['tmux', 'kill-session', '-t', name],
+    `Failed to kill tmux session '${name}'`
+  )
 }
 
 export async function renameTmuxSession(oldName: string, newName: string): Promise<void> {
   const sanitizedName = sanitizeTmuxSessionName(newName)
-  const proc = spawn(['tmux', 'rename-session', '-t', oldName, sanitizedName])
-  await proc.exited
+  await runTmuxCommand(
+    ['tmux', 'rename-session', '-t', oldName, sanitizedName],
+    `Failed to rename tmux session '${oldName}'`
+  )
 }

@@ -269,7 +269,7 @@ export function getModalStyle(theme: ThemeColors, columns: number, preferredWidt
   }
 }
 
-const ThemeContext = createContext<ThemeColors>(EXACT_TUI_THEME_COLORS.rosepine!.dark)
+const ThemeContext = createContext<ThemeColors>(resolveTheme(DEFAULT_THEME_ID, {}, 'dark').colors)
 
 export function ThemeProvider(props: { theme: ThemeColors; children: ReactNode }) {
   return <ThemeContext.Provider value={props.theme}>{props.children}</ThemeContext.Provider>

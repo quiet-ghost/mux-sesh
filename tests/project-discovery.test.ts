@@ -119,6 +119,30 @@ describe('project discovery helpers', () => {
     }
   })
 
+  test('does not scan dependency and build output directories as session candidates', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'mux-sesh-session-candidate-prune-'))
+
+    try {
+      const workRoot = join(root, 'work')
+      const dependencyProject = join(workRoot, 'node_modules', 'nested-package')
+      const buildProject = join(workRoot, 'target', 'debug')
+
+      await mkdir(dependencyProject, { recursive: true })
+      await mkdir(buildProject, { recursive: true })
+
+      const items = await getSessionCandidateItems({
+        ...getDefaultConfig(root),
+        projectPaths: [workRoot],
+        zoxideMode: 'off',
+      })
+
+      expect(items.map(item => item.path)).not.toContain(dependencyProject)
+      expect(items.map(item => item.path)).not.toContain(buildProject)
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   test('annotates project items when a matching tmux session already exists', async () => {
     const config = {
       ...getDefaultConfig('/home/tester'),

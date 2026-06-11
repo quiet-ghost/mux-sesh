@@ -1,12 +1,13 @@
 import { getPanelStyle } from '../styles/theme'
+import { isOpencodeSessionItem } from '../opencode/session-name'
 import { AppMode, ViewMode, type ThemeColors } from '../types'
 
 export function splitVisibleSessions<T extends { isSession: boolean; title: string }>(
   items: readonly T[]
 ) {
   return {
-    regularSessions: items.filter(item => !(item.isSession && item.title.startsWith('opencode-'))),
-    opencodeSessions: items.filter(item => item.isSession && item.title.startsWith('opencode-')),
+    regularSessions: items.filter(item => !isOpencodeSessionItem(item)),
+    opencodeSessions: items.filter(isOpencodeSessionItem),
   }
 }
 

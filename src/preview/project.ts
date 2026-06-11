@@ -6,6 +6,8 @@ import type { Config, SessionDetails } from '../types'
 import { stripAnsi } from '../util/ansi'
 import { getGitRoot, resolveProjectSession } from '../config/session-rules'
 import { resolveFileSession } from '../files/target'
+import { toHomeRelativePath } from '../util/path-display'
+import { quoteShellArg } from '../util/shell'
 
 const MAX_PREVIEW_LINES = 24
 const MAX_PREVIEW_LINE_LENGTH = 120
@@ -38,10 +40,6 @@ interface PackageSummary {
   scripts: string[]
 }
 
-function displayPath(path: string): string {
-  return path.replace(process.env.HOME || '', '~')
-}
-
 export function interpolatePreviewCommand(
   command: string | undefined,
   projectPath: string
@@ -50,7 +48,7 @@ export function interpolatePreviewCommand(
     return undefined
   }
 
-  return command.replaceAll('{}', projectPath)
+  return command.replaceAll('{}', quoteShellArg(projectPath))
 }
 
 export function formatPreviewOutput(
@@ -229,12 +227,12 @@ export async function getProjectPreview(
 
   if (formattedCommandOutput && formattedCommandOutput.lines.length > 0) {
     const preview: ProjectPreview = {
-      path: displayPath(projectPath),
+      path: toHomeRelativePath(projectPath),
       sessionName: resolvedSession.sessionName,
       source: resolvedSession.source,
       startupCommand: resolvedSession.startupCommand,
       previewCommand: resolvedPreviewCommand,
-      gitRoot: gitRootPath ? displayPath(gitRootPath) : undefined,
+      gitRoot: gitRootPath ? toHomeRelativePath(gitRootPath) : undefined,
       gitBranch,
       linkedSession: linkedSession ?? undefined,
       previewKind: 'command',
@@ -257,12 +255,12 @@ export async function getProjectPreview(
   const formattedDirectoryOutput = formatPreviewOutput(fallbackLines.join('\n'))
 
   const preview: ProjectPreview = {
-    path: displayPath(projectPath),
+    path: toHomeRelativePath(projectPath),
     sessionName: resolvedSession.sessionName,
     source: resolvedSession.source,
     startupCommand: resolvedSession.startupCommand,
     previewCommand: resolvedPreviewCommand,
-    gitRoot: gitRootPath ? displayPath(gitRootPath) : undefined,
+    gitRoot: gitRootPath ? toHomeRelativePath(gitRootPath) : undefined,
     gitBranch,
     linkedSession: linkedSession ?? undefined,
     previewKind: 'directory',
@@ -340,11 +338,11 @@ export async function getFilePreview(
   ])
 
   const preview: ProjectPreview = {
-    path: displayPath(filePath),
+    path: toHomeRelativePath(filePath),
     sessionName: resolvedSession.sessionName,
     source: 'file',
     startupCommand: resolvedSession.startupCommand,
-    gitRoot: gitRootPath ? displayPath(gitRootPath) : undefined,
+    gitRoot: gitRootPath ? toHomeRelativePath(gitRootPath) : undefined,
     gitBranch,
     linkedSession: linkedSession ?? undefined,
     previewKind: 'file',

@@ -1,4 +1,5 @@
 import type { SessionSection } from '../items/order'
+import { isOpencodeSessionItem } from '../opencode/session-name'
 import type { IconConfig, Item, ThemeColors } from '../types'
 
 export interface ItemIconPresentation {
@@ -45,8 +46,7 @@ export function getItemIconPresentation(
   if (item.isSession) {
     return {
       glyph:
-        item.icon ??
-        (item.title.startsWith('opencode-') ? resolvedIcons.opencode : resolvedIcons.tmux),
+        item.icon ?? (isOpencodeSessionItem(item) ? resolvedIcons.opencode : resolvedIcons.tmux),
       color: item.isAttached ? theme.active : theme.inactive,
     }
   }

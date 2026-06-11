@@ -1,4 +1,5 @@
 import { AppMode, type KeybindMode } from '../../types'
+import { clampCursorIndex } from '../../ui/list-window'
 import {
   activatePrefix,
   clearPrefix,
@@ -60,7 +61,7 @@ export function handleOpencodeManageMode(
   if (keyName === 'down' || (!isStandard && keyName === 'j')) {
     ctx.clearPendingKill()
     ctx.setOpencodeCursor(cursor => {
-      const next = Math.min(cursor + 1, ctx.opencodeSessions.length - 1)
+      const next = clampCursorIndex(ctx.opencodeSessions.length, cursor + 1)
       if (next !== cursor && ctx.opencodeSessions[next]) {
         void ctx.loadOpencodeStatsForSession(ctx.opencodeSessions[next].title)
       }
@@ -72,7 +73,7 @@ export function handleOpencodeManageMode(
   if (keyName === 'up' || (!isStandard && keyName === 'k')) {
     ctx.clearPendingKill()
     ctx.setOpencodeCursor(cursor => {
-      const next = Math.max(cursor - 1, 0)
+      const next = clampCursorIndex(ctx.opencodeSessions.length, cursor - 1)
       if (next !== cursor && ctx.opencodeSessions[next]) {
         void ctx.loadOpencodeStatsForSession(ctx.opencodeSessions[next].title)
       }
