@@ -14,7 +14,7 @@ const TERMINAL_RESET_SEQUENCE = [
 
 const state: {
   renderer?: CliRenderer
-  exiting?: Promise<never>
+  exiting?: Promise<void>
   listenersInstalled?: boolean
 } = {}
 
@@ -60,15 +60,15 @@ export function initializeShutdown(renderer: CliRenderer): void {
   state.listenersInstalled = true
 }
 
-export function requestShutdown(code = 0): Promise<never> {
+export function requestShutdown(code = 0): Promise<void> {
   if (state.exiting) {
     return state.exiting
   }
 
   state.exiting = (async () => {
+    process.exitCode = code
     destroyRenderer()
     resetTerminalModes()
-    process.exit(code)
   })()
 
   return state.exiting

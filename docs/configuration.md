@@ -152,7 +152,7 @@ If a live tmux session already exists with the same title, the live session take
 
 ## Preview Behavior
 
-`preview_command` supports `{}` interpolation for the selected path.
+`preview_command` supports `{}` interpolation for the shell-quoted selected path.
 
 ```json
 {

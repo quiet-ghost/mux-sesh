@@ -1,4 +1,5 @@
 import { AppMode, ViewMode, type KeybindMode } from '../../types'
+import { clampCursorIndex } from '../../ui/list-window'
 import { requestShutdown } from '../../util/shutdown'
 import {
   activatePrefix,
@@ -98,16 +99,16 @@ export function handleSearchMode(
     case 'return':
       ctx.clearPendingKill()
       if (ctx.items.length > 0) {
-        void ctx.handleSelect(ctx.items[0])
+        void ctx.handleSelect(ctx.items[clampCursorIndex(ctx.items.length, ctx.cursor)])
       }
       break
     case 'down':
       ctx.clearPendingKill()
-      ctx.setCursor(cursor => Math.min(cursor + 1, ctx.items.length - 1))
+      ctx.setCursor(cursor => clampCursorIndex(ctx.items.length, cursor + 1))
       break
     case 'up':
       ctx.clearPendingKill()
-      ctx.setCursor(cursor => Math.max(cursor - 1, 0))
+      ctx.setCursor(cursor => clampCursorIndex(ctx.items.length, cursor - 1))
       break
   }
 }

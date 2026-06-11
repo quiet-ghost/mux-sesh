@@ -1,12 +1,20 @@
 import { describe, expect, test } from 'bun:test'
 import { formatPreviewOutput, interpolatePreviewCommand } from '../src/preview/project'
-import { getVisibleWindow } from '../src/ui/list-window'
+import { clampCursorIndex, getVisibleWindow } from '../src/ui/list-window'
 import { getMutedLabelColumnWidth, getMutedLabelSpacer } from '../src/ui/text-columns'
 
 describe('project preview helpers', () => {
   test('interpolates preview command placeholders with the project path', () => {
-    expect(interpolatePreviewCommand('eza --all {}', '/tmp/project')).toBe('eza --all /tmp/project')
+    expect(interpolatePreviewCommand('eza --all {}', '/tmp/project')).toBe(
+      "eza --all '/tmp/project'"
+    )
     expect(interpolatePreviewCommand(undefined, '/tmp/project')).toBeUndefined()
+  })
+
+  test('quotes interpolated preview paths safely', () => {
+    expect(interpolatePreviewCommand('ls {}', "/tmp/it' s; rm -rf nope")).toBe(
+      "ls '/tmp/it'\\'' s; rm -rf nope'"
+    )
   })
 
   test('strips ansi escape codes and truncates long preview output', () => {
@@ -19,6 +27,12 @@ describe('project preview helpers', () => {
 })
 
 describe('list windowing', () => {
+  test('clamps cursor indexes without producing negative positions for empty lists', () => {
+    expect(clampCursorIndex(0, 4)).toBe(0)
+    expect(clampCursorIndex(3, -1)).toBe(0)
+    expect(clampCursorIndex(3, 9)).toBe(2)
+  })
+
   test('keeps the cursor centered when possible', () => {
     const result = getVisibleWindow(['a', 'b', 'c', 'd', 'e', 'f'], 3, 3)
 

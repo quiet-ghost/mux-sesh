@@ -5,14 +5,13 @@ import { clearMatchIndices } from '../search'
 import { listTmuxSessions } from '../tmux'
 import { getProjectItems, getSessionCandidateItems } from '../tmux/projects'
 import { filterHiddenSessions } from '../tmux/workflows'
+import { isOpencodeSessionItem } from '../opencode/session-name'
 import type { Config, Item } from '../types'
 
 export type Measure = <T>(name: string, fn: () => Promise<T>) => Promise<T>
 
 export function getSessionSelectionIndex(nextItems: Item[], selection?: string | null): number {
-  const regularItems = nextItems.filter(
-    item => !(item.isSession && item.title.startsWith('opencode-'))
-  )
+  const regularItems = nextItems.filter(item => !isOpencodeSessionItem(item))
   if (regularItems.length === 0 || !selection) {
     return 0
   }

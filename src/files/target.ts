@@ -1,6 +1,7 @@
 import { basename, dirname, isAbsolute, join } from 'path'
 import { stat } from 'fs/promises'
 import type { Config, Item } from '../types'
+import { quoteShellArg } from '../util/shell'
 
 export interface ResolvedFileSession {
   sessionName: string
@@ -9,10 +10,6 @@ export interface ResolvedFileSession {
 }
 
 export type TypedPathTarget = { kind: 'file' | 'directory'; path: string }
-
-function quoteShellArg(value: string): string {
-  return `'${value.replaceAll("'", "'\\''")}'`
-}
 
 function sanitizeSessionName(value: string): string {
   return value.replace(/[.\s/]+/g, '_')

@@ -10,8 +10,11 @@ import {
   loadSessionCandidateItems,
 } from './data'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
+import { clampCursorIndex } from '../ui/list-window'
 import { isGitHubURL } from '../util/github'
 import { measure } from '../util/perf'
+
+const FILE_SEARCH_DEBOUNCE_MS = 120
 
 export function useAutoUpdateScheduler(
   config: Config | null,
@@ -165,7 +168,7 @@ export function useBoundedCursor(length: number, setCursor: Dispatch<SetStateAct
       return
     }
 
-    setCursor(current => Math.min(current, length - 1))
+    setCursor(current => clampCursorIndex(length, current))
   }, [length, setCursor])
 }
 
@@ -318,10 +321,13 @@ export function useNewSessionFileSearch(
       setCursor(0)
     }
 
-    void runFileSearch()
+    const timeout = setTimeout(() => {
+      void runFileSearch()
+    }, FILE_SEARCH_DEBOUNCE_MS)
 
     return () => {
       cancelled = true
+      clearTimeout(timeout)
     }
   }, [appMode, config, searchQuery, setCursor, setItems])
 }

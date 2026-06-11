@@ -104,6 +104,18 @@
         "type": "string"
       }
     },
+    "pinned_sessions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "pinnedSessions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "icons": {
       "$ref": "#/definitions/icons"
     },

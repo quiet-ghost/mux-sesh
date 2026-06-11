@@ -48,7 +48,7 @@ export function isWithinProjectRoots(projectPath: string, projectRoots: string[]
 
 function rankItemsByZoxide(items: Item[], entries: ZoxideEntry[], config: Config): Item[] {
   if (config.zoxideMode === 'off' || entries.length === 0) {
-    return items.sort((a, b) => a.title.localeCompare(b.title))
+    return [...items].sort((a, b) => a.title.localeCompare(b.title))
   }
 
   const zoxideScores = new Map(

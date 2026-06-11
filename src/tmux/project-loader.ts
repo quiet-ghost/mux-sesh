@@ -5,6 +5,7 @@ import {
   buildCacheKey,
   getCachedDiscovery,
   getExistingProjectRoots,
+  PRUNED_PROJECT_DIRECTORY_NAMES,
   toProjectItem,
   type DiscoveryCacheEntry,
 } from './project-discovery'
@@ -26,7 +27,24 @@ async function scanDirectories(projectRoots: string[], maxDepth: number): Promis
     return []
   }
 
-  const args = [...projectRoots, '-mindepth', '1', '-maxdepth', String(maxDepth), '-type', 'd']
+  const pruneExpression = PRUNED_PROJECT_DIRECTORY_NAMES.flatMap((name, index) =>
+    index === 0 ? ['-name', name] : ['-o', '-name', name]
+  )
+  const args = [
+    ...projectRoots,
+    '-mindepth',
+    '1',
+    '-maxdepth',
+    String(maxDepth),
+    '(',
+    ...pruneExpression,
+    ')',
+    '-prune',
+    '-o',
+    '-type',
+    'd',
+    '-print',
+  ]
   const proc = spawn(['find', ...args], {
     stderr: 'pipe',
   })

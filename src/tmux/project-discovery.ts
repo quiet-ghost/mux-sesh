@@ -19,14 +19,17 @@ const PROJECT_MARKERS = [
   'flake.nix',
 ]
 
+export const PRUNED_PROJECT_DIRECTORY_NAMES = [
+  '.git',
+  '.jj',
+  'node_modules',
+  'target',
+  'build',
+  'dist',
+]
+
 export function isIgnoredProjectDirectory(baseName: string): boolean {
-  return (
-    baseName.startsWith('.') ||
-    baseName === 'node_modules' ||
-    baseName === 'target' ||
-    baseName === 'build' ||
-    baseName === 'dist'
-  )
+  return baseName.startsWith('.') || PRUNED_PROJECT_DIRECTORY_NAMES.includes(baseName)
 }
 
 export function toProjectItem(projectPath: string): Item {

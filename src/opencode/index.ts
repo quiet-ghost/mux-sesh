@@ -3,6 +3,7 @@ export * from './constants'
 export * from './parser'
 export * from './tokens'
 export * from './session'
+export * from './session-name'
 export * from './stats'
 
 export function formatSessionAge(timestamp: number): string {

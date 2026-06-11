@@ -1,6 +1,7 @@
 import { spawn } from 'bun'
 import type { SessionDetails, WindowInfo } from '../types'
 import { formatPanePreview, formatWindowCommand, readTmuxValue } from './helpers'
+import { toHomeRelativePath } from '../util/path-display'
 
 const SESSION_DETAILS_CACHE_TTL_MS = 4000
 const sessionDetailsCache = new Map<string, { details: SessionDetails; expiresAt: number }>()
@@ -25,70 +26,50 @@ export async function getSessionDetails(sessionName: string): Promise<SessionDet
     return cached.details
   }
 
-  const statusProc = spawn([
-    'tmux',
-    'list-sessions',
-    '-F',
-    '#{session_name}:#{session_attached}:#{session_windows}',
-    '-f',
-    `#{==:#{session_name},${sessionName}}`,
-  ])
-  const statusOutput = await new Response(statusProc.stdout).text()
+  const statusOutput = await readTmuxValue(
+    [
+      'tmux',
+      'list-sessions',
+      '-F',
+      '#{session_name}:#{session_attached}:#{session_windows}',
+      '-f',
+      `#{==:#{session_name},${sessionName}}`,
+    ],
+    `Failed to load tmux session details for '${sessionName}'`
+  )
   const [, attached, windowCount] = statusOutput.trim().split(':')
 
-  const windowsProc = spawn([
-    'tmux',
-    'list-windows',
-    '-t',
-    sessionName,
-    '-F',
-    '#{window_index}:#{window_name}',
-  ])
-  const windowsOutput = await new Response(windowsProc.stdout).text()
+  const windowsOutput = await readTmuxValue(
+    [
+      'tmux',
+      'list-windows',
+      '-t',
+      sessionName,
+      '-F',
+      '#{window_index}\t#{window_name}\t#{pane_current_path}\t#{pane_current_command}\t#{window_active}',
+    ],
+    `Failed to load tmux windows for '${sessionName}'`
+  )
   const windowLines = windowsOutput.trim().split('\n').filter(Boolean)
 
   const windows: WindowInfo[] = []
+  let activeWindowIndex = ''
 
   for (const line of windowLines) {
-    const [index, name] = line.split(':')
+    const [index = '', name = '', currentPath = '', currentCommand = '', active = '0'] =
+      line.split('\t')
 
-    const dirProc = spawn([
-      'tmux',
-      'display-message',
-      '-t',
-      `${sessionName}:${index}`,
-      '-p',
-      '#{pane_current_path}',
-    ])
-    const currentPath = (await new Response(dirProc.stdout).text()).trim()
-
-    const cmdProc = spawn([
-      'tmux',
-      'display-message',
-      '-t',
-      `${sessionName}:${index}`,
-      '-p',
-      '#{pane_current_command}',
-    ])
-    const currentCommand = (await new Response(cmdProc.stdout).text()).trim()
+    if (active === '1') {
+      activeWindowIndex = index
+    }
 
     windows.push({
       index,
       name,
-      currentPath: currentPath.replace(process.env.HOME || '', '~'),
+      currentPath: toHomeRelativePath(currentPath),
       currentCommand: formatWindowCommand(currentCommand),
     })
   }
-
-  const activeWindowProc = spawn([
-    'tmux',
-    'display-message',
-    '-t',
-    sessionName,
-    '-p',
-    '#{window_index}',
-  ])
-  const activeWindowIndex = (await new Response(activeWindowProc.stdout).text()).trim()
 
   let panePreviewLines: string[] | undefined
   if (activeWindowIndex.length > 0) {

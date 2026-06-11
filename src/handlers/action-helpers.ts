@@ -4,10 +4,9 @@ import { getGitRoot, resolveProjectSession } from '../config/session-rules'
 import { isFileItem, resolveFileSession } from '../files/target'
 import { createTmuxSession, getTmuxSessionDirectory } from '../tmux'
 import { requestShutdown } from '../util/shutdown'
+import { quoteShellArg } from '../util/shell'
 
-export function quoteShellArg(value: string): string {
-  return `'${value.replaceAll("'", "'\\''")}'`
-}
+export { quoteShellArg } from '../util/shell'
 
 export function buildEditorCommand(editor: string, path: string): string {
   return `${editor} ${quoteShellArg(path)}`

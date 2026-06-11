@@ -1,5 +1,14 @@
 import { describe, expect, test } from 'bun:test'
-import { getDefaultConfig, normalizeConfig, serializeConfig } from '../src/config'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'fs/promises'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import {
+  getConfigPath,
+  getDefaultConfig,
+  loadConfig,
+  normalizeConfig,
+  serializeConfig,
+} from '../src/config'
 import { getListedSessionItems, mergeSessionItems } from '../src/config/listed-sessions'
 import { resolveProjectSession } from '../src/config/session-rules'
 
@@ -262,6 +271,43 @@ describe('config normalization', () => {
     expect(config.autoUpdate).toBe(defaults.autoUpdate)
     expect(config.dirLength).toBe(defaults.dirLength)
     expect(config.projects).toEqual([])
+  })
+})
+
+describe('config storage', () => {
+  test('creates a default config only when the file is missing', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'mux-sesh-config-store-'))
+    const home = join(root, 'home')
+
+    try {
+      process.env.HOME = home
+      delete process.env.XDG_CONFIG_HOME
+
+      const config = await loadConfig()
+
+      expect(config).toEqual(getDefaultConfig(home))
+      expect(await readFile(getConfigPath(home), 'utf8')).toContain('project_paths')
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not overwrite invalid config JSON', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'mux-sesh-config-invalid-'))
+    const home = join(root, 'home')
+
+    try {
+      process.env.HOME = home
+      delete process.env.XDG_CONFIG_HOME
+      const configPath = getConfigPath(home)
+      await mkdir(join(home, '.config', 'mux-sesh'), { recursive: true })
+      await writeFile(configPath, '{bad json')
+
+      await expect(loadConfig()).rejects.toThrow('Failed to parse mux-sesh config')
+      expect(await readFile(configPath, 'utf8')).toBe('{bad json')
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
   })
 })
 

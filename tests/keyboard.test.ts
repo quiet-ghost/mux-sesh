@@ -142,6 +142,20 @@ describe('keyboard shortcuts', () => {
     expect(ctx.loadOpencodeStatsForSession).toHaveBeenCalledWith('opencode-main')
   })
 
+  test('selects highlighted search result with Enter', () => {
+    const first = createItem({ title: 'first' })
+    const second = createItem({ title: 'second' })
+    const ctx = createContext({
+      prefixActive: false,
+      items: [first, second],
+      cursor: 1,
+    })
+
+    handleSearchMode({ name: 'return' }, ctx, 'vim')
+
+    expect(ctx.handleSelect).toHaveBeenCalledWith(second)
+  })
+
   test('opens settings from opencode mode with comma in vim mode', () => {
     const ctx = createContext({
       appMode: AppMode.OpencodeManage,

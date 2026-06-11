@@ -1,4 +1,5 @@
 import type { Item, SortOrder } from '../types'
+import { isOpencodeSessionItem } from '../opencode/session-name'
 import { getLiveSessionSortKey } from '../util/path-display'
 
 export type SessionSection = 'pinned' | 'live' | 'configured'
@@ -17,10 +18,6 @@ function compareLiveSessions(left: Item, right: Item): number {
   }
 
   return left.title.localeCompare(right.title)
-}
-
-function isOpencodeSession(item: Item): boolean {
-  return item.isSession && item.title.startsWith('opencode-')
 }
 
 function isConfiguredSession(item: Item): boolean {
@@ -65,8 +62,8 @@ export function orderSessionItems(
   pinnedSessions: readonly string[] = []
 ): Item[] {
   const itemsWithPinnedState = applyPinnedState(items, pinnedSessions)
-  const opencodeItems = itemsWithPinnedState.filter(isOpencodeSession).sort(compareByTitle)
-  const regularItems = itemsWithPinnedState.filter(item => !isOpencodeSession(item))
+  const opencodeItems = itemsWithPinnedState.filter(isOpencodeSessionItem).sort(compareByTitle)
+  const regularItems = itemsWithPinnedState.filter(item => !isOpencodeSessionItem(item))
   const { pinnedItems, remainingItems } = splitPinnedItems(regularItems, pinnedSessions)
 
   const orderedRegularItems =

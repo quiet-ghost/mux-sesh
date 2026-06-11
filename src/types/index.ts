@@ -1,3 +1,5 @@
+import type { OpencodeStats } from '../opencode/types'
+
 export enum AppMode {
   Normal,
   Search,
@@ -104,25 +106,7 @@ export interface ProjectWildcard {
   previewCommand?: string
 }
 
-export interface OpencodeSessionStats {
-  sessionID?: string
-  title?: string
-  projectID?: string
-  directory?: string
-  messageCount?: number
-  filesModified?: number
-  additions?: number
-  deletions?: number
-  createdAt?: number
-  updatedAt?: number
-  // Aggregated stats (for home directory sessions)
-  sessionCount?: number
-  mostRecentTitle?: string
-  // Current session live stats (last message)
-  lastMessageTokens?: number
-  contextLimit?: number
-  sessionTotalCost?: number
-}
+export type OpencodeSessionStats = OpencodeStats
 
 export type OpencodeStatsState =
   | { status: 'loading' }

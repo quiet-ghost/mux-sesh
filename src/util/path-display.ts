@@ -1,6 +1,6 @@
 import { basename, dirname } from 'path'
 
-function toHomeRelativePath(path: string): string {
+export function toHomeRelativePath(path: string): string {
   const homeDir = process.env.HOME || ''
 
   if (!path) {
