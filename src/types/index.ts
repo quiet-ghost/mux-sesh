@@ -4,7 +4,7 @@ export enum AppMode {
   Normal,
   Search,
   NewSession,
-  OpencodeManage,
+  AgentsManage,
 }
 
 export enum ViewMode {

@@ -1,13 +1,13 @@
+import { isAgentSessionItem } from '../agents/session-name'
 import { getPanelStyle } from '../styles/theme'
-import { isOpencodeSessionItem } from '../opencode/session-name'
 import { AppMode, ViewMode, type ThemeColors } from '../types'
 
 export function splitVisibleSessions<T extends { isSession: boolean; title: string }>(
   items: readonly T[]
 ) {
   return {
-    regularSessions: items.filter(item => !isOpencodeSessionItem(item)),
-    opencodeSessions: items.filter(isOpencodeSessionItem),
+    regularSessions: items.filter(item => !isAgentSessionItem(item)),
+    agentSessions: items.filter(isAgentSessionItem),
   }
 }
 
@@ -20,8 +20,8 @@ export function getAppTitle(appMode: AppMode, viewMode: ViewMode): string {
     return 'New Session'
   }
 
-  if (appMode === AppMode.OpencodeManage) {
-    return 'OpenCode Sessions'
+  if (appMode === AppMode.AgentsManage) {
+    return 'Agent Sessions'
   }
 
   return viewMode === ViewMode.Projects ? 'Projects' : 'Sessions'
@@ -58,7 +58,7 @@ export function getStatusLabel(
 export function getFooterHint(appMode: AppMode, prefixKey?: string): string {
   const prefixLabel = prefixKey ? `${prefixKey} ...` : 'direct keys'
 
-  if (appMode === AppMode.OpencodeManage) {
+  if (appMode === AppMode.AgentsManage) {
     return `o back  d kill  ctrl+p commands  ${prefixLabel}`
   }
 
@@ -70,7 +70,7 @@ export function getFooterHint(appMode: AppMode, prefixKey?: string): string {
     return 'enter select  esc cancel'
   }
 
-  return `enter select  i search  n new  o opencode  d kill  ctrl+p commands  ${prefixLabel}`
+  return `enter select  i search  n new  o agents  d kill  ctrl+p commands  ${prefixLabel}`
 }
 
 export function getEmptyStateMessage(

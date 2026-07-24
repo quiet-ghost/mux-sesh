@@ -11,7 +11,7 @@ export function useAppCoreState() {
   const [sessionCandidateItems, setSessionCandidateItems] = useState<Item[]>([])
   const [sessionItems, setSessionItems] = useState<Item[]>([])
   const [cursor, setCursor] = useState(0)
-  const [opencodeCursor, setOpencodeCursor] = useState(0)
+  const [agentCursor, setAgentCursor] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [message, setMessage] = useState('')
   const [renameTarget, setRenameTarget] = useState('')
@@ -43,8 +43,8 @@ export function useAppCoreState() {
     setSessionItems,
     cursor,
     setCursor,
-    opencodeCursor,
-    setOpencodeCursor,
+    agentCursor,
+    setAgentCursor,
     searchQuery,
     setSearchQuery,
     message,

@@ -1,7 +1,7 @@
 import { describe, expect, mock, test } from 'bun:test'
 import {
   handleNormalMode,
-  handleOpencodeManageMode,
+  handleAgentsManageMode,
   handleSearchMode,
   type KeyboardHandlerContext,
   type KeyboardInput,
@@ -26,9 +26,9 @@ function createContext(overrides: Partial<KeyboardHandlerContext> = {}): Keyboar
     viewMode: ViewMode.Sessions,
     items,
     regularSessions: items,
-    opencodeSessions: [],
+    agentSessions: [],
     cursor: 0,
-    opencodeCursor: 0,
+    agentCursor: 0,
     searchQuery: '',
     projectItems: [],
     sessionItems: items,
@@ -37,7 +37,7 @@ function createContext(overrides: Partial<KeyboardHandlerContext> = {}): Keyboar
     setAppMode: mock(() => {}),
     setViewMode: mock(() => {}),
     setCursor: mock(() => 0),
-    setOpencodeCursor: mock(() => 0),
+    setAgentCursor: mock(() => 0),
     setSearchQuery: mock(() => {}),
     setAllItems: mock(() => items),
     setItems: mock(() => items),
@@ -96,7 +96,7 @@ describe('keyboard shortcuts', () => {
     expect(ctx.setPrefixActive).toHaveBeenCalledWith(true)
   })
 
-  test('quick-select in normal mode ignores opencode sessions', () => {
+  test('quick-select in normal mode ignores agent sessions', () => {
     const regular = createItem({ title: 'regular-1' })
     const opencode = createItem({ title: 'opencode-1' })
     const secondRegular = createItem({ title: 'regular-2' })
@@ -126,20 +126,36 @@ describe('keyboard shortcuts', () => {
     expect(ctx.togglePinnedSession).toHaveBeenCalledWith('session-1')
   })
 
-  test('enters opencode manage mode from standard search prefix action', () => {
+  test('enters agents manage mode from standard search prefix action', () => {
     const opencode = createItem({ title: 'opencode-main' })
     const ctx = createContext({
       prefixActive: true,
-      opencodeSessions: [opencode],
+      agentSessions: [opencode],
       setAppMode: mock(() => {}),
-      setOpencodeCursor: mock(() => 0),
+      setAgentCursor: mock(() => 0),
     })
 
     handleSearchMode({ name: 'o' }, ctx, 'standard')
 
-    expect(ctx.setAppMode).toHaveBeenCalledWith(AppMode.OpencodeManage)
-    expect(ctx.setOpencodeCursor).toHaveBeenCalledWith(0)
+    expect(ctx.setAppMode).toHaveBeenCalledWith(AppMode.AgentsManage)
+    expect(ctx.setAgentCursor).toHaveBeenCalledWith(0)
     expect(ctx.loadOpencodeStatsForSession).toHaveBeenCalledWith('opencode-main')
+  })
+
+  test('enters agents manage mode for pi without loading OpenCode stats', () => {
+    const pi = createItem({ title: 'pi-main' })
+    const ctx = createContext({
+      prefixActive: true,
+      agentSessions: [pi],
+      setAppMode: mock(() => {}),
+      setAgentCursor: mock(() => 0),
+    })
+
+    handleSearchMode({ name: 'o' }, ctx, 'standard')
+
+    expect(ctx.setAppMode).toHaveBeenCalledWith(AppMode.AgentsManage)
+    expect(ctx.setAgentCursor).toHaveBeenCalledWith(0)
+    expect(ctx.loadOpencodeStatsForSession).not.toHaveBeenCalled()
   })
 
   test('selects highlighted search result with Enter', () => {
@@ -156,13 +172,13 @@ describe('keyboard shortcuts', () => {
     expect(ctx.handleSelect).toHaveBeenCalledWith(second)
   })
 
-  test('opens settings from opencode mode with comma in vim mode', () => {
+  test('opens settings from agents mode with comma in vim mode', () => {
     const ctx = createContext({
-      appMode: AppMode.OpencodeManage,
+      appMode: AppMode.AgentsManage,
       prefixActive: false,
     })
 
-    handleOpencodeManageMode({ name: ',' }, ctx, 'vim')
+    handleAgentsManageMode({ name: ',' }, ctx, 'vim')
 
     expect(ctx.clearPendingKill).toHaveBeenCalledTimes(1)
     expect(ctx.openSettingsModal).toHaveBeenCalledTimes(1)

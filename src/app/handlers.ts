@@ -210,9 +210,9 @@ export async function executeAppCommand(
 interface CreateAppHandlersOptions extends SharedHandlerOptions {
   appMode: AppMode
   viewMode: ViewMode
-  opencodeCursor: number
+  agentCursor: number
   regularSessions: Item[]
-  opencodeSessions: Item[]
+  agentSessions: Item[]
   selectedPrimaryItem?: Item
   sessionCandidateItems: Item[]
   projectSourceItems: Item[]
@@ -226,7 +226,7 @@ interface CreateAppHandlersOptions extends SharedHandlerOptions {
   setItems: (items: Item[]) => void
   setCursor: (cursor: number) => void
   setSearchQuery: (value: string) => void
-  setOpencodeCursor: (cursor: number) => void
+  setAgentCursor: (cursor: number) => void
   setPendingKillSessionName: (sessionName: string | null) => void
   saveConfig: (config: Config) => Promise<void>
   setConfig: (config: Config) => void
@@ -330,9 +330,9 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       appMode: options.appMode,
       viewMode: options.viewMode,
       cursor: options.cursor,
-      opencodeCursor: options.opencodeCursor,
+      agentCursor: options.agentCursor,
       regularSessions: options.regularSessions,
-      opencodeSessions: options.opencodeSessions,
+      agentSessions: options.agentSessions,
       selectedPrimaryItem: options.selectedPrimaryItem,
       sessionCandidateItems: options.sessionCandidateItems,
       projectSourceItems: options.projectSourceItems,
@@ -347,7 +347,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       setItems: options.setItems,
       setCursor: options.setCursor,
       setSearchQuery: options.setSearchQuery,
-      setOpencodeCursor: options.setOpencodeCursor,
+      setAgentCursor: options.setAgentCursor,
       refreshItems: forceViewMode => options.refreshItems(forceViewMode),
       handleLastSession: handleLastSessionWrapper,
       handleRootSession: handleRootSessionWrapper,

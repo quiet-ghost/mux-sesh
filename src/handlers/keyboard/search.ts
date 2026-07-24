@@ -1,3 +1,4 @@
+import { isOpencodeSessionName } from '../../opencode/session-name'
 import { AppMode, ViewMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
 import { requestShutdown } from '../../util/shutdown'
@@ -35,10 +36,13 @@ export function handleSearchMode(
           return
         case 'o':
           ctx.clearPendingKill()
-          if (ctx.viewMode === ViewMode.Sessions && ctx.opencodeSessions.length > 0) {
-            ctx.setAppMode(AppMode.OpencodeManage)
-            ctx.setOpencodeCursor(0)
-            void ctx.loadOpencodeStatsForSession(ctx.opencodeSessions[0].title)
+          if (ctx.viewMode === ViewMode.Sessions && ctx.agentSessions.length > 0) {
+            ctx.setAppMode(AppMode.AgentsManage)
+            ctx.setAgentCursor(0)
+            const firstAgent = ctx.agentSessions[0].title
+            if (isOpencodeSessionName(firstAgent)) {
+              void ctx.loadOpencodeStatsForSession(firstAgent)
+            }
           }
           return
         case 's':

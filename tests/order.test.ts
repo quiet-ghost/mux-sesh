@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { orderProjectItems, orderSessionItems } from '../src/items/order'
 import { resolveTheme } from '../src/styles/theme'
-import { getItemIconPresentation } from '../src/ui/item-icon'
+import { formatSectionHeader, getItemIconPresentation } from '../src/ui/item-icon'
 import type { Item } from '../src/types'
 
 describe('item ordering', () => {
@@ -90,9 +90,42 @@ describe('item ordering', () => {
     expect(ordered[0]?.isPinned).toBe(true)
     expect(ordered[1]?.isPinned).toBe(false)
   })
+
+  test('keeps agent sessions at the bottom sorted by title', () => {
+    const items: Item[] = [
+      { title: 'pi-beta', desc: '', path: '/tmp/pi-beta', isSession: true },
+      { title: 'work', desc: '', path: '/tmp/work', isSession: true },
+      { title: 'opencode-alpha', desc: '', path: '/tmp/opencode', isSession: true },
+      { title: 'claude-zeta', desc: '', path: '/tmp/claude', isSession: true },
+      { title: 'codex-main', desc: '', path: '/tmp/codex', isSession: true },
+      { title: 'tui_chat', desc: '', path: '/tmp/chat', isSession: true },
+    ]
+
+    expect(orderSessionItems(items, 'live-first').map(item => item.title)).toEqual([
+      'work',
+      'claude-zeta',
+      'codex-main',
+      'opencode-alpha',
+      'pi-beta',
+      'tui_chat',
+    ])
+  })
 })
 
 describe('item icons', () => {
+  test('labels the agents section header', () => {
+    const theme = resolveTheme('catppuccin', {}, 'dark').colors
+    const header = formatSectionHeader(theme, 'agents', {
+      tmux: 'T',
+      configured: 'C',
+      project: 'P',
+      opencode: 'A',
+    })
+
+    expect(header.label).toBe('Agents')
+    expect(header.text).toBe('A Agents')
+  })
+
   test('uses config icons for linked project rows', () => {
     const legacyTheme = resolveTheme('catppuccin', {}, 'dark').colors
     const icon = getItemIconPresentation(

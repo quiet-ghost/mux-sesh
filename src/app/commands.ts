@@ -1,3 +1,4 @@
+import { isOpencodeSessionName } from '../opencode/session-name'
 import type { CommandId } from '../ui/CommandsModal'
 import { AppMode, ViewMode, type Item } from '../types'
 
@@ -5,9 +6,9 @@ interface ExecuteCommandContext {
   appMode: AppMode
   viewMode: ViewMode
   cursor: number
-  opencodeCursor: number
+  agentCursor: number
   regularSessions: Item[]
-  opencodeSessions: Item[]
+  agentSessions: Item[]
   selectedPrimaryItem?: Item
   sessionCandidateItems: Item[]
   projectSourceItems: Item[]
@@ -22,7 +23,7 @@ interface ExecuteCommandContext {
   setItems: (items: Item[]) => void
   setCursor: (cursor: number) => void
   setSearchQuery: (value: string) => void
-  setOpencodeCursor: (cursor: number) => void
+  setAgentCursor: (cursor: number) => void
   refreshItems: (forceViewMode?: ViewMode) => Promise<void>
   handleLastSession: () => Promise<void>
   handleRootSession: (item?: Item) => Promise<void>
@@ -65,8 +66,8 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
       return
     case 'rename-session': {
       const target =
-        ctx.appMode === AppMode.OpencodeManage
-          ? ctx.opencodeSessions[ctx.opencodeCursor]
+        ctx.appMode === AppMode.AgentsManage
+          ? ctx.agentSessions[ctx.agentCursor]
           : ctx.viewMode === ViewMode.Sessions
             ? ctx.regularSessions[ctx.cursor]
             : undefined
@@ -77,8 +78,8 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
     }
     case 'kill-session': {
       const target =
-        ctx.appMode === AppMode.OpencodeManage
-          ? ctx.opencodeSessions[ctx.opencodeCursor]
+        ctx.appMode === AppMode.AgentsManage
+          ? ctx.agentSessions[ctx.agentCursor]
           : ctx.viewMode === ViewMode.Sessions
             ? ctx.regularSessions[ctx.cursor]
             : undefined
@@ -109,12 +110,15 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
       ctx.closeModal()
       await ctx.handleEditTarget(ctx.selectedPrimaryItem)
       return
-    case 'open-opencode':
+    case 'open-agents':
       ctx.closeModal()
-      if (ctx.viewMode === ViewMode.Sessions && ctx.opencodeSessions.length > 0) {
-        ctx.setAppMode(AppMode.OpencodeManage)
-        ctx.setOpencodeCursor(0)
-        await ctx.loadOpencodeStatsForSession(ctx.opencodeSessions[0].title)
+      if (ctx.viewMode === ViewMode.Sessions && ctx.agentSessions.length > 0) {
+        ctx.setAppMode(AppMode.AgentsManage)
+        ctx.setAgentCursor(0)
+        const firstAgent = ctx.agentSessions[0].title
+        if (isOpencodeSessionName(firstAgent)) {
+          await ctx.loadOpencodeStatsForSession(firstAgent)
+        }
       }
       return
     case 'refresh':

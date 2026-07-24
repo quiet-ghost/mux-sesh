@@ -5,7 +5,7 @@ import type { ModalState } from './modals'
 import {
   handleNewSessionMode,
   handleNormalMode,
-  handleOpencodeManageMode,
+  handleAgentsManageMode,
   handleSearchMode,
   type KeyboardHandlerContext,
 } from '../handlers/keyboard'
@@ -20,12 +20,12 @@ interface UseAppKeyboardOptions {
   config: Config | null
   items: Item[]
   regularSessions: Item[]
-  opencodeSessions: Item[]
+  agentSessions: Item[]
   sessionItems: Item[]
   sessionCandidateItems: Item[]
   projectSourceItems: Item[]
   cursor: number
-  opencodeCursor: number
+  agentCursor: number
   searchQuery: string
   prefixActive: boolean
   prefixTimeoutRef: MutableRefObject<NodeJS.Timeout | null>
@@ -66,7 +66,7 @@ interface UseAppKeyboardOptions {
   setAppMode: Dispatch<SetStateAction<AppMode>>
   setViewMode: Dispatch<SetStateAction<ViewMode>>
   setCursor: Dispatch<SetStateAction<number>>
-  setOpencodeCursor: Dispatch<SetStateAction<number>>
+  setAgentCursor: Dispatch<SetStateAction<number>>
   setSearchQuery: Dispatch<SetStateAction<string>>
   setAllItems: Dispatch<SetStateAction<Item[]>>
   setItems: Dispatch<SetStateAction<Item[]>>
@@ -80,9 +80,9 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     viewMode: options.viewMode,
     items: options.items,
     regularSessions: options.regularSessions,
-    opencodeSessions: options.opencodeSessions,
+    agentSessions: options.agentSessions,
     cursor: options.cursor,
-    opencodeCursor: options.opencodeCursor,
+    agentCursor: options.agentCursor,
     searchQuery: options.searchQuery,
     prefixKey: options.config?.prefixKey,
     projectItems:
@@ -95,7 +95,7 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     setAppMode: options.setAppMode,
     setViewMode: options.setViewMode,
     setCursor: options.setCursor,
-    setOpencodeCursor: options.setOpencodeCursor,
+    setAgentCursor: options.setAgentCursor,
     setSearchQuery: options.setSearchQuery,
     setAllItems: options.setAllItems,
     setItems: options.setItems,
@@ -156,8 +156,8 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
       } else {
         handleNewSessionMode(key, keyboardContext, keybindMode)
       }
-    } else if (options.appMode === AppMode.OpencodeManage) {
-      handleOpencodeManageMode(key, keyboardContext, keybindMode)
+    } else if (options.appMode === AppMode.AgentsManage) {
+      handleAgentsManageMode(key, keyboardContext, keybindMode)
     }
   })
 }

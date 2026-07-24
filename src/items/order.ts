@@ -1,5 +1,5 @@
 import type { Item, SortOrder } from '../types'
-import { isOpencodeSessionItem } from '../opencode/session-name'
+import { isAgentSessionItem } from '../agents/session-name'
 import { getLiveSessionSortKey } from '../util/path-display'
 
 export type SessionSection = 'pinned' | 'live' | 'configured'
@@ -62,8 +62,8 @@ export function orderSessionItems(
   pinnedSessions: readonly string[] = []
 ): Item[] {
   const itemsWithPinnedState = applyPinnedState(items, pinnedSessions)
-  const opencodeItems = itemsWithPinnedState.filter(isOpencodeSessionItem).sort(compareByTitle)
-  const regularItems = itemsWithPinnedState.filter(item => !isOpencodeSessionItem(item))
+  const agentItems = itemsWithPinnedState.filter(isAgentSessionItem).sort(compareByTitle)
+  const regularItems = itemsWithPinnedState.filter(item => !isAgentSessionItem(item))
   const { pinnedItems, remainingItems } = splitPinnedItems(regularItems, pinnedSessions)
 
   const orderedRegularItems =
@@ -79,7 +79,7 @@ export function orderSessionItems(
           })
         : sortByGroup(remainingItems, ['live', 'configured'])
 
-  return [...pinnedItems, ...orderedRegularItems, ...opencodeItems]
+  return [...pinnedItems, ...orderedRegularItems, ...agentItems]
 }
 
 export function orderProjectItems(items: Item[], sortOrder: SortOrder = 'live-first'): Item[] {

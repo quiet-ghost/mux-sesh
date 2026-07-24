@@ -56,7 +56,7 @@ You only need to set the values you want to change. Everything else falls back t
 | `auto_update`     | Enables background update checks for supported installs             |
 | `dir_length`      | Path depth used when generating session names                       |
 | `hidden_sessions` | Glob patterns for sessions to hide                                  |
-| `icons`           | Icons for tmux, configured, project, and OpenCode rows              |
+| `icons`           | Icons for tmux, configured, project, and agent rows                 |
 | `themes`          | Custom theme definitions                                            |
 | `default_session` | Fallback startup and preview commands                               |
 | `projects`        | Exact path rules                                                    |

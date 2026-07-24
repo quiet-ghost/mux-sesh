@@ -16,7 +16,7 @@ export type CommandId =
   | 'last-session'
   | 'root-session'
   | 'edit-target'
-  | 'open-opencode'
+  | 'open-agents'
   | 'refresh'
   | 'back'
 
@@ -51,7 +51,7 @@ export function getCommandEntries(
     prefixKey ? prefixed(prefixKey, suffix) : fallback
   const prefixCategory = prefixKey ? `Prefix ${prefixKey}` : 'Prefix'
 
-  if (appMode === AppMode.OpencodeManage) {
+  if (appMode === AppMode.AgentsManage) {
     return [
       { id: 'back', category: 'Direct', title: 'Back', keybind: 'esc' },
       { id: 'kill-session', category: 'Direct', title: 'Kill session', keybind: 'd' },
@@ -68,7 +68,7 @@ export function getCommandEntries(
   return [
     { id: 'search', category: 'Direct', title: 'Search', keybind: 'i' },
     { id: 'new-session', category: 'Direct', title: 'New session', keybind: 'n' },
-    { id: 'open-opencode', category: 'Direct', title: 'Open OpenCode sessions', keybind: 'o' },
+    { id: 'open-agents', category: 'Direct', title: 'Open agent sessions', keybind: 'o' },
     { id: 'kill-session', category: 'Direct', title: 'Kill session', keybind: 'd' },
     ...(selectedItem && (selectedItem.isSession || selectedItem.itemKind === 'configured')
       ? [

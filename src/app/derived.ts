@@ -13,8 +13,8 @@ import { splitVisibleSessions } from './view'
 
 interface SessionCommandState {
   regularSessions: Item[]
-  opencodeSessions: Item[]
-  selectedOpencodeSessionName: string | undefined
+  agentSessions: Item[]
+  selectedAgentSessionName: string | undefined
   selectedPrimaryItem: Item | undefined
   filteredCommandEntries: CommandEntry[]
 }
@@ -29,28 +29,28 @@ export function getSessionCommandState(
   viewMode: ViewMode,
   items: Item[],
   cursor: number,
-  opencodeCursor: number,
+  agentCursor: number,
   config: Config | null,
   commandsSearchQuery: string
 ): SessionCommandState {
   const sessionSplit =
     viewMode === ViewMode.Sessions &&
-    (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
+    (appMode === AppMode.Normal || appMode === AppMode.AgentsManage)
       ? splitVisibleSessions(items)
-      : { regularSessions: items, opencodeSessions: [] }
+      : { regularSessions: items, agentSessions: [] }
 
   const selectedPrimaryItem =
     viewMode === ViewMode.Sessions && appMode === AppMode.Normal
       ? sessionSplit.regularSessions[cursor]
-      : items[cursor]
+      : viewMode === ViewMode.Sessions && appMode === AppMode.AgentsManage
+        ? sessionSplit.agentSessions[agentCursor]
+        : items[cursor]
 
   return {
     regularSessions: sessionSplit.regularSessions,
-    opencodeSessions: sessionSplit.opencodeSessions,
-    selectedOpencodeSessionName:
-      appMode === AppMode.OpencodeManage
-        ? sessionSplit.opencodeSessions[opencodeCursor]?.title
-        : undefined,
+    agentSessions: sessionSplit.agentSessions,
+    selectedAgentSessionName:
+      appMode === AppMode.AgentsManage ? sessionSplit.agentSessions[agentCursor]?.title : undefined,
     selectedPrimaryItem,
     filteredCommandEntries: filterCommandEntries(
       getCommandEntries(appMode, config?.keybindMode, config?.prefixKey, selectedPrimaryItem),
