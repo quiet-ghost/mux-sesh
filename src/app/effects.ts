@@ -1,4 +1,5 @@
 import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
+import { isOpencodeSessionName } from '../opencode/session-name'
 import { checkAndUpdate, updateEvents } from '../update'
 import { showTemporaryToast } from './notifications'
 import { clearMatchIndices, filterAndSortItems } from '../search'
@@ -219,8 +220,8 @@ export function usePendingKillReset(
   pendingKillSessionName: string | null,
   appMode: AppMode,
   viewMode: ViewMode,
-  opencodeSessions: Item[],
-  opencodeCursor: number,
+  agentSessions: Item[],
+  agentCursor: number,
   regularSessions: Item[],
   cursor: number,
   setPendingKillSessionName: Dispatch<SetStateAction<string | null>>
@@ -231,8 +232,8 @@ export function usePendingKillReset(
     }
 
     const selectedSessionName =
-      appMode === AppMode.OpencodeManage
-        ? opencodeSessions[opencodeCursor]?.title
+      appMode === AppMode.AgentsManage
+        ? agentSessions[agentCursor]?.title
         : viewMode === ViewMode.Sessions
           ? regularSessions[cursor]?.title
           : undefined
@@ -243,8 +244,8 @@ export function usePendingKillReset(
   }, [
     appMode,
     cursor,
-    opencodeCursor,
-    opencodeSessions,
+    agentCursor,
+    agentSessions,
     pendingKillSessionName,
     regularSessions,
     setPendingKillSessionName,
@@ -333,27 +334,27 @@ export function useNewSessionFileSearch(
 }
 
 export function useOpencodeStatsPolling(
-  selectedOpencodeSessionName: string | undefined,
+  selectedAgentSessionName: string | undefined,
   loadOpencodeStatsForSession: (sessionName: string) => Promise<unknown>
 ) {
   const loadStatsRef = useRef(loadOpencodeStatsForSession)
   loadStatsRef.current = loadOpencodeStatsForSession
 
   useEffect(() => {
-    if (!selectedOpencodeSessionName) {
+    if (!selectedAgentSessionName || !isOpencodeSessionName(selectedAgentSessionName)) {
       return
     }
 
-    void loadStatsRef.current(selectedOpencodeSessionName)
+    void loadStatsRef.current(selectedAgentSessionName)
 
     const interval = setInterval(() => {
-      void loadStatsRef.current(selectedOpencodeSessionName)
+      void loadStatsRef.current(selectedAgentSessionName)
     }, 2000)
 
     return () => {
       clearInterval(interval)
     }
-  }, [selectedOpencodeSessionName])
+  }, [selectedAgentSessionName])
 }
 
 interface UseAppBehaviorsOptions {
@@ -380,13 +381,13 @@ interface UseAppBehaviorsOptions {
   items: Item[]
   selectedPrimaryItem: Item | undefined
   pendingKillSessionName: string | null
-  opencodeSessions: Item[]
-  opencodeCursor: number
+  agentSessions: Item[]
+  agentCursor: number
   regularSessions: Item[]
   setPendingKillSessionName: Dispatch<SetStateAction<string | null>>
   searchQuery: string
   allItems: Item[]
-  selectedOpencodeSessionName: string | undefined
+  selectedAgentSessionName: string | undefined
   loadOpencodeStatsForSession: (sessionName: string) => Promise<unknown>
   setUpdatedVersion: Dispatch<SetStateAction<string | null>>
   setToastMessage: Dispatch<SetStateAction<string>>
@@ -438,8 +439,8 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.pendingKillSessionName,
     options.appMode,
     options.viewMode,
-    options.opencodeSessions,
-    options.opencodeCursor,
+    options.agentSessions,
+    options.agentCursor,
     options.regularSessions,
     options.cursor,
     options.setPendingKillSessionName
@@ -459,5 +460,5 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.setItems,
     options.setCursor
   )
-  useOpencodeStatsPolling(options.selectedOpencodeSessionName, options.loadOpencodeStatsForSession)
+  useOpencodeStatsPolling(options.selectedAgentSessionName, options.loadOpencodeStatsForSession)
 }

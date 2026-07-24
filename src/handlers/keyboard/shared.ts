@@ -12,9 +12,9 @@ export interface KeyboardHandlerContext {
   viewMode: ViewMode
   items: Item[]
   regularSessions: Item[]
-  opencodeSessions: Item[]
+  agentSessions: Item[]
   cursor: number
-  opencodeCursor: number
+  agentCursor: number
   searchQuery: string
   prefixKey?: string
   projectItems: Item[]
@@ -24,7 +24,7 @@ export interface KeyboardHandlerContext {
   setAppMode: (mode: AppMode) => void
   setViewMode: (mode: ViewMode) => void
   setCursor: Dispatch<SetStateAction<number>>
-  setOpencodeCursor: Dispatch<SetStateAction<number>>
+  setAgentCursor: Dispatch<SetStateAction<number>>
   setSearchQuery: (query: string) => void
   setAllItems: Dispatch<SetStateAction<Item[]>>
   setItems: Dispatch<SetStateAction<Item[]>>

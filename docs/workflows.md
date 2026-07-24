@@ -148,14 +148,14 @@ The app has two main list views:
 
 In vim mode, view switching is always available on direct `s` and `p`, and also works through the configured prefix.
 
-## Manage OpenCode Sessions
+## Manage Agent Sessions
 
-OpenCode sessions live in their own view.
+Agent sessions (OpenCode, Pi, Codex, Claude, and related side sessions) live in their own section at the bottom of the sessions list.
 
 - vim mode: `o`
 - standard mode: `prefix + o`
 
-From there you can inspect, rename, or kill OpenCode-managed sessions without leaving the picker.
+From there you can inspect, rename, or kill agent sessions without leaving the picker. OpenCode rows still show OpenCode stats; other agents use the normal session details panel.
 
 ## Install From Source
 

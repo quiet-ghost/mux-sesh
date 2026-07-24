@@ -1,3 +1,4 @@
+import { isOpencodeSessionName } from '../../opencode/session-name'
 import { AppMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
 import {
@@ -9,7 +10,13 @@ import {
   type KeyboardInput,
 } from './shared'
 
-export function handleOpencodeManageMode(
+function loadStatsIfOpencode(ctx: KeyboardHandlerContext, sessionName: string) {
+  if (isOpencodeSessionName(sessionName)) {
+    void ctx.loadOpencodeStatsForSession(sessionName)
+  }
+}
+
+export function handleAgentsManageMode(
   key: KeyboardInput,
   ctx: KeyboardHandlerContext,
   keybindMode: KeybindMode = 'vim'
@@ -32,14 +39,14 @@ export function handleOpencodeManageMode(
         ctx.setAppMode(AppMode.Normal)
         return
       case 'd':
-        if (ctx.opencodeSessions[ctx.opencodeCursor]) {
-          ctx.requestKillSession(ctx.opencodeSessions[ctx.opencodeCursor].title)
+        if (ctx.agentSessions[ctx.agentCursor]) {
+          ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor].title)
         }
         return
       case 'r':
-        if (ctx.opencodeSessions[ctx.opencodeCursor]) {
+        if (ctx.agentSessions[ctx.agentCursor]) {
           ctx.clearPendingKill()
-          ctx.openRenameModal(ctx.opencodeSessions[ctx.opencodeCursor].title)
+          ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor].title)
         }
         return
     }
@@ -60,10 +67,10 @@ export function handleOpencodeManageMode(
 
   if (keyName === 'down' || (!isStandard && keyName === 'j')) {
     ctx.clearPendingKill()
-    ctx.setOpencodeCursor(cursor => {
-      const next = clampCursorIndex(ctx.opencodeSessions.length, cursor + 1)
-      if (next !== cursor && ctx.opencodeSessions[next]) {
-        void ctx.loadOpencodeStatsForSession(ctx.opencodeSessions[next].title)
+    ctx.setAgentCursor(cursor => {
+      const next = clampCursorIndex(ctx.agentSessions.length, cursor + 1)
+      if (next !== cursor && ctx.agentSessions[next]) {
+        loadStatsIfOpencode(ctx, ctx.agentSessions[next].title)
       }
       return next
     })
@@ -72,10 +79,10 @@ export function handleOpencodeManageMode(
 
   if (keyName === 'up' || (!isStandard && keyName === 'k')) {
     ctx.clearPendingKill()
-    ctx.setOpencodeCursor(cursor => {
-      const next = clampCursorIndex(ctx.opencodeSessions.length, cursor - 1)
-      if (next !== cursor && ctx.opencodeSessions[next]) {
-        void ctx.loadOpencodeStatsForSession(ctx.opencodeSessions[next].title)
+    ctx.setAgentCursor(cursor => {
+      const next = clampCursorIndex(ctx.agentSessions.length, cursor - 1)
+      if (next !== cursor && ctx.agentSessions[next]) {
+        loadStatsIfOpencode(ctx, ctx.agentSessions[next].title)
       }
       return next
     })
@@ -83,16 +90,16 @@ export function handleOpencodeManageMode(
   }
 
   if (!isStandard && keyName === 'd') {
-    if (ctx.opencodeSessions[ctx.opencodeCursor]) {
-      ctx.requestKillSession(ctx.opencodeSessions[ctx.opencodeCursor].title)
+    if (ctx.agentSessions[ctx.agentCursor]) {
+      ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor].title)
     }
     return
   }
 
   if (!ctx.prefixKey && !isStandard && keyName === 'r') {
-    if (ctx.opencodeSessions[ctx.opencodeCursor]) {
+    if (ctx.agentSessions[ctx.agentCursor]) {
       ctx.clearPendingKill()
-      ctx.openRenameModal(ctx.opencodeSessions[ctx.opencodeCursor].title)
+      ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor].title)
     }
     return
   }

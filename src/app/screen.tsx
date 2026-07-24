@@ -8,12 +8,13 @@ import {
   getStatusLabel,
 } from './view'
 import { syncTextareaValue } from './textarea'
+import { isOpencodeSessionItem } from '../opencode/session-name'
 import { AppMode, ViewMode, type Config, type Item, type ThemeColors } from '../types'
 import { isGitHubURL } from '../util/github'
 import { shouldShowDetailPanel } from '../util/terminal'
 import SearchInput from '../ui/SearchInput'
 import SessionList from '../ui/SessionList'
-import OpencodeSessionGroup from '../ui/OpencodeSessionGroup'
+import AgentSessionGroup from '../ui/AgentSessionGroup'
 import ItemList from '../ui/ItemList'
 import OpencodeStatsPanel from '../ui/OpencodeStatsPanel'
 import SessionDetailsPanel from '../ui/SessionDetailsPanel'
@@ -28,10 +29,10 @@ interface Props {
   config: Config | null
   items: Item[]
   regularSessions: Item[]
-  opencodeSessions: Item[]
+  agentSessions: Item[]
   selectedPrimaryItem?: Item
   cursor: number
-  opencodeCursor: number
+  agentCursor: number
   searchQuery: string
   prefixActive: boolean
   pendingKillSessionName: string | null
@@ -54,10 +55,10 @@ export function AppScreen({
   config,
   items,
   regularSessions,
-  opencodeSessions,
+  agentSessions,
   selectedPrimaryItem,
   cursor,
-  opencodeCursor,
+  agentCursor,
   searchQuery,
   prefixActive,
   pendingKillSessionName,
@@ -78,6 +79,12 @@ export function AppScreen({
   const activeSessions = items.filter(item => item.isSession && item.isAttached).length
   const maxVisibleItems = Math.max(8, rows - (appMode === AppMode.NewSession ? 10 : 12))
   const versionLabel = formatVersionBadge(CURRENT_VERSION, updatedVersion)
+  const selectedAgentSession = agentSessions[agentCursor]
+  const showOpencodeStats =
+    viewMode === ViewMode.Sessions &&
+    appMode === AppMode.AgentsManage &&
+    selectedAgentSession !== undefined &&
+    isOpencodeSessionItem(selectedAgentSession)
   const footerHint = getFooterHint(appMode, config?.prefixKey)
 
   return (
@@ -134,7 +141,7 @@ export function AppScreen({
                 flexShrink: 0,
                 marginTop:
                   viewMode === ViewMode.Sessions &&
-                  (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage)
+                  (appMode === AppMode.Normal || appMode === AppMode.AgentsManage)
                     ? 1
                     : 0,
               }}
@@ -144,7 +151,7 @@ export function AppScreen({
                   {getEmptyStateMessage(appMode, searchQuery, isGitHubURL(searchQuery))}
                 </text>
               ) : viewMode === ViewMode.Sessions &&
-                (appMode === AppMode.Normal || appMode === AppMode.OpencodeManage) ? (
+                (appMode === AppMode.Normal || appMode === AppMode.AgentsManage) ? (
                 <>
                   <SessionList
                     items={regularSessions}
@@ -155,10 +162,10 @@ export function AppScreen({
                     pendingKillSessionName={pendingKillSessionName}
                   />
 
-                  <OpencodeSessionGroup
-                    sessions={opencodeSessions}
+                  <AgentSessionGroup
+                    sessions={agentSessions}
                     appMode={appMode}
-                    cursor={opencodeCursor}
+                    cursor={agentCursor}
                     icons={config?.icons}
                     pendingKillSessionName={pendingKillSessionName}
                   />
@@ -178,8 +185,8 @@ export function AppScreen({
           </box>
 
           {shouldShowDetailPanel(columns, appMode === AppMode.NewSession) &&
-            (viewMode === ViewMode.Sessions && appMode === AppMode.OpencodeManage ? (
-              <OpencodeStatsPanel selectedItem={opencodeSessions[opencodeCursor]} />
+            (showOpencodeStats ? (
+              <OpencodeStatsPanel selectedItem={selectedAgentSession} />
             ) : (
               <SessionDetailsPanel selectedItem={selectedPrimaryItem} config={config} />
             ))}

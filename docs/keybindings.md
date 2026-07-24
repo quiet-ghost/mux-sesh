@@ -17,7 +17,7 @@ Vim mode keeps common actions on direct keys.
 | `Enter`     | Attach to a session or create from a project |
 | `i`         | Enter search mode                            |
 | `n`         | Enter new-session mode                       |
-| `o`         | Open OpenCode sessions                       |
+| `o`         | Open agent sessions                          |
 | `d`         | Kill selected live session                   |
 | `1-9`       | Quick select visible rows                    |
 | `Ctrl+P`    | Open the command palette                     |
@@ -81,7 +81,7 @@ Standard mode is search-first. The query stays active, arrow keys handle movemen
 | Prefix + key | Action                        |
 | ------------ | ----------------------------- |
 | `n`          | New session                   |
-| `o`          | Open OpenCode sessions        |
+| `o`          | Open agent sessions           |
 | `s`          | Open settings                 |
 | `l`          | Previous tmux session         |
 | `g`          | Git-root session              |
@@ -103,19 +103,19 @@ Use new-session mode to create from a discovered project, a configured target, a
 
 In standard mode, `Ctrl+I` returns from new-session mode to search, and `Ctrl+D` can kill a selected live session if one is focused.
 
-## OpenCode Sessions
+## Agent Sessions
 
-OpenCode sessions have their own manage view.
+Agent sessions have their own manage view. Matching names include `opencode-*`, `pi-*`, `codex-*`, `claude-*`, and `tui_chat`.
 
-| Key                    | Action                                                        |
-| ---------------------- | ------------------------------------------------------------- |
-| `j` / `k` or `↑` / `↓` | Move                                                          |
-| `d`                    | Kill selected OpenCode session in vim mode                    |
-| `r`                    | Rename selected OpenCode session when no prefix is configured |
-| `Ctrl+P`               | Open the command palette                                      |
-| `Esc`                  | Leave the OpenCode sessions view                              |
+| Key                    | Action                                                     |
+| ---------------------- | ---------------------------------------------------------- |
+| `j` / `k` or `↑` / `↓` | Move                                                       |
+| `d`                    | Kill selected agent session in vim mode                    |
+| `r`                    | Rename selected agent session when no prefix is configured |
+| `Ctrl+P`               | Open the command palette                                   |
+| `Esc`                  | Leave the agent sessions view                              |
 
-With a prefix configured, OpenCode session actions follow the prefix as well:
+With a prefix configured, agent session actions follow the prefix as well:
 
 - `prefix + o` back
 - `prefix + d` kill

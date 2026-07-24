@@ -18,23 +18,33 @@ import {
 import { AppMode, ViewMode, type Item } from '../src/types'
 
 describe('app view helpers', () => {
-  test('splits regular and opencode sessions without losing item shape', () => {
+  test('splits regular and agent sessions without losing item shape', () => {
     const items: Item[] = [
       { title: 'dev', desc: '', path: '/tmp/dev', isSession: true },
       { title: 'opencode-dev', desc: '', path: '/tmp/opencode', isSession: true },
+      { title: 'pi-main', desc: '', path: '/tmp/pi', isSession: true },
+      { title: 'codex-work', desc: '', path: '/tmp/codex', isSession: true },
+      { title: 'claude-review', desc: '', path: '/tmp/claude', isSession: true },
+      { title: 'tui_chat', desc: '', path: '/tmp/chat', isSession: true },
     ]
 
     const split = splitVisibleSessions(items)
 
-    expect(split.regularSessions).toHaveLength(1)
-    expect(split.regularSessions[0]?.path).toBe('/tmp/dev')
-    expect(split.opencodeSessions).toHaveLength(1)
-    expect(split.opencodeSessions[0]?.title).toBe('opencode-dev')
+    expect(split.regularSessions.map(item => item.title)).toEqual(['dev'])
+    expect(split.agentSessions.map(item => item.title)).toEqual([
+      'opencode-dev',
+      'pi-main',
+      'codex-work',
+      'claude-review',
+      'tui_chat',
+    ])
   })
 
   test('builds title, footer, status, and empty messages from app state', () => {
     expect(getAppTitle(AppMode.NewSession, ViewMode.Projects)).toBe('New Session')
-    expect(getFooterHint(AppMode.OpencodeManage, 'ctrl+x')).toContain('ctrl+x')
+    expect(getAppTitle(AppMode.AgentsManage, ViewMode.Sessions)).toBe('Agent Sessions')
+    expect(getFooterHint(AppMode.AgentsManage, 'ctrl+x')).toContain('ctrl+x')
+    expect(getFooterHint(AppMode.Normal)).toContain('o agents')
     expect(getStatusLabel(ViewMode.Sessions, 2, 5, 9)).toBe('2/5 active')
     expect(getEmptyStateMessage(AppMode.NewSession, 'https://github.com/acme/repo', true)).toBe(
       'Clone & create session'
@@ -75,7 +85,7 @@ describe('app derived helpers', () => {
     )
 
     expect(state.regularSessions).toHaveLength(1)
-    expect(state.opencodeSessions).toHaveLength(1)
+    expect(state.agentSessions).toHaveLength(1)
     expect(state.selectedPrimaryItem?.title).toBe('alpha')
     expect(state.filteredCommandEntries.some(entry => entry.id === 'refresh')).toBe(true)
   })
@@ -375,9 +385,9 @@ describe('app handler factory', () => {
       cursor: 0,
       showMessage,
       refreshItems,
-      opencodeCursor: 0,
+      agentCursor: 0,
       regularSessions: [],
-      opencodeSessions: [],
+      agentSessions: [],
       selectedPrimaryItem: undefined,
       sessionCandidateItems: [],
       projectSourceItems: [],
@@ -391,7 +401,7 @@ describe('app handler factory', () => {
       setItems: mock(() => {}),
       setCursor: mock(() => {}),
       setSearchQuery: mock(() => {}),
-      setOpencodeCursor: mock(() => {}),
+      setAgentCursor: mock(() => {}),
       setPendingKillSessionName: mock(() => {}),
       saveConfig: mock(async () => {}),
       setConfig: mock(() => {}),
@@ -423,9 +433,9 @@ describe('app handler factory', () => {
       cursor: 0,
       showMessage: mock(() => {}),
       refreshItems: mock(async () => {}),
-      opencodeCursor: 0,
+      agentCursor: 0,
       regularSessions: [],
-      opencodeSessions: [],
+      agentSessions: [],
       selectedPrimaryItem: undefined,
       sessionCandidateItems: [],
       projectSourceItems: [],
@@ -439,7 +449,7 @@ describe('app handler factory', () => {
       setItems: mock(() => {}),
       setCursor: mock(() => {}),
       setSearchQuery: mock(() => {}),
-      setOpencodeCursor: mock(() => {}),
+      setAgentCursor: mock(() => {}),
       setPendingKillSessionName: mock(() => {}),
       saveConfig: mock(async () => {}),
       setConfig: mock(() => {}),

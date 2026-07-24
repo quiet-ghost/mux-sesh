@@ -1,5 +1,5 @@
+import { isAgentSessionItem } from '../agents/session-name'
 import type { SessionSection } from '../items/order'
-import { isOpencodeSessionItem } from '../opencode/session-name'
 import type { IconConfig, Item, ThemeColors } from '../types'
 
 export interface ItemIconPresentation {
@@ -45,8 +45,7 @@ export function getItemIconPresentation(
 
   if (item.isSession) {
     return {
-      glyph:
-        item.icon ?? (isOpencodeSessionItem(item) ? resolvedIcons.opencode : resolvedIcons.tmux),
+      glyph: item.icon ?? (isAgentSessionItem(item) ? resolvedIcons.opencode : resolvedIcons.tmux),
       color: item.isAttached ? theme.active : theme.inactive,
     }
   }
@@ -66,7 +65,7 @@ export function getItemIconPresentation(
 
 export function getSessionSectionPresentation(
   theme: ThemeColors,
-  section: SessionSection | 'opencode',
+  section: SessionSection | 'agents',
   icons?: IconConfig
 ): ItemIconPresentation & { label: string } {
   const resolvedIcons = getIconConfig(icons)
@@ -76,8 +75,8 @@ export function getSessionSectionPresentation(
       return { glyph: '', color: theme.accent, label: 'Pinned' }
     case 'configured':
       return { glyph: resolvedIcons.configured, color: theme.action, label: 'Configured' }
-    case 'opencode':
-      return { glyph: resolvedIcons.opencode, color: theme.action, label: 'OpenCode' }
+    case 'agents':
+      return { glyph: resolvedIcons.opencode, color: theme.action, label: 'Agents' }
     case 'live':
       return { glyph: resolvedIcons.tmux, color: theme.action, label: 'Live' }
   }
@@ -85,7 +84,7 @@ export function getSessionSectionPresentation(
 
 export function formatSectionHeader(
   theme: ThemeColors,
-  section: SessionSection | 'opencode',
+  section: SessionSection | 'agents',
   icons?: IconConfig
 ): ItemIconPresentation & { text: string } {
   const presentation = getSessionSectionPresentation(theme, section, icons)

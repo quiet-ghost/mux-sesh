@@ -12,7 +12,7 @@ interface Props {
   pendingKillSessionName?: string | null
 }
 
-export default function OpencodeSessionGroup({
+export default function AgentSessionGroup({
   sessions,
   appMode,
   cursor,
@@ -22,7 +22,7 @@ export default function OpencodeSessionGroup({
   const theme = useTheme()
   if (sessions.length === 0) return null
 
-  const header = formatSectionHeader(theme, 'opencode', icons)
+  const header = formatSectionHeader(theme, 'agents', icons)
 
   return (
     <>
@@ -31,11 +31,11 @@ export default function OpencodeSessionGroup({
       </text>
       {sessions.map((item, i) => {
         const pendingKill = item.title === pendingKillSessionName
-        const selected = appMode === AppModeEnum.OpencodeManage && i === cursor
+        const selected = appMode === AppModeEnum.AgentsManage && i === cursor
 
         return (
           <box
-            key={`opencode-${i}`}
+            key={`agent-${i}`}
             style={{
               flexDirection: 'row',
               justifyContent: 'space-between',
