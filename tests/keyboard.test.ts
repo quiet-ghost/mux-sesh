@@ -191,6 +191,35 @@ describe('keyboard shortcuts', () => {
     expect(ctx.handleSelect).toHaveBeenCalledWith(herdrAgent)
   })
 
+  test('does not kill or rename a targeted Herdr agent tab', () => {
+    const herdrAgent = {
+      ...createItem({ title: 'opencode-api', itemKind: 'herdr', agentStatus: 'working' }),
+      backend: 'herdr' as const,
+      sessionId: 'agents',
+      target: { kind: 'agent' as const, tabId: 'agents:t1', paneId: 'agents:p1' },
+    }
+    const directCtx = createContext({
+      appMode: AppMode.AgentsManage,
+      prefixActive: false,
+      agentSessions: [herdrAgent],
+    })
+    const prefixCtx = createContext({
+      appMode: AppMode.AgentsManage,
+      prefixActive: true,
+      agentSessions: [herdrAgent],
+    })
+
+    handleAgentsManageMode({ name: 'd' }, directCtx, 'vim')
+    handleAgentsManageMode({ name: 'r' }, directCtx, 'vim')
+    handleAgentsManageMode({ name: 'd' }, prefixCtx, 'standard')
+    handleAgentsManageMode({ name: 'r' }, prefixCtx, 'standard')
+
+    expect(directCtx.requestKillSession).not.toHaveBeenCalled()
+    expect(directCtx.openRenameModal).not.toHaveBeenCalled()
+    expect(prefixCtx.requestKillSession).not.toHaveBeenCalled()
+    expect(prefixCtx.openRenameModal).not.toHaveBeenCalled()
+  })
+
   test('selects highlighted search result with Enter', () => {
     const first = createItem({ title: 'first' })
     const second = createItem({ title: 'second' })

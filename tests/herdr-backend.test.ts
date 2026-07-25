@@ -121,6 +121,83 @@ const snapshot = JSON.stringify({
   },
 })
 
+const agentsWorkspaceSnapshot = JSON.stringify({
+  id: 'cli:api:snapshot',
+  result: {
+    type: 'session_snapshot',
+    snapshot: {
+      focused_workspace_id: 'agents',
+      focused_tab_id: 'agents:t1',
+      focused_pane_id: 'agents:p1',
+      workspaces: [
+        {
+          workspace_id: 'agents',
+          label: 'Agents',
+          focused: true,
+          tab_count: 2,
+          active_tab_id: 'agents:t1',
+          agent_status: 'done',
+        },
+      ],
+      tabs: [
+        { tab_id: 'agents:t1', workspace_id: 'agents', number: 1, label: 'api-agent' },
+        { tab_id: 'agents:t2', workspace_id: 'agents', number: 2, label: 'web-agent' },
+      ],
+      panes: [
+        {
+          pane_id: 'agents:p1',
+          workspace_id: 'agents',
+          tab_id: 'agents:t1',
+          focused: true,
+          agent_status: 'working',
+          cwd: '/repo/api',
+          foreground_cwd: '/repo/api/src',
+          display_agent: 'opencode',
+        },
+        {
+          pane_id: 'agents:p2',
+          workspace_id: 'agents',
+          tab_id: 'agents:t2',
+          focused: false,
+          agent_status: 'idle',
+          cwd: '/repo/web',
+          display_agent: 'pi',
+        },
+      ],
+      layouts: [
+        {
+          workspace_id: 'agents',
+          tab_id: 'agents:t1',
+          focused_pane_id: 'agents:p1',
+        },
+        {
+          workspace_id: 'agents',
+          tab_id: 'agents:t2',
+          focused_pane_id: 'agents:p2',
+        },
+      ],
+      agents: [
+        {
+          agent_status: 'working',
+          workspace_id: 'agents',
+          tab_id: 'agents:t1',
+          pane_id: 'agents:p1',
+          name: 'opencode-api',
+          foreground_cwd: '/repo/api/src',
+        },
+        {
+          agent_status: 'idle',
+          workspace_id: 'agents',
+          tab_id: 'agents:t2',
+          pane_id: 'agents:p2',
+          name: 'pi-web',
+          cwd: '/repo/web',
+        },
+      ],
+    },
+  },
+})
+
 function recordingRunner(responses: Array<{ exitCode: number; stdout: string; stderr: string }>): {
   runner: CommandRunner
   commands: string[][]
@@ -142,6 +219,38 @@ function recordingRunner(responses: Array<{ exitCode: number; stdout: string; st
 }
 
 describe('Herdr backend', () => {
+  test('lists detected agents from the Agents workspace as individual targets', async () => {
+    const { runner } = recordingRunner([
+      { exitCode: 0, stdout: agentsWorkspaceSnapshot, stderr: '' },
+    ])
+    const backend = createHerdrBackend({ runner, insideHerdr: true })
+
+    expect(await backend.list()).toEqual([
+      {
+        backend: 'herdr',
+        id: 'agents',
+        title: 'opencode-api',
+        workspaceTitle: 'Agents',
+        path: '/repo/api/src',
+        isActive: true,
+        unitCount: 1,
+        agentStatus: 'working',
+        target: { kind: 'agent', tabId: 'agents:t1', paneId: 'agents:p1' },
+      },
+      {
+        backend: 'herdr',
+        id: 'agents',
+        title: 'pi-web',
+        workspaceTitle: 'Agents',
+        path: '/repo/web',
+        isActive: false,
+        unitCount: 1,
+        agentStatus: 'idle',
+        target: { kind: 'agent', tabId: 'agents:t2', paneId: 'agents:p2' },
+      },
+    ])
+  })
+
   test('lists workspaces from a validated snapshot without collapsing duplicate labels', async () => {
     const { runner, commands } = recordingRunner([{ exitCode: 0, stdout: snapshot, stderr: '' }])
     const backend = createHerdrBackend({ runner, insideHerdr: true })
@@ -184,6 +293,24 @@ describe('Herdr backend', () => {
 
     expect(commands).toEqual([['herdr', 'workspace', 'focus', 'w7'], ['herdr']])
     expect(options).toEqual([undefined, { inheritStdio: true }])
+  })
+
+  test('focuses the exact tab for an agent target', async () => {
+    const response = JSON.stringify({
+      id: 'cli:tab:focus',
+      result: { type: 'tab_info', tab: {} },
+    })
+    const { runner, commands } = recordingRunner([{ exitCode: 0, stdout: response, stderr: '' }])
+    const backend = createHerdrBackend({ runner, insideHerdr: true })
+
+    await backend.open({
+      backend: 'herdr',
+      id: 'agents',
+      title: 'pi-web',
+      target: { kind: 'agent', tabId: 'agents:t2', paneId: 'agents:p2' },
+    })
+
+    expect(commands).toEqual([['herdr', 'tab', 'focus', 'agents:t2']])
   })
 
   test('creates a workspace, runs startup command in its root pane, then focuses it', async () => {
@@ -273,6 +400,21 @@ describe('Herdr backend', () => {
     ])
   })
 
+  test('does not rename or close a targeted agent through its shared workspace', async () => {
+    const { runner, commands } = recordingRunner([])
+    const backend = createHerdrBackend({ runner, insideHerdr: true })
+    const agent = {
+      backend: 'herdr' as const,
+      id: 'agents',
+      title: 'opencode-api',
+      target: { kind: 'agent' as const, tabId: 'agents:t1', paneId: 'agents:p1' },
+    }
+
+    await expect(backend.rename(agent, 'renamed')).rejects.toThrow('Cannot rename an agent tab')
+    await expect(backend.close(agent)).rejects.toThrow('Cannot close an agent tab')
+    expect(commands).toEqual([])
+  })
+
   test('returns tab, pane preview, and native agent details', async () => {
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: snapshot, stderr: '' },
@@ -298,6 +440,46 @@ describe('Herdr backend', () => {
     expect(commands).toEqual([
       ['herdr', 'api', 'snapshot'],
       ['herdr', 'pane', 'read', 'w1:p1', '--source', 'recent-unwrapped', '--lines', '16'],
+    ])
+  })
+
+  test('returns details and preview for the targeted agent tab', async () => {
+    const { runner, commands } = recordingRunner([
+      { exitCode: 0, stdout: agentsWorkspaceSnapshot, stderr: '' },
+      { exitCode: 0, stdout: 'web agent output\n', stderr: '' },
+    ])
+    const backend = createHerdrBackend({ runner, insideHerdr: true })
+
+    expect(
+      await backend.details({
+        backend: 'herdr',
+        id: 'agents',
+        title: 'pi-web',
+        target: { kind: 'agent', tabId: 'agents:t2', paneId: 'agents:p2' },
+      })
+    ).toEqual({
+      workspace: {
+        backend: 'herdr',
+        id: 'agents',
+        title: 'pi-web',
+        target: { kind: 'agent', tabId: 'agents:t2', paneId: 'agents:p2' },
+      },
+      isActive: false,
+      unitLabel: 'Tabs',
+      units: [
+        {
+          id: 'agents:t2',
+          name: 'web-agent',
+          currentPath: '/repo/web',
+          currentCommand: 'pi',
+        },
+      ],
+      previewLines: ['web agent output'],
+      agents: [{ paneId: 'agents:p2', name: 'pi-web', status: 'idle', cwd: '/repo/web' }],
+    })
+    expect(commands).toEqual([
+      ['herdr', 'api', 'snapshot'],
+      ['herdr', 'pane', 'read', 'agents:p2', '--source', 'recent-unwrapped', '--lines', '16'],
     ])
   })
 

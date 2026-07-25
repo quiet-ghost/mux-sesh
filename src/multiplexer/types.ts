@@ -2,13 +2,23 @@ export type BackendKind = 'tmux' | 'herdr'
 export type BackendPreference = BackendKind
 export type AgentStatus = 'idle' | 'working' | 'blocked' | 'done' | 'unknown'
 
-export interface WorkspaceRef {
-  backend: BackendKind
+interface WorkspaceIdentity {
   id: string
   title: string
 }
 
-export interface LiveWorkspace extends WorkspaceRef {
+export interface HerdrAgentTarget {
+  kind: 'agent'
+  tabId: string
+  paneId: string
+}
+
+export type WorkspaceRef =
+  | (WorkspaceIdentity & { backend: 'tmux' })
+  | (WorkspaceIdentity & { backend: 'herdr'; target?: HerdrAgentTarget })
+
+export type LiveWorkspace = WorkspaceRef & {
+  workspaceTitle?: string
   path: string
   isActive: boolean
   unitCount: number

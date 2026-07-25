@@ -4,11 +4,13 @@ import { AppMode as AppModeEnum } from '../types'
 import { formatSectionHeader } from './item-icon'
 import { getItemKey } from '../multiplexer/items'
 import { getSessionMeta } from './session-meta'
+import { getVisibleWindow } from './list-window'
 
 interface Props {
   sessions: Item[]
   appMode: AppMode
   cursor: number
+  maxItems?: number
   icons?: IconConfig
   pendingKillSessionName?: string | null
 }
@@ -17,6 +19,7 @@ export default function AgentSessionGroup({
   sessions,
   appMode,
   cursor,
+  maxItems = 20,
   icons,
   pendingKillSessionName,
 }: Props) {
@@ -24,15 +27,17 @@ export default function AgentSessionGroup({
   if (sessions.length === 0) return null
 
   const header = formatSectionHeader(theme, 'agents', icons)
+  const visibleWindow = getVisibleWindow(sessions, cursor, maxItems)
 
   return (
     <>
       <text style={{ fg: theme.textSubtle, marginTop: 2, marginBottom: 1 }}>
         <span style={{ fg: header.color }}>{header.text}</span>
       </text>
-      {sessions.map((item, i) => {
+      {visibleWindow.items.map((item, i) => {
+        const absoluteIndex = visibleWindow.startIndex + i
         const pendingKill = getItemKey(item) === pendingKillSessionName
-        const selected = appMode === AppModeEnum.AgentsManage && i === cursor
+        const selected = appMode === AppModeEnum.AgentsManage && absoluteIndex === cursor
         const itemMeta = getSessionMeta(item)
 
         return (
@@ -64,7 +69,17 @@ export default function AgentSessionGroup({
               <span style={{ fg: theme.text }}>{item.title}</span>
             </text>
 
-            <text style={{ fg: pendingKill ? theme.danger : theme.textSubtle }}>
+            <text
+              style={{
+                fg: pendingKill
+                  ? theme.danger
+                  : item.agentStatus === 'blocked'
+                    ? theme.danger
+                    : item.agentStatus === 'working'
+                      ? theme.active
+                      : theme.textSubtle,
+              }}
+            >
               {pendingKill
                 ? `press d again to ${item.itemKind === 'herdr' ? 'close' : 'kill'}`
                 : itemMeta}

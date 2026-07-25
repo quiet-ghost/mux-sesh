@@ -42,6 +42,15 @@ test('Herdr workspaces use native status for agent grouping', () => {
       agentStatus: 'unknown',
     })
   ).toBe(false)
+  expect(
+    isAgentSessionItem({
+      isSession: true,
+      title: 'unknown-agent',
+      itemKind: 'herdr',
+      agentStatus: 'unknown',
+      target: { kind: 'agent', tabId: 'agents:t1', paneId: 'agents:p1' },
+    })
+  ).toBe(true)
 })
 
 describe('opencode session names', () => {

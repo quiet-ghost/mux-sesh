@@ -9,6 +9,7 @@ export type {
   AgentStatus,
   BackendKind,
   BackendPreference,
+  HerdrAgentTarget,
   LiveWorkspace,
   MultiplexerBackend,
   MultiplexerCapabilities,

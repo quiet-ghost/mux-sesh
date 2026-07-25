@@ -1,5 +1,5 @@
 import type { OpencodeStats } from '../opencode/types'
-import type { AgentStatus, BackendKind, BackendPreference } from '../multiplexer'
+import type { AgentStatus, BackendKind, BackendPreference, HerdrAgentTarget } from '../multiplexer'
 
 export type { AgentStatus, BackendKind, BackendPreference } from '../multiplexer'
 
@@ -131,6 +131,8 @@ export interface Item {
   itemKind?: ItemKind
   sessionId?: string
   backend?: BackendKind
+  target?: HerdrAgentTarget
+  workspaceTitle?: string
   agentStatus?: AgentStatus
   icon?: string
   isPinned?: boolean

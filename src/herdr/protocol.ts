@@ -33,6 +33,7 @@ export interface HerdrPane {
 export interface HerdrAgent {
   paneId: string
   workspaceId: string
+  tabId: string
   status: AgentStatus
   name?: string
   agent?: string
@@ -172,6 +173,7 @@ function parseAgent(value: unknown): HerdrAgent {
   return {
     paneId: string(raw.pane_id, 'agent.pane_id'),
     workspaceId: string(raw.workspace_id, 'agent.workspace_id'),
+    tabId: string(raw.tab_id, 'agent.tab_id'),
     status: agentStatus(raw.agent_status),
     name: optionalString(raw.name),
     agent: optionalString(raw.agent),

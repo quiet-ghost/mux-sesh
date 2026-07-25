@@ -9,6 +9,7 @@ import { getProjectItems, getSessionCandidateItems } from '../tmux/projects'
 import { filterHiddenSessions } from '../tmux/workflows'
 import { isAgentSessionItem } from '../agents/session-name'
 import type { Config, Item } from '../types'
+import { clampCursorIndex } from '../ui/list-window'
 
 export type Measure = <T>(name: string, fn: () => Promise<T>) => Promise<T>
 
@@ -31,6 +32,26 @@ export function getProjectSelectionIndex(nextItems: Item[], selection?: string |
 
   const index = nextItems.findIndex(item => item.path === selection)
   return index >= 0 ? index : 0
+}
+
+export function getAgentSelectionIndex(
+  nextItems: Item[],
+  selection: string | undefined,
+  currentCursor: number
+): number {
+  const agentSessions = nextItems.filter(isAgentSessionItem)
+  const selectedIndex = selection
+    ? agentSessions.findIndex(item => getItemKey(item) === selection)
+    : -1
+  return selectedIndex >= 0 ? selectedIndex : clampCursorIndex(agentSessions.length, currentCursor)
+}
+
+export function reuseSessionItemIdentities(previous: Item[], next: Item[]): Item[] {
+  const previousByKey = new Map(previous.map(item => [getItemKey(item), item]))
+  return next.map(item => {
+    const existing = previousByKey.get(getItemKey(item))
+    return existing && JSON.stringify(existing) === JSON.stringify(item) ? existing : item
+  })
 }
 
 export async function loadSessionItems(

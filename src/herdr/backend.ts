@@ -24,6 +24,17 @@ export interface HerdrBackendOptions {
   insideHerdr: boolean
 }
 
+const AGENTS_WORKSPACE_LABEL = 'Agents'
+
+function isAgentTarget(workspace: WorkspaceRef): workspace is Extract<
+  WorkspaceRef,
+  { backend: 'herdr' }
+> & {
+  target: { kind: 'agent'; tabId: string; paneId: string }
+} {
+  return workspace.backend === 'herdr' && workspace.target?.kind === 'agent'
+}
+
 function workspacePaths(snapshot: HerdrSnapshot, workspace: HerdrWorkspace): string[] {
   const panes = snapshot.panes.filter(pane => pane.workspaceId === workspace.id)
   const activePane =
@@ -120,18 +131,55 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
     capabilities: { previousWorkspace: false },
     async list(): Promise<LiveWorkspace[]> {
       const state = await snapshot()
-      return state.workspaces.map(workspace => ({
-        backend: 'herdr',
-        id: workspace.id,
-        title: workspace.label,
-        path: workspacePath(state, workspace),
-        isActive: workspace.focused,
-        unitCount: workspace.tabCount,
-        agentStatus: workspace.agentStatus,
-      }))
+      return state.workspaces.flatMap(workspace => {
+        if (workspace.label !== AGENTS_WORKSPACE_LABEL) {
+          return [
+            {
+              backend: 'herdr' as const,
+              id: workspace.id,
+              title: workspace.label,
+              path: workspacePath(state, workspace),
+              isActive: workspace.focused,
+              unitCount: workspace.tabCount,
+              agentStatus: workspace.agentStatus,
+            },
+          ]
+        }
+
+        return state.agents
+          .filter(agent => agent.workspaceId === workspace.id)
+          .map(agent => {
+            const pane = state.panes.find(entry => entry.id === agent.paneId)
+            const tab = state.tabs.find(entry => entry.id === agent.tabId)
+            return {
+              backend: 'herdr' as const,
+              id: workspace.id,
+              title: agent.name ?? agent.displayAgent ?? agent.agent ?? tab?.label ?? 'agent',
+              workspaceTitle: workspace.label,
+              path:
+                agent.foregroundCwd ??
+                agent.cwd ??
+                pane?.foregroundCwd ??
+                pane?.cwd ??
+                workspace.worktreePath ??
+                '',
+              isActive:
+                workspace.focused &&
+                (state.focusedPaneId === agent.paneId || state.focusedTabId === agent.tabId),
+              unitCount: 1,
+              agentStatus: agent.status,
+              target: { kind: 'agent' as const, tabId: agent.tabId, paneId: agent.paneId },
+            }
+          })
+      })
     },
     async open(workspace: WorkspaceRef): Promise<void> {
-      await focus(workspace.id)
+      if (isAgentTarget(workspace)) {
+        await command(['herdr', 'tab', 'focus', workspace.target.tabId], 'tab_info')
+        latestSnapshot = undefined
+      } else {
+        await focus(workspace.id)
+      }
       await attachIfNeeded()
     },
     async openOrCreate(input: OpenWorkspaceInput): Promise<void> {
@@ -166,10 +214,22 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
       await attachIfNeeded()
     },
     async rename(workspace: WorkspaceRef, title: string): Promise<void> {
+      if (isAgentTarget(workspace)) {
+        throw new MultiplexerError(
+          'unsupported',
+          'Cannot rename an agent tab from mux-sesh. Rename it in Herdr instead.'
+        )
+      }
       await command(['herdr', 'workspace', 'rename', workspace.id, title], 'workspace_info')
       latestSnapshot = undefined
     },
     async close(workspace: WorkspaceRef): Promise<void> {
+      if (isAgentTarget(workspace)) {
+        throw new MultiplexerError(
+          'unsupported',
+          'Cannot close an agent tab from mux-sesh. Close it in Herdr instead.'
+        )
+      }
       await command(['herdr', 'workspace', 'close', workspace.id], 'ok')
       latestSnapshot = undefined
     },
@@ -180,6 +240,10 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
     },
     async directory(workspace: WorkspaceRef): Promise<string | undefined> {
       const state = latestSnapshot ?? (await snapshot())
+      if (isAgentTarget(workspace)) {
+        const pane = state.panes.find(entry => entry.id === workspace.target.paneId)
+        return pane?.foregroundCwd ?? pane?.cwd
+      }
       const target = state.workspaces.find(entry => entry.id === workspace.id)
       return target ? workspacePath(state, target) || undefined : undefined
     },
@@ -193,9 +257,15 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
         )
       }
 
-      const workspaceTabs = state.tabs.filter(tab => tab.workspaceId === workspace.id)
+      const workspaceTabs = state.tabs.filter(
+        tab =>
+          tab.workspaceId === workspace.id &&
+          (!isAgentTarget(workspace) || tab.id === workspace.target.tabId)
+      )
       const workspacePanes = state.panes.filter(pane => pane.workspaceId === workspace.id)
-      const previewPane = focusedPaneForTab(state, target.activeTabId) ?? workspacePanes[0]
+      const previewPane = isAgentTarget(workspace)
+        ? state.panes.find(pane => pane.id === workspace.target.paneId)
+        : (focusedPaneForTab(state, target.activeTabId) ?? workspacePanes[0])
       let previewLines: string[] | undefined
       if (previewPane) {
         const preview = await options.runner.run([
@@ -218,8 +288,14 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
       }
 
       return {
-        workspace: { backend: 'herdr', id: target.id, title: target.label },
-        isActive: target.focused,
+        workspace: isAgentTarget(workspace)
+          ? workspace
+          : { backend: 'herdr', id: target.id, title: target.label },
+        isActive: isAgentTarget(workspace)
+          ? target.focused &&
+            (state.focusedPaneId === workspace.target.paneId ||
+              state.focusedTabId === workspace.target.tabId)
+          : target.focused,
         unitLabel: 'Tabs',
         units: workspaceTabs.map(tab => {
           const pane = focusedPaneForTab(state, tab.id)
@@ -232,7 +308,11 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
         }),
         previewLines,
         agents: state.agents
-          .filter(agent => agent.workspaceId === workspace.id)
+          .filter(
+            agent =>
+              agent.workspaceId === workspace.id &&
+              (!isAgentTarget(workspace) || agent.paneId === workspace.target.paneId)
+          )
           .map(agent => ({
             paneId: agent.paneId,
             name: agent.name ?? agent.displayAgent ?? agent.agent ?? 'agent',

@@ -88,7 +88,7 @@ export function AppScreen({
     appMode === AppMode.AgentsManage &&
     selectedAgentSession !== undefined &&
     isOpencodeSessionItem(selectedAgentSession)
-  const footerHint = getFooterHint(appMode, config?.prefixKey)
+  const footerHint = getFooterHint(appMode, config?.prefixKey, selectedPrimaryItem)
 
   return (
     <>
@@ -169,6 +169,7 @@ export function AppScreen({
                     sessions={agentSessions}
                     appMode={appMode}
                     cursor={agentCursor}
+                    maxItems={maxVisibleItems}
                     icons={config?.icons}
                     pendingKillSessionName={pendingKillSessionName}
                   />

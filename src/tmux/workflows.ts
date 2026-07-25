@@ -11,7 +11,11 @@ export function filterHiddenSessions(items: Item[], hiddenSessions: string[] = [
       return true
     }
 
-    return !hiddenSessions.some(pattern => matchesGlob(item.title, pattern))
+    return !hiddenSessions.some(
+      pattern =>
+        matchesGlob(item.title, pattern) ||
+        (item.workspaceTitle !== undefined && matchesGlob(item.workspaceTitle, pattern))
+    )
   })
 }
 

@@ -11,13 +11,14 @@ export function isAgentSessionName(sessionName: string): boolean {
 }
 
 export function isAgentSessionItem(
-  item: Pick<Item, 'isSession' | 'title' | 'itemKind' | 'agentStatus'>
+  item: Pick<Item, 'isSession' | 'title' | 'itemKind' | 'agentStatus' | 'target'>
 ): boolean {
   if (!item.isSession) {
     return false
   }
 
   return item.itemKind === 'herdr'
-    ? item.agentStatus !== undefined && item.agentStatus !== 'unknown'
+    ? item.target?.kind === 'agent' ||
+        (item.agentStatus !== undefined && item.agentStatus !== 'unknown')
     : isAgentSessionName(item.title)
 }
