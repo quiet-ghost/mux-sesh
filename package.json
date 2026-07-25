@@ -4,7 +4,7 @@
   "version": "1.9.5",
   "description": "An OpenTUI manager for tmux sessions and Herdr workspaces with fuzzy project search",
   "type": "module",
-  "packageManager": "bun@1.3.5",
+  "packageManager": "bun@1.3.14",
   "bin": {
     "mux-sesh": "./bin/mux-sesh"
   },
@@ -54,15 +54,15 @@
     "@types/node": "^24"
   },
   "dependencies": {
-    "@ff-labs/fff-bun": "0.9.4",
-    "@opentui/core": "0.1.60",
-    "@opentui/react": "0.1.60",
-    "react": "^19.2.2"
+    "@ff-labs/fff-bun": "0.10.1",
+    "@opentui/core": "0.4.5",
+    "@opentui/react": "0.4.5",
+    "react": "19.2.8"
   },
   "devDependencies": {
     "@types/bun": "1.3.14",
-    "@types/react": "^19.2.7",
-    "prettier": "3.6.2",
-    "typescript": "^5.9.3"
+    "@types/react": "19.2.17",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3"
   }
 }
