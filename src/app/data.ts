@@ -2,7 +2,9 @@ import { getListedSessionItems, mergeSessionItems } from '../config/listed-sessi
 import { orderProjectItems, orderSessionItems } from '../items/order'
 import { annotateProjectItemsWithSessionLinks } from '../projects/session-links'
 import { clearMatchIndices } from '../search'
-import { listTmuxSessions } from '../tmux'
+import { workspaceToItem } from '../multiplexer/items'
+import type { MultiplexerBackend } from '../multiplexer'
+import { getItemKey } from '../multiplexer/items'
 import { getProjectItems, getSessionCandidateItems } from '../tmux/projects'
 import { filterHiddenSessions } from '../tmux/workflows'
 import { isAgentSessionItem } from '../agents/session-name'
@@ -16,7 +18,9 @@ export function getSessionSelectionIndex(nextItems: Item[], selection?: string |
     return 0
   }
 
-  const index = regularItems.findIndex(item => item.title === selection)
+  const index = regularItems.findIndex(
+    item => getItemKey(item) === selection || item.title === selection
+  )
   return index >= 0 ? index : 0
 }
 
@@ -32,9 +36,12 @@ export function getProjectSelectionIndex(nextItems: Item[], selection?: string |
 export async function loadSessionItems(
   config: Config,
   measure: Measure,
+  backend: MultiplexerBackend,
   labelPrefix = 'sessions'
 ): Promise<{ visibleSessions: Item[]; sessionItems: Item[] }> {
-  const sessions = await measure(`${labelPrefix}:listTmuxSessions`, listTmuxSessions)
+  const sessions = await measure(`${labelPrefix}:listWorkspaces`, async () =>
+    (await backend.list()).map(workspaceToItem)
+  )
   const visibleSessions = filterHiddenSessions(sessions, config.hiddenSessions)
   const listedSessions = await measure(`${labelPrefix}:getListedSessionItems`, () =>
     getListedSessionItems(config)
@@ -83,9 +90,16 @@ export async function loadProjectSourceItems(config: Config, measure: Measure): 
   )
 }
 
-export async function loadSessionCandidateItems(config: Config, measure: Measure): Promise<Item[]> {
+export async function loadSessionCandidateItems(
+  config: Config,
+  measure: Measure,
+  backend: MultiplexerBackend
+): Promise<Item[]> {
   const [candidates, sessions] = await measure('loadSessionCandidateItems', () =>
-    Promise.all([getSessionCandidateItems(config), listTmuxSessions()])
+    Promise.all([
+      getSessionCandidateItems(config),
+      backend.list().then(items => items.map(workspaceToItem)),
+    ])
   )
 
   const visibleSessions = filterHiddenSessions(sessions, config.hiddenSessions)

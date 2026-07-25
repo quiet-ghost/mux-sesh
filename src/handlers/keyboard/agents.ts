@@ -40,13 +40,13 @@ export function handleAgentsManageMode(
         return
       case 'd':
         if (ctx.agentSessions[ctx.agentCursor]) {
-          ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor].title)
+          ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor])
         }
         return
       case 'r':
         if (ctx.agentSessions[ctx.agentCursor]) {
           ctx.clearPendingKill()
-          ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor].title)
+          ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor])
         }
         return
     }
@@ -91,7 +91,7 @@ export function handleAgentsManageMode(
 
   if (!isStandard && keyName === 'd') {
     if (ctx.agentSessions[ctx.agentCursor]) {
-      ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor].title)
+      ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor])
     }
     return
   }
@@ -99,7 +99,7 @@ export function handleAgentsManageMode(
   if (!ctx.prefixKey && !isStandard && keyName === 'r') {
     if (ctx.agentSessions[ctx.agentCursor]) {
       ctx.clearPendingKill()
-      ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor].title)
+      ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor])
     }
     return
   }

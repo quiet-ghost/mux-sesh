@@ -22,7 +22,7 @@ export function handleNewSessionMode(
     }
 
     if (keyName === 'd' && ctx.items[ctx.cursor]?.isSession) {
-      ctx.requestKillSession(ctx.items[ctx.cursor].title)
+      ctx.requestKillSession(ctx.items[ctx.cursor])
       return
     }
   }

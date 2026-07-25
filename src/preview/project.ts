@@ -1,8 +1,8 @@
 import { readdir, stat } from 'fs/promises'
 import { basename, dirname, join } from 'path'
 import { spawn } from 'bun'
-import { getSessionDetails } from '../tmux'
-import type { Config, SessionDetails } from '../types'
+import type { Config } from '../types'
+import type { WorkspaceDetails, WorkspaceRef } from '../multiplexer'
 import { stripAnsi } from '../util/ansi'
 import { getGitRoot, resolveProjectSession } from '../config/session-rules'
 import { resolveFileSession } from '../files/target'
@@ -23,7 +23,7 @@ export interface ProjectPreview {
   previewCommand?: string
   gitRoot?: string
   gitBranch?: string
-  linkedSession?: SessionDetails
+  linkedSession?: WorkspaceDetails
   previewKind: 'command' | 'directory' | 'file'
   previewLabel: string
   previewLines: string[]
@@ -197,9 +197,10 @@ async function runPreviewCommand(
 export async function getProjectPreview(
   projectPath: string,
   config: Config,
-  linkedSessionName?: string
+  linkedWorkspace?: WorkspaceRef,
+  loadWorkspaceDetails?: (workspace: WorkspaceRef) => Promise<WorkspaceDetails>
 ): Promise<ProjectPreview> {
-  const cacheKey = `${projectPath}::${linkedSessionName ?? ''}`
+  const cacheKey = `${projectPath}::${linkedWorkspace ? `${linkedWorkspace.backend}:${linkedWorkspace.id}` : ''}`
   const cached = projectPreviewCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now()) {
     return cached.preview
@@ -209,8 +210,8 @@ export async function getProjectPreview(
     resolveProjectSession(projectPath, config),
     getGitRoot(projectPath),
     getGitBranch(projectPath),
-    linkedSessionName
-      ? getSessionDetails(linkedSessionName).catch(() => null)
+    linkedWorkspace && loadWorkspaceDetails
+      ? loadWorkspaceDetails(linkedWorkspace).catch(() => null)
       : Promise.resolve(null),
   ])
 
@@ -318,9 +319,10 @@ async function getFilePreviewLines(
 export async function getFilePreview(
   filePath: string,
   config: Config,
-  linkedSessionName?: string
+  linkedWorkspace?: WorkspaceRef,
+  loadWorkspaceDetails?: (workspace: WorkspaceRef) => Promise<WorkspaceDetails>
 ): Promise<ProjectPreview> {
-  const cacheKey = `file::${filePath}::${linkedSessionName ?? ''}`
+  const cacheKey = `file::${filePath}::${linkedWorkspace ? `${linkedWorkspace.backend}:${linkedWorkspace.id}` : ''}`
   const cached = projectPreviewCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now()) {
     return cached.preview
@@ -331,8 +333,8 @@ export async function getFilePreview(
   const [gitRootPath, gitBranch, linkedSession, fileLines] = await Promise.all([
     getGitRoot(parentDirectory),
     getGitBranch(parentDirectory),
-    linkedSessionName
-      ? getSessionDetails(linkedSessionName).catch(() => null)
+    linkedWorkspace && loadWorkspaceDetails
+      ? loadWorkspaceDetails(linkedWorkspace).catch(() => null)
       : Promise.resolve(null),
     getFilePreviewLines(filePath),
   ])

@@ -4,6 +4,10 @@
   "title": "mux-sesh configuration",
   "type": "object",
   "properties": {
+    "backend": {
+      "type": "string",
+      "enum": ["tmux", "herdr"]
+    },
     "project_paths": {
       "type": "array",
       "items": {
@@ -162,6 +166,9 @@
       "type": "object",
       "properties": {
         "tmux": {
+          "type": "string"
+        },
+        "herdr": {
           "type": "string"
         },
         "configured": {

@@ -1,4 +1,5 @@
 {
+  "backend": "tmux",
   "project_paths": ["~/dev", "~/personal", "~/work", "~/projects"],
   "repos_path": "~/dev/repos",
   "editor": "nvim",
@@ -47,6 +48,7 @@
   "hidden_sessions": ["scratch", "tmp*"],
   "icons": {
     "tmux": "",
+    "herdr": "",
     "configured": "",
     "project": "",
     "opencode": ""

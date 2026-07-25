@@ -1,6 +1,6 @@
 # mux-sesh
 
-Fast tmux session switching and project launching from a polished terminal UI.
+Fast tmux session and Herdr workspace switching from a polished terminal UI.
 
 <p align="center">
   <img src="screenshot.png" alt="mux-sesh screenshot" width="800">
@@ -8,19 +8,19 @@ Fast tmux session switching and project launching from a polished terminal UI.
 
 ## Why mux-sesh
 
-- Switch to live tmux sessions without leaving the keyboard.
+- Switch between live tmux sessions or Herdr workspaces without leaving the keyboard.
 - Launch local projects from a single, searchable picker.
 - Keep reusable project rules in config instead of shell scripts.
-- Stay inside tmux with previews, quick actions, and lightweight workflows.
+- Stay inside your multiplexer with previews, quick actions, and lightweight workflows.
 
 ## Quick Start
 
-`mux-sesh` runs on Bun and talks directly to tmux.
+`mux-sesh` runs on Bun and talks directly to tmux or Herdr. Herdr needs no mux-sesh plugin.
 
 Prerequisites:
 
 - [Bun](https://bun.sh)
-- [tmux](https://github.com/tmux/tmux/wiki)
+- [tmux](https://github.com/tmux/tmux/wiki) or Herdr 0.7.5
 - [git](https://git-scm.com) for cloning GitHub repositories from the new-session flow
 
 Install globally:
@@ -49,12 +49,28 @@ tmux source-file ~/.tmux.conf
 
 ## How It Works
 
-- Sessions view shows live tmux sessions.
+- Sessions view shows live tmux sessions or Herdr workspaces.
 - Projects view shows scanned or configured directories.
-- Selecting a project attaches to an existing session when possible, or creates one.
+- Selecting a project attaches to an existing session or workspace when possible, or creates one.
 - The new-session flow searches files and directories under `project_paths` as you type, powered by [fff](https://github.com/dmtrKovalenko/fff).
 - Selecting a file creates a session in the file's directory and opens it in your editor.
 - The new-session flow can also clone a GitHub repository into your configured repos directory.
+
+Herdr concepts map directly into the UI:
+
+| mux-sesh | Herdr     |
+| -------- | --------- |
+| Session  | Workspace |
+| Window   | Tab       |
+| Pane     | Pane      |
+
+Backend detection uses `HERDR_ENV`, then `TMUX`, then an explicit `backend`, then running servers. Auto detection chooses tmux when both run and defaults to installed tmux when neither runs.
+
+```json
+{ "backend": "herdr" }
+```
+
+Explicit Herdr selection is strict: its server must already run, and mux-sesh never starts it or falls back. Config changes apply on the next mux-sesh launch.
 
 ## Minimal Configuration
 
@@ -62,7 +78,7 @@ Config lives at `~/.config/mux-sesh/config.json`.
 
 ```json
 {
-  "project_paths": ["~/dev", "~/personal"],
+  "project_paths": ["~/dev"],
   "repos_path": "~/dev/repos",
   "keybind_mode": "vim",
   "prefix_key": "ctrl+x",
@@ -94,7 +110,7 @@ With the default prefix key, secondary actions live behind `ctrl+x`:
 
 - `ctrl+x s` sessions
 - `ctrl+x p` projects
-- `ctrl+x l` last session
+- `ctrl+x l` last session (tmux only)
 - `ctrl+x g` git root session
 - `ctrl+x r` rename session
 - `ctrl+x e` edit configured target

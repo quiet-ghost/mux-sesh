@@ -3,6 +3,7 @@ import { formatSessionAge } from '../util/time'
 import type { IconConfig, Item, AppMode } from '../types'
 import { AppMode as AppModeEnum } from '../types'
 import { formatSectionHeader } from './item-icon'
+import { getItemKey } from '../multiplexer/items'
 
 interface Props {
   sessions: Item[]
@@ -30,12 +31,12 @@ export default function AgentSessionGroup({
         <span style={{ fg: header.color }}>{header.text}</span>
       </text>
       {sessions.map((item, i) => {
-        const pendingKill = item.title === pendingKillSessionName
+        const pendingKill = getItemKey(item) === pendingKillSessionName
         const selected = appMode === AppModeEnum.AgentsManage && i === cursor
 
         return (
           <box
-            key={`agent-${i}`}
+            key={getItemKey(item)}
             style={{
               flexDirection: 'row',
               justifyContent: 'space-between',

@@ -1,6 +1,7 @@
 import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { loadConfig } from '../config'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
+import { resolveMultiplexerBackend, type MultiplexerBackend } from '../multiplexer'
 import {
   getProjectSelectionIndex,
   getSessionSelectionIndex,
@@ -21,11 +22,12 @@ export async function loadRefreshedViewState(
   targetMode: ViewMode,
   config: Config,
   measure: Measure,
+  backend: MultiplexerBackend,
   lastSessionSelection?: string | null,
   lastProjectSelection?: string | null
 ): Promise<RefreshedViewState> {
   if (targetMode === ViewMode.Sessions) {
-    const { sessionItems } = await loadSessionItems(config, measure, 'refresh')
+    const { sessionItems } = await loadSessionItems(config, measure, backend, 'refresh')
     return {
       items: sessionItems,
       sessionItems,
@@ -33,7 +35,7 @@ export async function loadRefreshedViewState(
     }
   }
 
-  const { visibleSessions } = await loadSessionItems(config, measure, 'refresh-projects')
+  const { visibleSessions } = await loadSessionItems(config, measure, backend, 'refresh-projects')
   const { projectSourceItems, projectItems } = await loadProjectItemsWithLinks(
     config,
     visibleSessions,
@@ -74,6 +76,8 @@ export function useAppStartup(
   lastProjectSelectionRef: MutableRefObject<string | null>,
   mark: (label: string) => void,
   setConfig: Dispatch<SetStateAction<Config | null>>,
+  setBackend: Dispatch<SetStateAction<MultiplexerBackend | null>>,
+  setMessage: Dispatch<SetStateAction<string>>,
   setAppMode: Dispatch<SetStateAction<AppMode>>,
   setViewMode: Dispatch<SetStateAction<ViewMode>>,
   setSessionItems: Dispatch<SetStateAction<Item[]>>,
@@ -93,10 +97,20 @@ export function useAppStartup(
       }
 
       const startupAppMode = config.keybindMode === 'standard' ? AppMode.Search : AppMode.Normal
+      const backend = await measure('resolveBackend', () =>
+        resolveMultiplexerBackend({ preference: config.backend })
+      )
+      if (cancelled) return
       setConfig(config)
+      setBackend(backend)
       setAppMode(startupAppMode)
 
-      const { visibleSessions, sessionItems } = await loadSessionItems(config, measure, 'startup')
+      const { visibleSessions, sessionItems } = await loadSessionItems(
+        config,
+        measure,
+        backend,
+        'startup'
+      )
       if (cancelled) {
         return
       }
@@ -136,7 +150,11 @@ export function useAppStartup(
       mark('startup complete')
     }
 
-    void init()
+    void init().catch(error => {
+      if (!cancelled) {
+        setMessage(error instanceof Error ? error.message : 'Failed to start mux-sesh')
+      }
+    })
 
     return () => {
       cancelled = true
@@ -149,6 +167,8 @@ export function useAppStartup(
     setAllItems,
     setAppMode,
     setConfig,
+    setBackend,
+    setMessage,
     setCursor,
     setItems,
     setProjectSourceItems,

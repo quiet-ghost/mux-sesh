@@ -17,6 +17,7 @@ describe('settings metadata', () => {
     const entries = getSettingsEntries(config)
 
     expect(entries.map(entry => entry.id)).toEqual([
+      'backend',
       'theme',
       'colorScheme',
       'keybindMode',
@@ -55,5 +56,11 @@ describe('settings metadata', () => {
 
     expect(nextConfig.keybindMode).toBe('standard')
     expect(updatedConfig.reposPath).toBe('/home/tester/src/repos')
+  })
+
+  test('sets and clears backend preference', () => {
+    const herdrConfig = applyOptionSetting(config, 'backend', 'herdr')
+    expect(herdrConfig.backend).toBe('herdr')
+    expect(applyOptionSetting(herdrConfig, 'backend', 'auto').backend).toBeUndefined()
   })
 })

@@ -5,6 +5,31 @@ import { formatSectionHeader, getItemIconPresentation } from '../src/ui/item-ico
 import type { Item } from '../src/types'
 
 describe('item ordering', () => {
+  test('keeps duplicate Herdr labels when pinned', () => {
+    const items: Item[] = [
+      {
+        title: 'api',
+        desc: '',
+        path: '/repo/one',
+        isSession: true,
+        itemKind: 'herdr',
+        backend: 'herdr',
+        sessionId: 'w1',
+      },
+      {
+        title: 'api',
+        desc: '',
+        path: '/repo/two',
+        isSession: true,
+        itemKind: 'herdr',
+        backend: 'herdr',
+        sessionId: 'w2',
+      },
+    ]
+
+    expect(orderSessionItems(items, 'live-first', ['api'])).toHaveLength(2)
+  })
+
   test('orders sessions by source when configured-first is requested', () => {
     const items: Item[] = [
       { title: 'work', desc: '', path: 'work', isSession: true },

@@ -1,6 +1,6 @@
 import { isAgentSessionItem } from '../agents/session-name'
 import type { SessionSection } from '../items/order'
-import type { IconConfig, Item, ThemeColors } from '../types'
+import type { BackendKind, IconConfig, Item, ThemeColors } from '../types'
 
 export interface ItemIconPresentation {
   glyph: string
@@ -12,6 +12,7 @@ const FILE_ITEM_GLYPH = '  '
 function getIconConfig(icons?: IconConfig): IconConfig {
   return {
     tmux: icons?.tmux ?? '',
+    herdr: icons?.herdr ?? 'H',
     configured: icons?.configured ?? '',
     project: icons?.project ?? '',
     opencode: icons?.opencode ?? '',
@@ -45,14 +46,20 @@ export function getItemIconPresentation(
 
   if (item.isSession) {
     return {
-      glyph: item.icon ?? (isAgentSessionItem(item) ? resolvedIcons.opencode : resolvedIcons.tmux),
+      glyph:
+        item.icon ??
+        (isAgentSessionItem(item)
+          ? resolvedIcons.opencode
+          : item.itemKind === 'herdr'
+            ? resolvedIcons.herdr
+            : resolvedIcons.tmux),
       color: item.isAttached ? theme.active : theme.inactive,
     }
   }
 
   if (item.linkedSessionName) {
     return {
-      glyph: resolvedIcons.tmux,
+      glyph: item.linkedSessionBackend === 'herdr' ? resolvedIcons.herdr : resolvedIcons.tmux,
       color: item.linkedSessionAttached ? theme.active : theme.inactive,
     }
   }
@@ -66,7 +73,8 @@ export function getItemIconPresentation(
 export function getSessionSectionPresentation(
   theme: ThemeColors,
   section: SessionSection | 'agents',
-  icons?: IconConfig
+  icons?: IconConfig,
+  backend?: BackendKind
 ): ItemIconPresentation & { label: string } {
   const resolvedIcons = getIconConfig(icons)
 
@@ -78,16 +86,21 @@ export function getSessionSectionPresentation(
     case 'agents':
       return { glyph: resolvedIcons.opencode, color: theme.action, label: 'Agents' }
     case 'live':
-      return { glyph: resolvedIcons.tmux, color: theme.action, label: 'Live' }
+      return {
+        glyph: backend === 'herdr' ? resolvedIcons.herdr : resolvedIcons.tmux,
+        color: theme.action,
+        label: 'Live',
+      }
   }
 }
 
 export function formatSectionHeader(
   theme: ThemeColors,
   section: SessionSection | 'agents',
-  icons?: IconConfig
+  icons?: IconConfig,
+  backend?: BackendKind
 ): ItemIconPresentation & { text: string } {
-  const presentation = getSessionSectionPresentation(theme, section, icons)
+  const presentation = getSessionSectionPresentation(theme, section, icons, backend)
   const prefix = presentation.glyph.length > 0 ? `${presentation.glyph} ` : ''
 
   return {

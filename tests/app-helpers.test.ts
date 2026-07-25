@@ -193,6 +193,15 @@ describe('app state helpers', () => {
 
 describe('app controls', () => {
   test('requests kill on first press and confirms on second press', async () => {
+    const item: Item = {
+      title: 'alpha',
+      desc: '',
+      path: '/tmp/alpha',
+      isSession: true,
+      itemKind: 'tmux',
+      backend: 'tmux',
+      sessionId: 'alpha',
+    }
     const baseOptions = {
       config: getDefaultConfig('/home/tester'),
       handleKillSession: mock(async () => {}),
@@ -214,19 +223,20 @@ describe('app controls', () => {
       ...baseOptions,
       pendingKillSessionName: null,
     })
-    firstControls.requestKillSession('alpha')
-    expect(baseOptions.setPendingKillSessionName).toHaveBeenCalledWith('alpha')
+    firstControls.requestKillSession(item)
+    expect(baseOptions.setPendingKillSessionName).toHaveBeenCalledWith('tmux:alpha')
 
     const secondControls = createAppControls({
       ...baseOptions,
-      pendingKillSessionName: 'alpha',
+      pendingKillSessionName: 'tmux:alpha',
     })
-    secondControls.requestKillSession('alpha')
+    secondControls.requestKillSession(item)
     await Promise.resolve()
-    expect(baseOptions.handleKillSession).toHaveBeenCalledWith('alpha')
+    expect(baseOptions.handleKillSession).toHaveBeenCalledWith(item)
   })
 
   test('opening rename clears pending kill and seeds modal state', () => {
+    const item: Item = { title: 'beta', desc: '', path: '/tmp/beta', isSession: true }
     const options = {
       config: getDefaultConfig('/home/tester'),
       pendingKillSessionName: null,
@@ -245,10 +255,10 @@ describe('app controls', () => {
       setSettingEditorValue: mock(() => {}),
     }
 
-    createAppControls(options).openRenameModal('beta')
+    createAppControls(options).openRenameModal(item)
 
     expect(options.setPendingKillSessionName).toHaveBeenCalledWith(null)
-    expect(options.setRenameTarget).toHaveBeenCalledWith('beta')
+    expect(options.setRenameTarget).toHaveBeenCalledWith(item)
     expect(options.setModalInputValue).toHaveBeenCalledWith('beta')
     expect(options.setModalState).toHaveBeenCalledWith({ type: 'rename', target: 'beta' })
   })

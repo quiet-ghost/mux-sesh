@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react'
 import { getFilePreview, getProjectPreview, type ProjectPreview } from '../preview/project'
 import { isFileItem } from '../files/target'
-import { getSessionDetails } from '../tmux'
 import { getDetailPanelStyle, useTheme } from '../styles/theme'
-import type { Config, Item, SessionDetails } from '../types'
+import type { Config, Item } from '../types'
+import type { MultiplexerBackend, WorkspaceDetails, WorkspaceRef } from '../multiplexer'
+import { getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 
 interface Props {
   selectedItem?: Item
   config: Config | null
+  backend: MultiplexerBackend | null
 }
 
 type DetailState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'session'; details: SessionDetails }
+  | { status: 'session'; details: WorkspaceDetails }
   | { status: 'project'; details: ProjectPreview }
   | { status: 'error'; message: string }
 
@@ -72,10 +74,13 @@ function ProjectPreviewView({ preview }: { preview: ProjectPreview }) {
           <SectionLabel>Live session</SectionLabel>
           <MetaRow
             label="Status"
-            value={preview.linkedSession.isAttached ? 'attached' : 'detached'}
-            color={preview.linkedSession.isAttached ? theme.active : theme.textMuted}
+            value={preview.linkedSession.isActive ? 'active' : 'inactive'}
+            color={preview.linkedSession.isActive ? theme.active : theme.textMuted}
           />
-          <MetaRow label="Windows" value={String(preview.linkedSession.windowCount)} />
+          <MetaRow
+            label={preview.linkedSession.unitLabel}
+            value={String(preview.linkedSession.units.length)}
+          />
         </box>
       )}
 
@@ -97,50 +102,64 @@ function ProjectPreviewView({ preview }: { preview: ProjectPreview }) {
   )
 }
 
-function SessionDetailsView({ details }: { details: SessionDetails }) {
+function SessionDetailsView({ details }: { details: WorkspaceDetails }) {
   const theme = useTheme()
 
   return (
     <box style={{ flexDirection: 'column' }}>
-      <text style={{ fg: theme.secondary }}>{details.name}</text>
+      <text style={{ fg: theme.secondary }}>{details.workspace.title}</text>
 
       <box style={{ flexDirection: 'column', marginTop: 1 }}>
         <MetaRow
           label="Status"
-          value={details.isAttached ? 'active' : 'inactive'}
-          color={details.isAttached ? theme.active : theme.textMuted}
+          value={details.isActive ? 'active' : 'inactive'}
+          color={details.isActive ? theme.active : theme.textMuted}
         />
-        <MetaRow label="Windows" value={String(details.windowCount)} />
+        <MetaRow label={details.unitLabel} value={String(details.units.length)} />
       </box>
 
-      <SectionLabel>Windows</SectionLabel>
+      <SectionLabel>{details.unitLabel}</SectionLabel>
       <box style={{ flexDirection: 'column', marginTop: 1 }}>
-        {details.windows.length === 0 ? (
-          <text style={{ fg: theme.textMuted }}>No windows found</text>
+        {details.units.length === 0 ? (
+          <text style={{ fg: theme.textMuted }}>No {details.unitLabel.toLowerCase()} found</text>
         ) : (
-          details.windows.map(win => (
-            <box
-              key={`${win.index}:${win.name}`}
-              style={{ flexDirection: 'column', marginBottom: 1 }}
-            >
-              <text style={{ fg: theme.text }}>
-                {win.index}: {win.name}
-              </text>
-              {win.currentPath && <text style={{ fg: theme.fileTree }}>{win.currentPath}</text>}
-              {win.currentCommand && (
-                <text style={{ fg: theme.textSubtle }}>{win.currentCommand}</text>
+          details.units.map(unit => (
+            <box key={unit.id} style={{ flexDirection: 'column', marginBottom: 1 }}>
+              <text style={{ fg: theme.text }}>{unit.name}</text>
+              {unit.currentPath && <text style={{ fg: theme.fileTree }}>{unit.currentPath}</text>}
+              {unit.currentCommand && (
+                <text style={{ fg: theme.textSubtle }}>{unit.currentCommand}</text>
               )}
             </box>
           ))
         )}
       </box>
 
-      {details.panePreviewLines && details.panePreviewLines.length > 0 && (
+      {details.agents.length > 0 && (
+        <>
+          <SectionLabel>Agents</SectionLabel>
+          <box style={{ flexDirection: 'column', marginTop: 1 }}>
+            {details.agents.map(agent => (
+              <box key={agent.paneId} style={{ flexDirection: 'column', marginBottom: 1 }}>
+                <text style={{ fg: theme.action }}>
+                  {agent.name} · {agent.status}
+                </text>
+                {agent.cwd && <text style={{ fg: theme.fileTree }}>{agent.cwd}</text>}
+              </box>
+            ))}
+          </box>
+        </>
+      )}
+
+      {details.previewLines && details.previewLines.length > 0 && (
         <>
           <SectionLabel>Preview</SectionLabel>
           <box style={{ flexDirection: 'column', marginTop: 1 }}>
-            {details.panePreviewLines.map((line, index) => (
-              <text key={`${details.name}:preview:${index}`} style={{ fg: theme.textMuted }}>
+            {details.previewLines.map((line, index) => (
+              <text
+                key={`${details.workspace.id}:preview:${index}`}
+                style={{ fg: theme.textMuted }}
+              >
                 {line}
               </text>
             ))}
@@ -151,7 +170,7 @@ function SessionDetailsView({ details }: { details: SessionDetails }) {
   )
 }
 
-export default function SessionDetailsPanel({ selectedItem, config }: Props) {
+export default function SessionDetailsPanel({ selectedItem, config, backend }: Props) {
   const theme = useTheme()
   const [detailState, setDetailState] = useState<DetailState>({ status: 'idle' })
 
@@ -167,8 +186,9 @@ export default function SessionDetailsPanel({ selectedItem, config }: Props) {
       setDetailState({ status: 'loading' })
 
       try {
-        if (selectedItem.isSession) {
-          const details = await getSessionDetails(selectedItem.title)
+        if (isLiveSessionItem(selectedItem)) {
+          if (!backend) throw new Error('Multiplexer backend is not loaded yet')
+          const details = await backend.details(getWorkspaceRef(selectedItem))
           if (!cancelled) {
             setDetailState({ status: 'session', details })
           }
@@ -182,9 +202,23 @@ export default function SessionDetailsPanel({ selectedItem, config }: Props) {
           return
         }
 
+        const linkedWorkspace: WorkspaceRef | undefined =
+          selectedItem.linkedSessionId && selectedItem.linkedSessionBackend
+            ? {
+                backend: selectedItem.linkedSessionBackend,
+                id: selectedItem.linkedSessionId,
+                title: selectedItem.linkedSessionName ?? selectedItem.linkedSessionId,
+              }
+            : undefined
         const details = isFileItem(selectedItem)
-          ? await getFilePreview(selectedItem.path, config, selectedItem.linkedSessionName)
-          : await getProjectPreview(selectedItem.path, config, selectedItem.linkedSessionName)
+          ? await getFilePreview(selectedItem.path, config, linkedWorkspace, workspace => {
+              if (!backend) throw new Error('Multiplexer backend is not loaded yet')
+              return backend.details(workspace)
+            })
+          : await getProjectPreview(selectedItem.path, config, linkedWorkspace, workspace => {
+              if (!backend) throw new Error('Multiplexer backend is not loaded yet')
+              return backend.details(workspace)
+            })
         if (!cancelled) {
           setDetailState({ status: 'project', details })
         }
@@ -201,7 +235,7 @@ export default function SessionDetailsPanel({ selectedItem, config }: Props) {
     return () => {
       cancelled = true
     }
-  }, [config, selectedItem])
+  }, [backend, config, selectedItem])
 
   const panelStyle = {
     ...getDetailPanelStyle(theme),

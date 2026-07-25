@@ -8,15 +8,16 @@ import {
   openSettingsModal as showSettingsModal,
   type ModalState,
 } from './modals'
-import type { Config } from '../types'
+import type { Config, Item } from '../types'
+import { getItemKey } from '../multiplexer/items'
 import type { SettingsFieldId } from '../settings'
 
 interface AppControlsOptions {
   config: Config | null
   pendingKillSessionName: string | null
-  handleKillSession: (sessionName: string) => Promise<void>
+  handleKillSession: (item: Item) => Promise<void>
   setPendingKillSessionName: Dispatch<SetStateAction<string | null>>
-  setRenameTarget: Dispatch<SetStateAction<string>>
+  setRenameTarget: Dispatch<SetStateAction<Item | null>>
   setModalInputValue: Dispatch<SetStateAction<string>>
   setModalState: Dispatch<SetStateAction<ModalState>>
   setCommandsSearchQuery: Dispatch<SetStateAction<string>>
@@ -34,18 +35,19 @@ export function createAppControls(options: AppControlsOptions) {
     options.setPendingKillSessionName(null)
   }
 
-  function requestKillSession(sessionName: string) {
-    if (options.pendingKillSessionName === sessionName) {
-      void options.handleKillSession(sessionName)
+  function requestKillSession(item: Item) {
+    const sessionKey = getItemKey(item)
+    if (options.pendingKillSessionName === sessionKey) {
+      void options.handleKillSession(item)
       return
     }
 
-    options.setPendingKillSessionName(sessionName)
+    options.setPendingKillSessionName(sessionKey)
   }
 
-  function openRenameModal(sessionName: string) {
+  function openRenameModal(item: Item) {
     showRenameModal(
-      sessionName,
+      item,
       clearPendingKill,
       options.setRenameTarget,
       options.setModalInputValue,

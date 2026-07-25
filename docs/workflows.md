@@ -1,6 +1,11 @@
 # Workflows
 
-This page covers the common ways to use `mux-sesh` day to day.
+This page covers the common ways to use `mux-sesh` with tmux sessions or Herdr 0.7.5 workspaces.
+
+| Backend | Managed unit |
+| ------- | ------------ |
+| tmux    | Session      |
+| Herdr   | Workspace    |
 
 ## Open mux-sesh Inside tmux
 
@@ -16,9 +21,20 @@ Reload tmux after updating your config:
 tmux source-file ~/.tmux.conf
 ```
 
+## Open mux-sesh With Herdr
+
+Run mux-sesh inside Herdr or while its server is already running. No Herdr plugin is needed.
+
+```bash
+herdr status
+mux-sesh
+```
+
+Herdr workspaces, tabs, and panes appear as sessions, windows, and panes. Native agent status and details are visible but read-only.
+
 ## Switch To Something Already Running
 
-Use the sessions view when the target tmux session already exists.
+Use the sessions view when the target tmux session or Herdr workspace already exists.
 
 ```text
 j / k to move
@@ -54,7 +70,7 @@ type to narrow the list
 Enter
 ```
 
-If the project is already linked to a tmux session, mux-sesh attaches to it. Otherwise it creates a new session.
+If the project is already linked to the active backend, mux-sesh attaches to it. Otherwise it creates a session or workspace.
 
 ## Create A Session From A File
 
@@ -68,9 +84,9 @@ Enter
 
 Selecting a file:
 
-- creates a tmux session in the file's parent directory
+- creates a session or workspace in the file's parent directory
 - opens the file with your configured `editor` (for example `nvim '/path/to/file'`)
-- attaches to the existing session if one is already running for that file
+- attaches to the existing target if one is already running for that file
 
 You can also type a path directly:
 
@@ -115,9 +131,9 @@ Repositories are cloned into `repos_path`.
 
 ## Jump To Related Sessions
 
-These actions are useful when a project is already part of a broader tmux workflow.
+These actions are useful when a project is already part of a broader multiplexer workflow.
 
-- previous session: `prefix + l`, or direct `l` when no prefix is configured in vim mode
+- previous session: `prefix + l`, or direct `l` when no prefix is configured in vim mode; unavailable in Herdr
 - git-root session: `prefix + g`, or direct `g` when no prefix is configured in vim mode
 - edit configured target: `prefix + e`, or direct `e` when no prefix is configured in vim mode
 
@@ -139,11 +155,13 @@ Exact project rules can stay visible in the sessions view even before tmux has s
 
 This is useful for config folders, dashboards, and other targets you want permanently available.
 
+Listed configured targets merge into tmux session results only. Herdr does not support merged lists or named-only session creation.
+
 ## Work With Different Views
 
 The app has two main list views:
 
-- sessions: live tmux sessions and listed configured targets
+- sessions: live tmux sessions or Herdr workspaces; tmux also includes listed configured targets
 - projects: scanned and matched project directories
 
 In vim mode, view switching is always available on direct `s` and `p`, and also works through the configured prefix.
@@ -155,7 +173,9 @@ Agent sessions (OpenCode, Pi, Codex, Claude, and related side sessions) live in 
 - vim mode: `o`
 - standard mode: `prefix + o`
 
-From there you can inspect, rename, or kill agent sessions without leaving the picker. OpenCode rows still show OpenCode stats; other agents use the normal session details panel.
+From there you can inspect, rename, or kill tmux agent sessions without leaving the picker. OpenCode rows still show OpenCode stats; other agents use the normal session details panel.
+
+Herdr exposes native agent status and details in workspace rows and panels. These are read-only: named Herdr sessions and agent controls are not supported.
 
 ## Install From Source
 

@@ -13,9 +13,9 @@ interface ExecuteCommandContext {
   sessionCandidateItems: Item[]
   projectSourceItems: Item[]
   closeModal: () => void
-  openRenameModal: (sessionName: string) => void
+  openRenameModal: (item: Item) => void
   openSettingsModal: () => void
-  requestKillSession: (sessionName: string) => void
+  requestKillSession: (item: Item) => void
   togglePinnedSession: (sessionName: string) => Promise<void>
   setAppMode: (mode: AppMode) => void
   setViewMode: (mode: ViewMode) => void
@@ -72,7 +72,7 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
             ? ctx.regularSessions[ctx.cursor]
             : undefined
       if (target?.isSession) {
-        ctx.openRenameModal(target.title)
+        ctx.openRenameModal(target)
       }
       return
     }
@@ -85,7 +85,7 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
             : undefined
       if (target?.isSession) {
         ctx.closeModal()
-        ctx.requestKillSession(target.title)
+        ctx.requestKillSession(target)
       }
       return
     }

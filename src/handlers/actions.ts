@@ -1,12 +1,7 @@
 import { spawn } from 'bun'
 import type { Item, Config } from '../types'
-import {
-  switchTmuxSession,
-  killTmuxSession,
-  renameTmuxSession,
-  createNamedTmuxSession,
-  getCurrentTmuxSessionName,
-} from '../tmux'
+import type { MultiplexerBackend } from '../multiplexer'
+import { getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 import { getLastSessionTarget } from '../tmux/workflows'
 import { isFileItem, resolveTypedPathTarget } from '../files/target'
 import { isGitHubURL, cloneGitHubRepo } from '../util/github'
@@ -21,23 +16,24 @@ import {
   requireConfiguredItem,
 } from './action-helpers'
 
-export async function handleSelect(item: Item, config: Config | null) {
-  if (item.isSession) {
-    await switchTmuxSession(item.title)
+export async function handleSelect(item: Item, config: Config | null, backend: MultiplexerBackend) {
+  if (isLiveSessionItem(item)) {
+    await backend.open(getWorkspaceRef(item))
     await requestShutdown(0)
     return
   }
 
   if (isFileItem(item)) {
-    await openFileSession(item.path, requireConfig(config))
+    await openFileSession(item.path, requireConfig(config), backend)
     return
   }
 
-  await openProjectSession(item.path, requireConfig(config))
+  await openProjectSession(item.path, requireConfig(config), backend)
 }
 
 export async function handleKillSession(
-  sessionName: string,
+  item: Item,
+  backend: MultiplexerBackend,
   callbacks: {
     onSuccess: (message: string) => void
     onError: (message: string) => void
@@ -45,8 +41,11 @@ export async function handleKillSession(
   }
 ) {
   try {
-    await killTmuxSession(sessionName)
-    callbacks.onSuccess(`Session '${sessionName}' killed`)
+    if (!isLiveSessionItem(item)) throw new Error('Select a live session to close')
+    await backend.close(getWorkspaceRef(item))
+    callbacks.onSuccess(
+      `${backend.kind === 'herdr' ? 'Workspace' : 'Session'} '${item.title}' closed`
+    )
     await callbacks.refreshItems()
   } catch (error) {
     callbacks.onError(`Error killing session: ${error}`)
@@ -54,22 +53,26 @@ export async function handleKillSession(
 }
 
 export async function handleRenameSubmit(
-  renameTarget: string,
+  renameTarget: Item,
   newName: string,
+  backend: MultiplexerBackend,
   callbacks: {
     onSuccess: (message: string) => void
     onError: (message: string) => void
     refreshItems: () => Promise<void>
   }
 ) {
-  const nextSessionName = getNextSessionName(renameTarget, newName)
+  if (!isLiveSessionItem(renameTarget)) return
+  const nextSessionName = getNextSessionName(renameTarget.title, newName)
   if (!nextSessionName) {
     return
   }
 
   try {
-    await renameTmuxSession(renameTarget, nextSessionName)
-    callbacks.onSuccess(`Session renamed to '${nextSessionName}'`)
+    await backend.rename(getWorkspaceRef(renameTarget), nextSessionName)
+    callbacks.onSuccess(
+      `${backend.kind === 'herdr' ? 'Workspace' : 'Session'} renamed to '${nextSessionName}'`
+    )
     await callbacks.refreshItems()
   } catch (error) {
     callbacks.onError(`Error renaming session: ${error}`)
@@ -80,7 +83,8 @@ export async function handleNewSessionSubmit(
   searchTerm: string,
   config: Config | null,
   items: Item[],
-  cursor: number
+  cursor: number,
+  backend: MultiplexerBackend
 ) {
   if (!searchTerm) return
 
@@ -88,7 +92,7 @@ export async function handleNewSessionSubmit(
     try {
       if (!config) return
       const clonedPath = await cloneGitHubRepo(searchTerm, config)
-      await openProjectSession(clonedPath, config)
+      await openProjectSession(clonedPath, config, backend)
     } catch (error) {
       throw new Error(`Error cloning repository: ${error}`)
     }
@@ -98,64 +102,69 @@ export async function handleNewSessionSubmit(
   const typedTarget = await resolveTypedPathTarget(searchTerm)
   if (typedTarget) {
     if (typedTarget.kind === 'file') {
-      await openFileSession(typedTarget.path, requireConfig(config))
+      await openFileSession(typedTarget.path, requireConfig(config), backend)
       return
     }
 
-    await openProjectSession(typedTarget.path, requireConfig(config))
+    await openProjectSession(typedTarget.path, requireConfig(config), backend)
     return
   }
 
   if (items.length > 0 && cursor < items.length) {
     const selectedItem = items[cursor]
     if (isFileItem(selectedItem)) {
-      await openFileSession(selectedItem.path, requireConfig(config))
+      await openFileSession(selectedItem.path, requireConfig(config), backend)
       return
     }
 
-    await openProjectSession(selectedItem.path, requireConfig(config))
+    await openProjectSession(selectedItem.path, requireConfig(config), backend)
     return
   }
 
-  await createNamedTmuxSession(searchTerm)
+  await backend.openOrCreate({ title: searchTerm, path: process.cwd() })
   await requestShutdown(0)
 }
 
-export async function handleLastSession(items: Item[]) {
-  const currentSessionName = await getCurrentTmuxSessionName().catch(() => undefined)
+export async function handleLastSession(items: Item[], backend: MultiplexerBackend) {
+  if (!backend.capabilities.previousWorkspace) {
+    throw new Error(
+      'Previous workspace is unavailable because Herdr does not expose workspace activity history'
+    )
+  }
+  const currentSessionName = (await backend.current().catch(() => undefined))?.title
   const target = getLastSessionTarget(items, currentSessionName)
 
   if (!target) {
     throw new Error('No previous tmux session is available')
   }
 
-  await switchTmuxSession(target.title)
+  if (!isLiveSessionItem(target)) throw new Error('No previous live session is available')
+  await backend.open(getWorkspaceRef(target))
   await requestShutdown(0)
 }
 
-export async function handleRootSession(item: Item | undefined, config: Config | null) {
+export async function handleRootSession(
+  item: Item | undefined,
+  config: Config | null,
+  backend: MultiplexerBackend
+) {
   if (!item) {
     throw new Error('No session or project is selected')
   }
 
-  await openProjectSession(await getRootSessionPath(item), requireConfig(config))
+  await openProjectSession(await getRootSessionPath(item, backend), requireConfig(config), backend)
 }
 
-export async function handleEditTarget(item: Item | undefined, config: Config | null) {
+export async function handleEditTarget(
+  item: Item | undefined,
+  config: Config | null,
+  backend: MultiplexerBackend
+) {
   const configuredItem = requireConfiguredItem(item)
   const loadedConfig = requireConfig(config)
   const command = buildEditorCommand(loadedConfig.editor, configuredItem.path)
 
-  if (process.env.TMUX) {
-    const proc = spawn(['tmux', 'new-window', '-c', configuredItem.path, command], {
-      stderr: 'pipe',
-    })
-    await proc.exited
-
-    if (proc.exitCode !== 0) {
-      throw new Error(`Failed to open editor for '${configuredItem.title}'`)
-    }
-
+  if (await backend.openEditor(configuredItem.path, command)) {
     await requestShutdown(0)
     return
   }

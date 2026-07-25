@@ -11,6 +11,8 @@ import {
   loadSessionCandidateItems,
 } from './data'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
+import type { MultiplexerBackend } from '../multiplexer'
+import { getItemKey } from '../multiplexer/items'
 import { clampCursorIndex } from '../ui/list-window'
 import { isGitHubURL } from '../util/github'
 import { measure } from '../util/perf'
@@ -120,6 +122,7 @@ export function useNewSessionProjectCursor(
 export function useSessionCandidateLoader(
   appMode: AppMode,
   config: Config | null,
+  backend: MultiplexerBackend | null,
   lastProjectSelectionRef: MutableRefObject<string | null>,
   setSessionCandidateItems: Dispatch<SetStateAction<Item[]>>,
   setAllItems: Dispatch<SetStateAction<Item[]>>,
@@ -127,15 +130,16 @@ export function useSessionCandidateLoader(
   setCursor: Dispatch<SetStateAction<number>>
 ) {
   useEffect(() => {
-    if (appMode !== AppMode.NewSession || !config) {
+    if (appMode !== AppMode.NewSession || !config || !backend) {
       return
     }
 
     const nextConfig = config
+    const activeBackend = backend
     let cancelled = false
 
     async function loadCandidates() {
-      const linkedCandidates = await loadSessionCandidateItems(nextConfig, measure)
+      const linkedCandidates = await loadSessionCandidateItems(nextConfig, measure, activeBackend)
       if (cancelled) {
         return
       }
@@ -153,6 +157,7 @@ export function useSessionCandidateLoader(
     }
   }, [
     appMode,
+    backend,
     config,
     lastProjectSelectionRef,
     setAllItems,
@@ -203,7 +208,7 @@ export function useSelectionMemory(
     }
 
     if (viewMode === ViewMode.Sessions && appMode === AppMode.Normal) {
-      lastSessionSelectionRef.current = selectedItem.title
+      lastSessionSelectionRef.current = getItemKey(selectedItem)
     }
   }, [
     appMode,
@@ -231,14 +236,14 @@ export function usePendingKillReset(
       return
     }
 
-    const selectedSessionName =
+    const selectedSession =
       appMode === AppMode.AgentsManage
-        ? agentSessions[agentCursor]?.title
+        ? agentSessions[agentCursor]
         : viewMode === ViewMode.Sessions
-          ? regularSessions[cursor]?.title
+          ? regularSessions[cursor]
           : undefined
 
-    if (selectedSessionName !== pendingKillSessionName) {
+    if (!selectedSession || getItemKey(selectedSession) !== pendingKillSessionName) {
       setPendingKillSessionName(null)
     }
   }, [
@@ -361,6 +366,7 @@ interface UseAppBehaviorsOptions {
   appMode: AppMode
   viewMode: ViewMode
   config: Config | null
+  backend: MultiplexerBackend | null
   sessionItems: Item[]
   projectSourceItems: Item[]
   sessionCandidateItems: Item[]
@@ -416,6 +422,7 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
   useSessionCandidateLoader(
     options.appMode,
     options.config,
+    options.backend,
     options.lastProjectSelectionRef,
     options.setSessionCandidateItems,
     options.setAllItems,

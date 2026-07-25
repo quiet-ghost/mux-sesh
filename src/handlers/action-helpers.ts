@@ -1,8 +1,9 @@
 import { dirname } from 'path'
 import type { Config, Item } from '../types'
+import type { MultiplexerBackend } from '../multiplexer'
+import { getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 import { getGitRoot, resolveProjectSession } from '../config/session-rules'
 import { isFileItem, resolveFileSession } from '../files/target'
-import { createTmuxSession, getTmuxSessionDirectory } from '../tmux'
 import { requestShutdown } from '../util/shutdown'
 import { quoteShellArg } from '../util/shell'
 
@@ -37,24 +38,38 @@ export function getNextSessionName(renameTarget: string, newName: string): strin
   return trimmedName
 }
 
-export async function openProjectSession(projectPath: string, config: Config): Promise<void> {
+export async function openProjectSession(
+  projectPath: string,
+  config: Config,
+  backend: MultiplexerBackend
+): Promise<void> {
   const resolvedSession = await resolveProjectSession(projectPath, config)
-  await createTmuxSession(resolvedSession.sessionName, projectPath, {
+  await backend.openOrCreate({
+    title: resolvedSession.sessionName,
+    path: projectPath,
     startupCommand: resolvedSession.startupCommand,
   })
   await requestShutdown(0)
 }
 
-export async function openFileSession(filePath: string, config: Config): Promise<void> {
+export async function openFileSession(
+  filePath: string,
+  config: Config,
+  backend: MultiplexerBackend
+): Promise<void> {
   const resolvedSession = resolveFileSession(filePath, config)
-  await createTmuxSession(resolvedSession.sessionName, resolvedSession.cwd, {
+  await backend.openOrCreate({
+    title: resolvedSession.sessionName,
+    path: resolvedSession.cwd,
     startupCommand: resolvedSession.startupCommand,
   })
   await requestShutdown(0)
 }
 
-export async function getRootSessionPath(item: Item): Promise<string> {
-  const itemPath = item.isSession ? await getTmuxSessionDirectory(item.title) : item.path
+export async function getRootSessionPath(item: Item, backend: MultiplexerBackend): Promise<string> {
+  const itemPath = isLiveSessionItem(item)
+    ? ((await backend.directory(getWorkspaceRef(item))) ?? item.path)
+    : item.path
   const searchRoot = !item.isSession && isFileItem(item) ? dirname(itemPath) : itemPath
   return (await getGitRoot(searchRoot)) ?? searchRoot
 }

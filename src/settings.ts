@@ -3,6 +3,7 @@ import { BUILTIN_THEMES } from './styles/theme'
 import type { Config, KeybindMode, SortOrder, ThemeColorScheme, ZoxideMode } from './types'
 
 export type SettingsFieldId =
+  | 'backend'
   | 'theme'
   | 'colorScheme'
   | 'keybindMode'
@@ -47,6 +48,7 @@ const SORT_ORDER_OPTIONS: SortOrder[] = [
   'alphabetical',
 ]
 const ZOXIDE_OPTIONS: ZoxideMode[] = ['off', 'rank', 'merge']
+const BACKEND_OPTIONS = ['auto', 'tmux', 'herdr'] as const
 
 type SettingsFieldKind = SettingsEntry['kind']
 
@@ -95,6 +97,23 @@ function choiceOptions(
 }
 
 const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
+  {
+    id: 'backend',
+    label: 'Backend',
+    hint: 'Multiplexer selection; applies next launch',
+    kind: 'options',
+    getValue: config => config.backend ?? 'auto',
+    getOptions: () =>
+      choiceOptions(BACKEND_OPTIONS, {
+        auto: 'Detect current or running multiplexer',
+        tmux: 'Require tmux',
+        herdr: 'Require a running Herdr server',
+      }),
+    applyOption: (config, value) => ({
+      ...config,
+      backend: value === 'tmux' || value === 'herdr' ? value : undefined,
+    }),
+  },
   {
     id: 'theme',
     label: 'Theme',

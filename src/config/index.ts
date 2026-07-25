@@ -1,6 +1,7 @@
 import { join } from 'path'
 import type {
   Config,
+  BackendPreference,
   IconConfig,
   KeybindMode,
   ProjectProfile,
@@ -22,6 +23,7 @@ const DEFAULT_EDITOR_COMMAND =
   "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\""
 const DEFAULT_ICONS: IconConfig = {
   tmux: '',
+  herdr: '',
   configured: '',
   project: '',
   opencode: '',
@@ -86,6 +88,10 @@ function asSortOrder(value: unknown): SortOrder | undefined {
     : undefined
 }
 
+function asBackendPreference(value: unknown): BackendPreference | undefined {
+  return value === 'tmux' || value === 'herdr' ? value : undefined
+}
+
 function asThemeColorScheme(value: unknown): ThemeColorScheme | undefined {
   return value === 'light' || value === 'dark' || value === 'system' ? value : undefined
 }
@@ -127,6 +133,7 @@ function normalizeIcons(value: unknown): IconConfig | undefined {
 
   return {
     tmux: asString(value.tmux) ?? DEFAULT_ICONS.tmux,
+    herdr: asString(value.herdr) ?? DEFAULT_ICONS.herdr,
     configured: asString(value.configured) ?? asString(value.config) ?? DEFAULT_ICONS.configured,
     project: asString(value.project) ?? DEFAULT_ICONS.project,
     opencode: asString(value.opencode) ?? DEFAULT_ICONS.opencode,
@@ -315,6 +322,7 @@ export function normalizeConfig(rawConfig: unknown, homeDir = process.env.HOME |
     homeDir
   )
   const editor = asString(raw.editor) ?? defaultConfig.editor
+  const backend = asBackendPreference(raw.backend)
   const editorCmd = asString(raw.editor_cmd) ?? asString(raw.editorCmd) ?? defaultConfig.editorCmd
   const keybindMode =
     asKeybindMode(raw.keybind_mode) ?? asKeybindMode(raw.keybindMode) ?? defaultConfig.keybindMode
@@ -350,6 +358,7 @@ export function normalizeConfig(rawConfig: unknown, homeDir = process.env.HOME |
   }
 
   return {
+    backend,
     projectPaths,
     reposPath,
     editor,
@@ -411,6 +420,7 @@ function serializeThemeVariant(variant: ThemeVariant) {
 
 export function serializeConfig(config: Config): Record<string, unknown> {
   return {
+    backend: config.backend,
     project_paths: config.projectPaths,
     repos_path: config.reposPath,
     editor: config.editor,

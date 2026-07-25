@@ -28,7 +28,7 @@ export function handleSearchMode(
       switch (keyName) {
         case 'd':
           if (ctx.viewMode === ViewMode.Sessions && ctx.items[ctx.cursor]?.isSession) {
-            ctx.requestKillSession(ctx.items[ctx.cursor].title)
+            ctx.requestKillSession(ctx.items[ctx.cursor])
           }
           return
         case 'n':
@@ -66,7 +66,7 @@ export function handleSearchMode(
 
           if (ctx.viewMode === ViewMode.Sessions && ctx.items[ctx.cursor]?.isSession) {
             ctx.clearPendingKill()
-            ctx.openRenameModal(ctx.items[ctx.cursor].title)
+            ctx.openRenameModal(ctx.items[ctx.cursor])
           }
           return
         default:
