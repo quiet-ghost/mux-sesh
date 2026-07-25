@@ -5,6 +5,17 @@ interface Options {
   gotoLineEnd?: boolean
 }
 
+type FocusableTextarea = Pick<TextareaRenderable, 'isDestroyed' | 'focus' | 'gotoLineEnd'>
+
+export function focusTextarea(textarea: FocusableTextarea | null, gotoLineEnd = false): void {
+  if (!textarea || textarea.isDestroyed) return
+
+  textarea.focus()
+  if (gotoLineEnd && !textarea.isDestroyed) {
+    textarea.gotoLineEnd()
+  }
+}
+
 export function useTextareaFocus(
   textareaRef: { current: TextareaRenderable | null },
   dependencies: readonly unknown[],
@@ -12,15 +23,7 @@ export function useTextareaFocus(
 ) {
   useEffect(() => {
     queueMicrotask(() => {
-      const textarea = textareaRef.current
-      if (!textarea) {
-        return
-      }
-
-      textarea.focus()
-      if (options.gotoLineEnd) {
-        textarea.gotoLineEnd()
-      }
+      focusTextarea(textareaRef.current, options.gotoLineEnd)
     })
   }, [options.gotoLineEnd, textareaRef, ...dependencies])
 }

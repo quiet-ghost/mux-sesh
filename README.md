@@ -122,6 +122,18 @@ In vim mode, `s` and `p` are also available as direct view switches.
 
 Full keybinding reference: [docs/keybindings.md](docs/keybindings.md)
 
+## Crash recovery
+
+mux-sesh disables OpenTUI's automatic error console so a crash cannot trap the terminal. React UI failures show a recovery screen with these controls:
+
+- `c` copies the complete diagnostics report with OSC 52 (including tmux passthrough)
+- `o` opens a prefilled GitHub issue for review
+- `r` retries the application UI
+- `q`, `Esc`, or `Ctrl+C` restores the terminal and exits
+- `↑`/`↓`, `j`/`k`, `PgUp`/`PgDn`, `Home`, and `End` scroll long diagnostics
+
+Uncaught process-level failures restore the terminal first, then print the diagnostics and report URL to normal terminal scrollback before exiting with status 1. Prefilled issues are never submitted automatically; review the report before sending it.
+
 ## Docs
 
 - [Configuration](docs/configuration.md)
