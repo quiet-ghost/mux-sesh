@@ -84,6 +84,19 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
     return result.stdout
   }
 
+  async function commandWithoutOutput(argv: readonly string[]): Promise<void> {
+    const result = await options.runner.run(argv)
+    if (result.exitCode !== 0) {
+      const reason = result.stderr.trim()
+      throw new MultiplexerError(
+        'command-failed',
+        reason
+          ? `Herdr command failed: ${reason}`
+          : `Herdr command failed: ${argv.slice(1).join(' ')}`
+      )
+    }
+  }
+
   async function focus(workspaceId: string): Promise<void> {
     await command(['herdr', 'workspace', 'focus', workspaceId], 'workspace_info')
     latestSnapshot = undefined
@@ -136,14 +149,20 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
       }
 
       const output = await command(
-        ['herdr', 'workspace', 'create', '--cwd', input.path, '--label', input.title, '--no-focus'],
+        ['herdr', 'workspace', 'create', '--cwd', input.path, '--label', input.title, '--focus'],
         'workspace_created'
       )
       const created = parseHerdrCreatedWorkspace(output)
       if (input.startupCommand) {
-        await command(['herdr', 'pane', 'run', created.rootPaneId, input.startupCommand], 'ok')
+        await commandWithoutOutput([
+          'herdr',
+          'pane',
+          'run',
+          created.rootPaneId,
+          input.startupCommand,
+        ])
       }
-      await focus(created.workspaceId)
+      latestSnapshot = undefined
       await attachIfNeeded()
     },
     async rename(workspace: WorkspaceRef, title: string): Promise<void> {
@@ -245,13 +264,12 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
           path,
           '--label',
           'editor',
-          '--no-focus',
+          '--focus',
         ],
         'tab_created'
       )
       const created = parseHerdrCreatedTab(output)
-      await command(['herdr', 'pane', 'run', created.rootPaneId, editorCommand], 'ok')
-      await command(['herdr', 'tab', 'focus', created.tabId], 'tab_info')
+      await commandWithoutOutput(['herdr', 'pane', 'run', created.rootPaneId, editorCommand])
       latestSnapshot = undefined
       return true
     },

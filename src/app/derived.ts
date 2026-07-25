@@ -14,7 +14,7 @@ import { splitVisibleSessions } from './view'
 interface SessionCommandState {
   regularSessions: Item[]
   agentSessions: Item[]
-  selectedAgentSessionName: string | undefined
+  selectedAgentSession: Item | undefined
   selectedPrimaryItem: Item | undefined
   filteredCommandEntries: CommandEntry[]
 }
@@ -49,8 +49,8 @@ export function getSessionCommandState(
   return {
     regularSessions: sessionSplit.regularSessions,
     agentSessions: sessionSplit.agentSessions,
-    selectedAgentSessionName:
-      appMode === AppMode.AgentsManage ? sessionSplit.agentSessions[agentCursor]?.title : undefined,
+    selectedAgentSession:
+      appMode === AppMode.AgentsManage ? sessionSplit.agentSessions[agentCursor] : undefined,
     selectedPrimaryItem,
     filteredCommandEntries: filterCommandEntries(
       getCommandEntries(appMode, config?.keybindMode, config?.prefixKey, selectedPrimaryItem),

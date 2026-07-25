@@ -1,9 +1,9 @@
 import { useTheme } from '../styles/theme'
-import { formatSessionAge } from '../util/time'
 import type { IconConfig, Item, AppMode } from '../types'
 import { AppMode as AppModeEnum } from '../types'
 import { formatSectionHeader } from './item-icon'
 import { getItemKey } from '../multiplexer/items'
+import { getSessionMeta } from './session-meta'
 
 interface Props {
   sessions: Item[]
@@ -33,6 +33,7 @@ export default function AgentSessionGroup({
       {sessions.map((item, i) => {
         const pendingKill = getItemKey(item) === pendingKillSessionName
         const selected = appMode === AppModeEnum.AgentsManage && i === cursor
+        const itemMeta = getSessionMeta(item)
 
         return (
           <box
@@ -65,10 +66,8 @@ export default function AgentSessionGroup({
 
             <text style={{ fg: pendingKill ? theme.danger : theme.textSubtle }}>
               {pendingKill
-                ? 'press d again to kill'
-                : item.createdAt
-                  ? formatSessionAge(item.createdAt)
-                  : ''}
+                ? `press d again to ${item.itemKind === 'herdr' ? 'close' : 'kill'}`
+                : itemMeta}
             </text>
           </box>
         )

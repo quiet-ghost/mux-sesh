@@ -1,5 +1,4 @@
 import { useTheme } from '../styles/theme'
-import { formatSessionAge } from '../util/time'
 import type { IconConfig, Item } from '../types'
 import { getSessionSection } from '../items/order'
 import { getItemKey } from '../multiplexer/items'
@@ -7,6 +6,7 @@ import HighlightedText from './HighlightedText'
 import { formatSectionHeader, getItemIconPresentation } from './item-icon'
 import { getVisibleWindow } from './list-window'
 import { getMutedLabelColumnWidth, getMutedLabelSpacer } from './text-columns'
+import { getSessionMeta } from './session-meta'
 
 interface Props {
   items: Item[]
@@ -35,9 +35,7 @@ export default function SessionList({
       {visibleWindow.items.map((item, i) => {
         const absoluteIndex = visibleWindow.startIndex + i
         const matchIndices = item.searchMatch?.titleIndices
-        const itemMeta =
-          item.agentStatus ??
-          (item.isSession && item.createdAt ? formatSessionAge(item.createdAt) : '')
+        const itemMeta = getSessionMeta(item)
         const icon = getItemIconPresentation(theme, item, icons)
         const currentSection = getSessionSection(item)
         const previousItem = absoluteIndex > 0 ? items[absoluteIndex - 1] : undefined

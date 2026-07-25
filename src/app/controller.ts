@@ -139,7 +139,7 @@ export function useAppController() {
   const {
     regularSessions,
     agentSessions,
-    selectedAgentSessionName,
+    selectedAgentSession,
     selectedPrimaryItem,
     filteredCommandEntries,
   } = getSessionCommandState(
@@ -331,7 +331,7 @@ export function useAppController() {
     setPendingKillSessionName,
     searchQuery,
     allItems,
-    selectedAgentSessionName,
+    selectedAgentSession,
     loadOpencodeStatsForSession,
     setUpdatedVersion,
     setToastMessage,

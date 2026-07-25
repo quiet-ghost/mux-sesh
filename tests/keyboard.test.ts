@@ -158,6 +158,39 @@ describe('keyboard shortcuts', () => {
     expect(ctx.loadOpencodeStatsForSession).not.toHaveBeenCalled()
   })
 
+  test('does not load tmux OpenCode stats for a Herdr agent workspace', () => {
+    const herdrAgent = createItem({
+      title: 'opencode-main',
+      itemKind: 'herdr',
+      agentStatus: 'working',
+    })
+    const ctx = createContext({
+      prefixActive: true,
+      agentSessions: [herdrAgent],
+    })
+
+    handleSearchMode({ name: 'o' }, ctx, 'standard')
+
+    expect(ctx.loadOpencodeStatsForSession).not.toHaveBeenCalled()
+  })
+
+  test('opens the selected Herdr workspace from agents mode', () => {
+    const herdrAgent = createItem({
+      title: 'api',
+      itemKind: 'herdr',
+      agentStatus: 'working',
+    })
+    const ctx = createContext({
+      appMode: AppMode.AgentsManage,
+      prefixActive: false,
+      agentSessions: [herdrAgent],
+    })
+
+    handleAgentsManageMode({ name: 'return' }, ctx, 'vim')
+
+    expect(ctx.handleSelect).toHaveBeenCalledWith(herdrAgent)
+  })
+
   test('selects highlighted search result with Enter', () => {
     const first = createItem({ title: 'first' })
     const second = createItem({ title: 'second' })

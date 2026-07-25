@@ -26,17 +26,34 @@ describe('app view helpers', () => {
       { title: 'codex-work', desc: '', path: '/tmp/codex', isSession: true },
       { title: 'claude-review', desc: '', path: '/tmp/claude', isSession: true },
       { title: 'tui_chat', desc: '', path: '/tmp/chat', isSession: true },
+      {
+        title: 'herdr-agent',
+        desc: '',
+        path: '/tmp/herdr-agent',
+        isSession: true,
+        itemKind: 'herdr',
+        agentStatus: 'working',
+      },
+      {
+        title: 'herdr-plain',
+        desc: '',
+        path: '/tmp/herdr-plain',
+        isSession: true,
+        itemKind: 'herdr',
+        agentStatus: 'unknown',
+      },
     ]
 
     const split = splitVisibleSessions(items)
 
-    expect(split.regularSessions.map(item => item.title)).toEqual(['dev'])
+    expect(split.regularSessions.map(item => item.title)).toEqual(['dev', 'herdr-plain'])
     expect(split.agentSessions.map(item => item.title)).toEqual([
       'opencode-dev',
       'pi-main',
       'codex-work',
       'claude-review',
       'tui_chat',
+      'herdr-agent',
     ])
   })
 

@@ -54,6 +54,8 @@ tmux source-file ~/.tmux.conf
 - Selecting a project attaches to an existing session or workspace when possible, or creates one.
 - The new-session flow searches files and directories under `project_paths` as you type, powered by [fff](https://github.com/dmtrKovalenko/fff).
 - Selecting a file creates a session in the file's directory and opens it in your editor.
+- Newly created Herdr workspaces and tabs are focused automatically when launching a project or editor.
+- The Agents section shows Herdr workspaces with detected native agent status alongside tmux agent sessions and `tui_chat`; Herdr `unknown` status and age are hidden.
 - The new-session flow can also clone a GitHub repository into your configured repos directory.
 
 Herdr concepts map directly into the UI:

@@ -25,10 +25,23 @@ describe('agent session names', () => {
   })
 })
 
-test('Herdr workspaces use native agent status instead of tmux name grouping', () => {
-  expect(isAgentSessionItem({ isSession: true, title: 'opencode-api', itemKind: 'herdr' })).toBe(
-    false
-  )
+test('Herdr workspaces use native status for agent grouping', () => {
+  expect(
+    isAgentSessionItem({
+      isSession: true,
+      title: 'api',
+      itemKind: 'herdr',
+      agentStatus: 'working',
+    })
+  ).toBe(true)
+  expect(
+    isAgentSessionItem({
+      isSession: true,
+      title: 'api',
+      itemKind: 'herdr',
+      agentStatus: 'unknown',
+    })
+  ).toBe(false)
 })
 
 describe('opencode session names', () => {
@@ -48,5 +61,8 @@ describe('opencode session names', () => {
     expect(isOpencodeSessionItem({ title: 'opencode-main', isSession: true })).toBe(true)
     expect(isOpencodeSessionItem({ title: 'pi-main', isSession: true })).toBe(false)
     expect(isOpencodeSessionItem({ title: 'tui_chat', isSession: true })).toBe(false)
+    expect(
+      isOpencodeSessionItem({ title: 'opencode-main', isSession: true, itemKind: 'herdr' })
+    ).toBe(false)
   })
 })

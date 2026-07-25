@@ -196,16 +196,10 @@ describe('Herdr backend', () => {
         root_pane: { pane_id: 'w3:p1' },
       },
     })
-    const ok = JSON.stringify({ id: 'cli', result: { type: 'ok' } })
-    const focused = JSON.stringify({
-      id: 'cli:workspace:focus',
-      result: { type: 'workspace_info', workspace: {} },
-    })
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: snapshot, stderr: '' },
       { exitCode: 0, stdout: created, stderr: '' },
-      { exitCode: 0, stdout: ok, stderr: '' },
-      { exitCode: 0, stdout: focused, stderr: '' },
+      { exitCode: 0, stdout: '', stderr: '' },
     ])
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
@@ -213,9 +207,8 @@ describe('Herdr backend', () => {
 
     expect(commands).toEqual([
       ['herdr', 'api', 'snapshot'],
-      ['herdr', 'workspace', 'create', '--cwd', '/repo/web', '--label', 'web', '--no-focus'],
+      ['herdr', 'workspace', 'create', '--cwd', '/repo/web', '--label', 'web', '--focus'],
       ['herdr', 'pane', 'run', 'w3:p1', 'bun dev'],
-      ['herdr', 'workspace', 'focus', 'w3'],
     ])
   })
 
@@ -317,13 +310,10 @@ describe('Herdr backend', () => {
         root_pane: { pane_id: 'w1:p2' },
       },
     })
-    const ok = JSON.stringify({ id: 'cli', result: { type: 'ok' } })
-    const tabFocused = JSON.stringify({ id: 'cli', result: { type: 'tab_info', tab: {} } })
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: snapshot, stderr: '' },
       { exitCode: 0, stdout: tabCreated, stderr: '' },
-      { exitCode: 0, stdout: ok, stderr: '' },
-      { exitCode: 0, stdout: tabFocused, stderr: '' },
+      { exitCode: 0, stdout: '', stderr: '' },
     ])
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
@@ -340,10 +330,9 @@ describe('Herdr backend', () => {
         '/repo/api',
         '--label',
         'editor',
-        '--no-focus',
+        '--focus',
       ],
       ['herdr', 'pane', 'run', 'w1:p2', "nvim '/repo/api'"],
-      ['herdr', 'tab', 'focus', 'w1:t2'],
     ])
   })
 })

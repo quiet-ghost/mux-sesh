@@ -1,5 +1,5 @@
 import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
-import { isOpencodeSessionName } from '../opencode/session-name'
+import { isOpencodeSessionItem } from '../opencode/session-name'
 import { checkAndUpdate, updateEvents } from '../update'
 import { showTemporaryToast } from './notifications'
 import { clearMatchIndices, filterAndSortItems } from '../search'
@@ -339,27 +339,31 @@ export function useNewSessionFileSearch(
 }
 
 export function useOpencodeStatsPolling(
-  selectedAgentSessionName: string | undefined,
+  selectedAgentSession: Item | undefined,
   loadOpencodeStatsForSession: (sessionName: string) => Promise<unknown>
 ) {
   const loadStatsRef = useRef(loadOpencodeStatsForSession)
   loadStatsRef.current = loadOpencodeStatsForSession
+  const selectedSessionName =
+    selectedAgentSession && isOpencodeSessionItem(selectedAgentSession)
+      ? selectedAgentSession.title
+      : undefined
 
   useEffect(() => {
-    if (!selectedAgentSessionName || !isOpencodeSessionName(selectedAgentSessionName)) {
+    if (!selectedSessionName) {
       return
     }
 
-    void loadStatsRef.current(selectedAgentSessionName)
+    void loadStatsRef.current(selectedSessionName)
 
     const interval = setInterval(() => {
-      void loadStatsRef.current(selectedAgentSessionName)
+      void loadStatsRef.current(selectedSessionName)
     }, 2000)
 
     return () => {
       clearInterval(interval)
     }
-  }, [selectedAgentSessionName])
+  }, [selectedSessionName])
 }
 
 interface UseAppBehaviorsOptions {
@@ -393,7 +397,7 @@ interface UseAppBehaviorsOptions {
   setPendingKillSessionName: Dispatch<SetStateAction<string | null>>
   searchQuery: string
   allItems: Item[]
-  selectedAgentSessionName: string | undefined
+  selectedAgentSession: Item | undefined
   loadOpencodeStatsForSession: (sessionName: string) => Promise<unknown>
   setUpdatedVersion: Dispatch<SetStateAction<string | null>>
   setToastMessage: Dispatch<SetStateAction<string>>
@@ -467,5 +471,5 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.setItems,
     options.setCursor
   )
-  useOpencodeStatsPolling(options.selectedAgentSessionName, options.loadOpencodeStatsForSession)
+  useOpencodeStatsPolling(options.selectedAgentSession, options.loadOpencodeStatsForSession)
 }

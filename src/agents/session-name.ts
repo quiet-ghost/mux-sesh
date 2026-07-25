@@ -10,6 +10,14 @@ export function isAgentSessionName(sessionName: string): boolean {
   )
 }
 
-export function isAgentSessionItem(item: Pick<Item, 'isSession' | 'title' | 'itemKind'>): boolean {
-  return item.isSession && item.itemKind !== 'herdr' && isAgentSessionName(item.title)
+export function isAgentSessionItem(
+  item: Pick<Item, 'isSession' | 'title' | 'itemKind' | 'agentStatus'>
+): boolean {
+  if (!item.isSession) {
+    return false
+  }
+
+  return item.itemKind === 'herdr'
+    ? item.agentStatus !== undefined && item.agentStatus !== 'unknown'
+    : isAgentSessionName(item.title)
 }

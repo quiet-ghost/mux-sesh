@@ -70,7 +70,7 @@ type to narrow the list
 Enter
 ```
 
-If the project is already linked to the active backend, mux-sesh attaches to it. Otherwise it creates a session or workspace.
+If the project is already linked to the active backend, mux-sesh attaches to it. Otherwise it creates a session or workspace; newly created Herdr workspaces are focused automatically.
 
 ## Create A Session From A File
 
@@ -86,6 +86,7 @@ Selecting a file:
 
 - creates a session or workspace in the file's parent directory
 - opens the file with your configured `editor` (for example `nvim '/path/to/file'`)
+- focuses the newly created Herdr workspace or tab automatically
 - attaches to the existing target if one is already running for that file
 
 You can also type a path directly:
@@ -168,14 +169,14 @@ In vim mode, view switching is always available on direct `s` and `p`, and also 
 
 ## Manage Agent Sessions
 
-Agent sessions (OpenCode, Pi, Codex, Claude, and related side sessions) live in their own section at the bottom of the sessions list.
+The Agents section includes tmux agent sessions (OpenCode, Pi, Codex, Claude, `tui_chat`, and related side sessions) and Herdr workspaces with detected native agent status. Herdr `unknown` status and age are hidden.
 
 - vim mode: `o`
 - standard mode: `prefix + o`
 
 From there you can inspect, rename, or kill tmux agent sessions without leaving the picker. OpenCode rows still show OpenCode stats; other agents use the normal session details panel.
 
-Herdr exposes native agent status and details in workspace rows and panels. These are read-only: named Herdr sessions and agent controls are not supported.
+Herdr agent details are read-only: named Herdr sessions and agent controls are not supported.
 
 ## Install From Source
 
