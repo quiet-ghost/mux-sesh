@@ -1,10 +1,13 @@
 import { createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import { App } from './app'
-import { initializeShutdown, requestShutdown } from './util/shutdown'
+import { initializeFatalErrorHandling, initializeShutdown, requestShutdown } from './util/shutdown'
+
+initializeFatalErrorHandling()
 
 const renderer = await createCliRenderer({
   exitOnCtrlC: false,
+  openConsoleOnError: false,
 })
 
 initializeShutdown(renderer)
