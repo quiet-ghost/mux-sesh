@@ -1,4 +1,6 @@
-import { isOpencodeSessionName } from '../../opencode/session-name'
+import { isOpencodeSessionItem } from '../../opencode/session-name'
+import { isHerdrAgentItem } from '../../multiplexer/items'
+import type { Item } from '../../types'
 import { AppMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
 import {
@@ -10,9 +12,9 @@ import {
   type KeyboardInput,
 } from './shared'
 
-function loadStatsIfOpencode(ctx: KeyboardHandlerContext, sessionName: string) {
-  if (isOpencodeSessionName(sessionName)) {
-    void ctx.loadOpencodeStatsForSession(sessionName)
+function loadStatsIfOpencode(ctx: KeyboardHandlerContext, item: Item) {
+  if (isOpencodeSessionItem(item)) {
+    void ctx.loadOpencodeStatsForSession(item.title)
   }
 }
 
@@ -39,14 +41,20 @@ export function handleAgentsManageMode(
         ctx.setAppMode(AppMode.Normal)
         return
       case 'd':
-        if (ctx.agentSessions[ctx.agentCursor]) {
-          ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor].title)
+        if (
+          ctx.agentSessions[ctx.agentCursor] &&
+          !isHerdrAgentItem(ctx.agentSessions[ctx.agentCursor])
+        ) {
+          ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor])
         }
         return
       case 'r':
-        if (ctx.agentSessions[ctx.agentCursor]) {
+        if (
+          ctx.agentSessions[ctx.agentCursor] &&
+          !isHerdrAgentItem(ctx.agentSessions[ctx.agentCursor])
+        ) {
           ctx.clearPendingKill()
-          ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor].title)
+          ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor])
         }
         return
     }
@@ -65,12 +73,20 @@ export function handleAgentsManageMode(
     return
   }
 
+  if (keyName === 'return' || keyName === 'enter') {
+    const selectedAgent = ctx.agentSessions[ctx.agentCursor]
+    if (selectedAgent) {
+      void ctx.handleSelect(selectedAgent)
+    }
+    return
+  }
+
   if (keyName === 'down' || (!isStandard && keyName === 'j')) {
     ctx.clearPendingKill()
     ctx.setAgentCursor(cursor => {
       const next = clampCursorIndex(ctx.agentSessions.length, cursor + 1)
       if (next !== cursor && ctx.agentSessions[next]) {
-        loadStatsIfOpencode(ctx, ctx.agentSessions[next].title)
+        loadStatsIfOpencode(ctx, ctx.agentSessions[next])
       }
       return next
     })
@@ -82,7 +98,7 @@ export function handleAgentsManageMode(
     ctx.setAgentCursor(cursor => {
       const next = clampCursorIndex(ctx.agentSessions.length, cursor - 1)
       if (next !== cursor && ctx.agentSessions[next]) {
-        loadStatsIfOpencode(ctx, ctx.agentSessions[next].title)
+        loadStatsIfOpencode(ctx, ctx.agentSessions[next])
       }
       return next
     })
@@ -90,16 +106,22 @@ export function handleAgentsManageMode(
   }
 
   if (!isStandard && keyName === 'd') {
-    if (ctx.agentSessions[ctx.agentCursor]) {
-      ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor].title)
+    if (
+      ctx.agentSessions[ctx.agentCursor] &&
+      !isHerdrAgentItem(ctx.agentSessions[ctx.agentCursor])
+    ) {
+      ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor])
     }
     return
   }
 
   if (!ctx.prefixKey && !isStandard && keyName === 'r') {
-    if (ctx.agentSessions[ctx.agentCursor]) {
+    if (
+      ctx.agentSessions[ctx.agentCursor] &&
+      !isHerdrAgentItem(ctx.agentSessions[ctx.agentCursor])
+    ) {
       ctx.clearPendingKill()
-      ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor].title)
+      ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor])
     }
     return
   }

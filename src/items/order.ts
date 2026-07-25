@@ -34,13 +34,9 @@ function applyPinnedState(items: Item[], pinnedSessions: readonly string[]): Ite
 }
 
 function splitPinnedItems(items: Item[], pinnedSessions: readonly string[]) {
-  const itemByTitle = new Map(items.map(item => [item.title, item]))
-  const pinnedItems = pinnedSessions.flatMap(title => {
-    const item = itemByTitle.get(title)
-    return item ? [item] : []
-  })
-  const pinnedSet = new Set(pinnedItems.map(item => item.title))
-  const remainingItems = items.filter(item => !pinnedSet.has(item.title))
+  const pinnedItems = pinnedSessions.flatMap(title => items.filter(item => item.title === title))
+  const pinnedSet = new Set(pinnedItems)
+  const remainingItems = items.filter(item => !pinnedSet.has(item))
 
   return { pinnedItems, remainingItems }
 }

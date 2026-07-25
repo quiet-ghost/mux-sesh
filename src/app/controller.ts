@@ -43,6 +43,8 @@ export function useAppController() {
     setRenameTarget,
     config,
     setConfig,
+    backend,
+    setBackend,
     pendingKillSessionName,
     setPendingKillSessionName,
     prefixActive,
@@ -105,6 +107,8 @@ export function useAppController() {
     lastProjectSelectionRef,
     mark,
     setConfig,
+    setBackend,
+    setMessage,
     setAppMode,
     setViewMode,
     setSessionItems,
@@ -118,6 +122,7 @@ export function useAppController() {
 
   const { showMessage, refreshItems, loadOpencodeStatsForSession } = createAppRuntime({
     config,
+    backend,
     viewMode,
     measure,
     lastSessionSelectionRef,
@@ -134,7 +139,7 @@ export function useAppController() {
   const {
     regularSessions,
     agentSessions,
-    selectedAgentSessionName,
+    selectedAgentSession,
     selectedPrimaryItem,
     filteredCommandEntries,
   } = getSessionCommandState(
@@ -159,8 +164,9 @@ export function useAppController() {
   } = createAppControls({
     config,
     pendingKillSessionName,
-    handleKillSession: sessionName =>
-      handleKillSessionWithFeedback(sessionName, {
+    handleKillSession: item =>
+      handleKillSessionWithFeedback(item, {
+        backend,
         config,
         items,
         sessionItems,
@@ -196,6 +202,7 @@ export function useAppController() {
     handleTogglePinnedSessionWrapper,
     executeCommand,
   } = createAppHandlers({
+    backend,
     appMode,
     viewMode,
     config,
@@ -297,6 +304,7 @@ export function useAppController() {
     appMode,
     viewMode,
     config,
+    backend,
     sessionItems,
     projectSourceItems,
     sessionCandidateItems,
@@ -304,7 +312,10 @@ export function useAppController() {
     lastProjectSelectionRef,
     setAllItems,
     setItems,
+    setSessionItems,
     setCursor,
+    setAgentCursor,
+    setMessage,
     setSessionCandidateItems,
     filteredCommandEntriesLength: filteredCommandEntries.length,
     setCommandsCursor,
@@ -323,7 +334,7 @@ export function useAppController() {
     setPendingKillSessionName,
     searchQuery,
     allItems,
-    selectedAgentSessionName,
+    selectedAgentSession,
     loadOpencodeStatsForSession,
     setUpdatedVersion,
     setToastMessage,
@@ -340,6 +351,7 @@ export function useAppController() {
       appMode,
       viewMode,
       config,
+      backend,
       items,
       regularSessions,
       agentSessions,

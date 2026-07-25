@@ -1,11 +1,12 @@
 import { useTheme } from '../styles/theme'
-import { formatSessionAge } from '../util/time'
 import type { IconConfig, Item } from '../types'
 import { getSessionSection } from '../items/order'
+import { getItemKey } from '../multiplexer/items'
 import HighlightedText from './HighlightedText'
 import { formatSectionHeader, getItemIconPresentation } from './item-icon'
 import { getVisibleWindow } from './list-window'
 import { getMutedLabelColumnWidth, getMutedLabelSpacer } from './text-columns'
+import { getSessionMeta } from './session-meta'
 
 interface Props {
   items: Item[]
@@ -34,20 +35,23 @@ export default function SessionList({
       {visibleWindow.items.map((item, i) => {
         const absoluteIndex = visibleWindow.startIndex + i
         const matchIndices = item.searchMatch?.titleIndices
-        const itemMeta = item.isSession && item.createdAt ? formatSessionAge(item.createdAt) : ''
+        const itemMeta = getSessionMeta(item)
         const icon = getItemIconPresentation(theme, item, icons)
         const currentSection = getSessionSection(item)
         const previousItem = absoluteIndex > 0 ? items[absoluteIndex - 1] : undefined
         const previousSection = previousItem ? getSessionSection(previousItem) : undefined
         const showSectionHeader = i === 0 || currentSection !== previousSection
-        const sectionHeader = formatSectionHeader(theme, currentSection, icons)
-        const pendingKill = item.title === pendingKillSessionName
+        const sectionHeader = formatSectionHeader(theme, currentSection, icons, item.backend)
+        const pendingKill = getItemKey(item) === pendingKillSessionName
         const selected = absoluteIndex === cursor
         const mutedLabelSpacer =
           item.isSession && item.desc ? getMutedLabelSpacer(item.title, mutedLabelColumnWidth) : ''
 
         return (
-          <box key={i} style={{ flexDirection: 'column' }}>
+          <box
+            key={item.isSession ? getItemKey(item) : `${getItemKey(item)}:${item.path}`}
+            style={{ flexDirection: 'column' }}
+          >
             {showSectionHeader && (
               <text
                 style={{
@@ -91,8 +95,20 @@ export default function SessionList({
                 ) : null}
               </text>
 
-              <text style={{ fg: pendingKill ? theme.danger : theme.textSubtle }}>
-                {pendingKill ? 'press d again to kill' : itemMeta}
+              <text
+                style={{
+                  fg: pendingKill
+                    ? theme.danger
+                    : item.agentStatus === 'blocked'
+                      ? theme.danger
+                      : item.agentStatus === 'working'
+                        ? theme.active
+                        : theme.textSubtle,
+                }}
+              >
+                {pendingKill
+                  ? `press d again to ${item.itemKind === 'herdr' ? 'close' : 'kill'}`
+                  : itemMeta}
               </text>
             </box>
           </box>

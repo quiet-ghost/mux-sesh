@@ -1,6 +1,7 @@
 import { isAgentSessionItem } from '../agents/session-name'
+import { isHerdrAgentItem } from '../multiplexer/items'
 import { getPanelStyle } from '../styles/theme'
-import { AppMode, ViewMode, type ThemeColors } from '../types'
+import { AppMode, ViewMode, type BackendKind, type Item, type ThemeColors } from '../types'
 
 export function splitVisibleSessions<T extends { isSession: boolean; title: string }>(
   items: readonly T[]
@@ -11,20 +12,28 @@ export function splitVisibleSessions<T extends { isSession: boolean; title: stri
   }
 }
 
-export function getAppTitle(appMode: AppMode, viewMode: ViewMode): string {
+export function getAppTitle(
+  appMode: AppMode,
+  viewMode: ViewMode,
+  backend: BackendKind = 'tmux'
+): string {
   if (appMode === AppMode.Search) {
     return 'Search'
   }
 
   if (appMode === AppMode.NewSession) {
-    return 'New Session'
+    return backend === 'herdr' ? 'New Workspace' : 'New Session'
   }
 
   if (appMode === AppMode.AgentsManage) {
     return 'Agent Sessions'
   }
 
-  return viewMode === ViewMode.Projects ? 'Projects' : 'Sessions'
+  return viewMode === ViewMode.Projects
+    ? 'Projects'
+    : backend === 'herdr'
+      ? 'Workspaces'
+      : 'Sessions'
 }
 
 export function getListStyle(theme: ThemeColors, appMode: AppMode) {
@@ -55,11 +64,13 @@ export function getStatusLabel(
     : `${projectCount} projects`
 }
 
-export function getFooterHint(appMode: AppMode, prefixKey?: string): string {
+export function getFooterHint(appMode: AppMode, prefixKey?: string, selectedItem?: Item): string {
   const prefixLabel = prefixKey ? `${prefixKey} ...` : 'direct keys'
 
   if (appMode === AppMode.AgentsManage) {
-    return `o back  d kill  ctrl+p commands  ${prefixLabel}`
+    return isHerdrAgentItem(selectedItem)
+      ? `o back  enter focus  ctrl+p commands  ${prefixLabel}`
+      : `o back  d kill  ctrl+p commands  ${prefixLabel}`
   }
 
   if (appMode === AppMode.NewSession) {

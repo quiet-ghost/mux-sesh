@@ -1,4 +1,4 @@
-import { isOpencodeSessionName } from '../../opencode/session-name'
+import { isOpencodeSessionItem } from '../../opencode/session-name'
 import { AppMode, ViewMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
 import { requestShutdown } from '../../util/shutdown'
@@ -48,13 +48,13 @@ export function handleNormalMode(
         return
       case 'd':
         if (ctx.viewMode === ViewMode.Sessions && ctx.regularSessions[ctx.cursor]?.isSession) {
-          ctx.requestKillSession(ctx.regularSessions[ctx.cursor].title)
+          ctx.requestKillSession(ctx.regularSessions[ctx.cursor])
         }
         return
       case 'r':
         if (ctx.viewMode === ViewMode.Sessions && ctx.regularSessions[ctx.cursor]?.isSession) {
           ctx.clearPendingKill()
-          ctx.openRenameModal(ctx.regularSessions[ctx.cursor].title)
+          ctx.openRenameModal(ctx.regularSessions[ctx.cursor])
         }
         return
       case 's':
@@ -102,9 +102,9 @@ export function handleNormalMode(
     if (ctx.viewMode === ViewMode.Sessions && ctx.agentSessions.length > 0) {
       ctx.setAppMode(AppMode.AgentsManage)
       ctx.setAgentCursor(0)
-      const firstAgent = ctx.agentSessions[0].title
-      if (isOpencodeSessionName(firstAgent)) {
-        void ctx.loadOpencodeStatsForSession(firstAgent)
+      const firstAgent = ctx.agentSessions[0]
+      if (isOpencodeSessionItem(firstAgent)) {
+        void ctx.loadOpencodeStatsForSession(firstAgent.title)
       }
     }
     return
@@ -143,7 +143,7 @@ export function handleNormalMode(
 
   if (!isStandard && keyName === 'd') {
     if (ctx.viewMode === ViewMode.Sessions && ctx.regularSessions[ctx.cursor]?.isSession) {
-      ctx.requestKillSession(ctx.regularSessions[ctx.cursor].title)
+      ctx.requestKillSession(ctx.regularSessions[ctx.cursor])
     }
     return
   }
@@ -151,7 +151,7 @@ export function handleNormalMode(
   if (!ctx.prefixKey && !isStandard && keyName === 'r') {
     if (ctx.viewMode === ViewMode.Sessions && ctx.regularSessions[ctx.cursor]?.isSession) {
       ctx.clearPendingKill()
-      ctx.openRenameModal(ctx.regularSessions[ctx.cursor].title)
+      ctx.openRenameModal(ctx.regularSessions[ctx.cursor])
     }
     return
   }

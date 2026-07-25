@@ -1,5 +1,5 @@
 import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
-import { isOpencodeSessionName } from '../opencode/session-name'
+import { isOpencodeSessionItem } from '../opencode/session-name'
 import { checkAndUpdate, updateEvents } from '../update'
 import { showTemporaryToast } from './notifications'
 import { clearMatchIndices, filterAndSortItems } from '../search'
@@ -7,10 +7,15 @@ import { combineFileSearchResults, searchFilesAndDirectories, warmFileSearch } f
 import { annotateProjectItemsWithSessionLinks } from '../projects/session-links'
 import {
   getProjectSelectionIndex,
+  getAgentSelectionIndex,
   getSessionSelectionIndex,
   loadSessionCandidateItems,
+  loadSessionItems,
+  reuseSessionItemIdentities,
 } from './data'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
+import type { MultiplexerBackend } from '../multiplexer'
+import { getItemKey } from '../multiplexer/items'
 import { clampCursorIndex } from '../ui/list-window'
 import { isGitHubURL } from '../util/github'
 import { measure } from '../util/perf'
@@ -120,6 +125,7 @@ export function useNewSessionProjectCursor(
 export function useSessionCandidateLoader(
   appMode: AppMode,
   config: Config | null,
+  backend: MultiplexerBackend | null,
   lastProjectSelectionRef: MutableRefObject<string | null>,
   setSessionCandidateItems: Dispatch<SetStateAction<Item[]>>,
   setAllItems: Dispatch<SetStateAction<Item[]>>,
@@ -127,15 +133,16 @@ export function useSessionCandidateLoader(
   setCursor: Dispatch<SetStateAction<number>>
 ) {
   useEffect(() => {
-    if (appMode !== AppMode.NewSession || !config) {
+    if (appMode !== AppMode.NewSession || !config || !backend) {
       return
     }
 
     const nextConfig = config
+    const activeBackend = backend
     let cancelled = false
 
     async function loadCandidates() {
-      const linkedCandidates = await loadSessionCandidateItems(nextConfig, measure)
+      const linkedCandidates = await loadSessionCandidateItems(nextConfig, measure, activeBackend)
       if (cancelled) {
         return
       }
@@ -153,6 +160,7 @@ export function useSessionCandidateLoader(
     }
   }, [
     appMode,
+    backend,
     config,
     lastProjectSelectionRef,
     setAllItems,
@@ -203,7 +211,7 @@ export function useSelectionMemory(
     }
 
     if (viewMode === ViewMode.Sessions && appMode === AppMode.Normal) {
-      lastSessionSelectionRef.current = selectedItem.title
+      lastSessionSelectionRef.current = getItemKey(selectedItem)
     }
   }, [
     appMode,
@@ -231,14 +239,14 @@ export function usePendingKillReset(
       return
     }
 
-    const selectedSessionName =
+    const selectedSession =
       appMode === AppMode.AgentsManage
-        ? agentSessions[agentCursor]?.title
+        ? agentSessions[agentCursor]
         : viewMode === ViewMode.Sessions
-          ? regularSessions[cursor]?.title
+          ? regularSessions[cursor]
           : undefined
 
-    if (selectedSessionName !== pendingKillSessionName) {
+    if (!selectedSession || getItemKey(selectedSession) !== pendingKillSessionName) {
       setPendingKillSessionName(null)
     }
   }, [
@@ -334,33 +342,125 @@ export function useNewSessionFileSearch(
 }
 
 export function useOpencodeStatsPolling(
-  selectedAgentSessionName: string | undefined,
+  selectedAgentSession: Item | undefined,
   loadOpencodeStatsForSession: (sessionName: string) => Promise<unknown>
 ) {
   const loadStatsRef = useRef(loadOpencodeStatsForSession)
   loadStatsRef.current = loadOpencodeStatsForSession
+  const selectedSessionName =
+    selectedAgentSession && isOpencodeSessionItem(selectedAgentSession)
+      ? selectedAgentSession.title
+      : undefined
 
   useEffect(() => {
-    if (!selectedAgentSessionName || !isOpencodeSessionName(selectedAgentSessionName)) {
+    if (!selectedSessionName) {
       return
     }
 
-    void loadStatsRef.current(selectedAgentSessionName)
+    void loadStatsRef.current(selectedSessionName)
 
     const interval = setInterval(() => {
-      void loadStatsRef.current(selectedAgentSessionName)
+      void loadStatsRef.current(selectedSessionName)
     }, 2000)
 
     return () => {
       clearInterval(interval)
     }
-  }, [selectedAgentSessionName])
+  }, [selectedSessionName])
+}
+
+export function useHerdrAgentPolling(
+  appMode: AppMode,
+  viewMode: ViewMode,
+  config: Config | null,
+  backend: MultiplexerBackend | null,
+  selectedAgentSession: Item | undefined,
+  agentCursor: number,
+  setSessionItems: Dispatch<SetStateAction<Item[]>>,
+  setAllItems: Dispatch<SetStateAction<Item[]>>,
+  setItems: Dispatch<SetStateAction<Item[]>>,
+  setAgentCursor: Dispatch<SetStateAction<number>>,
+  setMessage: Dispatch<SetStateAction<string>>
+) {
+  const selectedKeyRef = useRef<string | undefined>(undefined)
+  const agentCursorRef = useRef(agentCursor)
+  selectedKeyRef.current = selectedAgentSession ? getItemKey(selectedAgentSession) : undefined
+  agentCursorRef.current = agentCursor
+
+  useEffect(() => {
+    if (
+      appMode !== AppMode.AgentsManage ||
+      viewMode !== ViewMode.Sessions ||
+      !config ||
+      backend?.kind !== 'herdr'
+    ) {
+      return
+    }
+
+    let cancelled = false
+    let polling = false
+    let reportedError: string | undefined
+
+    const poll = async () => {
+      if (polling) {
+        return
+      }
+      polling = true
+      try {
+        const { sessionItems } = await loadSessionItems(config, measure, backend, 'agents-poll')
+        if (cancelled) {
+          return
+        }
+
+        setSessionItems(current => reuseSessionItemIdentities(current, sessionItems))
+        setAllItems(current => reuseSessionItemIdentities(current, sessionItems))
+        setItems(current => reuseSessionItemIdentities(current, sessionItems))
+        setAgentCursor(
+          getAgentSelectionIndex(sessionItems, selectedKeyRef.current, agentCursorRef.current)
+        )
+        if (reportedError) {
+          const recoveredError = reportedError
+          setMessage(current => (current === recoveredError ? '' : current))
+          reportedError = undefined
+        }
+      } catch (error) {
+        if (!cancelled && !reportedError) {
+          reportedError = error instanceof Error ? error.message : 'Failed to refresh Herdr agents'
+          setMessage(reportedError)
+        }
+      } finally {
+        polling = false
+      }
+    }
+
+    void poll()
+    const interval = setInterval(() => void poll(), 2000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      if (reportedError) {
+        const abandonedError = reportedError
+        setMessage(current => (current === abandonedError ? '' : current))
+      }
+    }
+  }, [
+    appMode,
+    backend,
+    config,
+    setAgentCursor,
+    setAllItems,
+    setItems,
+    setMessage,
+    setSessionItems,
+    viewMode,
+  ])
 }
 
 interface UseAppBehaviorsOptions {
   appMode: AppMode
   viewMode: ViewMode
   config: Config | null
+  backend: MultiplexerBackend | null
   sessionItems: Item[]
   projectSourceItems: Item[]
   sessionCandidateItems: Item[]
@@ -368,7 +468,10 @@ interface UseAppBehaviorsOptions {
   lastProjectSelectionRef: MutableRefObject<string | null>
   setAllItems: Dispatch<SetStateAction<Item[]>>
   setItems: Dispatch<SetStateAction<Item[]>>
+  setSessionItems: Dispatch<SetStateAction<Item[]>>
   setCursor: Dispatch<SetStateAction<number>>
+  setAgentCursor: Dispatch<SetStateAction<number>>
+  setMessage: Dispatch<SetStateAction<string>>
   setSessionCandidateItems: Dispatch<SetStateAction<Item[]>>
   filteredCommandEntriesLength: number
   setCommandsCursor: Dispatch<SetStateAction<number>>
@@ -387,7 +490,7 @@ interface UseAppBehaviorsOptions {
   setPendingKillSessionName: Dispatch<SetStateAction<string | null>>
   searchQuery: string
   allItems: Item[]
-  selectedAgentSessionName: string | undefined
+  selectedAgentSession: Item | undefined
   loadOpencodeStatsForSession: (sessionName: string) => Promise<unknown>
   setUpdatedVersion: Dispatch<SetStateAction<string | null>>
   setToastMessage: Dispatch<SetStateAction<string>>
@@ -416,6 +519,7 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
   useSessionCandidateLoader(
     options.appMode,
     options.config,
+    options.backend,
     options.lastProjectSelectionRef,
     options.setSessionCandidateItems,
     options.setAllItems,
@@ -460,5 +564,18 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.setItems,
     options.setCursor
   )
-  useOpencodeStatsPolling(options.selectedAgentSessionName, options.loadOpencodeStatsForSession)
+  useOpencodeStatsPolling(options.selectedAgentSession, options.loadOpencodeStatsForSession)
+  useHerdrAgentPolling(
+    options.appMode,
+    options.viewMode,
+    options.config,
+    options.backend,
+    options.selectedAgentSession,
+    options.agentCursor,
+    options.setSessionItems,
+    options.setAllItems,
+    options.setItems,
+    options.setAgentCursor,
+    options.setMessage
+  )
 }

@@ -1,4 +1,4 @@
-import { isOpencodeSessionName } from '../opencode/session-name'
+import { isOpencodeSessionItem } from '../opencode/session-name'
 import type { CommandId } from '../ui/CommandsModal'
 import { AppMode, ViewMode, type Item } from '../types'
 
@@ -13,9 +13,9 @@ interface ExecuteCommandContext {
   sessionCandidateItems: Item[]
   projectSourceItems: Item[]
   closeModal: () => void
-  openRenameModal: (sessionName: string) => void
+  openRenameModal: (item: Item) => void
   openSettingsModal: () => void
-  requestKillSession: (sessionName: string) => void
+  requestKillSession: (item: Item) => void
   togglePinnedSession: (sessionName: string) => Promise<void>
   setAppMode: (mode: AppMode) => void
   setViewMode: (mode: ViewMode) => void
@@ -72,7 +72,7 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
             ? ctx.regularSessions[ctx.cursor]
             : undefined
       if (target?.isSession) {
-        ctx.openRenameModal(target.title)
+        ctx.openRenameModal(target)
       }
       return
     }
@@ -85,7 +85,7 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
             : undefined
       if (target?.isSession) {
         ctx.closeModal()
-        ctx.requestKillSession(target.title)
+        ctx.requestKillSession(target)
       }
       return
     }
@@ -115,9 +115,9 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
       if (ctx.viewMode === ViewMode.Sessions && ctx.agentSessions.length > 0) {
         ctx.setAppMode(AppMode.AgentsManage)
         ctx.setAgentCursor(0)
-        const firstAgent = ctx.agentSessions[0].title
-        if (isOpencodeSessionName(firstAgent)) {
-          await ctx.loadOpencodeStatsForSession(firstAgent)
+        const firstAgent = ctx.agentSessions[0]
+        if (isOpencodeSessionItem(firstAgent)) {
+          await ctx.loadOpencodeStatsForSession(firstAgent.title)
         }
       }
       return

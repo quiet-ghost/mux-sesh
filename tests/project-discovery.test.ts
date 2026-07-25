@@ -203,6 +203,44 @@ describe('project discovery helpers', () => {
     expect(annotated[0]?.linkedSessionName).toBe('notes_todo_md')
     expect(annotated[0]?.linkedSessionAttached).toBe(false)
   })
+
+  test('links duplicate Herdr file labels by the file parent directory', async () => {
+    const config = getDefaultConfig('/home/tester')
+    const annotated = await annotateProjectItemsWithSessionLinks(
+      [
+        {
+          title: 'todo.md',
+          desc: '~/notes',
+          path: '/home/tester/notes/todo.md',
+          isSession: false,
+          itemKind: 'file',
+        },
+      ],
+      [
+        {
+          title: 'notes_todo_md',
+          desc: '',
+          path: '/home/tester/archive',
+          isSession: true,
+          itemKind: 'herdr',
+          backend: 'herdr',
+          sessionId: 'w1',
+        },
+        {
+          title: 'notes_todo_md',
+          desc: '',
+          path: '/home/tester/notes',
+          isSession: true,
+          itemKind: 'herdr',
+          backend: 'herdr',
+          sessionId: 'w2',
+        },
+      ],
+      config
+    )
+
+    expect(annotated[0]?.linkedSessionId).toBe('w2')
+  })
 })
 
 describe('session workflow helpers', () => {

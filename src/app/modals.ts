@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { getSettingEditorValue, type SettingsFieldId } from '../settings'
-import type { Config } from '../types'
+import type { Config, Item } from '../types'
 
 export type ModalState =
   | { type: 'rename'; target: string }
@@ -21,20 +21,20 @@ interface ModalSetters {
   setSettingOptionsCursor: Dispatch<SetStateAction<number>>
   setSettingEditorValue: Dispatch<SetStateAction<string>>
   setSettingEditorError: Dispatch<SetStateAction<string>>
-  setRenameTarget: Dispatch<SetStateAction<string>>
+  setRenameTarget: Dispatch<SetStateAction<Item | null>>
 }
 
 export function openRenameModal(
-  sessionName: string,
+  item: Item,
   clearPendingKill: () => void,
-  setRenameTarget: Dispatch<SetStateAction<string>>,
+  setRenameTarget: Dispatch<SetStateAction<Item | null>>,
   setModalInputValue: Dispatch<SetStateAction<string>>,
   setModalState: Dispatch<SetStateAction<ModalState>>
 ) {
   clearPendingKill()
-  setRenameTarget(sessionName)
-  setModalInputValue(sessionName)
-  setModalState({ type: 'rename', target: sessionName })
+  setRenameTarget(item)
+  setModalInputValue(item.title)
+  setModalState({ type: 'rename', target: item.title })
 }
 
 export function openCommandsModal(
@@ -104,5 +104,5 @@ export function closeModal(setters: ModalSetters) {
   setters.setSettingOptionsSearchQuery('')
   setters.setSettingEditorValue('')
   setters.setSettingEditorError('')
-  setters.setRenameTarget('')
+  setters.setRenameTarget(null)
 }

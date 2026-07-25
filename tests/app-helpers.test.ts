@@ -1,7 +1,12 @@
 import { describe, expect, mock, test } from 'bun:test'
 import { createAppControls } from '../src/app/controls'
 import { getDefaultConfig } from '../src/config'
-import { getProjectSelectionIndex, getSessionSelectionIndex } from '../src/app/data'
+import {
+  getAgentSelectionIndex,
+  getProjectSelectionIndex,
+  getSessionSelectionIndex,
+  reuseSessionItemIdentities,
+} from '../src/app/data'
 import { getSessionCommandState, getSettingsState } from '../src/app/derived'
 import { createAppHandlers, getPinnedSessionsAfterToggle } from '../src/app/handlers'
 import { applyOpencodeState, loadOpencodeSessionStats } from '../src/app/opencode'
@@ -16,6 +21,9 @@ import {
   splitVisibleSessions,
 } from '../src/app/view'
 import { AppMode, ViewMode, type Item } from '../src/types'
+import { getCommandEntries } from '../src/ui/CommandsModal'
+import { getItemKey, workspaceToItem } from '../src/multiplexer/items'
+import { filterHiddenSessions } from '../src/tmux/workflows'
 
 describe('app view helpers', () => {
   test('splits regular and agent sessions without losing item shape', () => {
@@ -26,17 +34,34 @@ describe('app view helpers', () => {
       { title: 'codex-work', desc: '', path: '/tmp/codex', isSession: true },
       { title: 'claude-review', desc: '', path: '/tmp/claude', isSession: true },
       { title: 'tui_chat', desc: '', path: '/tmp/chat', isSession: true },
+      {
+        title: 'herdr-agent',
+        desc: '',
+        path: '/tmp/herdr-agent',
+        isSession: true,
+        itemKind: 'herdr',
+        agentStatus: 'working',
+      },
+      {
+        title: 'herdr-plain',
+        desc: '',
+        path: '/tmp/herdr-plain',
+        isSession: true,
+        itemKind: 'herdr',
+        agentStatus: 'unknown',
+      },
     ]
 
     const split = splitVisibleSessions(items)
 
-    expect(split.regularSessions.map(item => item.title)).toEqual(['dev'])
+    expect(split.regularSessions.map(item => item.title)).toEqual(['dev', 'herdr-plain'])
     expect(split.agentSessions.map(item => item.title)).toEqual([
       'opencode-dev',
       'pi-main',
       'codex-work',
       'claude-review',
       'tui_chat',
+      'herdr-agent',
     ])
   })
 
@@ -50,9 +75,72 @@ describe('app view helpers', () => {
       'Clone & create session'
     )
   })
+
+  test('hides destructive agent controls for a targeted Herdr tab', () => {
+    const agent = {
+      title: 'opencode-api',
+      desc: '',
+      path: '/repo/api',
+      isSession: true as const,
+      itemKind: 'herdr' as const,
+      backend: 'herdr' as const,
+      sessionId: 'agents',
+      target: { kind: 'agent' as const, tabId: 'agents:t1', paneId: 'agents:p1' },
+    }
+
+    const entries = getCommandEntries(AppMode.AgentsManage, 'vim', undefined, agent)
+
+    expect(entries.some(entry => entry.id === 'kill-session')).toBe(false)
+    expect(entries.some(entry => entry.id === 'rename-session')).toBe(false)
+    expect(getFooterHint(AppMode.AgentsManage, undefined, agent)).not.toContain('d kill')
+  })
 })
 
 describe('app data helpers', () => {
+  test('uses the target pane to identify agents sharing one Herdr workspace', () => {
+    const first = workspaceToItem({
+      backend: 'herdr',
+      id: 'agents',
+      title: 'first',
+      path: '/repo/first',
+      isActive: false,
+      unitCount: 1,
+      target: { kind: 'agent', tabId: 'agents:t1', paneId: 'agents:p1' },
+    })
+    const second = workspaceToItem({
+      backend: 'herdr',
+      id: 'agents',
+      title: 'second',
+      path: '/repo/second',
+      isActive: false,
+      unitCount: 1,
+      target: { kind: 'agent', tabId: 'agents:t2', paneId: 'agents:p2' },
+    })
+
+    expect(getItemKey(first)).not.toBe(getItemKey(second))
+    expect(getAgentSelectionIndex([second, first], getItemKey(first), 0)).toBe(1)
+    expect(getAgentSelectionIndex([second], getItemKey(first), 1)).toBe(0)
+    expect(reuseSessionItemIdentities([first], [{ ...first }])[0]).toBe(first)
+    expect(reuseSessionItemIdentities([first], [{ ...first, agentStatus: 'working' }])[0]).not.toBe(
+      first
+    )
+  })
+
+  test('hides expanded Herdr agents by their source workspace title', () => {
+    const agent = workspaceToItem({
+      backend: 'herdr',
+      id: 'agents',
+      title: 'opencode-api',
+      workspaceTitle: 'Agents',
+      path: '/repo/api',
+      isActive: false,
+      unitCount: 1,
+      target: { kind: 'agent', tabId: 'agents:t1', paneId: 'agents:p1' },
+    })
+
+    expect(filterHiddenSessions([agent], ['Agents'])).toEqual([])
+  })
+
   test('restores selection indexes from remembered session and project identifiers', () => {
     const items: Item[] = [
       { title: 'alpha', desc: '', path: '/tmp/alpha', isSession: true },
@@ -193,6 +281,15 @@ describe('app state helpers', () => {
 
 describe('app controls', () => {
   test('requests kill on first press and confirms on second press', async () => {
+    const item: Item = {
+      title: 'alpha',
+      desc: '',
+      path: '/tmp/alpha',
+      isSession: true,
+      itemKind: 'tmux',
+      backend: 'tmux',
+      sessionId: 'alpha',
+    }
     const baseOptions = {
       config: getDefaultConfig('/home/tester'),
       handleKillSession: mock(async () => {}),
@@ -214,19 +311,20 @@ describe('app controls', () => {
       ...baseOptions,
       pendingKillSessionName: null,
     })
-    firstControls.requestKillSession('alpha')
-    expect(baseOptions.setPendingKillSessionName).toHaveBeenCalledWith('alpha')
+    firstControls.requestKillSession(item)
+    expect(baseOptions.setPendingKillSessionName).toHaveBeenCalledWith('tmux:alpha')
 
     const secondControls = createAppControls({
       ...baseOptions,
-      pendingKillSessionName: 'alpha',
+      pendingKillSessionName: 'tmux:alpha',
     })
-    secondControls.requestKillSession('alpha')
+    secondControls.requestKillSession(item)
     await Promise.resolve()
-    expect(baseOptions.handleKillSession).toHaveBeenCalledWith('alpha')
+    expect(baseOptions.handleKillSession).toHaveBeenCalledWith(item)
   })
 
   test('opening rename clears pending kill and seeds modal state', () => {
+    const item: Item = { title: 'beta', desc: '', path: '/tmp/beta', isSession: true }
     const options = {
       config: getDefaultConfig('/home/tester'),
       pendingKillSessionName: null,
@@ -245,10 +343,10 @@ describe('app controls', () => {
       setSettingEditorValue: mock(() => {}),
     }
 
-    createAppControls(options).openRenameModal('beta')
+    createAppControls(options).openRenameModal(item)
 
     expect(options.setPendingKillSessionName).toHaveBeenCalledWith(null)
-    expect(options.setRenameTarget).toHaveBeenCalledWith('beta')
+    expect(options.setRenameTarget).toHaveBeenCalledWith(item)
     expect(options.setModalInputValue).toHaveBeenCalledWith('beta')
     expect(options.setModalState).toHaveBeenCalledWith({ type: 'rename', target: 'beta' })
   })

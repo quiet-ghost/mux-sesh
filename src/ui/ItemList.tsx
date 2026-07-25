@@ -4,6 +4,7 @@ import HighlightedText from './HighlightedText'
 import { getItemIconPresentation } from './item-icon'
 import { getVisibleWindow } from './list-window'
 import type { Item } from '../types'
+import { getItemKey } from '../multiplexer/items'
 
 interface Props {
   items: Item[]
@@ -43,12 +44,12 @@ export default function ItemList({
             ? 'open'
             : 'create'
         const linkedSessionLabel = item.linkedSessionName ? ` -> ${item.linkedSessionName}` : ''
-        const pendingKill = item.isSession && item.title === pendingKillSessionName
+        const pendingKill = item.isSession && getItemKey(item) === pendingKillSessionName
         const selected = absoluteIndex === cursor
 
         return (
           <box
-            key={i}
+            key={`${getItemKey(item)}:${item.path}`}
             style={{
               flexDirection: 'row',
               justifyContent: 'space-between',

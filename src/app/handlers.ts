@@ -2,6 +2,7 @@ import { executeCommand as runCommand } from './commands'
 import { persistConfigUpdate, runWithErrorMessage } from './operations'
 import { AppMode, type Config, type Item, type OpencodeSessionStats, type ViewMode } from '../types'
 import type { SettingsFieldId } from '../settings'
+import type { MultiplexerBackend } from '../multiplexer'
 import { applyEditorSetting, applyOptionSetting, getSettingEditorTitle } from '../settings'
 import {
   handleEditTarget as actionHandleEditTarget,
@@ -16,6 +17,7 @@ import {
 type ShowMessage = (message: string, timeout?: number) => void
 
 interface SharedHandlerOptions {
+  backend: MultiplexerBackend | null
   config: Config | null
   items: Item[]
   sessionItems: Item[]
@@ -41,25 +43,33 @@ interface SettingsHandlerOptions {
 }
 
 export async function handleKillSessionWithFeedback(
-  sessionName: string,
+  item: Item,
   options: KillHandlerOptions
 ): Promise<void> {
   options.setPendingKillSessionName(null)
 
-  await actionHandleKillSession(sessionName, {
+  if (!options.backend) return
+  await actionHandleKillSession(item, options.backend, {
     onSuccess: msg => options.showMessage(msg),
     onError: msg => options.showMessage(msg, 3000),
     refreshItems: () => options.refreshItems(),
   })
 }
 
-export async function handleSelectItem(item: Item, config: Config | null): Promise<void> {
-  await actionHandleSelect(item, config)
+export async function handleSelectItem(
+  item: Item,
+  config: Config | null,
+  backend: MultiplexerBackend | null
+): Promise<void> {
+  if (!backend) return
+  await actionHandleSelect(item, config, backend)
 }
 
 export async function handleLastSessionWithFeedback(options: SharedHandlerOptions): Promise<void> {
+  if (!options.backend) return
+  const backend = options.backend
   await runWithErrorMessage(
-    () => actionHandleLastSession(options.sessionItems),
+    () => actionHandleLastSession(options.sessionItems, backend),
     'Failed to switch to the previous session',
     options.showMessage
   )
@@ -69,8 +79,10 @@ export async function handleRootSessionWithFeedback(
   item: Item | undefined,
   options: SharedHandlerOptions
 ): Promise<void> {
+  if (!options.backend) return
+  const backend = options.backend
   await runWithErrorMessage(
-    () => actionHandleRootSession(item, options.config),
+    () => actionHandleRootSession(item, options.config, backend),
     'Failed to open the root session',
     options.showMessage
   )
@@ -80,21 +92,23 @@ export async function handleEditTargetWithFeedback(
   item: Item | undefined,
   options: SharedHandlerOptions
 ): Promise<void> {
+  if (!options.backend) return
+  const backend = options.backend
   await runWithErrorMessage(
-    () => actionHandleEditTarget(item, options.config),
+    () => actionHandleEditTarget(item, options.config, backend),
     'Failed to edit target',
     options.showMessage
   )
 }
 
 export async function handleRenameSubmitWithFeedback(
-  renameTarget: string,
+  renameTarget: Item | null,
   newName: string,
   closeModal: () => void,
-  options: Pick<SharedHandlerOptions, 'showMessage' | 'refreshItems'>
+  options: Pick<SharedHandlerOptions, 'backend' | 'showMessage' | 'refreshItems'>
 ): Promise<void> {
-  if (newName && newName !== renameTarget) {
-    await actionHandleRenameSubmit(renameTarget, newName, {
+  if (renameTarget && newName && newName !== renameTarget.title && options.backend) {
+    await actionHandleRenameSubmit(renameTarget, newName, options.backend, {
       onSuccess: msg => options.showMessage(msg),
       onError: msg => options.showMessage(msg, 3000),
       refreshItems: () => options.refreshItems(),
@@ -111,9 +125,18 @@ export async function handleNewSessionSubmitWithSearch(
   if (!searchTerm) {
     return
   }
+  if (!options.backend) return
+  const backend = options.backend
 
   await runWithErrorMessage(
-    () => actionHandleNewSessionSubmit(searchTerm, options.config, options.items, options.cursor),
+    () =>
+      actionHandleNewSessionSubmit(
+        searchTerm,
+        options.config,
+        options.items,
+        options.cursor,
+        backend
+      ),
     'Failed to create session',
     options.showMessage
   )
@@ -217,9 +240,9 @@ interface CreateAppHandlersOptions extends SharedHandlerOptions {
   sessionCandidateItems: Item[]
   projectSourceItems: Item[]
   closeModal: () => void
-  openRenameModal: (sessionName: string) => void
+  openRenameModal: (item: Item) => void
   openSettingsModal: () => void
-  requestKillSession: (sessionName: string) => void
+  requestKillSession: (item: Item) => void
   setAppMode: (mode: AppMode) => void
   setViewMode: (mode: ViewMode) => void
   setAllItems: (items: Item[]) => void
@@ -233,7 +256,7 @@ interface CreateAppHandlersOptions extends SharedHandlerOptions {
   setSettingEditorError: (message: string) => void
   settingEditorValue: string
   settingEditorPlainText?: string
-  renameTarget: string
+  renameTarget: Item | null
   renamedValue: string
   searchTerm: string
   loadOpencodeStatsForSession: (sessionName: string) => Promise<OpencodeSessionStats | null>
@@ -241,6 +264,7 @@ interface CreateAppHandlersOptions extends SharedHandlerOptions {
 
 export function createAppHandlers(options: CreateAppHandlersOptions) {
   const sharedOptions: SharedHandlerOptions = {
+    backend: options.backend,
     config: options.config,
     items: options.items,
     sessionItems: options.sessionItems,
@@ -249,15 +273,15 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     refreshItems: options.refreshItems,
   }
 
-  async function handleKillSessionWrapper(sessionName: string) {
-    await handleKillSessionWithFeedback(sessionName, {
+  async function handleKillSessionWrapper(item: Item) {
+    await handleKillSessionWithFeedback(item, {
       ...sharedOptions,
       setPendingKillSessionName: options.setPendingKillSessionName,
     })
   }
 
   async function handleSelectWrapper(item: Item) {
-    await handleSelectItem(item, options.config)
+    await handleSelectItem(item, options.config, options.backend)
   }
 
   async function handleLastSessionWrapper() {

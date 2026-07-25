@@ -1,6 +1,7 @@
 import type { TextareaRenderable } from '@opentui/core'
 import { useRef, useState } from 'react'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
+import type { MultiplexerBackend } from '../multiplexer'
 
 export function useAppCoreState() {
   const [appMode, setAppMode] = useState(AppMode.Normal)
@@ -14,8 +15,9 @@ export function useAppCoreState() {
   const [agentCursor, setAgentCursor] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [message, setMessage] = useState('')
-  const [renameTarget, setRenameTarget] = useState('')
+  const [renameTarget, setRenameTarget] = useState<Item | null>(null)
   const [config, setConfig] = useState<Config | null>(null)
+  const [backend, setBackend] = useState<MultiplexerBackend | null>(null)
   const [pendingKillSessionName, setPendingKillSessionName] = useState<string | null>(null)
   const [prefixActive, setPrefixActive] = useState(false)
   const prefixTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -53,6 +55,8 @@ export function useAppCoreState() {
     setRenameTarget,
     config,
     setConfig,
+    backend,
+    setBackend,
     pendingKillSessionName,
     setPendingKillSessionName,
     prefixActive,

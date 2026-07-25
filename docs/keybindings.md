@@ -1,6 +1,6 @@
 # Keybindings
 
-`mux-sesh` supports two input styles: `vim` and `standard`.
+`mux-sesh` supports two input styles for tmux sessions and Herdr workspaces: `vim` and `standard`.
 
 Defaults:
 
@@ -27,16 +27,16 @@ Vim mode keeps common actions on direct keys.
 
 When a prefix key is configured, secondary actions are also available behind that prefix. With the default config, these are `ctrl+x` combinations.
 
-| Prefix + key | Action                                           |
-| ------------ | ------------------------------------------------ |
-| `s`          | Switch to sessions view                          |
-| `p`          | Switch to projects view                          |
-| `r`          | Rename selected live session                     |
-| `d`          | Kill selected live session                       |
-| `l`          | Jump to the previous tmux session                |
-| `g`          | Open the git-root session for the selected item  |
-| `e`          | Edit the configured target for the selected item |
-| `Shift+R`    | Refresh sessions and projects                    |
+| Prefix + key | Action                                                   |
+| ------------ | -------------------------------------------------------- |
+| `s`          | Switch to sessions view                                  |
+| `p`          | Switch to projects view                                  |
+| `r`          | Rename selected live session                             |
+| `d`          | Kill selected live session                               |
+| `l`          | Jump to the previous tmux session (unavailable in Herdr) |
+| `g`          | Open the git-root session for the selected item          |
+| `e`          | Edit the configured target for the selected item         |
+| `Shift+R`    | Refresh sessions and projects                            |
 
 In vim mode, `s` and `p` also work directly even when a prefix key is configured.
 
@@ -44,13 +44,13 @@ In vim mode, `s` and `p` also work directly even when a prefix key is configured
 
 If `prefix_key` is unset, a subset of actions becomes direct again:
 
-| Key | Action                        |
-| --- | ----------------------------- |
-| `l` | Previous tmux session         |
-| `g` | Git-root session              |
-| `e` | Edit configured target        |
-| `r` | Rename selected live session  |
-| `R` | Refresh sessions and projects |
+| Key | Action                                       |
+| --- | -------------------------------------------- |
+| `l` | Previous tmux session (unavailable in Herdr) |
+| `g` | Git-root session                             |
+| `e` | Edit configured target                       |
+| `r` | Rename selected live session                 |
+| `R` | Refresh sessions and projects                |
 
 ## Search Mode
 
@@ -78,16 +78,16 @@ Standard mode is search-first. The query stays active, arrow keys handle movemen
 
 ## Prefix Actions In Standard Mode
 
-| Prefix + key | Action                        |
-| ------------ | ----------------------------- |
-| `n`          | New session                   |
-| `o`          | Open agent sessions           |
-| `s`          | Open settings                 |
-| `l`          | Previous tmux session         |
-| `g`          | Git-root session              |
-| `r`          | Rename selected live session  |
-| `d`          | Kill selected live session    |
-| `Shift+R`    | Refresh sessions and projects |
+| Prefix + key | Action                                       |
+| ------------ | -------------------------------------------- |
+| `n`          | New session                                  |
+| `o`          | Open agent sessions                          |
+| `s`          | Open settings                                |
+| `l`          | Previous tmux session (unavailable in Herdr) |
+| `g`          | Git-root session                             |
+| `r`          | Rename selected live session                 |
+| `d`          | Kill selected live session                   |
+| `Shift+R`    | Refresh sessions and projects                |
 
 ## New-Session Mode
 
@@ -106,6 +106,11 @@ In standard mode, `Ctrl+I` returns from new-session mode to search, and `Ctrl+D`
 ## Agent Sessions
 
 Agent sessions have their own manage view. Matching names include `opencode-*`, `pi-*`, `codex-*`, `claude-*`, and `tui_chat`.
+
+| Backend | Agent behavior                                                          |
+| ------- | ----------------------------------------------------------------------- |
+| tmux    | Named agent sessions support manage actions below                       |
+| Herdr   | Native agent status and details are read-only; controls are unavailable |
 
 | Key                    | Action                                                     |
 | ---------------------- | ---------------------------------------------------------- |

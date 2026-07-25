@@ -4,9 +4,11 @@ import { applyOpencodeState, loadOpencodeSessionStats } from './opencode'
 import { applyRefreshedViewState, loadRefreshedViewState } from './state'
 import type { Measure } from './data'
 import type { Config, Item, OpencodeSessionStats, OpencodeStatsState, ViewMode } from '../types'
+import type { MultiplexerBackend } from '../multiplexer'
 
 interface AppRuntimeOptions {
   config: Config | null
+  backend: MultiplexerBackend | null
   viewMode: ViewMode
   measure: Measure
   lastSessionSelectionRef: MutableRefObject<string | null>
@@ -36,7 +38,7 @@ export function createAppRuntime(options: AppRuntimeOptions) {
   }
 
   async function refreshItems(forceViewMode?: ViewMode, nextConfig = options.config) {
-    if (!nextConfig) {
+    if (!nextConfig || !options.backend) {
       return
     }
 
@@ -45,6 +47,7 @@ export function createAppRuntime(options: AppRuntimeOptions) {
       targetMode,
       nextConfig,
       options.measure,
+      options.backend,
       options.lastSessionSelectionRef.current,
       options.lastProjectSelectionRef.current
     )

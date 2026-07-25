@@ -136,6 +136,7 @@ describe('config normalization', () => {
     expect(config.pinnedSessions).toEqual(['main', 'work'])
     expect(config.icons).toEqual({
       tmux: 'T',
+      herdr: '',
       configured: 'C',
       project: 'P',
       opencode: 'O',

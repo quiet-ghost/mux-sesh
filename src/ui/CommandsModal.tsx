@@ -1,4 +1,5 @@
 import type { TextareaRenderable } from '@opentui/core'
+import { isHerdrAgentItem } from '../multiplexer/items'
 import { useTheme } from '../styles/theme'
 import { useTextareaFocus } from './use-textarea-focus'
 import { AppMode, type Item, type KeybindMode } from '../types'
@@ -52,16 +53,23 @@ export function getCommandEntries(
   const prefixCategory = prefixKey ? `Prefix ${prefixKey}` : 'Prefix'
 
   if (appMode === AppMode.AgentsManage) {
+    const canManageSession = !isHerdrAgentItem(selectedItem)
     return [
       { id: 'back', category: 'Direct', title: 'Back', keybind: 'esc' },
-      { id: 'kill-session', category: 'Direct', title: 'Kill session', keybind: 'd' },
+      ...(canManageSession
+        ? [{ id: 'kill-session' as const, category: 'Direct', title: 'Kill session', keybind: 'd' }]
+        : []),
       { id: 'open-settings', category: 'Direct', title: 'Open settings', keybind: 'ctrl+p' },
-      {
-        id: 'rename-session',
-        category: prefixCategory,
-        title: 'Rename session',
-        keybind: commandKey('r', 'r'),
-      },
+      ...(canManageSession
+        ? [
+            {
+              id: 'rename-session' as const,
+              category: prefixCategory,
+              title: 'Rename session',
+              keybind: commandKey('r', 'r'),
+            },
+          ]
+        : []),
     ]
   }
 

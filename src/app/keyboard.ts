@@ -51,14 +51,14 @@ interface UseAppKeyboardOptions {
   openSettingEditor: (field: SettingsFieldId) => void
   closeModal: () => void
   clearPendingKill: () => void
-  requestKillSession: (sessionName: string) => void
+  requestKillSession: (item: Item) => void
   togglePinnedSession: (sessionName: string) => Promise<void>
-  openRenameModal: (sessionName: string) => void
+  openRenameModal: (item: Item) => void
   openCommandsModal: () => void
   openSettingsModal: () => void
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config | null) => Promise<void>
   handleSelect: (item: Item) => Promise<void>
-  handleKillSession: (sessionName: string) => Promise<void>
+  handleKillSession: (item: Item) => Promise<void>
   handleLastSession: () => Promise<void>
   handleRootSession: (item?: Item) => Promise<void>
   handleEditTarget: (item?: Item) => Promise<void>

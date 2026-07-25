@@ -1,4 +1,7 @@
 import type { OpencodeStats } from '../opencode/types'
+import type { AgentStatus, BackendKind, BackendPreference, HerdrAgentTarget } from '../multiplexer'
+
+export type { AgentStatus, BackendKind, BackendPreference } from '../multiplexer'
 
 export enum AppMode {
   Normal,
@@ -14,11 +17,12 @@ export enum ViewMode {
 
 export type KeybindMode = 'vim' | 'standard'
 export type ZoxideMode = 'off' | 'rank' | 'merge'
-export type ItemKind = 'tmux' | 'configured' | 'project' | 'file'
+export type ItemKind = BackendKind | 'configured' | 'project' | 'file'
 export type SortOrder = 'live-first' | 'configured-first' | 'zoxide-first' | 'alphabetical'
 
 export interface IconConfig {
   tmux: string
+  herdr: string
   configured: string
   project: string
   opencode: string
@@ -125,10 +129,17 @@ export interface Item {
   path: string
   isSession: boolean
   itemKind?: ItemKind
+  sessionId?: string
+  backend?: BackendKind
+  target?: HerdrAgentTarget
+  workspaceTitle?: string
+  agentStatus?: AgentStatus
   icon?: string
   isPinned?: boolean
   isAttached?: boolean
   linkedSessionName?: string
+  linkedSessionId?: string
+  linkedSessionBackend?: BackendKind
   linkedSessionAttached?: boolean
   windowCount?: string
   createdAt?: number
@@ -138,6 +149,7 @@ export interface Item {
 }
 
 export interface Config {
+  backend?: BackendPreference
   projectPaths: string[]
   reposPath: string
   editor: string

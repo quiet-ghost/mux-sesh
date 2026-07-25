@@ -21,12 +21,14 @@ import SessionDetailsPanel from '../ui/SessionDetailsPanel'
 import Toast from '../ui/Toast'
 import VersionBadge, { formatVersionBadge } from '../ui/VersionBadge'
 import { CURRENT_VERSION } from '../update/version'
+import type { MultiplexerBackend } from '../multiplexer'
 
 interface Props {
   theme: ThemeColors
   appMode: AppMode
   viewMode: ViewMode
   config: Config | null
+  backend: MultiplexerBackend | null
   items: Item[]
   regularSessions: Item[]
   agentSessions: Item[]
@@ -53,6 +55,7 @@ export function AppScreen({
   appMode,
   viewMode,
   config,
+  backend,
   items,
   regularSessions,
   agentSessions,
@@ -73,7 +76,7 @@ export function AppScreen({
   toastVisible,
   updatedVersion,
 }: Props) {
-  const title = getAppTitle(appMode, viewMode)
+  const title = getAppTitle(appMode, viewMode, backend?.kind)
   const listStyle = getListStyle(theme, appMode)
   const totalSessions = sessionItems.filter(item => item.isSession).length
   const activeSessions = items.filter(item => item.isSession && item.isAttached).length
@@ -85,7 +88,7 @@ export function AppScreen({
     appMode === AppMode.AgentsManage &&
     selectedAgentSession !== undefined &&
     isOpencodeSessionItem(selectedAgentSession)
-  const footerHint = getFooterHint(appMode, config?.prefixKey)
+  const footerHint = getFooterHint(appMode, config?.prefixKey, selectedPrimaryItem)
 
   return (
     <>
@@ -166,6 +169,7 @@ export function AppScreen({
                     sessions={agentSessions}
                     appMode={appMode}
                     cursor={agentCursor}
+                    maxItems={maxVisibleItems}
                     icons={config?.icons}
                     pendingKillSessionName={pendingKillSessionName}
                   />
@@ -188,7 +192,11 @@ export function AppScreen({
             (showOpencodeStats ? (
               <OpencodeStatsPanel selectedItem={selectedAgentSession} />
             ) : (
-              <SessionDetailsPanel selectedItem={selectedPrimaryItem} config={config} />
+              <SessionDetailsPanel
+                selectedItem={selectedPrimaryItem}
+                config={config}
+                backend={backend}
+              />
             ))}
         </box>
 

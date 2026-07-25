@@ -25,6 +25,34 @@ describe('agent session names', () => {
   })
 })
 
+test('Herdr workspaces use native status for agent grouping', () => {
+  expect(
+    isAgentSessionItem({
+      isSession: true,
+      title: 'api',
+      itemKind: 'herdr',
+      agentStatus: 'working',
+    })
+  ).toBe(true)
+  expect(
+    isAgentSessionItem({
+      isSession: true,
+      title: 'api',
+      itemKind: 'herdr',
+      agentStatus: 'unknown',
+    })
+  ).toBe(false)
+  expect(
+    isAgentSessionItem({
+      isSession: true,
+      title: 'unknown-agent',
+      itemKind: 'herdr',
+      agentStatus: 'unknown',
+      target: { kind: 'agent', tabId: 'agents:t1', paneId: 'agents:p1' },
+    })
+  ).toBe(true)
+})
+
 describe('opencode session names', () => {
   test.each([
     ['opencode-main', true],
@@ -42,5 +70,8 @@ describe('opencode session names', () => {
     expect(isOpencodeSessionItem({ title: 'opencode-main', isSession: true })).toBe(true)
     expect(isOpencodeSessionItem({ title: 'pi-main', isSession: true })).toBe(false)
     expect(isOpencodeSessionItem({ title: 'tui_chat', isSession: true })).toBe(false)
+    expect(
+      isOpencodeSessionItem({ title: 'opencode-main', isSession: true, itemKind: 'herdr' })
+    ).toBe(false)
   })
 })

@@ -8,6 +8,7 @@ You only need to set the values you want to change. Everything else falls back t
 
 ```json
 {
+  "backend": "tmux",
   "project_paths": ["~/dev", "~/personal"],
   "repos_path": "~/dev/repos",
   "editor": "nvim",
@@ -27,6 +28,7 @@ You only need to set the values you want to change. Everything else falls back t
 
 | Setting         | Default               |
 | --------------- | --------------------- |
+| `backend`       | auto detected         |
 | `project_paths` | `~/dev`, `~/personal` |
 | `repos_path`    | `~/dev/repos`         |
 | `editor`        | `nvim`                |
@@ -41,26 +43,58 @@ You only need to set the values you want to change. Everything else falls back t
 
 ## Core Options
 
-| Option            | Purpose                                                             |
-| ----------------- | ------------------------------------------------------------------- |
-| `project_paths`   | Directories scanned for candidate projects                          |
-| `repos_path`      | Destination for cloned GitHub repositories                          |
-| `editor`          | Short editor label used in settings                                 |
-| `editor_cmd`      | Command used to open or start workspaces                            |
-| `keybind_mode`    | `vim` or `standard`                                                 |
-| `prefix_key`      | Prefix for secondary actions                                        |
-| `theme`           | Built-in or custom theme name                                       |
-| `color_scheme`    | `system`, `dark`, or `light`                                        |
-| `sort_order`      | `live-first`, `configured-first`, `zoxide-first`, or `alphabetical` |
-| `zoxide_mode`     | `off`, `rank`, or `merge`                                           |
-| `auto_update`     | Enables background update checks for supported installs             |
-| `dir_length`      | Path depth used when generating session names                       |
-| `hidden_sessions` | Glob patterns for sessions to hide                                  |
-| `icons`           | Icons for tmux, configured, project, and agent rows                 |
-| `themes`          | Custom theme definitions                                            |
-| `default_session` | Fallback startup and preview commands                               |
-| `projects`        | Exact path rules                                                    |
-| `wildcards`       | Pattern-based project rules                                         |
+| Option            | Purpose                                                              |
+| ----------------- | -------------------------------------------------------------------- |
+| `backend`         | Strict backend selection: `tmux` or `herdr`; omit for auto detection |
+| `project_paths`   | Directories scanned for candidate projects                           |
+| `repos_path`      | Destination for cloned GitHub repositories                           |
+| `editor`          | Short editor label used in settings                                  |
+| `editor_cmd`      | Command used to open or start workspaces                             |
+| `keybind_mode`    | `vim` or `standard`                                                  |
+| `prefix_key`      | Prefix for secondary actions                                         |
+| `theme`           | Built-in or custom theme name                                        |
+| `color_scheme`    | `system`, `dark`, or `light`                                         |
+| `sort_order`      | `live-first`, `configured-first`, `zoxide-first`, or `alphabetical`  |
+| `zoxide_mode`     | `off`, `rank`, or `merge`                                            |
+| `auto_update`     | Enables background update checks for supported installs              |
+| `dir_length`      | Path depth used when generating session names                        |
+| `hidden_sessions` | Glob patterns for sessions to hide                                   |
+| `icons`           | Icons for tmux, Herdr, configured, project, and agent rows           |
+| `themes`          | Custom theme definitions                                             |
+| `default_session` | Fallback startup and preview commands                                |
+| `projects`        | Exact path rules                                                     |
+| `wildcards`       | Pattern-based project rules                                          |
+
+## Backend Selection
+
+mux-sesh supports tmux sessions and Herdr 0.7.5 workspaces without a Herdr plugin. It maps Herdr workspaces, tabs, and panes to session, window, and pane concepts.
+
+| Priority | Selection rule                                         |
+| -------- | ------------------------------------------------------ |
+| 1        | `HERDR_ENV=1` selects Herdr                            |
+| 2        | `TMUX` selects tmux                                    |
+| 3        | `backend` selects the configured backend strictly      |
+| 4        | A sole running server is selected; tmux wins a tie     |
+| 5        | Installed tmux is the default when neither server runs |
+
+Explicit `backend: "herdr"` requires a compatible Herdr server already running. mux-sesh does not start Herdr or fall back to tmux, and setting changes take effect on the next launch.
+
+```json
+{
+  "backend": "herdr"
+}
+```
+
+Icons can distinguish backend rows. `icons.herdr` is empty by default and can be customized.
+
+```json
+{
+  "icons": {
+    "tmux": "",
+    "herdr": ""
+  }
+}
+```
 
 ## Session Defaults
 

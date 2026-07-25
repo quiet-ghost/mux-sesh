@@ -30,15 +30,15 @@ export interface KeyboardHandlerContext {
   setItems: Dispatch<SetStateAction<Item[]>>
   setPrefixActive: (active: boolean) => void
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config) => Promise<void>
-  requestKillSession: (sessionName: string) => void
+  requestKillSession: (item: Item) => void
   togglePinnedSession: (sessionName: string) => Promise<void>
   clearPendingKill: () => void
   handleSelect: (item: Item) => Promise<void>
-  handleKillSession: (sessionName: string) => Promise<void>
+  handleKillSession: (item: Item) => Promise<void>
   handleLastSession: () => Promise<void>
   handleRootSession: (item?: Item) => Promise<void>
   handleEditTarget: (item?: Item) => Promise<void>
-  openRenameModal: (sessionName: string) => void
+  openRenameModal: (item: Item) => void
   openCommandsModal: () => void
   openSettingsModal: () => void
   loadOpencodeStatsForSession: (sessionName: string) => Promise<OpencodeSessionStats | null>
