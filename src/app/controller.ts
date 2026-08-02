@@ -174,6 +174,10 @@ export function useAppController() {
         showMessage,
         refreshItems,
         setPendingKillSessionName,
+        regularSessions,
+        rememberedSessions: (key: string | null) => {
+          lastSessionSelectionRef.current = key
+        },
       }),
     setPendingKillSessionName,
     setRenameTarget,
@@ -213,6 +217,9 @@ export function useAppController() {
     refreshItems,
     agentCursor,
     regularSessions,
+    rememberedSessions: (key: string | null) => {
+      lastSessionSelectionRef.current = key
+    },
     agentSessions,
     selectedPrimaryItem,
     sessionCandidateItems,

@@ -1,7 +1,7 @@
 import { dirname } from 'path'
 import type { Config, Item } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
-import { getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
+import { getItemKey, getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 import { getGitRoot, resolveProjectSession } from '../config/session-rules'
 import { isFileItem, resolveFileSession } from '../files/target'
 import { requestShutdown } from '../util/shutdown'
@@ -36,6 +36,14 @@ export function getNextSessionName(renameTarget: string, newName: string): strin
   }
 
   return trimmedName
+}
+
+export function getSessionSelectionAfterRemoval(
+  regularSessions: Item[],
+  removed: Item
+): string | null {
+  const neighbor = regularSessions.find(session => session.title === removed.title)
+  return neighbor ? getItemKey(neighbor) : null
 }
 
 export async function openProjectSession(

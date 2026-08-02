@@ -1,7 +1,7 @@
 import { spawn } from 'bun'
 import type { Item, Config } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
-import { getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
+import { getItemKey, getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 import { getLastSessionTarget } from '../tmux/workflows'
 import { isFileItem, resolveTypedPathTarget } from '../files/target'
 import { isGitHubURL, cloneGitHubRepo } from '../util/github'
@@ -31,6 +31,13 @@ export async function handleSelect(item: Item, config: Config | null, backend: M
   await openProjectSession(item.path, requireConfig(config), backend)
 }
 
+function getKillNeighbor(item: Item, regularSessions: Item[]): Item | undefined {
+  const sessions = regularSessions.filter(isLiveSessionItem)
+  const index = sessions.findIndex(session => getItemKey(session) === getItemKey(item))
+  if (index < 0) return undefined
+  return sessions[index - 1] ?? sessions[index + 1]
+}
+
 export async function handleKillSession(
   item: Item,
   backend: MultiplexerBackend,
@@ -38,17 +45,47 @@ export async function handleKillSession(
     onSuccess: (message: string) => void
     onError: (message: string) => void
     refreshItems: () => Promise<void>
+    regularSessions: Item[]
+    rememberedSessions: (key: string | null) => void
   }
 ) {
+  let closed = false
+
   try {
     if (!isLiveSessionItem(item)) throw new Error('Select a live session to close')
-    await backend.close(getWorkspaceRef(item))
+
+    const target = getWorkspaceRef(item)
+    const neighbor = getKillNeighbor(item, callbacks.regularSessions)
+    const prior = await backend.current().catch(() => undefined)
+    const wasCurrent = prior !== undefined && prior.id === target.id
+
+    await backend.close(target)
+    closed = true
+
+    callbacks.rememberedSessions(neighbor ? getItemKey(neighbor) : null)
+
+    if (!wasCurrent && prior) {
+      const now = await backend.current().catch(() => undefined)
+      if (!now || now.id !== prior.id) {
+        await backend.open(prior)
+      }
+    } else if (wasCurrent && neighbor && isLiveSessionItem(neighbor)) {
+      const preferred = getWorkspaceRef(neighbor)
+      const now = await backend.current().catch(() => undefined)
+      if (!now || now.id !== preferred.id) {
+        await backend.open(preferred)
+      }
+    }
+
     callbacks.onSuccess(
       `${backend.kind === 'herdr' ? 'Workspace' : 'Session'} '${item.title}' closed`
     )
-    await callbacks.refreshItems()
   } catch (error) {
     callbacks.onError(`Error killing session: ${error}`)
+  } finally {
+    if (closed) {
+      await callbacks.refreshItems().catch(() => {})
+    }
   }
 }
 

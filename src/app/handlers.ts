@@ -28,6 +28,8 @@ interface SharedHandlerOptions {
 
 interface KillHandlerOptions extends SharedHandlerOptions {
   setPendingKillSessionName: (sessionName: string | null) => void
+  regularSessions: Item[]
+  rememberedSessions: (key: string | null) => void
 }
 
 interface SettingsHandlerOptions {
@@ -53,6 +55,8 @@ export async function handleKillSessionWithFeedback(
     onSuccess: msg => options.showMessage(msg),
     onError: msg => options.showMessage(msg, 3000),
     refreshItems: () => options.refreshItems(),
+    regularSessions: options.regularSessions,
+    rememberedSessions: options.rememberedSessions,
   })
 }
 
@@ -260,6 +264,7 @@ interface CreateAppHandlersOptions extends SharedHandlerOptions {
   renamedValue: string
   searchTerm: string
   loadOpencodeStatsForSession: (sessionName: string) => Promise<OpencodeSessionStats | null>
+  rememberedSessions: (key: string | null) => void
 }
 
 export function createAppHandlers(options: CreateAppHandlersOptions) {
@@ -277,6 +282,8 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     await handleKillSessionWithFeedback(item, {
       ...sharedOptions,
       setPendingKillSessionName: options.setPendingKillSessionName,
+      regularSessions: options.regularSessions,
+      rememberedSessions: options.rememberedSessions,
     })
   }
 
