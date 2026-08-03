@@ -1,6 +1,6 @@
 import { MultiplexerError, type BackendKind, type BackendPreference } from './types'
 import type { CommandRunner } from './command'
-import { parseHerdrStatus, SUPPORTED_HERDR_PROTOCOL } from '../herdr/protocol'
+import { MIN_SUPPORTED_HERDR_PROTOCOL, parseHerdrStatus } from '../herdr/protocol'
 
 export interface BackendState {
   installed: boolean
@@ -22,7 +22,10 @@ export async function probeHerdrAvailability(runner: CommandRunner): Promise<Bac
   return {
     installed: true,
     running: status.running,
-    compatible: status.compatible === true && status.protocol === SUPPORTED_HERDR_PROTOCOL,
+    compatible:
+      status.compatible === true &&
+      status.protocol !== undefined &&
+      status.protocol >= MIN_SUPPORTED_HERDR_PROTOCOL,
   }
 }
 

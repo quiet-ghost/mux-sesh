@@ -67,7 +67,7 @@ You only need to set the values you want to change. Everything else falls back t
 
 ## Backend Selection
 
-mux-sesh supports tmux sessions and Herdr 0.7.5 workspaces without a Herdr plugin. It maps Herdr workspaces, tabs, and panes to session, window, and pane concepts.
+mux-sesh supports tmux sessions and Herdr 0.7.5 or newer workspaces without a Herdr plugin. It maps Herdr workspaces, tabs, and panes to session, window, and pane concepts.
 
 | Priority | Selection rule                                         |
 | -------- | ------------------------------------------------------ |

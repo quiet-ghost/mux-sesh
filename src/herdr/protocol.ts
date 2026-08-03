@@ -76,7 +76,7 @@ export interface HerdrStatus {
   protocol?: number
 }
 
-export const SUPPORTED_HERDR_PROTOCOL = 17
+export const MIN_SUPPORTED_HERDR_PROTOCOL = 17
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)

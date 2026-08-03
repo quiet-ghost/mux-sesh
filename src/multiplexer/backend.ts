@@ -26,7 +26,7 @@ export async function resolveMultiplexerBackend(
     if (herdr.compatible !== true) {
       throw new MultiplexerError(
         'protocol-mismatch',
-        'The active Herdr client and server are not compatible with mux-sesh. Herdr 0.7.5 protocol 17 is required.'
+        'The active Herdr client and server are not compatible with mux-sesh. Herdr 0.7.5 or newer with protocol 17 or newer is required.'
       )
     }
     return createHerdrBackend({ runner, insideHerdr: true })
