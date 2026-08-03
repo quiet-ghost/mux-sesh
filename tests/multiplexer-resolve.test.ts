@@ -105,6 +105,29 @@ describe('resolveBackendKind', () => {
     })
   })
 
+  test('accepts newer compatible Herdr protocols', async () => {
+    const runner: CommandRunner = {
+      async run(command) {
+        if (command[0] === 'tmux') return { exitCode: 127, stdout: '', stderr: 'not found' }
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({
+            client: { version: '0.8.0', protocol: 19 },
+            server: { running: true, compatible: true, protocol: 19 },
+            update: {},
+          }),
+          stderr: '',
+        }
+      },
+    }
+
+    expect((await probeBackendAvailability(runner)).herdr).toEqual({
+      installed: true,
+      running: true,
+      compatible: true,
+    })
+  })
+
   test('rejects a compatible Herdr server on an unsupported protocol', async () => {
     const runner: CommandRunner = {
       async run(command) {

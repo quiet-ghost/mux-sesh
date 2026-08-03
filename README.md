@@ -20,7 +20,7 @@ Fast tmux session and Herdr workspace switching from a polished terminal UI.
 Prerequisites:
 
 - [Bun](https://bun.sh)
-- [tmux](https://github.com/tmux/tmux/wiki) or Herdr 0.7.5
+- [tmux](https://github.com/tmux/tmux/wiki) or Herdr 0.7.5 or newer
 - [git](https://git-scm.com) for cloning GitHub repositories from the new-session flow
 
 Install globally:

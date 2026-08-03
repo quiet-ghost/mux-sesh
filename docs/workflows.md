@@ -1,6 +1,6 @@
 # Workflows
 
-This page covers the common ways to use `mux-sesh` with tmux sessions or Herdr 0.7.5 workspaces.
+This page covers the common ways to use `mux-sesh` with tmux sessions or Herdr 0.7.5 or newer workspaces.
 
 | Backend | Managed unit |
 | ------- | ------------ |
