@@ -16,6 +16,7 @@ interface ModalKeyboardContext {
   setSettingOptionsCursor: (cursor: (current: number) => number) => void
   closeModal: () => void
   openSettingOptions: (field: SettingsEntry['id']) => void
+  previewThemeOption?: (value: string | null) => void
   openSettingEditor: (field: SettingsEntry['id']) => void
   isOptionSetting: (field: SettingsEntry['id']) => boolean
   setModalState: (state: ModalState) => void
@@ -93,22 +94,31 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
   }
 
   if (ctx.modalState?.type === 'setting-options') {
+    const previewIfTheme = (index: number) => {
+      if (ctx.modalState?.type !== 'setting-options' || ctx.modalState.field !== 'theme') return
+      ctx.previewThemeOption?.(ctx.filteredSettingOptions[index]?.value ?? null)
+    }
+
     if (key.name === 'escape') {
-      ctx.setModalState({ type: 'settings' })
+      ctx.previewThemeOption?.(null)
+      if (ctx.modalState.openedFrom === 'commands') {
+        ctx.closeModal()
+      } else {
+        ctx.setModalState({ type: 'settings' })
+      }
     } else if (key.name === 'down' || key.name === 'j') {
-      ctx.setSettingOptionsCursor(current =>
-        clampCursorIndex(ctx.filteredSettingOptions.length, current + 1)
-      )
+      const next = clampCursorIndex(ctx.filteredSettingOptions.length, ctx.settingOptionsCursor + 1)
+      ctx.setSettingOptionsCursor(() => next)
+      previewIfTheme(next)
     } else if (key.name === 'up' || key.name === 'k') {
-      ctx.setSettingOptionsCursor(current =>
-        clampCursorIndex(ctx.filteredSettingOptions.length, current - 1)
-      )
+      const next = clampCursorIndex(ctx.filteredSettingOptions.length, ctx.settingOptionsCursor - 1)
+      ctx.setSettingOptionsCursor(() => next)
+      previewIfTheme(next)
     } else if (key.name === 'return') {
       const option = ctx.filteredSettingOptions[ctx.settingOptionsCursor]
-      if (!option) {
-        return true
-      }
+      if (!option) return true
       void ctx.handleSettingOptionSubmit(ctx.modalState.field, option.value)
+      ctx.previewThemeOption?.(null)
     }
     return true
   }

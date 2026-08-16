@@ -246,6 +246,7 @@ interface CreateAppHandlersOptions extends SharedHandlerOptions {
   closeModal: () => void
   openRenameModal: (item: Item) => void
   openSettingsModal: () => void
+  openSettingOptions: (field: 'theme') => void
   requestKillSession: (item: Item) => void
   setAppMode: (mode: AppMode) => void
   setViewMode: (mode: ViewMode) => void
@@ -370,6 +371,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       closeModal: options.closeModal,
       openRenameModal: options.openRenameModal,
       openSettingsModal: options.openSettingsModal,
+      openSettingOptions: options.openSettingOptions,
       requestKillSession: options.requestKillSession,
       togglePinnedSession: handleTogglePinnedSessionWrapper,
       setAppMode: options.setAppMode,

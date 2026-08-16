@@ -9,6 +9,7 @@ export type CommandId =
   | 'search'
   | 'new-session'
   | 'open-settings'
+  | 'open-themes'
   | 'view-projects'
   | 'view-sessions'
   | 'rename-session'
@@ -26,6 +27,7 @@ export interface CommandEntry {
   category: string
   title: string
   keybind: string
+  keywords?: string
 }
 
 interface Props {
@@ -59,7 +61,14 @@ export function getCommandEntries(
       ...(canManageSession
         ? [{ id: 'kill-session' as const, category: 'Direct', title: 'Kill session', keybind: 'd' }]
         : []),
-      { id: 'open-settings', category: 'Direct', title: 'Open settings', keybind: 'ctrl+p' },
+      { id: 'open-settings', category: 'Direct', title: 'Settings', keybind: 'ctrl+p' },
+      {
+        id: 'open-themes',
+        category: 'Direct',
+        title: 'Themes',
+        keybind: 'ctrl+p',
+        keywords: 'theme color scheme appearance',
+      },
       ...(canManageSession
         ? [
             {
@@ -89,6 +98,13 @@ export function getCommandEntries(
         ]
       : []),
     { id: 'open-settings', category: 'Direct', title: 'Open settings', keybind: 'ctrl+p' },
+    {
+      id: 'open-themes',
+      category: 'Direct',
+      title: 'Themes',
+      keybind: 'ctrl+p',
+      keywords: 'theme color scheme appearance',
+    },
     {
       id: 'view-projects',
       category: prefixCategory,
@@ -146,7 +162,8 @@ export function filterCommandEntries(entries: CommandEntry[], query: string): Co
   }
 
   return entries.filter(entry => {
-    const haystack = `${entry.category} ${entry.title} ${entry.keybind}`.toLowerCase()
+    const haystack =
+      `${entry.category} ${entry.title} ${entry.keybind} ${entry.keywords ?? ''}`.toLowerCase()
     return haystack.includes(normalizedQuery)
   })
 }

@@ -105,7 +105,7 @@ Default mode is `vim`.
 | `n`         | New session           |
 | `d`         | Kill selected session |
 | `1-9`       | Quick select          |
-| `Ctrl+P`    | Open command palette  |
+| `Ctrl+P`    | Open command palette. Type `theme` for the theme picker |
 | `q` / `Esc` | Quit                  |
 
 With the default prefix key, secondary actions live behind `ctrl+x`:
@@ -137,6 +137,7 @@ Uncaught process-level failures restore the terminal first, then print the diagn
 ## Docs
 
 - [Configuration](docs/configuration.md)
+- [Themes](docs/themes.md)
 - [Keybindings](docs/keybindings.md)
 - [Workflows](docs/workflows.md)
 

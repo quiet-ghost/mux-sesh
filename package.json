@@ -14,7 +14,7 @@
     "tsconfig.json"
   ],
   "scripts": {
-    "dev": "bun run src/index.tsx",
+    "dev": "MUX_SESH_DEV=1 bun run src/index.tsx",
     "build": "bun build src/index.tsx --compile --outfile dist/mux-sesh",
     "start": "bun run src/index.tsx",
     "typecheck": "tsc --noEmit",

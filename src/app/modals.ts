@@ -6,7 +6,7 @@ export type ModalState =
   | { type: 'rename'; target: string }
   | { type: 'commands' }
   | { type: 'settings' }
-  | { type: 'setting-options'; field: SettingsFieldId }
+  | { type: 'setting-options'; field: SettingsFieldId; openedFrom?: 'commands' | 'settings' }
   | { type: 'setting-editor'; field: SettingsFieldId }
   | null
 

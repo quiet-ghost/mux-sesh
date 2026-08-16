@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useAppCoreState } from './core-state'
 import { useAutoUpdateScheduler, useAppBehaviors } from './effects'
 import { createAppControls } from './controls'
@@ -8,9 +8,10 @@ import { useAppModalState } from './modal-state'
 import { createAppRuntime } from './runtime'
 import { createAppHandlers, handleKillSessionWithFeedback } from './handlers'
 import { useAppStartup } from './state'
-import { getConfigPath, saveConfig } from '../config'
+import { getConfigPath, getHomeDir, saveConfig } from '../config'
 import { getOpencodeSessionStats } from '../opencode'
 import { resolveTheme } from '../styles/theme'
+import type { TerminalPalette } from '../styles/terminal-palette'
 import { useTerminalSize } from '../util/terminal'
 import { mark, measure } from '../util/perf'
 import { getSettingEditorTitle, isOptionSetting } from '../settings'
@@ -77,6 +78,8 @@ export function useAppController() {
     settingOptionsCursor,
     setSettingOptionsCursor,
     settingOptionsSearchQuery,
+    themePreviewId,
+    setThemePreviewId,
     setSettingOptionsSearchQuery,
     settingEditorValue,
     setSettingEditorValue,
@@ -91,7 +94,16 @@ export function useAppController() {
 
   const { columns, rows } = useTerminalSize()
   const configPath = getConfigPath()
-  const resolvedTheme = resolveTheme(config?.theme, config?.themes, config?.colorScheme)
+  const homeDir = getHomeDir()
+  const [systemThemeEpoch, setSystemThemeEpoch] = useState(0)
+  const [terminalPalette, setTerminalPalette] = useState<TerminalPalette | null>(null)
+  const resolvedTheme = resolveTheme(
+    themePreviewId ?? config?.theme,
+    config?.themes,
+    config?.colorScheme,
+    { homeDir, terminalPalette }
+  )
+  void systemThemeEpoch
   const theme = resolvedTheme.colors
   const { filteredSettingsEntries, filteredSettingOptions } = getSettingsState(
     config,
@@ -227,6 +239,7 @@ export function useAppController() {
     closeModal,
     openRenameModal,
     openSettingsModal,
+    openSettingOptions,
     requestKillSession,
     setAppMode,
     setViewMode,
@@ -281,6 +294,7 @@ export function useAppController() {
     handleNewSessionSubmit,
     isOptionSetting,
     openSettingOptions,
+    previewThemeOption: setThemePreviewId,
     openSettingEditor,
     closeModal,
     clearPendingKill,
@@ -346,6 +360,11 @@ export function useAppController() {
     setUpdatedVersion,
     setToastMessage,
     setToastVisible,
+    homeDir,
+    onSystemThemeRefresh: () => {
+      setSystemThemeEpoch(current => current + 1)
+    },
+    onTerminalPalette: setTerminalPalette,
   })
 
   return {
