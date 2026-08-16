@@ -1,0 +1,9 @@
+#!/bin/bash
+# Optional Omarchy theme-set hook. mux-sesh already live-follows System by
+# watching ~/.local/state/omarchy/current/theme.name. Send SIGUSR2 only as an
+# extra refresh ping.
+#
+# Install:
+#   omarchy hook install theme-set docs/omarchy-theme-hook.example
+
+killall -SIGUSR2 mux-sesh 2>/dev/null || true

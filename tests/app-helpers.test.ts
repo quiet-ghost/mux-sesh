@@ -178,6 +178,24 @@ describe('app derived helpers', () => {
     expect(state.filteredCommandEntries.some(entry => entry.id === 'refresh')).toBe(true)
   })
 
+  test('command palette search for theme opens Themes', () => {
+    const config = getDefaultConfig('/home/tester')
+    const entries = getCommandEntries(AppMode.Normal, 'vim', 'ctrl+x')
+    const state = getSessionCommandState(
+      AppMode.Normal,
+      ViewMode.Sessions,
+      [{ title: 'alpha', desc: '', path: '/tmp/alpha', isSession: true }],
+      0,
+      0,
+      config,
+      'theme'
+    )
+
+    expect(entries.some(entry => entry.id === 'open-themes')).toBe(true)
+    expect(state.filteredCommandEntries.some(entry => entry.id === 'open-themes')).toBe(true)
+    expect(state.filteredCommandEntries.some(entry => entry.id === 'open-settings')).toBe(false)
+  })
+
   test('builds settings state for setting option filtering', () => {
     const config = getDefaultConfig('/home/tester')
     const state = getSettingsState(

@@ -81,7 +81,11 @@ export function AppScreen({
   const totalSessions = sessionItems.filter(item => item.isSession).length
   const activeSessions = items.filter(item => item.isSession && item.isAttached).length
   const maxVisibleItems = Math.max(8, rows - (appMode === AppMode.NewSession ? 10 : 12))
-  const versionLabel = formatVersionBadge(CURRENT_VERSION, updatedVersion)
+  const versionLabel = formatVersionBadge(
+    CURRENT_VERSION,
+    updatedVersion,
+    process.env.MUX_SESH_DEV === '1'
+  )
   const selectedAgentSession = agentSessions[agentCursor]
   const showOpencodeStats =
     viewMode === ViewMode.Sessions &&
@@ -225,7 +229,11 @@ export function AppScreen({
         )}
 
         <Toast message={toastMessage} visible={toastVisible} />
-        <VersionBadge currentVersion={CURRENT_VERSION} updatedVersion={updatedVersion} />
+        <VersionBadge
+          currentVersion={CURRENT_VERSION}
+          updatedVersion={updatedVersion}
+          isDev={process.env.MUX_SESH_DEV === '1'}
+        />
       </box>
     </>
   )

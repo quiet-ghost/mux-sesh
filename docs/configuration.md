@@ -52,7 +52,7 @@ You only need to set the values you want to change. Everything else falls back t
 | `editor_cmd`      | Command used to open or start workspaces                             |
 | `keybind_mode`    | `vim` or `standard`                                                  |
 | `prefix_key`      | Prefix for secondary actions                                         |
-| `theme`           | Built-in or custom theme name                                        |
+| `theme`           | Built-in, custom, or `system`                                        |
 | `color_scheme`    | `system`, `dark`, or `light`                                         |
 | `sort_order`      | `live-first`, `configured-first`, `zoxide-first`, or `alphabetical`  |
 | `zoxide_mode`     | `off`, `rank`, or `merge`                                            |
@@ -210,7 +210,9 @@ When a preview is requested:
 
 ## Themes
 
-The default theme is `rosepine`, but mux-sesh supports a broader built-in theme catalog plus custom themes under `themes`.
+Change themes from the TUI: `Ctrl+P`, type `theme`, Enter. Full guide: [themes.md](themes.md).
+
+The default theme is `rosepine`. The picker also lists custom `themes` ids and **System**. `system` follows Omarchy when present, otherwise the terminal palette.
 
 Custom themes follow the shape below:
 

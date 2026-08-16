@@ -27,6 +27,7 @@ export interface CommandEntry {
   category: string
   title: string
   keybind: string
+  keywords?: string
 }
 
 interface Props {
@@ -61,7 +62,13 @@ export function getCommandEntries(
         ? [{ id: 'kill-session' as const, category: 'Direct', title: 'Kill session', keybind: 'd' }]
         : []),
       { id: 'open-settings', category: 'Direct', title: 'Settings', keybind: 'ctrl+p' },
-      { id: 'open-themes', category: 'Direct', title: 'Themes', keybind: 'ctrl+t' },
+      {
+        id: 'open-themes',
+        category: 'Direct',
+        title: 'Themes',
+        keybind: 'ctrl+p',
+        keywords: 'theme color scheme appearance',
+      },
       ...(canManageSession
         ? [
             {
@@ -91,6 +98,13 @@ export function getCommandEntries(
         ]
       : []),
     { id: 'open-settings', category: 'Direct', title: 'Open settings', keybind: 'ctrl+p' },
+    {
+      id: 'open-themes',
+      category: 'Direct',
+      title: 'Themes',
+      keybind: 'ctrl+p',
+      keywords: 'theme color scheme appearance',
+    },
     {
       id: 'view-projects',
       category: prefixCategory,
@@ -138,14 +152,6 @@ export function getCommandEntries(
       keybind: commandKey('shift+r', 'R'),
     },
   ]
-}
-
-export interface CommandEntry {
-  id: CommandId
-  category: string
-  title: string
-  keybind: string
-  keywords?: string
 }
 
 export function filterCommandEntries(entries: CommandEntry[], query: string): CommandEntry[] {

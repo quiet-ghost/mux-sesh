@@ -17,7 +17,7 @@ Implementation guides for following the desktop/terminal theme from mux-sesh, wi
 2. DEV-96 — `system` reads Omarchy `colors.toml` — `p2-omarchy-resolve.md`
 3. DEV-97 — Live follow while `theme=system` — `p3-live-follow.md` (watch `theme.name` + SIGUSR2; named themes stay pinned)
 4. DEV-98 — Terminal palette when Omarchy is absent — `p4-terminal-palette.md` (OpenTUI OSC / COLORFGBG; Omarchy still wins)
-5. DEV-99 — User-facing docs — `p5-user-docs.md`
+5. DEV-99 — User-facing docs — `p5-user-docs.md` (`docs/themes.md`)
 
 Do P1 first. P2 is blocked by P1. P3 and P4 are blocked by P2. P5 should land after the behavior exists.
 
