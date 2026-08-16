@@ -1,4 +1,6 @@
 import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
+import { useRenderer } from '@opentui/react'
+import type { TerminalColors } from '@opentui/core'
 import { isOpencodeSessionItem } from '../opencode/session-name'
 import { checkAndUpdate, updateEvents } from '../update'
 import { showTemporaryToast } from './notifications'
@@ -15,6 +17,7 @@ import {
 } from './data'
 import { SYSTEM_THEME_ID } from '../styles/theme'
 import { subscribeThemeFollow } from '../styles/theme-follow'
+import { terminalColorsToPalette, type TerminalPalette } from '../styles/terminal-palette'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey } from '../multiplexer/items'
@@ -47,6 +50,40 @@ export function useSystemThemeFollow(
       subscription.stop()
     }
   }, [homeDir, themeId])
+}
+
+export function useTerminalPalette(
+  themeId: string | undefined,
+  onPalette: (palette: TerminalPalette | null) => void
+) {
+  const renderer = useRenderer()
+  const onPaletteRef = useRef(onPalette)
+  onPaletteRef.current = onPalette
+
+  useEffect(() => {
+    if (themeId !== SYSTEM_THEME_ID) {
+      onPaletteRef.current(null)
+      return
+    }
+
+    let cancelled = false
+
+    const publish = (colors: TerminalColors): void => {
+      if (!cancelled) {
+        onPaletteRef.current(terminalColorsToPalette(colors))
+      }
+    }
+
+    void renderer.getPalette().then(colors => {
+      publish(colors)
+    })
+
+    renderer.on('palette', publish)
+    return () => {
+      cancelled = true
+      renderer.off('palette', publish)
+    }
+  }, [renderer, themeId])
 }
 
 export function useAutoUpdateScheduler(
@@ -524,10 +561,12 @@ interface UseAppBehaviorsOptions {
   setToastVisible: Dispatch<SetStateAction<boolean>>
   homeDir: string
   onSystemThemeRefresh: () => void
+  onTerminalPalette: (palette: TerminalPalette | null) => void
 }
 
 export function useAppBehaviors(options: UseAppBehaviorsOptions) {
   useSystemThemeFollow(options.config?.theme, options.homeDir, options.onSystemThemeRefresh)
+  useTerminalPalette(options.config?.theme, options.onTerminalPalette)
   useUpdateEventToasts(options.setUpdatedVersion, options.setToastMessage, options.setToastVisible)
   useNormalModeSessionReset(
     options.appMode,

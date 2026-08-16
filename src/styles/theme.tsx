@@ -15,6 +15,11 @@ import {
   readOmarchyPalette,
   type OmarchyPalette,
 } from './omarchy'
+import {
+  colorSchemeFromColorFgbg,
+  terminalPaletteToThemeColors,
+  type TerminalPalette,
+} from './terminal-palette'
 
 export const DEFAULT_THEME_ID = 'rosepine'
 export const DEFAULT_COLOR_SCHEME: ThemeColorScheme = 'system'
@@ -23,6 +28,7 @@ export const SYSTEM_THEME_ID = 'system'
 export interface ResolveThemeOptions {
   homeDir?: string
   omarchyPalette?: OmarchyPalette | null
+  terminalPalette?: TerminalPalette | null
 }
 
 export const BUILTIN_THEMES: Record<string, DesktopTheme> = {
@@ -97,31 +103,13 @@ function aliasThemeID(themeId?: string) {
   return themeId
 }
 
-function getColorSchemeFromColorFgbg(value?: string): 'light' | 'dark' | null {
-  if (!value) {
-    return null
-  }
-
-  const parts = value
-    .split(';')
-    .map(part => Number.parseInt(part, 10))
-    .filter(part => Number.isInteger(part))
-
-  const background = parts.at(-1)
-  if (background === undefined) {
-    return null
-  }
-
-  return background <= 6 || background === 8 ? 'dark' : 'light'
-}
-
 export function getSystemColorScheme(): 'light' | 'dark' {
   const envOverride = process.env.MUX_SESH_COLOR_SCHEME
   if (envOverride === 'light' || envOverride === 'dark') {
     return envOverride
   }
 
-  const detected = getColorSchemeFromColorFgbg(process.env.COLORFGBG)
+  const detected = colorSchemeFromColorFgbg(process.env.COLORFGBG)
   if (detected) {
     return detected
   }
@@ -251,6 +239,17 @@ export function resolveTheme(
         name: 'System',
         mode,
         colors: omarchyPaletteToThemeColors(palette),
+        catalog,
+      }
+    }
+
+    if (options.terminalPalette) {
+      const mode = colorScheme === 'system' ? options.terminalPalette.mode : colorScheme
+      return {
+        id: SYSTEM_THEME_ID,
+        name: 'System',
+        mode,
+        colors: terminalPaletteToThemeColors(options.terminalPalette),
         catalog,
       }
     }

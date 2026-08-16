@@ -11,6 +11,7 @@ import { useAppStartup } from './state'
 import { getConfigPath, getHomeDir, saveConfig } from '../config'
 import { getOpencodeSessionStats } from '../opencode'
 import { resolveTheme } from '../styles/theme'
+import type { TerminalPalette } from '../styles/terminal-palette'
 import { useTerminalSize } from '../util/terminal'
 import { mark, measure } from '../util/perf'
 import { getSettingEditorTitle, isOptionSetting } from '../settings'
@@ -95,11 +96,12 @@ export function useAppController() {
   const configPath = getConfigPath()
   const homeDir = getHomeDir()
   const [systemThemeEpoch, setSystemThemeEpoch] = useState(0)
+  const [terminalPalette, setTerminalPalette] = useState<TerminalPalette | null>(null)
   const resolvedTheme = resolveTheme(
     themePreviewId ?? config?.theme,
     config?.themes,
     config?.colorScheme,
-    { homeDir }
+    { homeDir, terminalPalette }
   )
   void systemThemeEpoch
   const theme = resolvedTheme.colors
@@ -362,6 +364,7 @@ export function useAppController() {
     onSystemThemeRefresh: () => {
       setSystemThemeEpoch(current => current + 1)
     },
+    onTerminalPalette: setTerminalPalette,
   })
 
   return {

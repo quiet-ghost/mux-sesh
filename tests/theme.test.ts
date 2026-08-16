@@ -74,8 +74,50 @@ describe('theme resolution', () => {
     expect(resolved.colors.background).toBe('#191724')
   })
 
-  test('system theme falls back to rose pine when Omarchy is absent', () => {
-    const resolved = resolveTheme('system', {}, 'system', { omarchyPalette: null })
+  test('system theme uses an injected terminal palette when Omarchy is absent', () => {
+    const resolved = resolveTheme('system', {}, 'system', {
+      omarchyPalette: null,
+      terminalPalette: {
+        mode: 'dark',
+        background: '#0b0b0b',
+        foreground: '#f2f2f2',
+        palette: ['#0b0b0b', '#cc3333', '#33cc33', '#cccc33', '#3333cc', '#cc33cc', '#33cccc', '#f2f2f2'],
+      },
+    })
+
+    expect(resolved.id).toBe('system')
+    expect(resolved.name).toBe('System')
+    expect(resolved.mode).toBe('dark')
+    expect(resolved.colors.background).toBe('#0b0b0b')
+    expect(resolved.colors.primary).toBe('#33cccc')
+  })
+
+  test('Omarchy palette wins over an injected terminal palette', async () => {
+    const palette = parseOmarchyColorsToml(await readFixture('rose-pine-dark.toml'))
+    expect(palette).not.toBeNull()
+    if (!palette) {
+      return
+    }
+
+    const resolved = resolveTheme('system', {}, 'system', {
+      omarchyPalette: palette,
+      terminalPalette: {
+        mode: 'dark',
+        background: '#0b0b0b',
+        foreground: '#f2f2f2',
+        palette: [],
+      },
+    })
+
+    expect(resolved.colors.background).toBe('#191724')
+    expect(resolved.colors.primary).toBe('#9ccfd8')
+  })
+
+  test('system theme falls back to rose pine when Omarchy and terminal palettes are absent', () => {
+    const resolved = resolveTheme('system', {}, 'system', {
+      omarchyPalette: null,
+      terminalPalette: null,
+    })
 
     expect(resolved.id).toBe('rosepine')
     expect(resolved.colors.background).toBe('#191724')
@@ -115,7 +157,7 @@ describe('theme resolution', () => {
     const homeDir = await mkdtemp(join(tmpdir(), 'mux-sesh-theme-empty-'))
 
     try {
-      const resolved = resolveTheme('system', {}, 'system', { homeDir })
+      const resolved = resolveTheme('system', {}, 'system', { homeDir, terminalPalette: null })
 
       expect(resolved.id).toBe('rosepine')
     } finally {
