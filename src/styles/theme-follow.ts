@@ -23,6 +23,10 @@ export interface ThemeFollowSubscription {
 
 const DEFAULT_DEBOUNCE_MS = 80
 
+export function ignoreUnhandledThemeFollowSignal(): void {
+  process.on('SIGUSR2', () => {})
+}
+
 function defaultWatch(path: string, listener: () => void): ThemeFollowWatchHandle {
   const watcher: FSWatcher = watch(path, listener)
   return {

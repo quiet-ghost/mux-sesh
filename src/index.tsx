@@ -1,9 +1,11 @@
 import { createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import { App } from './app'
+import { ignoreUnhandledThemeFollowSignal } from './styles/theme-follow'
 import { initializeFatalErrorHandling, initializeShutdown, requestShutdown } from './util/shutdown'
 
 initializeFatalErrorHandling()
+ignoreUnhandledThemeFollowSignal()
 
 const renderer = await createCliRenderer({
   exitOnCtrlC: false,

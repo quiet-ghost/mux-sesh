@@ -1,5 +1,26 @@
 import { describe, expect, test } from 'bun:test'
+import { join } from 'path'
+import { pathToFileURL } from 'url'
 import { subscribeThemeFollow } from '../src/styles/theme-follow'
+
+const repoRoot = join(import.meta.dir, '..')
+
+async function waitForExit(proc: Bun.Subprocess, timeoutMs: number): Promise<number | null> {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+
+  try {
+    return await Promise.race([
+      proc.exited.then(() => proc.exitCode ?? 0),
+      new Promise<null>(resolve => {
+        timeout = setTimeout(() => resolve(null), timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout)
+    }
+  }
+}
 
 describe('subscribeThemeFollow', () => {
   test('debounces watch and SIGUSR2 into one refresh', async () => {
@@ -72,5 +93,29 @@ describe('subscribeThemeFollow', () => {
     watchers[0]?.()
     await Bun.sleep(20)
     expect(refreshCount).toBe(0)
+  })
+
+  test('SIGUSR2 does not shut the process down', async () => {
+    const followModule = pathToFileURL(join(repoRoot, 'src/styles/theme-follow.ts')).href
+    const script = `
+      import { ignoreUnhandledThemeFollowSignal } from ${JSON.stringify(followModule)}
+      ignoreUnhandledThemeFollowSignal()
+      setInterval(() => {}, 5000)
+      process.kill(process.pid, 'SIGUSR2')
+      setTimeout(() => process.exit(0), 80)
+    `
+    const proc = Bun.spawn([process.execPath, '--eval', script], {
+      cwd: repoRoot,
+      stdout: 'ignore',
+      stderr: 'ignore',
+    })
+
+    const exitCode = await waitForExit(proc, 500)
+    if (exitCode === null) {
+      proc.kill()
+      await proc.exited
+    }
+
+    expect(exitCode).toBe(0)
   })
 })

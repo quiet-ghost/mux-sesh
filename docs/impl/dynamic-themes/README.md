@@ -15,7 +15,7 @@ Implementation guides for following the desktop/terminal theme from mux-sesh, wi
 
 1. DEV-95 — Command-palette Themes picker — `p1-picker.md`
 2. DEV-96 — `system` reads Omarchy `colors.toml` — `p2-omarchy-resolve.md`
-3. DEV-97 — Live follow while `theme=system` — `p3-live-follow.md`
+3. DEV-97 — Live follow while `theme=system` — `p3-live-follow.md` (watch `theme.name` + SIGUSR2; named themes stay pinned)
 4. DEV-98 — Terminal palette when Omarchy is absent — `p4-terminal-palette.md`
 5. DEV-99 — User-facing docs — `p5-user-docs.md`
 
