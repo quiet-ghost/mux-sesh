@@ -1,5 +1,5 @@
 import { normalizeConfig, serializeConfig } from './config'
-import { BUILTIN_THEMES, DEFAULT_THEME_ID } from './styles/theme'
+import { BUILTIN_THEMES, DEFAULT_THEME_ID, SYSTEM_THEME_ID } from './styles/theme'
 import type { Config, KeybindMode, SortOrder, ThemeColorScheme, ZoxideMode } from './types'
 
 export type SettingsFieldId =
@@ -69,8 +69,6 @@ function formatJSON(value: unknown): string {
   return JSON.stringify(value, null, 2)
 }
 
-const SYSTEM_THEME_ID = 'system'
-
 export function getThemeOptions(config?: Config): string[] {
   const builtin = Object.keys(BUILTIN_THEMES).sort((left, right) => {
     if (left === DEFAULT_THEME_ID) return -1
@@ -87,7 +85,7 @@ function themeOptions(config: Config): SettingsOption[] {
       return {
         value: id,
         label: 'System',
-        description: 'Follow the detected terminal theme',
+        description: 'Follow the desktop or terminal theme',
       }
     }
     return {

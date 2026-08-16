@@ -6,12 +6,24 @@ import type {
   ThemeDefinition,
   ThemeVariant,
 } from '../types'
+import { getHomeDir } from '../config/paths'
 import { TUI_THEME_COLORS } from './opencode-tui-colors'
 import { THEMES_A } from './opencode-themes-a'
 import { THEMES_B } from './opencode-themes-b'
+import {
+  omarchyPaletteToThemeColors,
+  readOmarchyPalette,
+  type OmarchyPalette,
+} from './omarchy'
 
 export const DEFAULT_THEME_ID = 'rosepine'
 export const DEFAULT_COLOR_SCHEME: ThemeColorScheme = 'system'
+export const SYSTEM_THEME_ID = 'system'
+
+export interface ResolveThemeOptions {
+  homeDir?: string
+  omarchyPalette?: OmarchyPalette | null
+}
 
 export const BUILTIN_THEMES: Record<string, DesktopTheme> = {
   ...THEMES_A,
@@ -211,7 +223,8 @@ function resolveVariantTheme(theme: DesktopTheme, mode: 'light' | 'dark'): Theme
 export function resolveTheme(
   themeId?: string,
   customThemes: Record<string, ThemeDefinition> = {},
-  colorScheme: ThemeColorScheme = DEFAULT_COLOR_SCHEME
+  colorScheme: ThemeColorScheme = DEFAULT_COLOR_SCHEME,
+  options: ResolveThemeOptions = {}
 ) {
   const customCatalog = Object.fromEntries(
     Object.entries(customThemes).map(([id, definition]) => [
@@ -224,6 +237,25 @@ export function resolveTheme(
     ...customCatalog,
   }
   const normalizedID = aliasThemeID(themeId)
+
+  if (normalizedID === SYSTEM_THEME_ID) {
+    const palette =
+      options.omarchyPalette !== undefined
+        ? options.omarchyPalette
+        : readOmarchyPalette(options.homeDir ?? getHomeDir())
+
+    if (palette) {
+      const mode = colorScheme === 'system' ? palette.mode : colorScheme
+      return {
+        id: SYSTEM_THEME_ID,
+        name: 'System',
+        mode,
+        colors: omarchyPaletteToThemeColors(palette),
+        catalog,
+      }
+    }
+  }
+
   const id = normalizedID && catalog[normalizedID] ? normalizedID : DEFAULT_THEME_ID
   const theme = catalog[id] ?? BUILTIN_THEMES[DEFAULT_THEME_ID]
   const { mode } = pickVariant(theme, colorScheme)

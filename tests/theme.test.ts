@@ -1,13 +1,22 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import { mkdir, mkdtemp, rm, writeFile } from 'fs/promises'
+import { tmpdir } from 'os'
+import { dirname, join } from 'path'
+import { getOmarchyColorsPath, parseOmarchyColorsToml } from '../src/styles/omarchy'
 import { getSystemColorScheme, resolveTheme } from '../src/styles/theme'
 
 const originalColorFgbg = process.env.COLORFGBG
 const originalSchemeOverride = process.env.MUX_SESH_COLOR_SCHEME
+const fixtureDir = join(import.meta.dir, 'fixtures', 'omarchy')
 
 afterEach(() => {
   process.env.COLORFGBG = originalColorFgbg
   process.env.MUX_SESH_COLOR_SCHEME = originalSchemeOverride
 })
+
+async function readFixture(name: string): Promise<string> {
+  return await Bun.file(join(fixtureDir, name)).text()
+}
 
 describe('theme resolution', () => {
   test('uses opencode desktop built-ins and rose pine heading color for dark mode', () => {
@@ -34,5 +43,83 @@ describe('theme resolution', () => {
 
     process.env.COLORFGBG = '0;15'
     expect(getSystemColorScheme()).toBe('light')
+  })
+
+  test('system theme uses an injected Omarchy palette', async () => {
+    const palette = parseOmarchyColorsToml(await readFixture('rose-pine-dark.toml'))
+    expect(palette).not.toBeNull()
+    if (!palette) {
+      return
+    }
+
+    const resolved = resolveTheme('system', {}, 'system', { omarchyPalette: palette })
+
+    expect(resolved.id).toBe('system')
+    expect(resolved.name).toBe('System')
+    expect(resolved.mode).toBe('dark')
+    expect(resolved.colors.background).toBe('#191724')
+    expect(resolved.colors.primary).toBe('#9ccfd8')
+  })
+
+  test('locked color scheme changes reported mode but not Omarchy colors', async () => {
+    const palette = parseOmarchyColorsToml(await readFixture('rose-pine-dark.toml'))
+    expect(palette).not.toBeNull()
+    if (!palette) {
+      return
+    }
+
+    const resolved = resolveTheme('system', {}, 'light', { omarchyPalette: palette })
+
+    expect(resolved.mode).toBe('light')
+    expect(resolved.colors.background).toBe('#191724')
+  })
+
+  test('system theme falls back to rose pine when Omarchy is absent', () => {
+    const resolved = resolveTheme('system', {}, 'system', { omarchyPalette: null })
+
+    expect(resolved.id).toBe('rosepine')
+    expect(resolved.colors.background).toBe('#191724')
+  })
+
+  test('named themes ignore an injected Omarchy palette', async () => {
+    const palette = parseOmarchyColorsToml(await readFixture('catppuccin.toml'))
+    expect(palette).not.toBeNull()
+    if (!palette) {
+      return
+    }
+
+    const resolved = resolveTheme('rosepine', {}, 'dark', { omarchyPalette: palette })
+
+    expect(resolved.id).toBe('rosepine')
+    expect(resolved.colors.primary).toBe('#9ccfd8')
+  })
+
+  test('system theme reads colors.toml from an injected home dir', async () => {
+    const homeDir = await mkdtemp(join(tmpdir(), 'mux-sesh-theme-omarchy-'))
+    const colorsPath = getOmarchyColorsPath(homeDir)
+
+    try {
+      await mkdir(dirname(colorsPath), { recursive: true })
+      await writeFile(colorsPath, await readFixture('rose-pine-dark.toml'))
+
+      const resolved = resolveTheme('system', {}, 'system', { homeDir })
+
+      expect(resolved.id).toBe('system')
+      expect(resolved.colors.background).toBe('#191724')
+    } finally {
+      await rm(homeDir, { recursive: true, force: true })
+    }
+  })
+
+  test('system theme falls back when the injected home dir has no Omarchy files', async () => {
+    const homeDir = await mkdtemp(join(tmpdir(), 'mux-sesh-theme-empty-'))
+
+    try {
+      const resolved = resolveTheme('system', {}, 'system', { homeDir })
+
+      expect(resolved.id).toBe('rosepine')
+    } finally {
+      await rm(homeDir, { recursive: true, force: true })
+    }
   })
 })

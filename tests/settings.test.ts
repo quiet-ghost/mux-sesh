@@ -63,4 +63,12 @@ describe('settings metadata', () => {
     expect(herdrConfig.backend).toBe('herdr')
     expect(applyOptionSetting(herdrConfig, 'backend', 'auto').backend).toBeUndefined()
   })
+
+  test('theme options start with system and never include omarchy', () => {
+    const values = getSettingOptions(config, 'theme').map(option => option.value)
+
+    expect(values[0]).toBe('system')
+    expect(values).not.toContain('omarchy')
+    expect(applyOptionSetting(config, 'theme', 'system').theme).toBe('system')
+  })
 })

@@ -250,6 +250,11 @@ describe('config normalization', () => {
     })
   })
 
+  test('preserves theme system without changing the default theme', () => {
+    expect(getDefaultConfig('/home/tester').theme).toBe('rosepine')
+    expect(normalizeConfig({ theme: 'system' }, '/home/tester').theme).toBe('system')
+  })
+
   test('returns defaults for invalid config values', () => {
     const defaults = getDefaultConfig('/home/tester')
     const config = normalizeConfig(

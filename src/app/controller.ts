@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useAppCoreState } from './core-state'
 import { useAutoUpdateScheduler, useAppBehaviors } from './effects'
 import { createAppControls } from './controls'
@@ -8,7 +8,7 @@ import { useAppModalState } from './modal-state'
 import { createAppRuntime } from './runtime'
 import { createAppHandlers, handleKillSessionWithFeedback } from './handlers'
 import { useAppStartup } from './state'
-import { getConfigPath, saveConfig } from '../config'
+import { getConfigPath, getHomeDir, saveConfig } from '../config'
 import { getOpencodeSessionStats } from '../opencode'
 import { resolveTheme } from '../styles/theme'
 import { useTerminalSize } from '../util/terminal'
@@ -93,11 +93,15 @@ export function useAppController() {
 
   const { columns, rows } = useTerminalSize()
   const configPath = getConfigPath()
+  const homeDir = getHomeDir()
+  const [systemThemeEpoch, setSystemThemeEpoch] = useState(0)
   const resolvedTheme = resolveTheme(
     themePreviewId ?? config?.theme,
     config?.themes,
-    config?.colorScheme
+    config?.colorScheme,
+    { homeDir }
   )
+  void systemThemeEpoch
   const theme = resolvedTheme.colors
   const { filteredSettingsEntries, filteredSettingOptions } = getSettingsState(
     config,
@@ -354,6 +358,10 @@ export function useAppController() {
     setUpdatedVersion,
     setToastMessage,
     setToastVisible,
+    homeDir,
+    onSystemThemeRefresh: () => {
+      setSystemThemeEpoch(current => current + 1)
+    },
   })
 
   return {
