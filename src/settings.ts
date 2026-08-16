@@ -1,5 +1,5 @@
 import { normalizeConfig, serializeConfig } from './config'
-import { BUILTIN_THEMES } from './styles/theme'
+import { BUILTIN_THEMES, DEFAULT_THEME_ID } from './styles/theme'
 import type { Config, KeybindMode, SortOrder, ThemeColorScheme, ZoxideMode } from './types'
 
 export type SettingsFieldId =
@@ -69,20 +69,33 @@ function formatJSON(value: unknown): string {
   return JSON.stringify(value, null, 2)
 }
 
-export function getThemeOptions(): string[] {
-  return Object.keys(BUILTIN_THEMES).sort((left, right) => {
-    if (left === 'rosepine') return -1
-    if (right === 'rosepine') return 1
+const SYSTEM_THEME_ID = 'system'
+
+export function getThemeOptions(config?: Config): string[] {
+  const builtin = Object.keys(BUILTIN_THEMES).sort((left, right) => {
+    if (left === DEFAULT_THEME_ID) return -1
+    if (right === DEFAULT_THEME_ID) return 1
     return left.localeCompare(right)
   })
+  const custom = Object.keys(config?.themes ?? {}).sort((left, right) => left.localeCompare(right))
+  return [SYSTEM_THEME_ID, ...builtin, ...custom]
 }
 
-function themeOptions(): SettingsOption[] {
-  return getThemeOptions().map(id => ({
-    value: id,
-    label: BUILTIN_THEMES[id]?.name ?? id,
-    description: id,
-  }))
+function themeOptions(config: Config): SettingsOption[] {
+  return getThemeOptions(config).map(id => {
+    if (id === SYSTEM_THEME_ID) {
+      return {
+        value: id,
+        label: 'System',
+        description: 'Follow the detected terminal theme',
+      }
+    }
+    return {
+      value: id,
+      label: config.themes?.[id]?.name ?? BUILTIN_THEMES[id]?.name ?? id,
+      description: id,
+    }
+  })
 }
 
 function choiceOptions(
@@ -117,10 +130,10 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
   {
     id: 'theme',
     label: 'Theme',
-    hint: 'Built-in theme catalog',
+    hint: 'Built-in, custom, or system',
     kind: 'options',
-    getValue: config => config.theme ?? 'rosepine',
-    getOptions: () => themeOptions(),
+    getValue: config => config.theme ?? DEFAULT_THEME_ID,
+    getOptions: config => themeOptions(config),
     applyOption: (config, value) => ({
       ...config,
       theme: value,

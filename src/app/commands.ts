@@ -15,6 +15,7 @@ interface ExecuteCommandContext {
   closeModal: () => void
   openRenameModal: (item: Item) => void
   openSettingsModal: () => void
+  openSettingOptions: (field: 'theme') => void
   requestKillSession: (item: Item) => void
   togglePinnedSession: (sessionName: string) => Promise<void>
   setAppMode: (mode: AppMode) => void
@@ -53,6 +54,9 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
     }
     case 'open-settings':
       ctx.openSettingsModal()
+      return
+    case 'open-themes':
+      ctx.openSettingOptions('theme')
       return
     case 'view-projects':
       ctx.closeModal()

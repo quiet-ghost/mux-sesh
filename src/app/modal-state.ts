@@ -13,6 +13,7 @@ export function useAppModalState() {
   const [settingOptionsSearchQuery, setSettingOptionsSearchQuery] = useState('')
   const [settingEditorValue, setSettingEditorValue] = useState('')
   const [settingEditorError, setSettingEditorError] = useState('')
+  const [themePreviewId, setThemePreviewId] = useState<string | null>(null)
 
   const modalTextareaRef = useRef<TextareaRenderable | null>(null)
   const commandsSearchTextareaRef = useRef<TextareaRenderable | null>(null)
@@ -41,6 +42,8 @@ export function useAppModalState() {
     setSettingEditorValue,
     settingEditorError,
     setSettingEditorError,
+    themePreviewId,
+    setThemePreviewId,
     modalTextareaRef,
     commandsSearchTextareaRef,
     settingsSearchTextareaRef,

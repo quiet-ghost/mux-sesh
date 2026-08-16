@@ -77,6 +77,8 @@ export function useAppController() {
     settingOptionsCursor,
     setSettingOptionsCursor,
     settingOptionsSearchQuery,
+    themePreviewId,
+    setThemePreviewId,
     setSettingOptionsSearchQuery,
     settingEditorValue,
     setSettingEditorValue,
@@ -91,7 +93,11 @@ export function useAppController() {
 
   const { columns, rows } = useTerminalSize()
   const configPath = getConfigPath()
-  const resolvedTheme = resolveTheme(config?.theme, config?.themes, config?.colorScheme)
+  const resolvedTheme = resolveTheme(
+    themePreviewId ?? config?.theme,
+    config?.themes,
+    config?.colorScheme
+  )
   const theme = resolvedTheme.colors
   const { filteredSettingsEntries, filteredSettingOptions } = getSettingsState(
     config,
@@ -227,6 +233,7 @@ export function useAppController() {
     closeModal,
     openRenameModal,
     openSettingsModal,
+    openSettingOptions,
     requestKillSession,
     setAppMode,
     setViewMode,
@@ -281,6 +288,7 @@ export function useAppController() {
     handleNewSessionSubmit,
     isOptionSetting,
     openSettingOptions,
+    previewThemeOption: setThemePreviewId,
     openSettingEditor,
     closeModal,
     clearPendingKill,
