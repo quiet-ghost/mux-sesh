@@ -22,6 +22,7 @@ import {
 } from '../src/app/view'
 import { AppMode, ViewMode, type Item } from '../src/types'
 import { getCommandEntries } from '../src/ui/CommandsModal'
+import { createHerdrBackend } from '../src/herdr/backend'
 import { getItemKey, workspaceToItem } from '../src/multiplexer/items'
 import { filterHiddenSessions } from '../src/tmux/workflows'
 
@@ -438,6 +439,7 @@ describe('app runtime helpers', () => {
     const setMessage = mock(() => {})
     const runtime = createAppRuntime({
       config: getDefaultConfig('/home/tester'),
+      backend: null,
       viewMode: ViewMode.Sessions,
       measure: async (_name, fn) => fn(),
       lastSessionSelectionRef: { current: null },
@@ -463,6 +465,7 @@ describe('app runtime helpers', () => {
 
     const runtime = createAppRuntime({
       config: getDefaultConfig('/home/tester'),
+      backend: null,
       viewMode: ViewMode.Sessions,
       measure: async (_name, fn) => fn(),
       lastSessionSelectionRef: { current: null },
@@ -496,6 +499,7 @@ describe('app handler factory', () => {
       appMode: AppMode.Normal,
       viewMode: ViewMode.Sessions,
       config,
+      backend: null,
       items: [],
       sessionItems: [],
       cursor: 0,
@@ -510,6 +514,7 @@ describe('app handler factory', () => {
       closeModal,
       openRenameModal: mock(() => {}),
       openSettingsModal: mock(() => {}),
+      openSettingOptions: mock(() => {}),
       requestKillSession: mock(() => {}),
       setAppMode: mock(() => {}),
       setViewMode: mock(() => {}),
@@ -524,10 +529,11 @@ describe('app handler factory', () => {
       setSettingEditorError: mock(() => {}),
       settingEditorValue: '',
       settingEditorPlainText: undefined,
-      renameTarget: 'alpha',
+      renameTarget: null,
       renamedValue: 'alpha-2',
       searchTerm: '',
       loadOpencodeStatsForSession: mock(async () => null),
+      rememberedSessions: mock(() => {}),
     })
 
     await handlers.executeCommand('refresh')
@@ -539,16 +545,31 @@ describe('app handler factory', () => {
 
   test('rename submit closes modal when name is unchanged', async () => {
     const closeModal = mock(() => {})
+    const refreshItems = mock(async () => {})
+    const showMessage = mock(() => {})
+    const run = mock(async () => {
+      throw new Error('An unchanged name must not trigger a backend command')
+    })
+    const backend = createHerdrBackend({ runner: { run }, insideHerdr: true })
+    const renameTarget = workspaceToItem({
+      backend: 'herdr',
+      id: 'w1',
+      title: 'alpha',
+      path: '/tmp/alpha',
+      isActive: false,
+      unitCount: 1,
+    })
 
     const handlers = createAppHandlers({
       appMode: AppMode.Normal,
       viewMode: ViewMode.Sessions,
       config: getDefaultConfig('/home/tester'),
+      backend,
       items: [],
       sessionItems: [],
       cursor: 0,
-      showMessage: mock(() => {}),
-      refreshItems: mock(async () => {}),
+      showMessage,
+      refreshItems,
       agentCursor: 0,
       regularSessions: [],
       agentSessions: [],
@@ -558,6 +579,7 @@ describe('app handler factory', () => {
       closeModal,
       openRenameModal: mock(() => {}),
       openSettingsModal: mock(() => {}),
+      openSettingOptions: mock(() => {}),
       requestKillSession: mock(() => {}),
       setAppMode: mock(() => {}),
       setViewMode: mock(() => {}),
@@ -572,14 +594,18 @@ describe('app handler factory', () => {
       setSettingEditorError: mock(() => {}),
       settingEditorValue: '',
       settingEditorPlainText: undefined,
-      renameTarget: 'alpha',
+      renameTarget,
       renamedValue: 'alpha',
       searchTerm: '',
       loadOpencodeStatsForSession: mock(async () => null),
+      rememberedSessions: mock(() => {}),
     })
 
     await handlers.handleRenameSubmit()
 
     expect(closeModal).toHaveBeenCalled()
+    expect(run).not.toHaveBeenCalled()
+    expect(refreshItems).not.toHaveBeenCalled()
+    expect(showMessage).not.toHaveBeenCalled()
   })
 })
