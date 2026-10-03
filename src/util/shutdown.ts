@@ -1,4 +1,5 @@
 import type { CliRenderer } from '@opentui/core'
+import { flushSync } from '@opentui/react'
 import { buildIssueUrl, formatDiagnostics } from './errors'
 
 const TERMINAL_RESET_SEQUENCE = [
@@ -42,7 +43,7 @@ function destroyRenderer(): void {
     renderer.useMouse = false
     renderer.disableKittyKeyboard()
     renderer.setTerminalTitle('')
-    renderer.destroy()
+    flushSync(() => renderer.destroy())
   } catch {
     // Terminal mode reset below is the final fallback if renderer teardown fails.
   }

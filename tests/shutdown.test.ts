@@ -22,6 +22,36 @@ async function waitForExit(proc: Bun.Subprocess, timeoutMs: number): Promise<num
 }
 
 describe('shutdown', () => {
+  test('flushes React effect cleanup before exiting the process', async () => {
+    const proc = Bun.spawn(
+      [process.execPath, join(import.meta.dir, 'fixtures/shutdown-react.tsx')],
+      {
+        cwd: repoRoot,
+        stdin: 'ignore',
+        stdout: 'pipe',
+        stderr: 'pipe',
+        timeout: 5000,
+        killSignal: 'SIGKILL',
+      }
+    )
+
+    try {
+      const [exitCode, stdout, stderr] = await Promise.all([
+        proc.exited,
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+      ])
+
+      expect(stderr).toBe('')
+      expect(exitCode).toBe(0)
+      const report: unknown = JSON.parse(stdout)
+      expect(report).toEqual({ destroyed: true, lifecycle: ['mounted', 'unmounted'] })
+    } finally {
+      if (proc.exitCode === null) proc.kill('SIGKILL')
+      await proc.exited
+    }
+  }, 10000)
+
   test('exits immediately even when the event loop has active handles', async () => {
     const shutdownModule = pathToFileURL(join(repoRoot, 'src/util/shutdown.ts')).href
     const script = `
