@@ -22,6 +22,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "bun test",
+    "bench:picker": "bun tests/perf/run-baseline.ts",
     "prepublishOnly": "bun run typecheck"
   },
   "keywords": [
