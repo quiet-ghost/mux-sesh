@@ -330,7 +330,8 @@ export function useSearchFiltering(
   searchQuery: string,
   allItems: Item[],
   setItems: Dispatch<SetStateAction<Item[]>>,
-  setCursor: Dispatch<SetStateAction<number>>
+  setCursor: Dispatch<SetStateAction<number>>,
+  filterItems: typeof filterAndSortItems = filterAndSortItems
 ) {
   useEffect(() => {
     if (appMode !== AppMode.Search && appMode !== AppMode.NewSession) {
@@ -338,14 +339,14 @@ export function useSearchFiltering(
     }
 
     if (searchQuery.trim()) {
-      setItems(filterAndSortItems(allItems, searchQuery))
+      setItems(filterItems(allItems, searchQuery))
       setCursor(0)
       return
     }
 
     setItems(allItems)
     setCursor(0)
-  }, [allItems, appMode, searchQuery, setCursor, setItems])
+  }, [allItems, appMode, filterItems, searchQuery, setCursor, setItems])
 }
 
 export function useNewSessionFileSearch(

@@ -18,9 +18,11 @@
     "build": "bun build src/index.tsx --compile --outfile dist/mux-sesh",
     "start": "bun run src/index.tsx",
     "typecheck": "tsc --noEmit",
+    "typecheck:tests": "tsc --noEmit --project tsconfig.tests.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "bun test",
+    "bench:picker": "bun tests/perf/run-baseline.ts",
     "prepublishOnly": "bun run typecheck"
   },
   "keywords": [

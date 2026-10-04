@@ -1,8 +1,9 @@
 import { isOpencodeSessionItem } from '../opencode/session-name'
 import type { CommandId } from '../ui/CommandsModal'
-import { AppMode, ViewMode, type Item } from '../types'
+import { AppMode, ViewMode, type Item, type KeybindMode } from '../types'
 
 interface ExecuteCommandContext {
+  keybindMode: KeybindMode
   appMode: AppMode
   viewMode: ViewMode
   cursor: number
@@ -132,7 +133,7 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
       return
     case 'back':
       ctx.closeModal()
-      ctx.setAppMode(AppMode.Normal)
+      ctx.setAppMode(ctx.keybindMode === 'standard' ? AppMode.Search : AppMode.Normal)
       return
   }
 }

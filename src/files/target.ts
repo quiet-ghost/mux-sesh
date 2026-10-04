@@ -11,6 +11,11 @@ export interface ResolvedFileSession {
 
 export type TypedPathTarget = { kind: 'file' | 'directory'; path: string }
 
+interface TypedPathOptions {
+  invocationCwd: string
+  homeDir?: string
+}
+
 function sanitizeSessionName(value: string): string {
   return value.replace(/[.\s/]+/g, '_')
 }
@@ -70,14 +75,14 @@ export function looksLikePathInput(value: string): boolean {
 
 export async function resolveTypedPathTarget(
   searchTerm: string,
-  homeDir = process.env.HOME || ''
+  { invocationCwd, homeDir = process.env.HOME || '' }: TypedPathOptions
 ): Promise<TypedPathTarget | null> {
   if (!looksLikePathInput(searchTerm)) {
     return null
   }
 
   const expanded = expandUserPath(searchTerm, homeDir)
-  const absolute = isAbsolute(expanded) ? expanded : join(process.cwd(), expanded)
+  const absolute = isAbsolute(expanded) ? expanded : join(invocationCwd, expanded)
 
   try {
     const info = await stat(absolute)

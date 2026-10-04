@@ -1,27 +1,30 @@
 import type { ScrollBoxRenderable } from '@opentui/core'
 import { useKeyboard, useTerminalDimensions } from '@opentui/react'
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { openBrowser } from '../util/browser'
 import { writeClipboard } from '../util/clipboard'
-import { buildIssueUrl, describeFailure, formatDiagnostics } from '../util/errors'
+import type { DiagnosticReport } from '../util/errors'
 import { requestShutdown } from '../util/shutdown'
 
 interface Props {
-  error: unknown
+  report: DiagnosticReport
   onRetry: () => void
+  actions?: {
+    copy: (text: string) => boolean
+    open: (url: string) => Promise<boolean>
+  }
 }
 
-export function ErrorScreen({ error, onRetry }: Props) {
+const DEFAULT_ACTIONS = { copy: writeClipboard, open: openBrowser }
+
+export function ErrorScreen({ report, onRetry, actions = DEFAULT_ACTIONS }: Props) {
   const { width, height } = useTerminalDimensions()
-  const diagnostics = useMemo(() => formatDiagnostics(error), [error])
-  const issueUrl = useMemo(() => buildIssueUrl(error, diagnostics), [error, diagnostics])
-  const failure = useMemo(() => describeFailure(error), [error])
   const [status, setStatus] = useState('')
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
 
   const copy = () => {
     setStatus(
-      writeClipboard(diagnostics)
+      actions.copy(report.text)
         ? 'Diagnostics copied'
         : 'Clipboard unavailable; use terminal selection'
     )
@@ -29,13 +32,13 @@ export function ErrorScreen({ error, onRetry }: Props) {
 
   const openIssue = () => {
     setStatus('Opening prefilled GitHub issue...')
-    void openBrowser(issueUrl).then(opened => {
+    void actions.open(report.issueUrl).then(opened => {
       setStatus(
         opened
           ? 'Opened prefilled issue in your browser'
           : 'Could not open browser; report URL copied'
       )
-      if (!opened) writeClipboard(issueUrl.toString())
+      if (!opened) actions.copy(report.issueUrl)
     })
   }
 
@@ -69,9 +72,19 @@ export function ErrorScreen({ error, onRetry }: Props) {
         paddingBottom: 1,
       }}
     >
-      <box style={{ width: contentWidth, flexDirection: 'column', flexGrow: 1, gap: 1 }}>
+      <box
+        style={{
+          width: contentWidth,
+          flexDirection: 'column',
+          flexGrow: 1,
+          flexShrink: 1,
+          flexBasis: 0,
+          minHeight: 0,
+          gap: 1,
+        }}
+      >
         <text style={{ fg: '#e06c75' }}>mux-sesh crashed</text>
-        <text style={{ fg: '#eeeeee' }}>{failure.message || 'An unexpected error occurred.'}</text>
+        <text style={{ fg: '#eeeeee' }}>{report.summary}</text>
         <text style={{ fg: '#808080' }}>
           c copy diagnostics · o open GitHub issue · r retry · q/esc/ctrl+c quit
         </text>
@@ -79,6 +92,8 @@ export function ErrorScreen({ error, onRetry }: Props) {
         <box
           style={{
             flexGrow: 1,
+            flexShrink: 1,
+            flexBasis: 0,
             minHeight: 3,
             border: true,
             borderStyle: 'rounded',
@@ -89,13 +104,20 @@ export function ErrorScreen({ error, onRetry }: Props) {
         >
           <scrollbox
             ref={scrollRef}
-            style={{ flexGrow: 1 }}
+            style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: 0 }}
             verticalScrollbarOptions={{ visible: true }}
           >
-            <text style={{ fg: '#b0b0b0' }}>{diagnostics}</text>
+            <text style={{ fg: '#b0b0b0' }}>{report.text}</text>
           </scrollbox>
         </box>
-        <text style={{ fg: '#808080' }}>↑/↓, j/k, PgUp/PgDn scroll · GitHub opens unsubmitted</text>
+        {report.issueUrlTruncated && (
+          <text style={{ fg: '#808080' }}>
+            Browser report shortened; c copies the full captured report.
+          </text>
+        )}
+        <text style={{ fg: '#808080' }}>
+          ↑/↓, j/k, PgUp/PgDn scroll · o shares diagnostics with GitHub
+        </text>
       </box>
     </box>
   )

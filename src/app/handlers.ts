@@ -26,6 +26,10 @@ interface SharedHandlerOptions {
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config | null) => Promise<void>
 }
 
+interface NewSessionHandlerOptions extends SharedHandlerOptions {
+  invocationCwd: string
+}
+
 interface KillHandlerOptions extends SharedHandlerOptions {
   setPendingKillSessionName: (sessionName: string | null) => void
   regularSessions: Item[]
@@ -124,7 +128,7 @@ export async function handleRenameSubmitWithFeedback(
 
 export async function handleNewSessionSubmitWithSearch(
   searchTerm: string,
-  options: SharedHandlerOptions
+  options: NewSessionHandlerOptions
 ): Promise<void> {
   if (!searchTerm) {
     return
@@ -139,7 +143,8 @@ export async function handleNewSessionSubmitWithSearch(
         options.config,
         options.items,
         options.cursor,
-        backend
+        backend,
+        options.invocationCwd
       ),
     'Failed to create session',
     options.showMessage
@@ -234,7 +239,7 @@ export async function executeAppCommand(
   await runCommand(commandID, options)
 }
 
-interface CreateAppHandlersOptions extends SharedHandlerOptions {
+interface CreateAppHandlersOptions extends NewSessionHandlerOptions {
   appMode: AppMode
   viewMode: ViewMode
   agentCursor: number
@@ -314,7 +319,10 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
   }
 
   async function handleNewSessionSubmit() {
-    await handleNewSessionSubmitWithSearch(options.searchTerm, sharedOptions)
+    await handleNewSessionSubmitWithSearch(options.searchTerm, {
+      ...sharedOptions,
+      invocationCwd: options.invocationCwd,
+    })
   }
 
   async function handleSettingsEditorSubmit(field: SettingsFieldId) {
@@ -359,6 +367,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
 
   async function executeCommand(commandID: Parameters<typeof executeAppCommand>[0]) {
     await executeAppCommand(commandID, {
+      keybindMode: options.config?.keybindMode ?? 'vim',
       appMode: options.appMode,
       viewMode: options.viewMode,
       cursor: options.cursor,

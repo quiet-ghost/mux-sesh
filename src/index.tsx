@@ -1,8 +1,11 @@
 import { createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import { App } from './app'
+import { captureInvocationCwd } from './cli/invocation-cwd'
 import { ignoreUnhandledThemeFollowSignal } from './styles/theme-follow'
 import { initializeFatalErrorHandling, initializeShutdown, requestShutdown } from './util/shutdown'
+
+const invocationCwd = captureInvocationCwd()
 
 initializeFatalErrorHandling()
 ignoreUnhandledThemeFollowSignal()
@@ -20,4 +23,4 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
   })
 }
 
-createRoot(renderer).render(<App />)
+createRoot(renderer).render(<App invocationCwd={invocationCwd} />)

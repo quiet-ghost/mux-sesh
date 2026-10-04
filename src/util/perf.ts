@@ -1,5 +1,20 @@
 const PERF_ENABLED = process.env.MUX_SESH_DEBUG_PERF === '1'
 
+export interface TimingSummary {
+  samples: number
+  p50Ms: number | null
+  p95Ms: number | null
+}
+
+export function summarizeTimings(samples: readonly number[]): TimingSummary {
+  const sorted = [...samples].sort((left, right) => left - right)
+  return {
+    samples: sorted.length,
+    p50Ms: sorted.length ? sorted[Math.ceil(sorted.length * 0.5) - 1] : null,
+    p95Ms: sorted.length ? sorted[Math.ceil(sorted.length * 0.95) - 1] : null,
+  }
+}
+
 export async function measure<T>(label: string, fn: () => Promise<T>): Promise<T> {
   if (!PERF_ENABLED) {
     return fn()
