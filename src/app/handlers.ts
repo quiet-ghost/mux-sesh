@@ -367,6 +367,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
 
   async function executeCommand(commandID: Parameters<typeof executeAppCommand>[0]) {
     await executeAppCommand(commandID, {
+      keybindMode: options.config?.keybindMode ?? 'vim',
       appMode: options.appMode,
       viewMode: options.viewMode,
       cursor: options.cursor,

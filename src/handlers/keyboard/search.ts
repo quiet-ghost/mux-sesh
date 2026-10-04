@@ -85,6 +85,12 @@ export function handleSearchMode(
     }
   }
 
+  if (key.ctrl && keyName === 'p') {
+    ctx.clearPendingKill()
+    ctx.openCommandsModal()
+    return
+  }
+
   if (keyName === 'escape') {
     ctx.clearPendingKill()
     if (isStandard) {

@@ -2,6 +2,8 @@ import { TextareaRenderable } from '@opentui/core'
 import type { TestRendererOptions, TestRendererSetup } from '@opentui/core/testing'
 import { testRender } from '@opentui/react/test-utils'
 import { act, useEffect } from 'react'
+import { executeCommand as executeAppCommand } from '../../src/app/commands'
+import { createAppControls } from '../../src/app/controls'
 import { useAppCoreState } from '../../src/app/core-state'
 import { loadSessionItems } from '../../src/app/data'
 import { getSessionCommandState } from '../../src/app/derived'
@@ -13,13 +15,20 @@ import {
 import { handleSelectItem } from '../../src/app/handlers'
 import { useAppKeyboard } from '../../src/app/keyboard'
 import { useAppModalState } from '../../src/app/modal-state'
+import { AppModalsLayer } from '../../src/app/modals-layer'
 import { AppScreen } from '../../src/app/screen'
 import { getDefaultConfig } from '../../src/config'
 import type { LiveWorkspace, MultiplexerBackend } from '../../src/multiplexer'
 import { filterAndSortItems } from '../../src/search'
-import { isOptionSetting } from '../../src/settings'
+import { getSettingEditorTitle, isOptionSetting } from '../../src/settings'
 import { resolveTheme, ThemeProvider } from '../../src/styles/theme'
-import type { Config, Item, OpencodeSessionStats } from '../../src/types'
+import {
+  AppMode,
+  type Config,
+  type Item,
+  type KeybindMode,
+  type OpencodeSessionStats,
+} from '../../src/types'
 import { useTerminalSize } from '../../src/util/terminal'
 
 type BackendCall = { operation: 'list' } | { operation: 'details' | 'open'; id: string }
@@ -48,6 +57,8 @@ interface SessionFixture {
 }
 
 interface SessionScreenData {
+  keybindMode?: KeybindMode
+  workspaces?: LiveWorkspace[]
   backend?: MultiplexerBackend
   projects?: Item[]
   filterItems?: typeof filterAndSortItems
@@ -63,7 +74,8 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
   const modal = useAppModalState()
   const dimensions = useTerminalSize()
   const { config, backend, items, projects, filterItems, loadStatistics, lifecycle } = fixture
-  const theme = resolveTheme(config.theme, config.themes, config.colorScheme).colors
+  const resolvedTheme = resolveTheme(config.theme, config.themes, config.colorScheme)
+  const theme = resolvedTheme.colors
   const derived = getSessionCommandState(
     core.appMode,
     core.viewMode,
@@ -74,6 +86,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     modal.commandsSearchQuery
   )
   const {
+    setAppMode,
     setItems,
     setAllItems,
     setSessionItems,
@@ -82,7 +95,18 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     prefixTimeoutRef,
   } = core
 
+  useNormalModeSessionReset(
+    core.appMode,
+    core.viewMode,
+    core.sessionItems,
+    core.lastSessionSelectionRef,
+    core.setAllItems,
+    core.setItems,
+    core.setCursor
+  )
+
   useEffect(() => {
+    setAppMode(config.keybindMode === 'standard' ? AppMode.Search : AppMode.Normal)
     setItems(items)
     setAllItems(items)
     setSessionItems(items)
@@ -94,10 +118,12 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
       lifecycle.push('unmounted')
     }
   }, [
+    config.keybindMode,
     items,
     projects,
     lifecycle,
     prefixTimeoutRef,
+    setAppMode,
     setAllItems,
     setItems,
     setProjectSourceItems,
@@ -105,15 +131,6 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     setSessionItems,
   ])
 
-  useNormalModeSessionReset(
-    core.appMode,
-    core.viewMode,
-    core.sessionItems,
-    core.lastSessionSelectionRef,
-    core.setAllItems,
-    core.setItems,
-    core.setCursor
-  )
   useSearchFiltering(
     core.appMode,
     core.searchQuery,
@@ -124,29 +141,42 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
   )
   useOpencodeStatsPolling(derived.selectedAgentSession, loadStatistics)
 
+  const controls = createAppControls({
+    ...core,
+    ...modal,
+    config,
+    handleKillSession: unsupportedFixtureAction,
+  })
+
   useAppKeyboard({
     ...core,
     ...modal,
     ...derived,
+    ...controls,
     config,
     filteredSettingsEntries: [],
     filteredSettingOptions: [],
     isOptionSetting,
-    clearPendingKill: () => core.setPendingKillSessionName(null),
     handleSelect: item => handleSelectItem(item, config, backend),
-    executeCommand: unsupportedFixtureAction,
+    executeCommand: command =>
+      executeAppCommand(command, {
+        keybindMode: config.keybindMode ?? 'vim',
+        ...core,
+        ...derived,
+        ...controls,
+        togglePinnedSession: unsupportedFixtureAction,
+        refreshItems: unsupportedFixtureAction,
+        handleLastSession: unsupportedFixtureAction,
+        handleRootSession: unsupportedFixtureAction,
+        handleEditTarget: unsupportedFixtureAction,
+        loadOpencodeStatsForSession: loadStatistics,
+        showMessage: core.setMessage,
+      }),
     handleSettingOptionSubmit: unsupportedFixtureAction,
     handleSettingsEditorSubmit: unsupportedFixtureAction,
     handleRenameSubmit: unsupportedFixtureAction,
     handleNewSessionSubmit: unsupportedFixtureAction,
-    openSettingOptions: unsupportedFixtureAction,
-    openSettingEditor: unsupportedFixtureAction,
-    closeModal: unsupportedFixtureAction,
-    requestKillSession: unsupportedFixtureAction,
     togglePinnedSession: unsupportedFixtureAction,
-    openRenameModal: unsupportedFixtureAction,
-    openCommandsModal: unsupportedFixtureAction,
-    openSettingsModal: unsupportedFixtureAction,
     refreshItems: unsupportedFixtureAction,
     handleKillSession: unsupportedFixtureAction,
     handleLastSession: unsupportedFixtureAction,
@@ -166,6 +196,18 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
         backend={backend}
         projectCount={projects.length}
       />
+      <AppModalsLayer
+        {...modal}
+        {...derived}
+        {...dimensions}
+        configPath="/fixture/config.json"
+        themeId={resolvedTheme.id}
+        themeName={resolvedTheme.name}
+        colorMode={resolvedTheme.mode}
+        filteredSettingsEntries={[]}
+        filteredSettingOptions={[]}
+        getSettingEditorTitle={getSettingEditorTitle}
+      />
     </ThemeProvider>
   )
 }
@@ -176,13 +218,14 @@ export async function renderSessionScreen(
 ): Promise<SessionScreenHarness> {
   const config: Config = {
     ...getDefaultConfig('/fixture'),
+    keybindMode: data.keybindMode ?? 'vim',
     theme: 'catppuccin',
     colorScheme: 'dark',
     autoUpdate: false,
     projectPaths: [],
     icons: { tmux: 'T', herdr: 'H', configured: 'C', project: 'P', opencode: 'A' },
   }
-  const workspaces: LiveWorkspace[] = [
+  const workspaces: LiveWorkspace[] = data.workspaces ?? [
     {
       backend: 'herdr',
       id: 'w1',

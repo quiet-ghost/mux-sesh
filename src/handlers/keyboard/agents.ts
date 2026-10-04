@@ -25,6 +25,7 @@ export function handleAgentsManageMode(
 ) {
   const keyName = getKeyName(key)
   const isStandard = keybindMode === 'standard'
+  const returnMode = isStandard ? AppMode.Search : AppMode.Normal
 
   if (key.ctrl && keyName === 'p') {
     ctx.clearPendingKill()
@@ -38,7 +39,7 @@ export function handleAgentsManageMode(
     switch (keyName) {
       case 'o':
         ctx.clearPendingKill()
-        ctx.setAppMode(AppMode.Normal)
+        ctx.setAppMode(returnMode)
         return
       case 'd':
         if (
@@ -69,7 +70,7 @@ export function handleAgentsManageMode(
 
   if (keyName === 'escape' || (!ctx.prefixKey && !isStandard && keyName === 'o')) {
     ctx.clearPendingKill()
-    ctx.setAppMode(AppMode.Normal)
+    ctx.setAppMode(returnMode)
     return
   }
 

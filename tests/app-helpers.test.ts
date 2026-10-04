@@ -156,6 +156,83 @@ describe('app data helpers', () => {
 })
 
 describe('app derived helpers', () => {
+  test.each([
+    { appMode: AppMode.Normal, keybindMode: 'vim' },
+    { appMode: AppMode.Search, keybindMode: 'vim' },
+    { appMode: AppMode.Search, keybindMode: 'standard' },
+    { appMode: AppMode.AgentsManage, keybindMode: 'standard' },
+  ] as const)(
+    'retains native agent targets in $keybindMode $appMode',
+    ({ appMode, keybindMode }) => {
+      const plain = workspaceToItem({
+        backend: 'herdr',
+        id: 'plain',
+        title: 'opencode-native-unknown',
+        path: '/fixture/plain',
+        isActive: false,
+        unitCount: 1,
+        agentStatus: 'unknown',
+      })
+      const agent = workspaceToItem({
+        backend: 'herdr',
+        id: 'agents',
+        title: 'worker',
+        path: '/fixture/worker',
+        isActive: false,
+        unitCount: 1,
+        agentStatus: 'unknown',
+        target: { kind: 'agent', tabId: 'agents:t1', paneId: 'agents:p1' },
+      })
+      const state = getSessionCommandState(
+        appMode,
+        ViewMode.Sessions,
+        [plain, agent],
+        0,
+        0,
+        { ...getDefaultConfig('/fixture'), keybindMode },
+        ''
+      )
+
+      expect(state.agentSessions).toEqual([agent])
+      expect(state.agentSessions[0]).toBe(agent)
+      expect(state.regularSessions).toContain(plain)
+    }
+  )
+
+  test('keeps search list and command targets on the same flat cursor', () => {
+    const agent = workspaceToItem({
+      backend: 'tmux',
+      id: 'pi-agent',
+      title: 'pi-agent',
+      path: '/fixture/agent',
+      isActive: false,
+      unitCount: 1,
+    })
+    const plain = workspaceToItem({
+      backend: 'tmux',
+      id: 'plain',
+      title: 'plain',
+      path: '/fixture/plain',
+      isActive: false,
+      unitCount: 1,
+    })
+    const items = [agent, plain]
+    const state = getSessionCommandState(
+      AppMode.Search,
+      ViewMode.Sessions,
+      items,
+      1,
+      0,
+      { ...getDefaultConfig('/fixture'), keybindMode: 'standard' },
+      ''
+    )
+
+    expect(state.agentSessions).toEqual([agent])
+    expect(state.regularSessions).toBe(items)
+    expect(state.regularSessions[1]).toBe(plain)
+    expect(state.selectedPrimaryItem).toBe(plain)
+  })
+
   test('builds session command state from current app view', () => {
     const config = getDefaultConfig('/home/tester')
     const items: Item[] = [
