@@ -1,6 +1,6 @@
 import type { CliRenderer } from '@opentui/core'
 import { flushSync } from '@opentui/react'
-import { buildIssueUrl, formatDiagnostics } from './errors'
+import { DiagnosticReport } from './errors'
 
 const TERMINAL_RESET_SEQUENCE = [
   '\u001b[?1000l',
@@ -75,25 +75,19 @@ export function initializeShutdown(renderer: CliRenderer): void {
   }
 }
 
-export function requestFatalShutdown(error: unknown, source = 'fatal error'): void {
+type FatalSource = 'fatal error' | 'uncaught exception' | 'unhandled rejection'
+
+export function requestFatalShutdown(error: unknown, source: FatalSource = 'fatal error'): void {
   if (state.fatalStarted) return
   state.fatalStarted = true
 
-  let diagnostics: string
-  let reportUrl: string
-  try {
-    diagnostics = formatDiagnostics(error)
-    reportUrl = buildIssueUrl(error, diagnostics).toString()
-  } catch {
-    diagnostics = `mux-sesh crashed\n\nMessage:\n${String(error)}`
-    reportUrl = 'https://github.com/quiet-ghost/mux-sesh/issues/new'
-  }
+  const report = DiagnosticReport.capture(error)
 
   restoreTerminal()
 
   try {
     process.stderr.write(
-      `\nFatal ${source}:\n\n${diagnostics}\n\nReport this crash (review before submitting):\n${reportUrl}\n`
+      `\nFatal ${source}:\n\n${report.text}\n\nReport this crash (opening this URL shares diagnostics):\n${report.issueUrl}\n`
     )
   } finally {
     process.exit(1)

@@ -4,10 +4,10 @@ import { AppModalsLayer } from './app/modals-layer'
 import { AppScreen } from './app/screen'
 import { ThemeProvider } from './styles/theme'
 import { ErrorScreen } from './ui/ErrorScreen'
+import { DiagnosticReport } from './util/errors'
 
 interface ErrorBoundaryState {
-  error?: unknown
-  hasError: boolean
+  report: DiagnosticReport | null
   retryKey: number
 }
 
@@ -19,19 +19,19 @@ class RootErrorBoundary extends Component<
   { children: (retryKey: number) => ReactNode },
   ErrorBoundaryState
 > {
-  state: ErrorBoundaryState = { hasError: false, retryKey: 0 }
+  state: ErrorBoundaryState = { report: null, retryKey: 0 }
 
   static getDerivedStateFromError(error: unknown): Partial<ErrorBoundaryState> {
-    return { error, hasError: true }
+    return { report: DiagnosticReport.capture(error) }
   }
 
   private retry = () => {
-    this.setState(state => ({ error: undefined, hasError: false, retryKey: state.retryKey + 1 }))
+    this.setState(state => ({ report: null, retryKey: state.retryKey + 1 }))
   }
 
   render() {
-    if (this.state.hasError) {
-      return <ErrorScreen error={this.state.error} onRetry={this.retry} />
+    if (this.state.report) {
+      return <ErrorScreen report={this.state.report} onRetry={this.retry} />
     }
 
     return this.props.children(this.state.retryKey)
