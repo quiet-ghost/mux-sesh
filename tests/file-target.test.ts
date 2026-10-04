@@ -86,10 +86,14 @@ describe('file target helpers', () => {
       const filePath = join(root, 'todo.md')
       await writeFile(filePath, 'hello')
 
-      expect(await resolveTypedPathTarget(filePath)).toEqual({ kind: 'file', path: filePath })
-      expect(await resolveTypedPathTarget(root)).toEqual({ kind: 'directory', path: root })
-      expect(await resolveTypedPathTarget(join(root, 'missing.md'))).toBeNull()
-      expect(await resolveTypedPathTarget('todo.md')).toBeNull()
+      const context = { invocationCwd: root }
+      expect(await resolveTypedPathTarget(filePath, context)).toEqual({
+        kind: 'file',
+        path: filePath,
+      })
+      expect(await resolveTypedPathTarget(root, context)).toEqual({ kind: 'directory', path: root })
+      expect(await resolveTypedPathTarget(join(root, 'missing.md'), context)).toBeNull()
+      expect(await resolveTypedPathTarget('todo.md', context)).toBeNull()
     } finally {
       await rm(root, { recursive: true, force: true })
     }
@@ -102,11 +106,15 @@ describe('file target helpers', () => {
       const filePath = join(root, 'todo.md')
       await writeFile(filePath, 'hello')
 
-      expect(await resolveTypedPathTarget('~/todo.md', root)).toEqual({
+      expect(
+        await resolveTypedPathTarget('~/todo.md', { invocationCwd: '/', homeDir: root })
+      ).toEqual({
         kind: 'file',
         path: filePath,
       })
-      expect(await resolveTypedPathTarget('~', dirname(filePath))).toEqual({
+      expect(
+        await resolveTypedPathTarget('~', { invocationCwd: '/', homeDir: dirname(filePath) })
+      ).toEqual({
         kind: 'directory',
         path: root,
       })

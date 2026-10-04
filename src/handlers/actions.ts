@@ -121,8 +121,9 @@ export async function handleNewSessionSubmit(
   config: Config | null,
   items: Item[],
   cursor: number,
-  backend: MultiplexerBackend
-) {
+  backend: MultiplexerBackend,
+  invocationCwd: string
+): Promise<void> {
   if (!searchTerm) return
 
   if (isGitHubURL(searchTerm)) {
@@ -136,7 +137,7 @@ export async function handleNewSessionSubmit(
     return
   }
 
-  const typedTarget = await resolveTypedPathTarget(searchTerm)
+  const typedTarget = await resolveTypedPathTarget(searchTerm, { invocationCwd })
   if (typedTarget) {
     if (typedTarget.kind === 'file') {
       await openFileSession(typedTarget.path, requireConfig(config), backend)
@@ -158,7 +159,7 @@ export async function handleNewSessionSubmit(
     return
   }
 
-  await backend.openOrCreate({ title: searchTerm, path: process.cwd() })
+  await backend.openOrCreate({ title: searchTerm, path: invocationCwd })
   await requestShutdown(0)
 }
 

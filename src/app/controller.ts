@@ -16,7 +16,7 @@ import { useTerminalSize } from '../util/terminal'
 import { mark, measure } from '../util/perf'
 import { getSettingEditorTitle, isOptionSetting } from '../settings'
 
-export function useAppController() {
+export function useAppController(invocationCwd: string) {
   const {
     appMode,
     setAppMode,
@@ -218,6 +218,7 @@ export function useAppController() {
     handleTogglePinnedSessionWrapper,
     executeCommand,
   } = createAppHandlers({
+    invocationCwd,
     backend,
     appMode,
     viewMode,

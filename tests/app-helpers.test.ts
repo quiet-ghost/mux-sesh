@@ -496,6 +496,7 @@ describe('app handler factory', () => {
     const showMessage = mock(() => {})
 
     const handlers = createAppHandlers({
+      invocationCwd: '/home/tester',
       appMode: AppMode.Normal,
       viewMode: ViewMode.Sessions,
       config,
@@ -561,6 +562,7 @@ describe('app handler factory', () => {
     })
 
     const handlers = createAppHandlers({
+      invocationCwd: '/home/tester',
       appMode: AppMode.Normal,
       viewMode: ViewMode.Sessions,
       config: getDefaultConfig('/home/tester'),

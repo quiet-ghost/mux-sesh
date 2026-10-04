@@ -11,6 +11,10 @@ interface ErrorBoundaryState {
   retryKey: number
 }
 
+interface AppProps {
+  invocationCwd: string
+}
+
 class RootErrorBoundary extends Component<
   { children: (retryKey: number) => ReactNode },
   ErrorBoundaryState
@@ -34,8 +38,8 @@ class RootErrorBoundary extends Component<
   }
 }
 
-function AppTree() {
-  const { theme, screenProps, modalProps } = useAppController()
+function AppTree({ invocationCwd }: AppProps) {
+  const { theme, screenProps, modalProps } = useAppController(invocationCwd)
 
   return (
     <ThemeProvider theme={theme}>
@@ -45,6 +49,10 @@ function AppTree() {
   )
 }
 
-export function App() {
-  return <RootErrorBoundary>{retryKey => <AppTree key={retryKey} />}</RootErrorBoundary>
+export function App({ invocationCwd }: AppProps) {
+  return (
+    <RootErrorBoundary>
+      {retryKey => <AppTree key={retryKey} invocationCwd={invocationCwd} />}
+    </RootErrorBoundary>
+  )
 }
