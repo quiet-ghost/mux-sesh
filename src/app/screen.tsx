@@ -8,7 +8,6 @@ import {
   getStatusLabel,
 } from './view'
 import { syncTextareaValue } from './textarea'
-import { isOpencodeSessionItem } from '../opencode/session-name'
 import { AppMode, ViewMode, type Config, type Item, type ThemeColors } from '../types'
 import { isGitHubURL } from '../util/github'
 import { shouldShowDetailPanel } from '../util/terminal'
@@ -16,7 +15,6 @@ import SearchInput from '../ui/SearchInput'
 import SessionList from '../ui/SessionList'
 import AgentSessionGroup from '../ui/AgentSessionGroup'
 import ItemList from '../ui/ItemList'
-import OpencodeStatsPanel from '../ui/OpencodeStatsPanel'
 import SessionDetailsPanel from '../ui/SessionDetailsPanel'
 import Toast from '../ui/Toast'
 import VersionBadge, { formatVersionBadge } from '../ui/VersionBadge'
@@ -86,12 +84,6 @@ export function AppScreen({
     updatedVersion,
     process.env.MUX_SESH_DEV === '1'
   )
-  const selectedAgentSession = agentSessions[agentCursor]
-  const showOpencodeStats =
-    viewMode === ViewMode.Sessions &&
-    appMode === AppMode.AgentsManage &&
-    selectedAgentSession !== undefined &&
-    isOpencodeSessionItem(selectedAgentSession)
   const footerHint = getFooterHint(appMode, config?.prefixKey, selectedPrimaryItem)
 
   return (
@@ -192,16 +184,13 @@ export function AppScreen({
             </box>
           </box>
 
-          {shouldShowDetailPanel(columns, appMode === AppMode.NewSession) &&
-            (showOpencodeStats ? (
-              <OpencodeStatsPanel selectedItem={selectedAgentSession} />
-            ) : (
-              <SessionDetailsPanel
-                selectedItem={selectedPrimaryItem}
-                config={config}
-                backend={backend}
-              />
-            ))}
+          {shouldShowDetailPanel(columns, appMode === AppMode.NewSession) && (
+            <SessionDetailsPanel
+              selectedItem={selectedPrimaryItem}
+              config={config}
+              backend={backend}
+            />
+          )}
         </box>
 
         {(message || columns < 80 || footerHint) && (

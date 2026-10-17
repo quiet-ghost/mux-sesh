@@ -1,6 +1,6 @@
 import { executeCommand as runCommand } from './commands'
 import { persistConfigUpdate, runWithErrorMessage } from './operations'
-import { AppMode, type Config, type Item, type OpencodeSessionStats, type ViewMode } from '../types'
+import { AppMode, type Config, type Item, type ViewMode } from '../types'
 import type { SettingsFieldId } from '../settings'
 import type { MultiplexerBackend } from '../multiplexer'
 import { applyEditorSetting, applyOptionSetting, getSettingEditorTitle } from '../settings'
@@ -24,6 +24,10 @@ interface SharedHandlerOptions {
   cursor: number
   showMessage: ShowMessage
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config | null) => Promise<void>
+}
+
+interface NewSessionHandlerOptions extends SharedHandlerOptions {
+  invocationCwd: string
 }
 
 interface KillHandlerOptions extends SharedHandlerOptions {
@@ -124,7 +128,7 @@ export async function handleRenameSubmitWithFeedback(
 
 export async function handleNewSessionSubmitWithSearch(
   searchTerm: string,
-  options: SharedHandlerOptions
+  options: NewSessionHandlerOptions
 ): Promise<void> {
   if (!searchTerm) {
     return
@@ -139,7 +143,8 @@ export async function handleNewSessionSubmitWithSearch(
         options.config,
         options.items,
         options.cursor,
-        backend
+        backend,
+        options.invocationCwd
       ),
     'Failed to create session',
     options.showMessage
@@ -234,7 +239,7 @@ export async function executeAppCommand(
   await runCommand(commandID, options)
 }
 
-interface CreateAppHandlersOptions extends SharedHandlerOptions {
+interface CreateAppHandlersOptions extends NewSessionHandlerOptions {
   appMode: AppMode
   viewMode: ViewMode
   agentCursor: number
@@ -264,7 +269,6 @@ interface CreateAppHandlersOptions extends SharedHandlerOptions {
   renameTarget: Item | null
   renamedValue: string
   searchTerm: string
-  loadOpencodeStatsForSession: (sessionName: string) => Promise<OpencodeSessionStats | null>
   rememberedSessions: (key: string | null) => void
 }
 
@@ -314,7 +318,10 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
   }
 
   async function handleNewSessionSubmit() {
-    await handleNewSessionSubmitWithSearch(options.searchTerm, sharedOptions)
+    await handleNewSessionSubmitWithSearch(options.searchTerm, {
+      ...sharedOptions,
+      invocationCwd: options.invocationCwd,
+    })
   }
 
   async function handleSettingsEditorSubmit(field: SettingsFieldId) {
@@ -359,6 +366,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
 
   async function executeCommand(commandID: Parameters<typeof executeAppCommand>[0]) {
     await executeAppCommand(commandID, {
+      keybindMode: options.config?.keybindMode ?? 'vim',
       appMode: options.appMode,
       viewMode: options.viewMode,
       cursor: options.cursor,
@@ -385,7 +393,6 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       handleLastSession: handleLastSessionWrapper,
       handleRootSession: handleRootSessionWrapper,
       handleEditTarget: handleEditTargetWrapper,
-      loadOpencodeStatsForSession: options.loadOpencodeStatsForSession,
       showMessage: options.showMessage,
     })
   }

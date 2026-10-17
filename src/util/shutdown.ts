@@ -1,5 +1,6 @@
 import type { CliRenderer } from '@opentui/core'
-import { buildIssueUrl, formatDiagnostics } from './errors'
+import { flushSync } from '@opentui/react'
+import { DiagnosticReport } from './errors'
 
 const TERMINAL_RESET_SEQUENCE = [
   '\u001b[?1000l',
@@ -14,35 +15,36 @@ const TERMINAL_RESET_SEQUENCE = [
   '\u001b[?25h',
 ].join('')
 
-const state: {
+interface ShutdownState {
   renderer?: CliRenderer
   exiting?: Promise<never>
   exitListenerInstalled?: boolean
   fatalListenersInstalled?: boolean
   fatalStarted?: boolean
-} = {}
+}
+
+const state: ShutdownState = {}
 
 function resetTerminalModes(): void {
   if (process.stdout.isTTY) {
     process.stdout.write(TERMINAL_RESET_SEQUENCE)
   }
 
-  if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
-    process.stdin.setRawMode(false)
-  }
+  if (process.stdin.isTTY) process.stdin.setRawMode(false)
 
   process.stdin.pause()
 }
 
 function destroyRenderer(): void {
   const renderer = state.renderer
+
   if (!renderer || renderer.isDestroyed) return
 
   try {
     renderer.useMouse = false
     renderer.disableKittyKeyboard()
     renderer.setTerminalTitle('')
-    renderer.destroy()
+    flushSync(() => renderer.destroy())
   } catch {
     // Terminal mode reset below is the final fallback if renderer teardown fails.
   }
@@ -74,25 +76,19 @@ export function initializeShutdown(renderer: CliRenderer): void {
   }
 }
 
-export function requestFatalShutdown(error: unknown, source = 'fatal error'): void {
+type FatalSource = 'fatal error' | 'uncaught exception' | 'unhandled rejection'
+
+export function requestFatalShutdown(cause: unknown, source: FatalSource = 'fatal error'): void {
   if (state.fatalStarted) return
   state.fatalStarted = true
 
-  let diagnostics: string
-  let reportUrl: string
-  try {
-    diagnostics = formatDiagnostics(error)
-    reportUrl = buildIssueUrl(error, diagnostics).toString()
-  } catch {
-    diagnostics = `mux-sesh crashed\n\nMessage:\n${String(error)}`
-    reportUrl = 'https://github.com/quiet-ghost/mux-sesh/issues/new'
-  }
+  const report = DiagnosticReport.capture(cause)
 
   restoreTerminal()
 
   try {
     process.stderr.write(
-      `\nFatal ${source}:\n\n${diagnostics}\n\nReport this crash (review before submitting):\n${reportUrl}\n`
+      `\nFatal ${source}:\n\n${report.text}\n\nReport this crash (opening this URL shares diagnostics):\n${report.issueUrl}\n`
     )
   } finally {
     process.exit(1)
@@ -103,8 +99,11 @@ export function requestShutdown(code = 0): Promise<never> {
   if (state.exiting) return state.exiting
 
   state.exiting = (async () => {
-    restoreTerminal()
-    process.exit(code)
+    try {
+      restoreTerminal()
+    } finally {
+      process.exit(code)
+    }
   })()
 
   return state.exiting

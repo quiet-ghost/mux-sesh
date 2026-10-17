@@ -11,6 +11,11 @@ export interface ResolvedFileSession {
 
 export type TypedPathTarget = { kind: 'file' | 'directory'; path: string }
 
+interface TypedPathOptions {
+  invocationCwd: string
+  homeDir?: string
+}
+
 function sanitizeSessionName(value: string): string {
   return value.replace(/[.\s/]+/g, '_')
 }
@@ -34,6 +39,7 @@ export function expandUserPath(value: string, homeDir = process.env.HOME || ''):
 export function buildFileSessionName(filePath: string): string {
   const fileBase = basename(filePath)
   const parentBase = basename(dirname(filePath))
+
   const combined =
     parentBase && parentBase !== '.' && parentBase !== '/' ? `${parentBase}_${fileBase}` : fileBase
 
@@ -49,6 +55,7 @@ export function interpolateStartupCommand(command: string, filePath: string): st
 
 export function buildFileStartupCommand(filePath: string, config: Config): string {
   const configured = config.defaultSession?.startupCommand
+
   if (configured && /\{file\}|\{dir\}|\{\}/.test(configured)) {
     return interpolateStartupCommand(configured, filePath)
   }
@@ -70,17 +77,18 @@ export function looksLikePathInput(value: string): boolean {
 
 export async function resolveTypedPathTarget(
   searchTerm: string,
-  homeDir = process.env.HOME || ''
+  { invocationCwd, homeDir = process.env.HOME || '' }: TypedPathOptions
 ): Promise<TypedPathTarget | null> {
   if (!looksLikePathInput(searchTerm)) {
     return null
   }
 
   const expanded = expandUserPath(searchTerm, homeDir)
-  const absolute = isAbsolute(expanded) ? expanded : join(process.cwd(), expanded)
+  const absolute = isAbsolute(expanded) ? expanded : join(invocationCwd, expanded)
 
   try {
     const info = await stat(absolute)
+
     if (info.isFile()) {
       return { kind: 'file', path: absolute }
     }

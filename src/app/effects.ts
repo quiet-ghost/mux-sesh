@@ -1,7 +1,6 @@
 import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { useRenderer } from '@opentui/react'
 import type { TerminalColors } from '@opentui/core'
-import { isOpencodeSessionItem } from '../opencode/session-name'
 import { checkAndUpdate, updateEvents } from '../update'
 import { showTemporaryToast } from './notifications'
 import { clearMatchIndices, filterAndSortItems } from '../search'
@@ -330,7 +329,8 @@ export function useSearchFiltering(
   searchQuery: string,
   allItems: Item[],
   setItems: Dispatch<SetStateAction<Item[]>>,
-  setCursor: Dispatch<SetStateAction<number>>
+  setCursor: Dispatch<SetStateAction<number>>,
+  filterItems: typeof filterAndSortItems = filterAndSortItems
 ) {
   useEffect(() => {
     if (appMode !== AppMode.Search && appMode !== AppMode.NewSession) {
@@ -338,14 +338,14 @@ export function useSearchFiltering(
     }
 
     if (searchQuery.trim()) {
-      setItems(filterAndSortItems(allItems, searchQuery))
+      setItems(filterItems(allItems, searchQuery))
       setCursor(0)
       return
     }
 
     setItems(allItems)
     setCursor(0)
-  }, [allItems, appMode, searchQuery, setCursor, setItems])
+  }, [allItems, appMode, filterItems, searchQuery, setCursor, setItems])
 }
 
 export function useNewSessionFileSearch(
@@ -403,34 +403,6 @@ export function useNewSessionFileSearch(
       clearTimeout(timeout)
     }
   }, [appMode, config, searchQuery, setCursor, setItems])
-}
-
-export function useOpencodeStatsPolling(
-  selectedAgentSession: Item | undefined,
-  loadOpencodeStatsForSession: (sessionName: string) => Promise<unknown>
-) {
-  const loadStatsRef = useRef(loadOpencodeStatsForSession)
-  loadStatsRef.current = loadOpencodeStatsForSession
-  const selectedSessionName =
-    selectedAgentSession && isOpencodeSessionItem(selectedAgentSession)
-      ? selectedAgentSession.title
-      : undefined
-
-  useEffect(() => {
-    if (!selectedSessionName) {
-      return
-    }
-
-    void loadStatsRef.current(selectedSessionName)
-
-    const interval = setInterval(() => {
-      void loadStatsRef.current(selectedSessionName)
-    }, 2000)
-
-    return () => {
-      clearInterval(interval)
-    }
-  }, [selectedSessionName])
 }
 
 export function useHerdrAgentPolling(
@@ -555,7 +527,6 @@ interface UseAppBehaviorsOptions {
   searchQuery: string
   allItems: Item[]
   selectedAgentSession: Item | undefined
-  loadOpencodeStatsForSession: (sessionName: string) => Promise<unknown>
   setUpdatedVersion: Dispatch<SetStateAction<string | null>>
   setToastMessage: Dispatch<SetStateAction<string>>
   setToastVisible: Dispatch<SetStateAction<boolean>>
@@ -633,7 +604,6 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.setItems,
     options.setCursor
   )
-  useOpencodeStatsPolling(options.selectedAgentSession, options.loadOpencodeStatsForSession)
   useHerdrAgentPolling(
     options.appMode,
     options.viewMode,

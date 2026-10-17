@@ -1,4 +1,3 @@
-import type { OpencodeStats } from '../opencode/types'
 import type { AgentStatus, BackendKind, BackendPreference, HerdrAgentTarget } from '../multiplexer'
 
 export type { AgentStatus, BackendKind, BackendPreference } from '../multiplexer'
@@ -110,14 +109,6 @@ export interface ProjectWildcard {
   previewCommand?: string
 }
 
-export type OpencodeSessionStats = OpencodeStats
-
-export type OpencodeStatsState =
-  | { status: 'loading' }
-  | { status: 'ready'; stats: OpencodeSessionStats }
-  | { status: 'missing'; message: string }
-  | { status: 'error'; message: string }
-
 export interface SearchMatchMetadata {
   titleIndices?: number[]
   descIndices?: number[]
@@ -144,7 +135,6 @@ export interface Item {
   windowCount?: string
   createdAt?: number
   lastActivity?: number
-  opencodeState?: OpencodeStatsState
   searchMatch?: SearchMatchMetadata
 }
 

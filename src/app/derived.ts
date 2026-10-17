@@ -34,8 +34,7 @@ export function getSessionCommandState(
   commandsSearchQuery: string
 ): SessionCommandState {
   const sessionSplit =
-    viewMode === ViewMode.Sessions &&
-    (appMode === AppMode.Normal || appMode === AppMode.AgentsManage)
+    viewMode === ViewMode.Sessions
       ? splitVisibleSessions(items)
       : { regularSessions: items, agentSessions: [] }
 
@@ -47,7 +46,11 @@ export function getSessionCommandState(
         : items[cursor]
 
   return {
-    regularSessions: sessionSplit.regularSessions,
+    // Search keeps a flat cursor shared by the visible list and command targets.
+    regularSessions:
+      appMode === AppMode.Normal || appMode === AppMode.AgentsManage
+        ? sessionSplit.regularSessions
+        : items,
     agentSessions: sessionSplit.agentSessions,
     selectedAgentSession:
       appMode === AppMode.AgentsManage ? sessionSplit.agentSessions[agentCursor] : undefined,
@@ -67,6 +70,7 @@ export function getSettingsState(
 ): SettingsState {
   const settingsEntries = config ? getSettingsEntries(config) : []
   const currentOptionField = modalState?.type === 'setting-options' ? modalState.field : undefined
+
   const settingOptions =
     config && currentOptionField ? getSettingOptions(config, currentOptionField) : []
 

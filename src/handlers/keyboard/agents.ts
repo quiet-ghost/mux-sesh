@@ -1,8 +1,7 @@
-import { isOpencodeSessionItem } from '../../opencode/session-name'
 import { isHerdrAgentItem } from '../../multiplexer/items'
-import type { Item } from '../../types'
 import { AppMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
+import { requestFatalShutdown } from '../../util/shutdown'
 import {
   activatePrefix,
   clearPrefix,
@@ -12,12 +11,6 @@ import {
   type KeyboardInput,
 } from './shared'
 
-function loadStatsIfOpencode(ctx: KeyboardHandlerContext, item: Item) {
-  if (isOpencodeSessionItem(item)) {
-    void ctx.loadOpencodeStatsForSession(item.title)
-  }
-}
-
 export function handleAgentsManageMode(
   key: KeyboardInput,
   ctx: KeyboardHandlerContext,
@@ -25,10 +18,12 @@ export function handleAgentsManageMode(
 ) {
   const keyName = getKeyName(key)
   const isStandard = keybindMode === 'standard'
+  const returnMode = isStandard ? AppMode.Search : AppMode.Normal
 
   if (key.ctrl && keyName === 'p') {
     ctx.clearPendingKill()
     ctx.openCommandsModal()
+
     return
   }
 
@@ -38,7 +33,8 @@ export function handleAgentsManageMode(
     switch (keyName) {
       case 'o':
         ctx.clearPendingKill()
-        ctx.setAppMode(AppMode.Normal)
+        ctx.setAppMode(returnMode)
+
         return
       case 'd':
         if (
@@ -47,6 +43,7 @@ export function handleAgentsManageMode(
         ) {
           ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor])
         }
+
         return
       case 'r':
         if (
@@ -56,6 +53,7 @@ export function handleAgentsManageMode(
           ctx.clearPendingKill()
           ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor])
         }
+
         return
     }
 
@@ -64,44 +62,39 @@ export function handleAgentsManageMode(
 
   if (ctx.prefixKey && matchesPrefixKey(key, ctx.prefixKey)) {
     activatePrefix(ctx)
+
     return
   }
 
   if (keyName === 'escape' || (!ctx.prefixKey && !isStandard && keyName === 'o')) {
     ctx.clearPendingKill()
-    ctx.setAppMode(AppMode.Normal)
+    ctx.setAppMode(returnMode)
+
     return
   }
 
   if (keyName === 'return' || keyName === 'enter') {
     const selectedAgent = ctx.agentSessions[ctx.agentCursor]
+
     if (selectedAgent) {
-      void ctx.handleSelect(selectedAgent)
+      // Selection failures remain fatal until action outcomes get recoverable screens.
+      ctx.handleSelect(selectedAgent).catch(requestFatalShutdown)
     }
+
     return
   }
 
   if (keyName === 'down' || (!isStandard && keyName === 'j')) {
     ctx.clearPendingKill()
-    ctx.setAgentCursor(cursor => {
-      const next = clampCursorIndex(ctx.agentSessions.length, cursor + 1)
-      if (next !== cursor && ctx.agentSessions[next]) {
-        loadStatsIfOpencode(ctx, ctx.agentSessions[next])
-      }
-      return next
-    })
+    ctx.setAgentCursor(cursor => clampCursorIndex(ctx.agentSessions.length, cursor + 1))
+
     return
   }
 
   if (keyName === 'up' || (!isStandard && keyName === 'k')) {
     ctx.clearPendingKill()
-    ctx.setAgentCursor(cursor => {
-      const next = clampCursorIndex(ctx.agentSessions.length, cursor - 1)
-      if (next !== cursor && ctx.agentSessions[next]) {
-        loadStatsIfOpencode(ctx, ctx.agentSessions[next])
-      }
-      return next
-    })
+    ctx.setAgentCursor(cursor => clampCursorIndex(ctx.agentSessions.length, cursor - 1))
+
     return
   }
 
@@ -112,6 +105,7 @@ export function handleAgentsManageMode(
     ) {
       ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor])
     }
+
     return
   }
 
@@ -123,12 +117,14 @@ export function handleAgentsManageMode(
       ctx.clearPendingKill()
       ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor])
     }
+
     return
   }
 
   if (!ctx.prefixKey && !isStandard && keyName === ',') {
     ctx.clearPendingKill()
     ctx.openSettingsModal()
+
     return
   }
 }

@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+invocation_cwd="$(pwd -P)"
+
 # Get the real path of this script, resolving any symlinks
 script_path="$0"
 while [ -L "$script_path" ]; do
@@ -30,5 +32,6 @@ if [ -z "$resolved" ]; then
     exit 1
 fi
 
-# Execute with bun
-cd "$(dirname "$resolved")/.." && exec bun "$resolved" "$@"
+# Bun needs the package directory to bootstrap its JSX settings.
+cd "$current_dir"
+MUX_SESH_INVOCATION_CWD="$invocation_cwd" exec bun "$resolved" "$@"

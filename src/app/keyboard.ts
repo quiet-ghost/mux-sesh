@@ -10,7 +10,7 @@ import {
   type KeyboardHandlerContext,
 } from '../handlers/keyboard'
 import type { SettingsEntry, SettingsFieldId, SettingsOption } from '../settings'
-import type { Config, Item, OpencodeSessionStats } from '../types'
+import type { Config, Item } from '../types'
 import type { CommandEntry } from '../ui/CommandsModal'
 import { AppMode, ViewMode } from '../types'
 
@@ -63,7 +63,6 @@ interface UseAppKeyboardOptions {
   handleLastSession: () => Promise<void>
   handleRootSession: (item?: Item) => Promise<void>
   handleEditTarget: (item?: Item) => Promise<void>
-  loadOpencodeStatsForSession: (sessionName: string) => Promise<OpencodeSessionStats | null>
   setAppMode: Dispatch<SetStateAction<AppMode>>
   setViewMode: Dispatch<SetStateAction<ViewMode>>
   setCursor: Dispatch<SetStateAction<number>>
@@ -113,7 +112,6 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     openRenameModal: options.openRenameModal,
     openCommandsModal: options.openCommandsModal,
     openSettingsModal: options.openSettingsModal,
-    loadOpencodeStatsForSession: options.loadOpencodeStatsForSession,
     setMessage: options.setMessage,
   }
 

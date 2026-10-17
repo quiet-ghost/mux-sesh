@@ -174,7 +174,7 @@ The Agents section includes tmux agent sessions (OpenCode, Pi, Codex, Claude, `t
 - vim mode: `o`
 - standard mode: `prefix + o`
 
-From there you can inspect, rename, or kill tmux agent sessions without leaving the picker. OpenCode rows still show OpenCode stats; other agents use the normal session details panel.
+From there you can inspect, rename, or kill tmux agent sessions without leaving the picker. Every agent row uses the normal session details panel.
 
 Herdr agent details are read-only: named Herdr sessions and agent controls are not supported.
 
@@ -184,7 +184,7 @@ If you want the compiled standalone binary, build from source.
 
 Prerequisites:
 
-- [Bun](https://bun.sh)
+- [Bun](https://bun.sh) 1.3.14 or newer
 - [Zig](https://ziglang.org) for compiling OpenTUI
 
 ```bash

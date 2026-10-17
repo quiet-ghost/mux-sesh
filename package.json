@@ -17,10 +17,14 @@
     "dev": "MUX_SESH_DEV=1 bun run src/index.tsx",
     "build": "bun build src/index.tsx --compile --outfile dist/mux-sesh",
     "start": "bun run src/index.tsx",
+    "lint": "bun run --bun oxlint",
+    "lint:corridor": "bun tools/oxlint/lint-corridor.ts",
     "typecheck": "tsc --noEmit",
+    "typecheck:tests": "tsc --noEmit --project tests/tsconfig.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "bun test",
+    "bench:picker": "bun tests/perf/run-baseline.ts",
     "prepublishOnly": "bun run typecheck"
   },
   "keywords": [
@@ -48,20 +52,23 @@
   },
   "homepage": "https://github.com/quiet-ghost/mux-sesh#readme",
   "engines": {
-    "bun": ">=1.0.0"
+    "bun": ">=1.3.14"
   },
   "overrides": {
     "@types/node": "^24"
   },
   "dependencies": {
     "@ff-labs/fff-bun": "0.10.1",
-    "@opentui/core": "0.4.5",
-    "@opentui/react": "0.4.5",
+    "@opentui/core": "0.5.17",
+    "@opentui/react": "0.5.17",
     "react": "19.2.8"
   },
   "devDependencies": {
+    "@oxlint/plugins": "1.88.0",
     "@types/bun": "1.3.14",
     "@types/react": "19.2.17",
+    "oxlint": "1.88.0",
+    "oxlint-tsgolint": "7.0.2004",
     "prettier": "3.9.6",
     "typescript": "5.9.3"
   }

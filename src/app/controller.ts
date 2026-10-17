@@ -9,14 +9,13 @@ import { createAppRuntime } from './runtime'
 import { createAppHandlers, handleKillSessionWithFeedback } from './handlers'
 import { useAppStartup } from './state'
 import { getConfigPath, getHomeDir, saveConfig } from '../config'
-import { getOpencodeSessionStats } from '../opencode'
 import { resolveTheme } from '../styles/theme'
 import type { TerminalPalette } from '../styles/terminal-palette'
 import { useTerminalSize } from '../util/terminal'
 import { mark, measure } from '../util/perf'
 import { getSettingEditorTitle, isOptionSetting } from '../settings'
 
-export function useAppController() {
+export function useAppController(invocationCwd: string) {
   const {
     appMode,
     setAppMode,
@@ -132,7 +131,7 @@ export function useAppController() {
 
   useAutoUpdateScheduler(config, hasScheduledAutoUpdateRef)
 
-  const { showMessage, refreshItems, loadOpencodeStatsForSession } = createAppRuntime({
+  const { showMessage, refreshItems } = createAppRuntime({
     config,
     backend,
     viewMode,
@@ -145,7 +144,6 @@ export function useAppController() {
     setItems,
     setCursor,
     setMessage,
-    getOpencodeSessionStats,
   })
 
   const {
@@ -218,6 +216,7 @@ export function useAppController() {
     handleTogglePinnedSessionWrapper,
     executeCommand,
   } = createAppHandlers({
+    invocationCwd,
     backend,
     appMode,
     viewMode,
@@ -257,7 +256,6 @@ export function useAppController() {
     renameTarget,
     renamedValue: (modalTextareaRef.current?.plainText ?? modalInputValue).trim(),
     searchTerm: searchQuery.trim(),
-    loadOpencodeStatsForSession,
   })
 
   useAppKeyboard({
@@ -309,7 +307,6 @@ export function useAppController() {
     handleLastSession: handleLastSessionWrapper,
     handleRootSession: handleRootSessionWrapper,
     handleEditTarget: handleEditTargetWrapper,
-    loadOpencodeStatsForSession,
     setAppMode,
     setViewMode,
     setCursor,
@@ -356,7 +353,6 @@ export function useAppController() {
     searchQuery,
     allItems,
     selectedAgentSession,
-    loadOpencodeStatsForSession,
     setUpdatedVersion,
     setToastMessage,
     setToastVisible,

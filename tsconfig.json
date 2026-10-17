@@ -9,9 +9,8 @@
     "strict": true,
     "skipLibCheck": true,
     "types": ["bun-types"],
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
     "resolveJsonModule": true,
     "esModuleInterop": true,
@@ -20,6 +19,6 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "tools/oxlint/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

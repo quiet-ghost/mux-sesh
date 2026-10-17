@@ -1,7 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import { orderProjectItems, orderSessionItems } from '../src/items/order'
 import { resolveTheme } from '../src/styles/theme'
-import { formatSectionHeader, getItemIconPresentation } from '../src/ui/item-icon'
+import {
+  formatSectionHeader,
+  getItemIconPresentation,
+  getSessionSectionPresentation,
+} from '../src/ui/item-icon'
 import type { Item } from '../src/types'
 
 describe('item ordering', () => {
@@ -140,14 +144,17 @@ describe('item ordering', () => {
 describe('item icons', () => {
   test('labels the agents section header', () => {
     const theme = resolveTheme('catppuccin', {}, 'dark').colors
-    const header = formatSectionHeader(theme, 'agents', {
+    const icons = {
       tmux: 'T',
+      herdr: 'H',
       configured: 'C',
       project: 'P',
       opencode: 'A',
-    })
+    }
+    const presentation = getSessionSectionPresentation(theme, 'agents', icons)
+    const header = formatSectionHeader(theme, 'agents', icons)
 
-    expect(header.label).toBe('Agents')
+    expect(presentation.label).toBe('Agents')
     expect(header.text).toBe('A Agents')
   })
 
@@ -165,6 +172,7 @@ describe('item icons', () => {
       },
       {
         tmux: 'T',
+        herdr: 'H',
         configured: 'C',
         project: 'P',
         opencode: 'O',
