@@ -8,6 +8,7 @@ import { initializeFatalErrorHandling, initializeShutdown, requestShutdown } fro
 const invocationCwd = captureInvocationCwd()
 
 initializeFatalErrorHandling()
+
 ignoreUnhandledThemeFollowSignal()
 
 const renderer = await createCliRenderer({
@@ -19,7 +20,7 @@ initializeShutdown(renderer)
 
 for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
   process.on(signal, () => {
-    void requestShutdown(signal === 'SIGINT' ? 130 : 0)
+    requestShutdown(signal === 'SIGINT' ? 130 : 0)
   })
 }
 

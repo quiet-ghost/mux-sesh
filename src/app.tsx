@@ -21,8 +21,8 @@ class RootErrorBoundary extends Component<
 > {
   state: ErrorBoundaryState = { report: null, retryKey: 0 }
 
-  static getDerivedStateFromError(error: unknown): Partial<ErrorBoundaryState> {
-    return { report: DiagnosticReport.capture(error) }
+  static getDerivedStateFromError(cause: unknown): Partial<ErrorBoundaryState> {
+    return { report: DiagnosticReport.capture(cause) }
   }
 
   private retry = () => {

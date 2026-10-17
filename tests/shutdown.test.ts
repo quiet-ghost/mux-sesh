@@ -54,6 +54,7 @@ describe('shutdown', () => {
 
   test('exits immediately even when the event loop has active handles', async () => {
     const shutdownModule = pathToFileURL(join(repoRoot, 'src/util/shutdown.ts')).href
+
     const script = `
       import { requestShutdown } from ${JSON.stringify(shutdownModule)}
       setTimeout(() => {}, 5000)
@@ -67,6 +68,7 @@ describe('shutdown', () => {
     })
 
     const exitCode = await waitForExit(proc, 500)
+
     if (exitCode === null) {
       proc.kill()
       await proc.exited
@@ -77,20 +79,24 @@ describe('shutdown', () => {
 
   test('fatal rejection prints diagnostics and exits despite active handles', async () => {
     const shutdownModule = pathToFileURL(join(repoRoot, 'src/util/shutdown.ts')).href
+
     const script = `
       import { initializeFatalErrorHandling } from ${JSON.stringify(shutdownModule)}
       initializeFatalErrorHandling()
       setInterval(() => {}, 5000)
       Promise.reject(new Error('fatal rename failure'))
     `
+
     const proc = Bun.spawn([process.execPath, '--eval', script], {
       cwd: repoRoot,
       stdout: 'ignore',
       stderr: 'pipe',
     })
+
     const stderrPromise = new Response(proc.stderr).text()
 
     const exitCode = await waitForExit(proc, 1000)
+
     if (exitCode === null) proc.kill()
     await proc.exited
     const stderr = await stderrPromise
@@ -103,6 +109,7 @@ describe('shutdown', () => {
 
   test('fatal output sanitizes the report and never serializes hostile rejection values', async () => {
     const shutdownModule = pathToFileURL(join(repoRoot, 'src/util/shutdown.ts')).href
+
     const script = `
       import { requestFatalShutdown } from ${JSON.stringify(shutdownModule)}
       const cause = new Proxy({}, {
@@ -113,6 +120,7 @@ describe('shutdown', () => {
       error.stack = 'at request https://user:fixture-fatal-url-secret@example.test/private'
       requestFatalShutdown(error)
     `
+
     const proc = Bun.spawn([process.execPath, '--eval', script], {
       cwd: repoRoot,
       stdout: 'ignore',
@@ -120,6 +128,7 @@ describe('shutdown', () => {
       timeout: 5000,
       killSignal: 'SIGKILL',
     })
+
     try {
       const [exitCode, stderr] = await Promise.all([proc.exited, new Response(proc.stderr).text()])
       expect(exitCode).toBe(1)
@@ -129,8 +138,10 @@ describe('shutdown', () => {
       expect(stderr).not.toContain('fixture-fatal-url-secret')
       expect(stderr).not.toContain('fixture-hostile-secret')
       expect(stderr).not.toContain('fixture-prototype-secret')
+      // oxlint-disable-next-line no-control-regex -- Asserts raw control characters are absent.
       expect(stderr).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/)
       const issueLine = stderr.trim().split('\n').at(-1)
+
       if (!issueLine) throw new Error('Fatal output did not include the sanitized issue URL')
       expect(new URL(issueLine).searchParams.get('body')).not.toContain('fixture-fatal-secret')
     } finally {
@@ -141,6 +152,7 @@ describe('shutdown', () => {
 
   test('ignores duplicate fatal events', async () => {
     const shutdownModule = pathToFileURL(join(repoRoot, 'src/util/shutdown.ts')).href
+
     const script = `
       import { requestFatalShutdown } from ${JSON.stringify(shutdownModule)}
       const originalExit = process.exit
@@ -151,13 +163,16 @@ describe('shutdown', () => {
       process.exit = originalExit
       originalExit(exits === 1 ? 0 : 9)
     `
+
     const proc = Bun.spawn([process.execPath, '--eval', script], {
       cwd: repoRoot,
       stdout: 'ignore',
       stderr: 'pipe',
     })
+
     const stderrPromise = new Response(proc.stderr).text()
     const exitCode = await waitForExit(proc, 1000)
+
     if (exitCode === null) proc.kill()
     await proc.exited
     const stderr = await stderrPromise

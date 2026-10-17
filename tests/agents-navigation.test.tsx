@@ -7,6 +7,7 @@ function createTmuxAgentBackend(detailRequests: string[]): MultiplexerBackend {
   function unexpectedBackendCall(): never {
     throw new Error('Agent details must not perform tmux mutations')
   }
+
   const sessions: LiveWorkspace[] = [
     {
       backend: 'tmux',
@@ -25,6 +26,7 @@ function createTmuxAgentBackend(detailRequests: string[]): MultiplexerBackend {
       unitCount: 1,
     },
   ]
+
   return {
     kind: 'tmux',
     capabilities: { previousWorkspace: false },
@@ -33,6 +35,7 @@ function createTmuxAgentBackend(detailRequests: string[]): MultiplexerBackend {
     },
     async details(workspace) {
       detailRequests.push(workspace.id)
+
       return { workspace, isActive: false, unitLabel: 'Windows', units: [], agents: [] }
     },
     open: unexpectedBackendCall,
@@ -82,6 +85,7 @@ let screen: Awaited<ReturnType<typeof renderSessionScreen>> | undefined
 afterEach(() => {
   const fixture = screen
   screen = undefined
+
   if (!fixture) return
   fixture.destroy()
   expect(fixture.renderer.isDestroyed).toBe(true)
@@ -93,6 +97,7 @@ describe('Agents navigation through production keyboard wiring', () => {
     'opens the palette from %s search and enters Agents',
     async keybindMode => {
       screen = await renderSessionScreen({ width: 120, height: 36 }, { keybindMode, workspaces })
+
       if (keybindMode === 'vim') await screen.pressKey('i')
       await screen.replaceQuery('agent')
 
@@ -138,6 +143,7 @@ describe('Agents navigation through production keyboard wiring', () => {
       expect(agents).toContain('Agent Sessions')
       expect(agents).toMatch(/› .*agent-one/)
       expect(agents).not.toContain('opencode-native-unknown')
+
       for (const key of ['d', 'r']) {
         await screen.pressKey('x', { ctrl: true })
         await screen.pressKey(key)
@@ -163,6 +169,7 @@ describe('OpenCode-named tmux agents', () => {
         { width: 120, height: 36 },
         { keybindMode, backend: createTmuxAgentBackend(detailRequests) }
       )
+
       if (keybindMode === 'standard') await screen.pressKey('x', { ctrl: true })
       await screen.pressKey('o')
 

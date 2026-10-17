@@ -31,6 +31,7 @@ export function createAppRuntime(options: AppRuntimeOptions) {
     }
 
     const targetMode = forceViewMode ?? options.viewMode
+
     const refreshedState = await loadRefreshedViewState(
       targetMode,
       nextConfig,

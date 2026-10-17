@@ -4,6 +4,7 @@ import { filterAndSortItems } from '../../src/search'
 import type { Item } from '../../src/types'
 
 export const PICKER_CORPUS_SIZE = { sessions: 200, projects: 5000 } as const
+
 export const PICKER_QUERIES = [
   'project-00042',
   'project-00123',
@@ -36,6 +37,7 @@ export function createPickerCorpus(): PickerCorpus {
     path: `/fixture/sessions/session-${String(index).padStart(3, '0')}`,
     focused: index === 0,
   }))
+
   const snapshot = JSON.stringify({
     result: {
       type: 'session_snapshot',
@@ -72,6 +74,7 @@ export function createPickerCorpus(): PickerCorpus {
       },
     },
   })
+
   const work: PickerWork = {
     navigation: 0,
     inventory: 0,
@@ -79,19 +82,24 @@ export function createPickerCorpus(): PickerCorpus {
     preview: 0,
     subprocess: 0,
   }
+
   const filterSamples: number[] = []
   const previewSamples: number[] = []
+
   const adapter = createHerdrBackend({
     insideHerdr: true,
     runner: {
       async run(command) {
         work.subprocess++
+
         if (command.join(' ') === 'herdr api snapshot') {
           return { exitCode: 0, stdout: snapshot, stderr: '' }
         }
+
         if (command[0] === 'herdr' && command[1] === 'pane' && command[2] === 'read') {
           return { exitCode: 0, stdout: 'fixture shell ready\n', stderr: '' }
         }
+
         throw new Error(`Unexpected baseline command: ${command.join(' ')}`)
       },
     },
@@ -103,6 +111,7 @@ export function createPickerCorpus(): PickerCorpus {
     previewSamples,
     projects: Array.from({ length: PICKER_CORPUS_SIZE.projects }, (_, index) => {
       const title = `project-${String(index).padStart(5, '0')}`
+
       return {
         title,
         desc: 'fixture',
@@ -115,11 +124,13 @@ export function createPickerCorpus(): PickerCorpus {
       ...adapter,
       async list() {
         work.inventory++
+
         return adapter.list()
       },
       async details(workspace) {
         work.preview++
         const start = performance.now()
+
         try {
           return await adapter.details(workspace)
         } finally {
@@ -130,6 +141,7 @@ export function createPickerCorpus(): PickerCorpus {
     filterItems(items, query) {
       work.search++
       const start = performance.now()
+
       try {
         return filterAndSortItems(items, query)
       } finally {

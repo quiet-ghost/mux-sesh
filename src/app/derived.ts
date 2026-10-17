@@ -70,6 +70,7 @@ export function getSettingsState(
 ): SettingsState {
   const settingsEntries = config ? getSettingsEntries(config) : []
   const currentOptionField = modalState?.type === 'setting-options' ? modalState.field : undefined
+
   const settingOptions =
     config && currentOptionField ? getSettingOptions(config, currentOptionField) : []
 

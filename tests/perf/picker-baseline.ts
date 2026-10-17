@@ -56,11 +56,13 @@ async function captureAgentEntry(corpus: ReturnType<typeof createPickerCorpus>):
   function unexpectedBackendCall(): never {
     throw new Error('The agent-entry probe only lists sessions')
   }
+
   const backend: MultiplexerBackend = {
     kind: 'tmux',
     capabilities: { previousWorkspace: false },
     async list() {
       corpus.work.inventory++
+
       return [
         {
           backend: 'tmux',
@@ -81,11 +83,14 @@ async function captureAgentEntry(corpus: ReturnType<typeof createPickerCorpus>):
     details: unexpectedBackendCall,
     openEditor: unexpectedBackendCall,
   }
+
   const screen = await renderSessionScreen({ width: 60, height: 18 }, { backend })
+
   try {
     await screen.pressKey('o')
     requireSelectedRow(await screen.frame(), 'opencode-fixture')
     screen.destroy()
+
     return (
       screen.renderer.isDestroyed &&
       screen.renderer.stdin.listenerCount('data') === 0 &&
@@ -115,6 +120,7 @@ export async function runPickerBaseline({
       corpus.work.navigation++
       await screen.pressKey('ARROW_DOWN')
       requireSelectedRow(await screen.frame(), `session-${String(index).padStart(3, '0')}`)
+
       return performance.now() - start
     }
 
@@ -122,9 +128,11 @@ export async function runPickerBaseline({
     const beforeNavigation = { ...corpus.work }
     const previewOffset = corpus.previewSamples.length
     const navigationSamples: number[] = []
+
     for (let index = 0; index < iterations; index++) {
       navigationSamples.push(await navigate(warmup + index + 1))
     }
+
     const navigationWork = subtractPickerWork(corpus.work, beforeNavigation)
     const navigationPreview = summarizeTimings(corpus.previewSamples.slice(previewOffset))
 
@@ -140,6 +148,7 @@ export async function runPickerBaseline({
       const start = performance.now()
       await screen.replaceQuery(query)
       requireSelectedRow(await screen.frame(), query)
+
       return performance.now() - start
     }
 
@@ -147,6 +156,7 @@ export async function runPickerBaseline({
     const beforeQueries = { ...corpus.work }
     const filterOffset = corpus.filterSamples.length
     const querySamples: number[] = []
+
     for (let index = 0; index < iterations; index++) querySamples.push(await query(warmup + index))
     const queryWork = subtractPickerWork(corpus.work, beforeQueries)
 
@@ -154,6 +164,7 @@ export async function runPickerBaseline({
     const beforeAgentEntry = { ...corpus.work }
     const agentEntryReleased = await captureAgentEntry(corpus)
     const agentEntryWork = subtractPickerWork(corpus.work, beforeAgentEntry)
+
     return {
       corpus: PICKER_CORPUS_SIZE,
       dimensions,

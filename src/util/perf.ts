@@ -8,6 +8,7 @@ export interface TimingSummary {
 
 export function summarizeTimings(samples: readonly number[]): TimingSummary {
   const sorted = [...samples].sort((left, right) => left - right)
+
   return {
     samples: sorted.length,
     p50Ms: sorted.length ? sorted[Math.ceil(sorted.length * 0.5) - 1] : null,
@@ -21,6 +22,7 @@ export async function measure<T>(label: string, fn: () => Promise<T>): Promise<T
   }
 
   const start = performance.now()
+
   try {
     return await fn()
   } finally {

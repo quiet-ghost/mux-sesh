@@ -10,9 +10,11 @@ import { initializeShutdown } from '@/util/shutdown'
 
 const invocationCwd = captureInvocationCwd()
 const created: OpenWorkspaceInput[] = []
+
 function unexpectedBackendCall(): never {
   throw new Error('The wrapper probe must only record session creation')
 }
+
 const backend: MultiplexerBackend = {
   kind: 'herdr',
   capabilities: { previousWorkspace: false },
@@ -28,7 +30,9 @@ const backend: MultiplexerBackend = {
   details: unexpectedBackendCall,
   openEditor: unexpectedBackendCall,
 }
+
 const app = <App invocationCwd={invocationCwd} />
+
 const setup = await testRender(
   <text>{isValidElement(app) && app.type === App ? 'source ready' : 'wrong source'}</text>,
   {
@@ -54,8 +58,10 @@ try {
       })
     )
   })
+
   if (process.argv[2] === 'launch') {
     const input = process.argv[3]
+
     if (!input) throw new Error('The wrapper launch probe requires an input')
     await act(async () => {
       await handleNewSessionSubmitWithSearch(input, {

@@ -3,25 +3,25 @@ import { resolve } from 'path'
 export const MAX_DIAGNOSTIC_INPUT_LENGTH = 16_384
 const APP_SOURCE = `${resolve(import.meta.dir, '../..')}/src/`
 
-const MARKDOWN_REPLACEMENTS: Readonly<Record<string, string>> = {
-  '\\': '＼',
-  '`': 'ˋ',
-  '*': '∗',
-  _: '＿',
-  '{': '｛',
-  '}': '｝',
-  '[': '［',
-  ']': '］',
-  '(': '（',
-  ')': '）',
-  '<': '‹',
-  '>': '›',
-  '#': '＃',
-  '!': '！',
-  '|': '｜',
-  '~': '∼',
-  '&': '＆',
-}
+const MARKDOWN_REPLACEMENTS = new Map([
+  ['\\', '＼'],
+  ['`', 'ˋ'],
+  ['*', '∗'],
+  ['_', '＿'],
+  ['{', '｛'],
+  ['}', '｝'],
+  ['[', '［'],
+  [']', '］'],
+  ['(', '（'],
+  [')', '）'],
+  ['<', '‹'],
+  ['>', '›'],
+  ['#', '＃'],
+  ['!', '！'],
+  ['|', '｜'],
+  ['~', '∼'],
+  ['&', '＆'],
+])
 
 interface SanitizedDiagnosticText {
   readonly text: string
@@ -35,11 +35,14 @@ export function sanitizeDiagnosticText(value: string, limit: number): SanitizedD
   text = text
     .slice(0, MAX_DIAGNOSTIC_INPUT_LENGTH)
     .toWellFormed()
+    // Terminal sanitization must match raw control characters.
+    /* oxlint-disable no-control-regex */
     .replace(/(?:\u001b\]|\u009d)[\s\S]*?(?:\u0007|\u001b\\|\u009c|$)/g, '')
     .replace(/(?:\u001b[PX^_]|[\u0090\u0098\u009e\u009f])[\s\S]*?(?:\u001b\\|\u009c|$)/g, '')
     .replace(/(?:\u001b\[|\u009b)[0-?]*[ -/]*(?:[@-~]|$)/g, '')
     .replace(/\u001b[ -/]*[0-~]/g, '')
     .replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]|\p{Cf}/gu, '')
+    /* oxlint-enable no-control-regex */
     .replace(
       /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/gi,
       '‹private key redacted›'
@@ -67,11 +70,12 @@ export function sanitizeDiagnosticText(value: string, limit: number): SanitizedD
     .replaceAll(APP_SOURCE, '‹app›/src/')
     // Consume the path-bearing tail: unquoted paths can contain private names with spaces.
     .replace(
-      /(^|[\s("'=,:<\[`])(?:~[\/\\]|\.\.?[\/\\]|[a-z]:[\/\\]|[\/\\])[^\n]*/gim,
+      /(^|[\s("'=,:<[`])(?:~[/\\]|\.\.?[/\\]|[a-z]:[/\\]|[/\\])[^\n]*/gim,
       '$1‹path redacted›'
     )
-    .replace(/[\\`*_{}\[\]()<>#!|~&]/g, character => MARKDOWN_REPLACEMENTS[character] ?? '�')
+    .replace(/[\\`*_{}[\]()<>#!|~&]/g, character => MARKDOWN_REPLACEMENTS.get(character) ?? '�')
 
   truncated ||= text.length > limit
+
   return { text: text.slice(0, limit).toWellFormed(), truncated }
 }

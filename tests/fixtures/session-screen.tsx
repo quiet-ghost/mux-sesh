@@ -53,6 +53,11 @@ interface SessionScreenData {
   filterItems?: typeof filterAndSortItems
 }
 
+// Assigned inside act(), so control-flow narrowing cannot track a local binding.
+interface MountedRenderer {
+  setup?: TestRendererSetup
+}
+
 function unsupportedFixtureAction(): never {
   throw new Error('This session-screen fixture does not implement that action')
 }
@@ -64,6 +69,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
   const { config, backend, items, projects, filterItems, lifecycle } = fixture
   const resolvedTheme = resolveTheme(config.theme, config.themes, config.colorScheme)
   const theme = resolvedTheme.colors
+
   const derived = getSessionCommandState(
     core.appMode,
     core.viewMode,
@@ -73,6 +79,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     config,
     modal.commandsSearchQuery
   )
+
   const {
     setAppMode,
     setItems,
@@ -101,6 +108,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     setProjectSourceItems(projects)
     setSessionCandidateItems(projects)
     lifecycle.push('mounted')
+
     return () => {
       if (prefixTimeoutRef.current) clearTimeout(prefixTimeoutRef.current)
       lifecycle.push('unmounted')
@@ -210,6 +218,7 @@ export async function renderSessionScreen(
     projectPaths: [],
     icons: { tmux: 'T', herdr: 'H', configured: 'C', project: 'P', opencode: 'A' },
   }
+
   const workspaces: LiveWorkspace[] = data.workspaces ?? [
     {
       backend: 'herdr',
@@ -228,17 +237,21 @@ export async function renderSessionScreen(
       unitCount: 1,
     },
   ]
+
   const calls: BackendCall[] = []
   const lifecycle: string[] = []
+
   const backend: MultiplexerBackend = data.backend ?? {
     kind: 'herdr',
     capabilities: { previousWorkspace: false },
     async list() {
       calls.push({ operation: 'list' })
+
       return workspaces
     },
     async details(workspace) {
       calls.push({ operation: 'details', id: workspace.id })
+
       return {
         workspace,
         isActive: workspace.id === 'w1',
@@ -257,8 +270,10 @@ export async function renderSessionScreen(
     directory: unsupportedFixtureAction,
     openEditor: unsupportedFixtureAction,
   }
+
   const { sessionItems } = await loadSessionItems(config, async (_name, run) => run(), backend)
-  const mounted: { setup?: TestRendererSetup } = {}
+  const mounted: MountedRenderer = {}
+
   try {
     await act(async () => {
       mounted.setup = await testRender(
@@ -279,6 +294,7 @@ export async function renderSessionScreen(
     act(() => mounted.setup?.renderer.destroy())
     throw error
   }
+
   if (!mounted.setup) throw new Error('Session-screen fixture renderer was not created')
   const setup = mounted.setup
 
@@ -288,6 +304,7 @@ export async function renderSessionScreen(
 
   async function frame(): Promise<string> {
     await setup.renderOnce()
+
     return setup.captureCharFrame()
   }
 
@@ -312,9 +329,11 @@ export async function renderSessionScreen(
     },
     async replaceQuery(text: string): Promise<void> {
       const input = setup.renderer.currentFocusedRenderable
+
       if (!(input instanceof TextareaRenderable)) {
         throw new Error('Query replacement requires a focused search textarea')
       }
+
       await act(async () => input.setText(text))
     },
     async resize(width: number, height: number): Promise<void> {

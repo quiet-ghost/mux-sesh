@@ -32,21 +32,27 @@ export function ErrorScreen({ report, onRetry, actions = DEFAULT_ACTIONS }: Prop
 
   const openIssue = () => {
     setStatus('Opening prefilled GitHub issue...')
-    void actions.open(report.issueUrl).then(opened => {
+
+    const showOpenResult = (opened: boolean) => {
       setStatus(
         opened
           ? 'Opened prefilled issue in your browser'
           : 'Could not open browser; report URL copied'
       )
+
       if (!opened) actions.copy(report.issueUrl)
-    })
+    }
+
+    actions.open(report.issueUrl).then(showOpenResult, () => showOpenResult(false))
   }
 
   useKeyboard(key => {
     if ((key.ctrl && key.name === 'c') || key.name === 'q' || key.name === 'escape') {
-      void requestShutdown(1)
+      requestShutdown(1)
+
       return
     }
+
     if (key.name === 'c') copy()
     else if (key.name === 'o') openIssue()
     else if (key.name === 'r') onRetry()

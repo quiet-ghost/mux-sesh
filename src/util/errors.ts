@@ -39,24 +39,50 @@ const UNAVAILABLE_REPORT: DiagnosticReport = Object.freeze({
   issueUrlTruncated: false,
 })
 
-function ownValue(value: object, key: string): unknown {
-  if (types.isProxy(value)) return undefined
+type CapturedValue =
+  | { readonly kind: 'absent' }
+  | { readonly kind: 'error'; readonly error: Error }
+  | { readonly kind: 'text'; readonly text: string }
+  | { readonly kind: 'other'; readonly type: string }
+
+const ABSENT: CapturedValue = { kind: 'absent' }
+
+function decodeCause(cause: unknown): CapturedValue {
+  if (cause === undefined) return ABSENT
+
+  if (types.isNativeError(cause)) return { kind: 'error', error: cause }
+
+  if (cause === null) return { kind: 'other', type: 'null' }
+
+  // Thrown values and their fields arrive untyped; this is their single decode site.
+  /* oxlint-disable anti-slop/no-runtime-typeof */
+  if (typeof cause === 'string') return { kind: 'text', text: cause }
+
+  return { kind: 'other', type: typeof cause }
+  /* oxlint-enable anti-slop/no-runtime-typeof */
+}
+
+function ownField(owner: Error | DiagnosticContext, key: string): CapturedValue {
+  if (types.isProxy(owner)) return ABSENT
+
   try {
-    const field: unknown = Object.getOwnPropertyDescriptor(value, key)?.value
-    return field
+    return decodeCause(Object.getOwnPropertyDescriptor(owner, key)?.value)
   } catch {
-    return undefined
+    return ABSENT
   }
 }
 
-function ownString(value: object, key: string): string | undefined {
-  const field = ownValue(value, key)
-  return typeof field === 'string' ? field : undefined
+function ownString(owner: Error | DiagnosticContext, key: string): string | undefined {
+  const field = ownField(owner, key)
+
+  return field.kind === 'text' ? field.text : undefined
 }
 
 function detectBackend(): string {
   if (process.env.HERDR_ENV === '1') return 'herdr'
+
   if (process.env.TMUX) return 'tmux'
+
   return 'unknown'
 }
 
@@ -64,45 +90,64 @@ function detectTerminal(): string {
   if (process.env.TERM_PROGRAM) {
     return `${process.env.TERM_PROGRAM} ${process.env.TERM_PROGRAM_VERSION ?? ''}`
   }
+
   if (process.env.GHOSTTY_RESOURCES_DIR) return 'ghostty'
+
   return process.env.TERM || 'unknown'
 }
 
-function buildIssueUrl(summary: string, text: string): { url: string; truncated: boolean } {
+interface IssueUrl {
+  readonly url: string
+  readonly truncated: boolean
+}
+
+function buildIssueUrl(summary: string, text: string): IssueUrl {
   const url = new URL(ISSUE_URL)
   url.searchParams.set('title', `Crash: ${summary.slice(0, 160).toWellFormed()}`)
+
   const prefix =
     '## What happened?\n\nPlease add reproduction steps.\n\n## Diagnostics\n\n```text\n'
+
   const setBody = (value: string): void => {
     url.searchParams.set('body', `${prefix}${value}\n\`\`\``)
   }
+
   setBody(text)
+
   if (url.toString().length <= MAX_ISSUE_URL_LENGTH)
     return { url: url.toString(), truncated: false }
 
   let low = 0
   let high = text.length
+
   while (low < high) {
     const middle = Math.ceil((low + high) / 2)
     setBody(text.slice(0, middle).toWellFormed() + URL_TRUNCATION)
+
     if (url.toString().length <= MAX_ISSUE_URL_LENGTH) low = middle
     else high = middle - 1
   }
+
   setBody(text.slice(0, low).toWellFormed() + URL_TRUNCATION)
+
   return { url: url.toString(), truncated: true }
 }
 
 export const DiagnosticReport = {
-  capture(error: unknown, context: DiagnosticContext = {}): DiagnosticReport {
+  capture(cause: unknown, context: DiagnosticContext = {}): DiagnosticReport {
     try {
       let truncated = false
+
       const sanitize = (value: string, limit: number): string => {
         const result = sanitizeDiagnosticText(value, limit)
         truncated ||= result.truncated
+
         return result.text.trim()
       }
+
       const field = (key: keyof DiagnosticContext, fallback: string): string =>
         sanitize(ownString(context, key) || fallback, 200).replace(/\s+/g, ' ') || 'unavailable'
+
       // Keep runtime facts ahead of traces so size-limited reports retain them.
       const lines = [
         'mux-sesh crashed',
@@ -115,46 +160,56 @@ export const DiagnosticReport = {
         `Terminal: ${field('terminal', detectTerminal())}`,
         `Backend: ${field('backend', detectBackend())}`,
       ]
+
       const seen = new Set<Error>()
-      let cause: unknown = error
+      let current = decodeCause(cause)
       let summary = ''
+
       for (let depth = 0; depth <= 3; depth++) {
-        const current = cause
-        const native = types.isNativeError(current)
-        if (native && seen.has(current)) {
+        if (current.kind === 'error' && seen.has(current.error)) {
           lines.push('', 'Cause cycle omitted.')
           truncated = true
           break
         }
-        if (native) seen.add(current)
+
+        if (current.kind === 'error') seen.add(current.error)
+
         const rawMessage =
-          typeof current === 'string'
-            ? current
-            : native
-              ? ownString(current, 'message') ||
-                ownString(current, 'name') ||
+          current.kind === 'text'
+            ? current.text
+            : current.kind === 'error'
+              ? ownString(current.error, 'message') ||
+                ownString(current.error, 'name') ||
                 'Error details unavailable'
-              : `Non-Error failure (${current === null ? 'null' : typeof current}; details omitted)`
+              : `Non-Error failure (${current.kind === 'other' ? current.type : 'undefined'}; details omitted)`
+
         const message = sanitize(rawMessage, 1024) || 'Error details unavailable'
+
         if (depth === 0) summary = message.replace(/\s+/g, ' ').slice(0, 240).toWellFormed()
         lines.push('', depth === 0 ? 'Message:' : `Cause ${depth}:`, message)
+
         const stack =
-          native && rawMessage.length <= MAX_DIAGNOSTIC_INPUT_LENGTH
-            ? ownString(current, 'stack')
+          current.kind === 'error' && rawMessage.length <= MAX_DIAGNOSTIC_INPUT_LENGTH
+            ? ownString(current.error, 'stack')
             : undefined
+
         if (stack) lines.push('', 'Stack:', sanitize(stack, depth === 0 ? 6000 : 2000))
-        cause = native ? ownValue(current, 'cause') : undefined
-        if (cause === undefined) break
+        current = current.kind === 'error' ? ownField(current.error, 'cause') : ABSENT
+
+        if (current.kind === 'absent') break
+
         if (depth === 3) truncated = true
       }
 
       let text = lines.join('\n')
       truncated ||= text.length > MAX_DIAGNOSTIC_LENGTH
+
       if (truncated)
         text =
           text.slice(0, MAX_DIAGNOSTIC_LENGTH - REPORT_TRUNCATION.length).toWellFormed() +
           REPORT_TRUNCATION
       const issue = buildIssueUrl(summary, text)
+
       return Object.freeze({
         [REPORT_BRAND]: true as const,
         schemaVersion: 1,

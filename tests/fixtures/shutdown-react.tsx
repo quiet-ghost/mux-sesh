@@ -8,6 +8,7 @@ const lifecycle: string[] = []
 function ShutdownProbe() {
   useEffect(() => {
     lifecycle.push('mounted')
+
     return () => {
       lifecycle.push('unmounted')
     }
@@ -17,7 +18,9 @@ function ShutdownProbe() {
 }
 
 const setup = await testRender(<ShutdownProbe />, { width: 20, height: 4, consoleMode: 'disabled' })
+
 initializeShutdown(setup.renderer)
+
 process.once('exit', () => {
   writeSync(1, JSON.stringify({ destroyed: setup.renderer.isDestroyed, lifecycle }))
 })

@@ -39,6 +39,7 @@ export function expandUserPath(value: string, homeDir = process.env.HOME || ''):
 export function buildFileSessionName(filePath: string): string {
   const fileBase = basename(filePath)
   const parentBase = basename(dirname(filePath))
+
   const combined =
     parentBase && parentBase !== '.' && parentBase !== '/' ? `${parentBase}_${fileBase}` : fileBase
 
@@ -54,6 +55,7 @@ export function interpolateStartupCommand(command: string, filePath: string): st
 
 export function buildFileStartupCommand(filePath: string, config: Config): string {
   const configured = config.defaultSession?.startupCommand
+
   if (configured && /\{file\}|\{dir\}|\{\}/.test(configured)) {
     return interpolateStartupCommand(configured, filePath)
   }
@@ -86,6 +88,7 @@ export async function resolveTypedPathTarget(
 
   try {
     const info = await stat(absolute)
+
     if (info.isFile()) {
       return { kind: 'file', path: absolute }
     }

@@ -64,6 +64,7 @@ beforeEach(async () => {
 afterEach(async () => {
   const current = fixture
   fixture = undefined
+
   if (current) await rm(current.root, { recursive: true, force: true })
 })
 
@@ -73,17 +74,20 @@ async function runWrapperProbe(
   current: WrapperFixture,
   installation: Installation,
   args: string[]
-): Promise<unknown> {
+): Promise<string> {
   const command =
     installation === 'source'
       ? [process.execPath, join(current.packageRoot, 'src/index.tsx')]
       : [installation === 'direct' ? current.wrapper : current.linkedWrapper]
+
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     PATH: `${current.bin}:${process.env.PATH ?? ''}`,
     MUX_SESH_INVOCATION_CWD: '/stale-parent-directory',
   }
+
   if (installation === 'source') delete env.MUX_SESH_INVOCATION_CWD
+
   const proc = Bun.spawn([...command, ...args], {
     cwd: installation === 'source' ? current.packageRoot : current.caller,
     env,
@@ -100,10 +104,11 @@ async function runWrapperProbe(
       new Response(proc.stdout).text(),
       new Response(proc.stderr).text(),
     ])
+
     expect(stderr).toBe('')
     expect(exitCode).toBe(0)
-    const report: unknown = JSON.parse(stdout)
-    return report
+
+    return stdout
   } finally {
     if (proc.exitCode === null) proc.kill('SIGKILL')
     await proc.exited
@@ -116,7 +121,7 @@ describe('packaged CLI wrapper', () => {
     async installation => {
       if (!fixture) throw new Error('Wrapper fixture was not created')
       const args = ['argument with spaces', '--literal-argument']
-      const report = await runWrapperProbe(fixture, installation, args)
+      const report: unknown = JSON.parse(await runWrapperProbe(fixture, installation, args))
       expect(report).toEqual({
         invocationCwd: installation === 'source' ? fixture.packageRoot : fixture.caller,
         args,
@@ -135,7 +140,11 @@ describe('packaged CLI wrapper', () => {
     'launches $input against the captured caller directory',
     async ({ input, title, directory }) => {
       if (!fixture) throw new Error('Wrapper fixture was not created')
-      const report = await runWrapperProbe(fixture, 'symlink', ['launch', input])
+
+      const report: unknown = JSON.parse(
+        await runWrapperProbe(fixture, 'symlink', ['launch', input])
+      )
+
       expect(report).toMatchObject({
         invocationCwd: fixture.caller,
         sourceReady: true,

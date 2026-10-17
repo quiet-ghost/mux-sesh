@@ -9,6 +9,7 @@ let setup: Awaited<ReturnType<typeof testRender>> | undefined
 afterEach(() => {
   const current = setup
   setup = undefined
+
   if (!current) return
   act(() => current.renderer.destroy())
   expect(current.renderer.isDestroyed).toBe(true)
@@ -33,10 +34,12 @@ test('headline, clipboard, and browser use the same captured safe report', async
       actions={{
         copy: text => {
           copied.push(text)
+
           return true
         },
         open: async url => {
           opened.push(url)
+
           return true
         },
       }}
@@ -78,6 +81,7 @@ test.each([
       actions={{
         copy: text => {
           copied.push(text)
+
           return true
         },
         open: async () => false,
@@ -92,4 +96,32 @@ test.each([
   expect(copied).toEqual([report.text])
   await current.renderOnce()
   expect(current.captureCharFrame()).toContain('shares diagnostics')
+})
+
+test('a failed browser launch copies the report URL instead of crashing', async () => {
+  const report = DiagnosticReport.capture(new Error('launch failed'))
+  const copied: string[] = []
+  setup = await testRender(
+    <ErrorScreen
+      report={report}
+      onRetry={() => {}}
+      actions={{
+        copy: text => {
+          copied.push(text)
+
+          return true
+        },
+        open: async () => {
+          throw new Error('xdg-open unavailable')
+        },
+      }}
+    />,
+    { width: 80, height: 24, consoleMode: 'disabled' }
+  )
+  const current = setup
+  await act(async () => current.mockInput.pressKey('o'))
+  await current.renderOnce()
+
+  expect(current.captureCharFrame()).toContain('Could not open browser; report URL copied')
+  expect(copied).toEqual([report.issueUrl])
 })

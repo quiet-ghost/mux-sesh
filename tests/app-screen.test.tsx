@@ -8,6 +8,7 @@ let screen: Awaited<ReturnType<typeof renderSessionScreen>> | undefined
 afterEach(() => {
   const fixture = screen
   screen = undefined
+
   if (!fixture) return
   fixture.destroy()
   expect(fixture.renderer.isDestroyed).toBe(true)
@@ -31,6 +32,7 @@ describe('production session screen', () => {
     const frame = await screen.frame()
     expect(frame).toMatch(/› .*beta/)
     expect(frame).not.toMatch(/› .*alpha/)
+
     if (dimensions.width >= 80) {
       expect(screen.calls).toContainEqual({ operation: 'details', id: 'w2' })
     } else {
@@ -62,9 +64,11 @@ describe('production session screen', () => {
     await screen.pressKey('i')
 
     const input = screen.renderer.currentFocusedRenderable
+
     if (!(input instanceof TextareaRenderable)) {
       throw new Error('Search mode did not focus its textarea')
     }
+
     expect(input.focused).toBe(true)
 
     await screen.typeText('beta')

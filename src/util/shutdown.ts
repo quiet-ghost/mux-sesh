@@ -15,28 +15,29 @@ const TERMINAL_RESET_SEQUENCE = [
   '\u001b[?25h',
 ].join('')
 
-const state: {
+interface ShutdownState {
   renderer?: CliRenderer
   exiting?: Promise<never>
   exitListenerInstalled?: boolean
   fatalListenersInstalled?: boolean
   fatalStarted?: boolean
-} = {}
+}
+
+const state: ShutdownState = {}
 
 function resetTerminalModes(): void {
   if (process.stdout.isTTY) {
     process.stdout.write(TERMINAL_RESET_SEQUENCE)
   }
 
-  if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
-    process.stdin.setRawMode(false)
-  }
+  if (process.stdin.isTTY) process.stdin.setRawMode(false)
 
   process.stdin.pause()
 }
 
 function destroyRenderer(): void {
   const renderer = state.renderer
+
   if (!renderer || renderer.isDestroyed) return
 
   try {
@@ -77,11 +78,11 @@ export function initializeShutdown(renderer: CliRenderer): void {
 
 type FatalSource = 'fatal error' | 'uncaught exception' | 'unhandled rejection'
 
-export function requestFatalShutdown(error: unknown, source: FatalSource = 'fatal error'): void {
+export function requestFatalShutdown(cause: unknown, source: FatalSource = 'fatal error'): void {
   if (state.fatalStarted) return
   state.fatalStarted = true
 
-  const report = DiagnosticReport.capture(error)
+  const report = DiagnosticReport.capture(cause)
 
   restoreTerminal()
 
@@ -98,8 +99,11 @@ export function requestShutdown(code = 0): Promise<never> {
   if (state.exiting) return state.exiting
 
   state.exiting = (async () => {
-    restoreTerminal()
-    process.exit(code)
+    try {
+      restoreTerminal()
+    } finally {
+      process.exit(code)
+    }
   })()
 
   return state.exiting

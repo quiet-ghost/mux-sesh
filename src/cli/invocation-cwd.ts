@@ -6,10 +6,12 @@ export function captureInvocationCwd(): string {
   delete process.env.MUX_SESH_INVOCATION_CWD
 
   if (invocationCwd === undefined) return process.cwd()
+
   if (!isAbsolute(invocationCwd)) {
     throw new Error(
       'MUX_SESH_INVOCATION_CWD must be an absolute path. Unset it and launch mux-sesh again.'
     )
   }
+
   return invocationCwd
 }

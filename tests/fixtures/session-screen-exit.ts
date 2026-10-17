@@ -3,12 +3,15 @@ import { initializeShutdown } from '../../src/util/shutdown'
 import { renderSessionScreen } from './session-screen'
 
 const key = process.argv[2]
+
 if (key !== 'q' && key !== 'RETURN') {
   throw new Error('Session-screen exit fixture requires q or RETURN')
 }
 
 const screen = await renderSessionScreen({ width: 80, height: 24 })
+
 initializeShutdown(screen.renderer)
+
 let selectedBeta = false
 
 process.once('exit', exitCode => {

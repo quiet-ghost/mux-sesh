@@ -51,17 +51,23 @@ describe('crash diagnostics', () => {
     expect(report.summary).toContain('details omitted')
     expect(report.text).not.toContain('fixture-private-reason')
 
-    const circular: Record<string, unknown> = {}
+    interface Circular {
+      self?: Circular
+    }
+
+    const circular: Circular = {}
     circular.self = circular
     expect(DiagnosticReport.capture(circular, context).summary).toContain('details omitted')
   })
 
   test('does not invoke object hooks, proxy traps, or Error accessors', () => {
     let reads = 0
+
     const hostile = () => {
       reads++
       throw new Error('fixture-getter-secret')
     }
+
     const object = {
       toJSON: hostile,
       toString: hostile,
@@ -69,17 +75,22 @@ describe('crash diagnostics', () => {
         return hostile()
       },
     }
+
     const proxy = new Proxy(new Error('fixture-proxy-secret'), {
       get: hostile,
       getPrototypeOf: hostile,
       getOwnPropertyDescriptor: hostile,
     })
+
     const error = new Error('initial-safe')
+
     for (const key of ['message', 'name', 'stack', 'cause']) {
       Object.defineProperty(error, key, { get: hostile })
     }
+
     const lazyMessage = new Error('initial-safe')
     Object.defineProperty(lazyMessage, 'message', { get: hostile })
+
     for (const value of [object, proxy, error, lazyMessage]) {
       const report = DiagnosticReport.capture(value, {
         ...context,
@@ -87,10 +98,12 @@ describe('crash diagnostics', () => {
           return hostile()
         },
       })
+
       expect(report.text).toContain('mux-sesh: 1.2.3')
       expect(report.text).not.toContain('fixture-getter-secret')
       expect(report.text).not.toContain('fixture-proxy-secret')
     }
+
     expect(reads).toBe(0)
   })
 
@@ -111,10 +124,12 @@ describe('crash diagnostics', () => {
 
     let deep = new Error('level 8')
     deep.stack = ''
+
     for (let level = 7; level >= 0; level--) {
       deep = new Error(`level ${level}`, { cause: deep })
       deep.stack = ''
     }
+
     const bounded = DiagnosticReport.capture(deep, context)
     expect(bounded.text).toContain('level 3')
     expect(bounded.text).not.toContain('level 4')
@@ -151,6 +166,7 @@ describe('crash diagnostics', () => {
   ])('redacts sensitive text: %s', (input, secret) => {
     const report = DiagnosticReport.capture(input, context)
     const url = new URL(report.issueUrl)
+
     for (const output of [
       report.summary,
       report.text,
@@ -172,17 +188,20 @@ describe('crash diagnostics', () => {
       '<script>fixture</script> ~~~ **emphasis** &#96;',
       '\u001b]52;c;fixture-unterminated-osc',
     ].join('\n')
+
     const report = DiagnosticReport.capture(input, context)
     const url = new URL(report.issueUrl)
 
     for (const output of [report.summary, report.text]) {
+      // oxlint-disable-next-line no-control-regex -- Asserts raw control characters are absent.
       expect(output).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/)
-      expect(output).not.toMatch(/[`~<>&\[\]*#]/)
+      expect(output).not.toMatch(/[`~<>&[\]*#]/)
       expect(output).not.toContain('fixture-osc-payload')
       expect(output).not.toContain('fixture-dcs-payload')
       expect(output).not.toContain('fixture-unterminated-osc')
       expect(output).not.toContain('fixture-link.test')
     }
+
     expect(url.searchParams.get('body')?.match(/```/g)).toHaveLength(2)
     expect(url.searchParams.get('body')).toContain(report.text)
   })
@@ -218,6 +237,7 @@ describe('crash diagnostics', () => {
   test('retains allowlisted context when large traces exhaust the report budget', () => {
     let error = new Error('deep failure')
     error.stack = 'trace '.repeat(2000)
+
     for (let index = 0; index < 3; index++) {
       error = new Error('outer failure', { cause: error })
       error.stack = 'trace '.repeat(2000)
@@ -234,6 +254,7 @@ describe('crash diagnostics', () => {
   test('redacts cwd and home boundaries without including unrelated environment secrets', () => {
     const original = process.env.MUX_SESH_TEST_SECRET
     process.env.MUX_SESH_TEST_SECRET = 'do-not-report-this'
+
     try {
       const input = `${process.cwd()}/src/index.tsx ${process.env.HOME}/private`
       const error = new Error(input)
@@ -244,6 +265,7 @@ describe('crash diagnostics', () => {
       expect(report.text).toContain('‹path redacted›')
       expect(report.text).not.toContain('do-not-report-this')
       expect(decodeURIComponent(issue)).not.toContain(process.cwd())
+
       if (process.env.HOME) expect(decodeURIComponent(issue)).not.toContain(process.env.HOME)
     } finally {
       if (original === undefined) delete process.env.MUX_SESH_TEST_SECRET

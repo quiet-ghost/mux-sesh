@@ -13,6 +13,7 @@ const harnessImportMs = performance.now() - importStart
 const picker = await runPickerBaseline()
 const { runNativeBaseline } = await import('./native-baseline')
 const native = await runNativeBaseline(picker.iterations, picker.warmup)
+
 if (!picker.released || !native.released) {
   throw new Error(
     'Baseline resources were not released; discard these results and investigate cleanup'

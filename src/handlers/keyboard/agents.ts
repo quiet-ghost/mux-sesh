@@ -1,6 +1,7 @@
 import { isHerdrAgentItem } from '../../multiplexer/items'
 import { AppMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
+import { requestFatalShutdown } from '../../util/shutdown'
 import {
   activatePrefix,
   clearPrefix,
@@ -22,6 +23,7 @@ export function handleAgentsManageMode(
   if (key.ctrl && keyName === 'p') {
     ctx.clearPendingKill()
     ctx.openCommandsModal()
+
     return
   }
 
@@ -32,6 +34,7 @@ export function handleAgentsManageMode(
       case 'o':
         ctx.clearPendingKill()
         ctx.setAppMode(returnMode)
+
         return
       case 'd':
         if (
@@ -40,6 +43,7 @@ export function handleAgentsManageMode(
         ) {
           ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor])
         }
+
         return
       case 'r':
         if (
@@ -49,6 +53,7 @@ export function handleAgentsManageMode(
           ctx.clearPendingKill()
           ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor])
         }
+
         return
     }
 
@@ -57,32 +62,39 @@ export function handleAgentsManageMode(
 
   if (ctx.prefixKey && matchesPrefixKey(key, ctx.prefixKey)) {
     activatePrefix(ctx)
+
     return
   }
 
   if (keyName === 'escape' || (!ctx.prefixKey && !isStandard && keyName === 'o')) {
     ctx.clearPendingKill()
     ctx.setAppMode(returnMode)
+
     return
   }
 
   if (keyName === 'return' || keyName === 'enter') {
     const selectedAgent = ctx.agentSessions[ctx.agentCursor]
+
     if (selectedAgent) {
-      void ctx.handleSelect(selectedAgent)
+      // Selection failures remain fatal until action outcomes get recoverable screens.
+      ctx.handleSelect(selectedAgent).catch(requestFatalShutdown)
     }
+
     return
   }
 
   if (keyName === 'down' || (!isStandard && keyName === 'j')) {
     ctx.clearPendingKill()
     ctx.setAgentCursor(cursor => clampCursorIndex(ctx.agentSessions.length, cursor + 1))
+
     return
   }
 
   if (keyName === 'up' || (!isStandard && keyName === 'k')) {
     ctx.clearPendingKill()
     ctx.setAgentCursor(cursor => clampCursorIndex(ctx.agentSessions.length, cursor - 1))
+
     return
   }
 
@@ -93,6 +105,7 @@ export function handleAgentsManageMode(
     ) {
       ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor])
     }
+
     return
   }
 
@@ -104,12 +117,14 @@ export function handleAgentsManageMode(
       ctx.clearPendingKill()
       ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor])
     }
+
     return
   }
 
   if (!ctx.prefixKey && !isStandard && keyName === ',') {
     ctx.clearPendingKill()
     ctx.openSettingsModal()
+
     return
   }
 }

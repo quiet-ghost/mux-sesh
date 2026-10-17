@@ -1,0 +1,23 @@
+name: lint
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+
+      - name: Lint refined corridor
+        run: bun run lint:corridor
+
+      - name: Report legacy findings
+        continue-on-error: true
+        run: bun run lint
