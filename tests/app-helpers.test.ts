@@ -9,7 +9,6 @@ import {
 } from '../src/app/data'
 import { getSessionCommandState, getSettingsState } from '../src/app/derived'
 import { createAppHandlers, getPinnedSessionsAfterToggle } from '../src/app/handlers'
-import { applyOpencodeState, loadOpencodeSessionStats } from '../src/app/opencode'
 import { persistConfigUpdate, runWithErrorMessage } from '../src/app/operations'
 import { createAppRuntime } from '../src/app/runtime'
 import { applyRefreshedViewState } from '../src/app/state'
@@ -448,69 +447,6 @@ describe('app controls', () => {
   })
 })
 
-describe('app opencode helpers', () => {
-  test('applies opencode state across all item collections', () => {
-    let sessionItems: Item[] = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
-    let allItems: Item[] = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
-    let items: Item[] = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
-
-    applyOpencodeState(
-      'alpha',
-      { status: 'missing', message: 'not found' },
-      update => {
-        sessionItems = typeof update === 'function' ? update(sessionItems) : update
-      },
-      update => {
-        allItems = typeof update === 'function' ? update(allItems) : update
-      },
-      update => {
-        items = typeof update === 'function' ? update(items) : update
-      }
-    )
-
-    expect(sessionItems[0]?.opencodeState).toEqual({ status: 'missing', message: 'not found' })
-    expect(allItems[0]?.opencodeState).toEqual({ status: 'missing', message: 'not found' })
-    expect(items[0]?.opencodeState).toEqual({ status: 'missing', message: 'not found' })
-  })
-
-  test('loads opencode stats and reports failures through shared callbacks', async () => {
-    const updateState = mock(() => {})
-    const showMessage = mock(() => {})
-
-    const stats = await loadOpencodeSessionStats(
-      'alpha',
-      async () => ({ sessionID: '1', title: 'alpha' }),
-      updateState,
-      showMessage
-    )
-
-    expect(stats).toEqual({ sessionID: '1', title: 'alpha' })
-    expect(updateState).toHaveBeenCalledWith('alpha', { status: 'loading' })
-    expect(updateState).toHaveBeenCalledWith('alpha', {
-      status: 'ready',
-      stats: { sessionID: '1', title: 'alpha' },
-    })
-
-    const failingUpdateState = mock(() => {})
-    const failingShowMessage = mock(() => {})
-    await loadOpencodeSessionStats(
-      'beta',
-      async () => {
-        throw new Error('boom')
-      },
-      failingUpdateState,
-      failingShowMessage
-    )
-
-    expect(failingUpdateState).toHaveBeenCalledWith('beta', { status: 'loading' })
-    expect(failingUpdateState).toHaveBeenCalledWith('beta', {
-      status: 'error',
-      message: 'boom',
-    })
-    expect(failingShowMessage).toHaveBeenCalledWith('boom', 4000)
-  })
-})
-
 describe('app runtime helpers', () => {
   test('shows messages through shared setter timing helper', () => {
     const setMessage = mock(() => {})
@@ -527,41 +463,11 @@ describe('app runtime helpers', () => {
       setItems: mock(() => {}),
       setCursor: mock(() => {}),
       setMessage,
-      getOpencodeSessionStats: async () => null,
     })
 
     runtime.showMessage('hello')
 
     expect(setMessage).toHaveBeenCalledWith('hello')
-  })
-
-  test('loads opencode stats through shared runtime callbacks', async () => {
-    const setSessionItems = mock(() => {})
-    const setAllItems = mock(() => {})
-    const setItems = mock(() => {})
-
-    const runtime = createAppRuntime({
-      config: getDefaultConfig('/home/tester'),
-      backend: null,
-      viewMode: ViewMode.Sessions,
-      measure: async (_name, fn) => fn(),
-      lastSessionSelectionRef: { current: null },
-      lastProjectSelectionRef: { current: null },
-      setSessionItems,
-      setProjectSourceItems: mock(() => {}),
-      setAllItems,
-      setItems,
-      setCursor: mock(() => {}),
-      setMessage: mock(() => {}),
-      getOpencodeSessionStats: async () => ({ sessionID: '1', title: 'alpha' }),
-    })
-
-    const stats = await runtime.loadOpencodeStatsForSession('alpha')
-
-    expect(stats).toEqual({ sessionID: '1', title: 'alpha' })
-    expect(setSessionItems).toHaveBeenCalled()
-    expect(setAllItems).toHaveBeenCalled()
-    expect(setItems).toHaveBeenCalled()
   })
 })
 
@@ -610,7 +516,6 @@ describe('app handler factory', () => {
       renameTarget: null,
       renamedValue: 'alpha-2',
       searchTerm: '',
-      loadOpencodeStatsForSession: mock(async () => null),
       rememberedSessions: mock(() => {}),
     })
 
@@ -676,7 +581,6 @@ describe('app handler factory', () => {
       renameTarget,
       renamedValue: 'alpha',
       searchTerm: '',
-      loadOpencodeStatsForSession: mock(async () => null),
       rememberedSessions: mock(() => {}),
     })
 

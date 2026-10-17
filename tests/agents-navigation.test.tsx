@@ -1,7 +1,49 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { TextareaRenderable } from '@opentui/core'
-import type { LiveWorkspace } from '../src/multiplexer'
+import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import { renderSessionScreen } from './fixtures/session-screen'
+
+function createTmuxAgentBackend(detailRequests: string[]): MultiplexerBackend {
+  function unexpectedBackendCall(): never {
+    throw new Error('Agent details must not perform tmux mutations')
+  }
+  const sessions: LiveWorkspace[] = [
+    {
+      backend: 'tmux',
+      id: 'opencode-main',
+      title: 'opencode-main',
+      path: '/fixture/opencode',
+      isActive: false,
+      unitCount: 1,
+    },
+    {
+      backend: 'tmux',
+      id: 'pi-main',
+      title: 'pi-main',
+      path: '/fixture/pi',
+      isActive: false,
+      unitCount: 1,
+    },
+  ]
+  return {
+    kind: 'tmux',
+    capabilities: { previousWorkspace: false },
+    async list() {
+      return sessions
+    },
+    async details(workspace) {
+      detailRequests.push(workspace.id)
+      return { workspace, isActive: false, unitLabel: 'Windows', units: [], agents: [] }
+    },
+    open: unexpectedBackendCall,
+    openOrCreate: unexpectedBackendCall,
+    rename: unexpectedBackendCall,
+    close: unexpectedBackendCall,
+    current: unexpectedBackendCall,
+    directory: unexpectedBackendCall,
+    openEditor: unexpectedBackendCall,
+  }
+}
 
 const workspaces: LiveWorkspace[] = [
   {
@@ -108,6 +150,36 @@ describe('Agents navigation through production keyboard wiring', () => {
       expect(screen.renderer.currentFocusedRenderable instanceof TextareaRenderable).toBe(true)
       expect(await screen.frame()).not.toContain('Agent Sessions')
       expect(await screen.frame()).toMatch(/› .*agent-one/)
+    }
+  )
+})
+
+describe('OpenCode-named tmux agents', () => {
+  test.each(['standard', 'vim'] as const)(
+    '%s Agents show ordinary session details for OpenCode sessions',
+    async keybindMode => {
+      const detailRequests: string[] = []
+      screen = await renderSessionScreen(
+        { width: 120, height: 36 },
+        { keybindMode, backend: createTmuxAgentBackend(detailRequests) }
+      )
+      if (keybindMode === 'standard') await screen.pressKey('x', { ctrl: true })
+      await screen.pressKey('o')
+
+      const opencode = await screen.frame()
+      expect(opencode).toContain('Agent Sessions')
+      expect(opencode).toMatch(/› .*opencode-main/)
+      expect(opencode).not.toContain('OpenCode Stats')
+      expect(detailRequests).toContain('opencode-main')
+
+      await screen.pressKey('ARROW_DOWN')
+      const pi = await screen.frame()
+      expect(pi).toMatch(/› .*pi-main/)
+      expect(detailRequests).toContain('pi-main')
+
+      await screen.pressKey('ARROW_UP')
+      expect(await screen.frame()).toMatch(/› .*opencode-main/)
+      expect(detailRequests.filter(id => id === 'opencode-main')).toHaveLength(2)
     }
   )
 })

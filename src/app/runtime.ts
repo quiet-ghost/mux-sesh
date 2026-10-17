@@ -1,9 +1,8 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { showTemporaryMessage } from './notifications'
-import { applyOpencodeState, loadOpencodeSessionStats } from './opencode'
 import { applyRefreshedViewState, loadRefreshedViewState } from './state'
 import type { Measure } from './data'
-import type { Config, Item, OpencodeSessionStats, OpencodeStatsState, ViewMode } from '../types'
+import type { Config, Item, ViewMode } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 
 interface AppRuntimeOptions {
@@ -19,22 +18,11 @@ interface AppRuntimeOptions {
   setItems: Dispatch<SetStateAction<Item[]>>
   setCursor: Dispatch<SetStateAction<number>>
   setMessage: Dispatch<SetStateAction<string>>
-  getOpencodeSessionStats: (sessionName: string) => Promise<OpencodeSessionStats | null>
 }
 
 export function createAppRuntime(options: AppRuntimeOptions) {
   function showMessage(message: string, timeout = 2000) {
     showTemporaryMessage(options.setMessage, message, timeout)
-  }
-
-  function updateOpencodeState(sessionName: string, nextState: OpencodeStatsState) {
-    applyOpencodeState(
-      sessionName,
-      nextState,
-      options.setSessionItems,
-      options.setAllItems,
-      options.setItems
-    )
   }
 
   async function refreshItems(forceViewMode?: ViewMode, nextConfig = options.config) {
@@ -62,18 +50,8 @@ export function createAppRuntime(options: AppRuntimeOptions) {
     )
   }
 
-  async function loadOpencodeStatsForSession(sessionName: string) {
-    return loadOpencodeSessionStats(
-      sessionName,
-      options.getOpencodeSessionStats,
-      updateOpencodeState,
-      showMessage
-    )
-  }
-
   return {
     showMessage,
     refreshItems,
-    loadOpencodeStatsForSession,
   }
 }

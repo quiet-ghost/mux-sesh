@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'bun:test'
 import { isAgentSessionItem, isAgentSessionName } from '../src/agents/session-name'
-import { isOpencodeSessionItem, isOpencodeSessionName } from '../src/opencode/session-name'
 
 describe('agent session names', () => {
   test.each([
@@ -51,27 +50,4 @@ test('Herdr workspaces use native status for agent grouping', () => {
       target: { kind: 'agent', tabId: 'agents:t1', paneId: 'agents:p1' },
     })
   ).toBe(true)
-})
-
-describe('opencode session names', () => {
-  test.each([
-    ['opencode-main', true],
-    ['opencode-', true],
-    ['pi-main', false],
-    ['codex-work', false],
-    ['claude-review', false],
-    ['tui_chat', false],
-    ['opencode', false],
-  ])('classifies %s as opencode=%s', (name, expected) => {
-    expect(isOpencodeSessionName(name)).toBe(expected)
-  })
-
-  test('keeps opencode stats matcher narrower than agents', () => {
-    expect(isOpencodeSessionItem({ title: 'opencode-main', isSession: true })).toBe(true)
-    expect(isOpencodeSessionItem({ title: 'pi-main', isSession: true })).toBe(false)
-    expect(isOpencodeSessionItem({ title: 'tui_chat', isSession: true })).toBe(false)
-    expect(
-      isOpencodeSessionItem({ title: 'opencode-main', isSession: true, itemKind: 'herdr' })
-    ).toBe(false)
-  })
 })

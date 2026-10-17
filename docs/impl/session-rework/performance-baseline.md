@@ -33,9 +33,9 @@ and warmness fixed for comparisons; record dependency changes alongside the resu
   CLI wrapper, config loading, backend probes, and project discovery are outside this fixture boundary.
 - Project query-to-frame includes native textarea replacement, production filtering, React updates,
   and rendering. Discovery and FFF are separate from the cached-project scenario.
-- A separate **60×18** one-agent tmux fixture counts statistics requests when entering Agents.
-  The count-only callback returns `null`; private storage and model/export calls are not accessed.
-  The probe closes immediately after the entry frame, before intentional interval polling.
+- A separate **60×18** one-agent tmux fixture (`opencode-fixture`) counts work when entering
+  Agents. The narrow screen has no detail pane. The recorded run below predates DEV-310 and
+  counted statistics requests through a count-only callback; the probe closed before interval polling.
 - Native FFF uses **5,000 temporary project directories**, each containing `README.md`. Files are
   freshly written, so OS page cache is warm. A fresh finder disables mmap cache warmup/content indexing and omits
   frecency/history databases. Scan completion and matching results are checked; five warmup searches
@@ -81,3 +81,7 @@ pane read per selection change. Agent entry requests statistics through both the
 and the polling hook. These are baseline observations for later preview/statistics work, not
 desired final budgets. Update deterministic expectations with the relevant behavior change and
 compare against this recorded baseline; do not turn these timings into CI pass/fail thresholds.
+
+DEV-310 retired OpenCode statistics. The report and deterministic test now record this phase as
+`agentEntry`, without a statistics counter: one inventory request and no other work. No
+statistics callback, poll, private storage read, or model/export subprocess remains to count.

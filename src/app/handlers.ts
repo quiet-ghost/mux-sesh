@@ -1,6 +1,6 @@
 import { executeCommand as runCommand } from './commands'
 import { persistConfigUpdate, runWithErrorMessage } from './operations'
-import { AppMode, type Config, type Item, type OpencodeSessionStats, type ViewMode } from '../types'
+import { AppMode, type Config, type Item, type ViewMode } from '../types'
 import type { SettingsFieldId } from '../settings'
 import type { MultiplexerBackend } from '../multiplexer'
 import { applyEditorSetting, applyOptionSetting, getSettingEditorTitle } from '../settings'
@@ -269,7 +269,6 @@ interface CreateAppHandlersOptions extends NewSessionHandlerOptions {
   renameTarget: Item | null
   renamedValue: string
   searchTerm: string
-  loadOpencodeStatsForSession: (sessionName: string) => Promise<OpencodeSessionStats | null>
   rememberedSessions: (key: string | null) => void
 }
 
@@ -394,7 +393,6 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       handleLastSession: handleLastSessionWrapper,
       handleRootSession: handleRootSessionWrapper,
       handleEditTarget: handleEditTargetWrapper,
-      loadOpencodeStatsForSession: options.loadOpencodeStatsForSession,
       showMessage: options.showMessage,
     })
   }

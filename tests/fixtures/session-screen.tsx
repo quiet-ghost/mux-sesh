@@ -7,11 +7,7 @@ import { createAppControls } from '../../src/app/controls'
 import { useAppCoreState } from '../../src/app/core-state'
 import { loadSessionItems } from '../../src/app/data'
 import { getSessionCommandState } from '../../src/app/derived'
-import {
-  useNormalModeSessionReset,
-  useOpencodeStatsPolling,
-  useSearchFiltering,
-} from '../../src/app/effects'
+import { useNormalModeSessionReset, useSearchFiltering } from '../../src/app/effects'
 import { handleSelectItem } from '../../src/app/handlers'
 import { useAppKeyboard } from '../../src/app/keyboard'
 import { useAppModalState } from '../../src/app/modal-state'
@@ -22,13 +18,7 @@ import type { LiveWorkspace, MultiplexerBackend } from '../../src/multiplexer'
 import { filterAndSortItems } from '../../src/search'
 import { getSettingEditorTitle, isOptionSetting } from '../../src/settings'
 import { resolveTheme, ThemeProvider } from '../../src/styles/theme'
-import {
-  AppMode,
-  type Config,
-  type Item,
-  type KeybindMode,
-  type OpencodeSessionStats,
-} from '../../src/types'
+import { AppMode, type Config, type Item, type KeybindMode } from '../../src/types'
 import { useTerminalSize } from '../../src/util/terminal'
 
 type BackendCall = { operation: 'list' } | { operation: 'details' | 'open'; id: string }
@@ -52,7 +42,6 @@ interface SessionFixture {
   items: Item[]
   projects: Item[]
   filterItems: typeof filterAndSortItems
-  loadStatistics: (name: string) => Promise<OpencodeSessionStats | null>
   lifecycle: string[]
 }
 
@@ -62,7 +51,6 @@ interface SessionScreenData {
   backend?: MultiplexerBackend
   projects?: Item[]
   filterItems?: typeof filterAndSortItems
-  loadStatistics?: (name: string) => Promise<OpencodeSessionStats | null>
 }
 
 function unsupportedFixtureAction(): never {
@@ -73,7 +61,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
   const core = useAppCoreState()
   const modal = useAppModalState()
   const dimensions = useTerminalSize()
-  const { config, backend, items, projects, filterItems, loadStatistics, lifecycle } = fixture
+  const { config, backend, items, projects, filterItems, lifecycle } = fixture
   const resolvedTheme = resolveTheme(config.theme, config.themes, config.colorScheme)
   const theme = resolvedTheme.colors
   const derived = getSessionCommandState(
@@ -139,7 +127,6 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     core.setCursor,
     filterItems
   )
-  useOpencodeStatsPolling(derived.selectedAgentSession, loadStatistics)
 
   const controls = createAppControls({
     ...core,
@@ -169,7 +156,6 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
         handleLastSession: unsupportedFixtureAction,
         handleRootSession: unsupportedFixtureAction,
         handleEditTarget: unsupportedFixtureAction,
-        loadOpencodeStatsForSession: loadStatistics,
         showMessage: core.setMessage,
       }),
     handleSettingOptionSubmit: unsupportedFixtureAction,
@@ -182,7 +168,6 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     handleLastSession: unsupportedFixtureAction,
     handleRootSession: unsupportedFixtureAction,
     handleEditTarget: unsupportedFixtureAction,
-    loadOpencodeStatsForSession: loadStatistics,
   })
 
   return (
@@ -284,7 +269,6 @@ export async function renderSessionScreen(
             items: sessionItems,
             projects: data.projects ?? [],
             filterItems: data.filterItems ?? filterAndSortItems,
-            loadStatistics: data.loadStatistics ?? unsupportedFixtureAction,
             lifecycle,
           }}
         />,

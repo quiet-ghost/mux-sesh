@@ -54,7 +54,6 @@ function createContext(overrides: Partial<KeyboardHandlerContext> = {}): Keyboar
     openRenameModal: mock(() => {}),
     openCommandsModal: mock(() => {}),
     openSettingsModal: mock(() => {}),
-    loadOpencodeStatsForSession: mock(async () => null),
     setMessage: mock(() => {}),
     ...overrides,
   }
@@ -139,39 +138,6 @@ describe('keyboard shortcuts', () => {
 
     expect(ctx.setAppMode).toHaveBeenCalledWith(AppMode.AgentsManage)
     expect(ctx.setAgentCursor).toHaveBeenCalledWith(0)
-    expect(ctx.loadOpencodeStatsForSession).toHaveBeenCalledWith('opencode-main')
-  })
-
-  test('enters agents manage mode for pi without loading OpenCode stats', () => {
-    const pi = createItem({ title: 'pi-main' })
-    const ctx = createContext({
-      prefixActive: true,
-      agentSessions: [pi],
-      setAppMode: mock(() => {}),
-      setAgentCursor: mock(() => 0),
-    })
-
-    handleSearchMode({ name: 'o' }, ctx, 'standard')
-
-    expect(ctx.setAppMode).toHaveBeenCalledWith(AppMode.AgentsManage)
-    expect(ctx.setAgentCursor).toHaveBeenCalledWith(0)
-    expect(ctx.loadOpencodeStatsForSession).not.toHaveBeenCalled()
-  })
-
-  test('does not load tmux OpenCode stats for a Herdr agent workspace', () => {
-    const herdrAgent = createItem({
-      title: 'opencode-main',
-      itemKind: 'herdr',
-      agentStatus: 'working',
-    })
-    const ctx = createContext({
-      prefixActive: true,
-      agentSessions: [herdrAgent],
-    })
-
-    handleSearchMode({ name: 'o' }, ctx, 'standard')
-
-    expect(ctx.loadOpencodeStatsForSession).not.toHaveBeenCalled()
   })
 
   test('opens the selected Herdr workspace from agents mode', () => {

@@ -1,5 +1,5 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
-import { AppMode, ViewMode, type Config, type Item, type OpencodeSessionStats } from '../../types'
+import { AppMode, ViewMode, type Config, type Item } from '../../types'
 
 export interface KeyboardInput {
   name?: string
@@ -41,7 +41,6 @@ export interface KeyboardHandlerContext {
   openRenameModal: (item: Item) => void
   openCommandsModal: () => void
   openSettingsModal: () => void
-  loadOpencodeStatsForSession: (sessionName: string) => Promise<OpencodeSessionStats | null>
   setMessage: (message: string) => void
 }
 

@@ -1,4 +1,3 @@
-import { isOpencodeSessionItem } from '../opencode/session-name'
 import type { CommandId } from '../ui/CommandsModal'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../types'
 
@@ -30,7 +29,6 @@ interface ExecuteCommandContext {
   handleLastSession: () => Promise<void>
   handleRootSession: (item?: Item) => Promise<void>
   handleEditTarget: (item?: Item) => Promise<void>
-  loadOpencodeStatsForSession: (sessionName: string) => Promise<unknown>
   showMessage: (message: string, timeout?: number) => void
 }
 
@@ -120,10 +118,6 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
       if (ctx.viewMode === ViewMode.Sessions && ctx.agentSessions.length > 0) {
         ctx.setAppMode(AppMode.AgentsManage)
         ctx.setAgentCursor(0)
-        const firstAgent = ctx.agentSessions[0]
-        if (isOpencodeSessionItem(firstAgent)) {
-          await ctx.loadOpencodeStatsForSession(firstAgent.title)
-        }
       }
       return
     case 'refresh':

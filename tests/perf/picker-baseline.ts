@@ -31,7 +31,7 @@ interface PickerBaseline {
     navigation: PickerWork
     projects: PickerWork
     queries: PickerWork
-    statistics: PickerWork
+    agentEntry: PickerWork
   }
   released: boolean
 }
@@ -42,7 +42,6 @@ function subtractPickerWork(after: PickerWork, before: PickerWork): PickerWork {
     inventory: after.inventory - before.inventory,
     search: after.search - before.search,
     preview: after.preview - before.preview,
-    statistics: after.statistics - before.statistics,
     subprocess: after.subprocess - before.subprocess,
   }
 }
@@ -53,11 +52,9 @@ function requireSelectedRow(frame: string, title: string): void {
   }
 }
 
-async function captureStatisticsEntry(
-  corpus: ReturnType<typeof createPickerCorpus>
-): Promise<boolean> {
+async function captureAgentEntry(corpus: ReturnType<typeof createPickerCorpus>): Promise<boolean> {
   function unexpectedBackendCall(): never {
-    throw new Error('The statistics-entry probe must not perform backend I/O')
+    throw new Error('The agent-entry probe only lists sessions')
   }
   const backend: MultiplexerBackend = {
     kind: 'tmux',
@@ -84,10 +81,7 @@ async function captureStatisticsEntry(
     details: unexpectedBackendCall,
     openEditor: unexpectedBackendCall,
   }
-  const screen = await renderSessionScreen(
-    { width: 60, height: 18 },
-    { backend, loadStatistics: corpus.loadStatistics }
-  )
+  const screen = await renderSessionScreen({ width: 60, height: 18 }, { backend })
   try {
     await screen.pressKey('o')
     requireSelectedRow(await screen.frame(), 'opencode-fixture')
@@ -157,9 +151,9 @@ export async function runPickerBaseline({
     const queryWork = subtractPickerWork(corpus.work, beforeQueries)
 
     screen.destroy()
-    const beforeStatistics = { ...corpus.work }
-    const statisticsReleased = await captureStatisticsEntry(corpus)
-    const statisticsWork = subtractPickerWork(corpus.work, beforeStatistics)
+    const beforeAgentEntry = { ...corpus.work }
+    const agentEntryReleased = await captureAgentEntry(corpus)
+    const agentEntryWork = subtractPickerWork(corpus.work, beforeAgentEntry)
     return {
       corpus: PICKER_CORPUS_SIZE,
       dimensions,
@@ -178,10 +172,10 @@ export async function runPickerBaseline({
         navigation: navigationWork,
         projects: projectWork,
         queries: queryWork,
-        statistics: statisticsWork,
+        agentEntry: agentEntryWork,
       },
       released:
-        statisticsReleased &&
+        agentEntryReleased &&
         screen.renderer.isDestroyed &&
         screen.renderer.stdin.listenerCount('data') === 0 &&
         screen.lifecycle.at(-1) === 'unmounted',

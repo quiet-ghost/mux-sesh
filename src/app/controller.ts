@@ -9,7 +9,6 @@ import { createAppRuntime } from './runtime'
 import { createAppHandlers, handleKillSessionWithFeedback } from './handlers'
 import { useAppStartup } from './state'
 import { getConfigPath, getHomeDir, saveConfig } from '../config'
-import { getOpencodeSessionStats } from '../opencode'
 import { resolveTheme } from '../styles/theme'
 import type { TerminalPalette } from '../styles/terminal-palette'
 import { useTerminalSize } from '../util/terminal'
@@ -132,7 +131,7 @@ export function useAppController(invocationCwd: string) {
 
   useAutoUpdateScheduler(config, hasScheduledAutoUpdateRef)
 
-  const { showMessage, refreshItems, loadOpencodeStatsForSession } = createAppRuntime({
+  const { showMessage, refreshItems } = createAppRuntime({
     config,
     backend,
     viewMode,
@@ -145,7 +144,6 @@ export function useAppController(invocationCwd: string) {
     setItems,
     setCursor,
     setMessage,
-    getOpencodeSessionStats,
   })
 
   const {
@@ -258,7 +256,6 @@ export function useAppController(invocationCwd: string) {
     renameTarget,
     renamedValue: (modalTextareaRef.current?.plainText ?? modalInputValue).trim(),
     searchTerm: searchQuery.trim(),
-    loadOpencodeStatsForSession,
   })
 
   useAppKeyboard({
@@ -310,7 +307,6 @@ export function useAppController(invocationCwd: string) {
     handleLastSession: handleLastSessionWrapper,
     handleRootSession: handleRootSessionWrapper,
     handleEditTarget: handleEditTargetWrapper,
-    loadOpencodeStatsForSession,
     setAppMode,
     setViewMode,
     setCursor,
@@ -357,7 +353,6 @@ export function useAppController(invocationCwd: string) {
     searchQuery,
     allItems,
     selectedAgentSession,
-    loadOpencodeStatsForSession,
     setUpdatedVersion,
     setToastMessage,
     setToastVisible,

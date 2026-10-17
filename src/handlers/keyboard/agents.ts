@@ -1,6 +1,4 @@
-import { isOpencodeSessionItem } from '../../opencode/session-name'
 import { isHerdrAgentItem } from '../../multiplexer/items'
-import type { Item } from '../../types'
 import { AppMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
 import {
@@ -11,12 +9,6 @@ import {
   type KeyboardHandlerContext,
   type KeyboardInput,
 } from './shared'
-
-function loadStatsIfOpencode(ctx: KeyboardHandlerContext, item: Item) {
-  if (isOpencodeSessionItem(item)) {
-    void ctx.loadOpencodeStatsForSession(item.title)
-  }
-}
 
 export function handleAgentsManageMode(
   key: KeyboardInput,
@@ -84,25 +76,13 @@ export function handleAgentsManageMode(
 
   if (keyName === 'down' || (!isStandard && keyName === 'j')) {
     ctx.clearPendingKill()
-    ctx.setAgentCursor(cursor => {
-      const next = clampCursorIndex(ctx.agentSessions.length, cursor + 1)
-      if (next !== cursor && ctx.agentSessions[next]) {
-        loadStatsIfOpencode(ctx, ctx.agentSessions[next])
-      }
-      return next
-    })
+    ctx.setAgentCursor(cursor => clampCursorIndex(ctx.agentSessions.length, cursor + 1))
     return
   }
 
   if (keyName === 'up' || (!isStandard && keyName === 'k')) {
     ctx.clearPendingKill()
-    ctx.setAgentCursor(cursor => {
-      const next = clampCursorIndex(ctx.agentSessions.length, cursor - 1)
-      if (next !== cursor && ctx.agentSessions[next]) {
-        loadStatsIfOpencode(ctx, ctx.agentSessions[next])
-      }
-      return next
-    })
+    ctx.setAgentCursor(cursor => clampCursorIndex(ctx.agentSessions.length, cursor - 1))
     return
   }
 

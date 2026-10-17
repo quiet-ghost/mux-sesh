@@ -17,7 +17,6 @@ export interface PickerWork {
   inventory: number
   search: number
   preview: number
-  statistics: number
   subprocess: number
 }
 
@@ -28,7 +27,6 @@ interface PickerCorpus {
   filterSamples: number[]
   previewSamples: number[]
   filterItems: typeof filterAndSortItems
-  loadStatistics(): Promise<null>
 }
 
 export function createPickerCorpus(): PickerCorpus {
@@ -79,7 +77,6 @@ export function createPickerCorpus(): PickerCorpus {
     inventory: 0,
     search: 0,
     preview: 0,
-    statistics: 0,
     subprocess: 0,
   }
   const filterSamples: number[] = []
@@ -138,10 +135,6 @@ export function createPickerCorpus(): PickerCorpus {
       } finally {
         filterSamples.push(performance.now() - start)
       }
-    },
-    async loadStatistics() {
-      work.statistics++
-      return null
     },
   }
 }

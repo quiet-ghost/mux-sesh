@@ -39,8 +39,7 @@ console.log(
         warmQueries:
           'Cached project candidates; native search and discovery excluded from UI timing',
         subprocess: 'Recorded Herdr CommandRunner calls; no backend processes spawned',
-        statistics:
-          'One tmux agent entry; count-only statistics callback; no private storage or timed poll wait',
+        agentEntry: 'One tmux OpenCode-named agent entry at 60x18; no detail pane',
         native:
           'Fresh finder; freshly written OS-warm temporary corpus; no frecency/history DB; warmed synchronous mixedSearch',
       },
