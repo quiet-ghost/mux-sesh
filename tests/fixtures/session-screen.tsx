@@ -47,6 +47,7 @@ interface SessionFixture {
 
 interface SessionScreenData {
   keybindMode?: KeybindMode
+  theme?: string
   workspaces?: LiveWorkspace[]
   backend?: MultiplexerBackend
   projects?: Item[]
@@ -212,7 +213,7 @@ export async function renderSessionScreen(
   const config: Config = {
     ...getDefaultConfig('/fixture'),
     keybindMode: data.keybindMode ?? 'vim',
-    theme: 'catppuccin',
+    theme: data.theme ?? 'catppuccin',
     colorScheme: 'dark',
     autoUpdate: false,
     projectPaths: [],

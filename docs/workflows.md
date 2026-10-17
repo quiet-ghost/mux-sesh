@@ -184,7 +184,7 @@ If you want the compiled standalone binary, build from source.
 
 Prerequisites:
 
-- [Bun](https://bun.sh)
+- [Bun](https://bun.sh) 1.3.14 or newer
 - [Zig](https://ziglang.org) for compiling OpenTUI
 
 ```bash

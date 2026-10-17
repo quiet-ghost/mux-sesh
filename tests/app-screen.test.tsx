@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { join } from 'path'
-import { TextareaRenderable } from '@opentui/core'
+import { RGBA, TextareaRenderable } from '@opentui/core'
+import { resolveTheme } from '../src/styles/theme'
 import { renderSessionScreen } from './fixtures/session-screen'
 
 let screen: Awaited<ReturnType<typeof renderSessionScreen>> | undefined
@@ -55,6 +56,17 @@ describe('production session screen', () => {
     expect(await screen.frame()).toMatch(/› .*beta/)
     expect(screen.captureSpans()).toMatchObject({ cols: 80, rows: 24 })
     expect(await screen.frame()).not.toContain('Resize for the detail pane.')
+  })
+
+  test.each(['catppuccin', 'gruvbox'])('paints %s theme colors', async theme => {
+    screen = await renderSessionScreen({ width: 80, height: 24 }, { theme })
+    await screen.frame()
+    const colors = resolveTheme(theme, {}, 'dark').colors
+    const spans = screen.captureSpans().lines.flatMap(line => line.spans)
+    const title = spans.find(span => span.text.includes('mux-sesh'))
+
+    expect(title?.fg.toInts()).toEqual(RGBA.fromHex(colors.text).toInts())
+    expect(title?.bg.toInts()).toEqual(RGBA.fromHex(colors.surface).toInts())
   })
 
   test('focuses the real search input and filters rendered rows', async () => {

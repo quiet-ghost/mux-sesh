@@ -85,3 +85,23 @@ compare against this recorded baseline; do not turn these timings into CI pass/f
 DEV-310 retired OpenCode statistics. The report and deterministic test now record this phase as
 `agentEntry`, without a statistics counter: one inventory request and no other work. No
 statistics callback, poll, private storage read, or model/export subprocess remains to count.
+
+## OpenTUI 0.5.17 comparison
+
+DEV-309 pinned OpenTUI core/react **0.5.17**. To separate the upgrade from the Bun change since the
+recording above, both versions ran twice on **2026-10-17**, back to back: same host, Bun
+`1.4.3`, mux-sesh `1.10.0`, FFF `0.10.1`. The 0.4.5 runs used a temporary worktree at
+`39bb201`.
+
+| Measurement (ms)               |   0.4.5 run 1 |   0.4.5 run 2 |  0.5.17 run 1 |  0.5.17 run 2 |
+| ------------------------------ | ------------: | ------------: | ------------: | ------------: |
+| Harness import                 |          56.4 |          56.2 |          59.8 |          58.9 |
+| First usable frame             |          55.2 |          54.3 |          50.5 |          51.7 |
+| Cached projects frame          |          31.7 |          30.0 |          27.8 |          29.1 |
+| Navigation to frame p50 / p95  | 2.737 / 3.194 | 2.605 / 3.509 | 2.392 / 3.121 | 2.433 / 2.762 |
+| Local project filter p50 / p95 | 0.753 / 1.201 | 0.708 / 0.855 | 0.697 / 1.903 | 0.765 / 1.896 |
+| Project query to frame p50/p95 | 1.981 / 3.441 | 1.730 / 2.795 | 1.678 / 3.139 | 1.913 / 3.002 |
+
+Work counts were identical in all four runs, and every run released its renderer and finder
+resources. Local filtering does not render, so its p95 difference is not attributed to OpenTUI.
+These are single-host fixture observations, not budgets.
