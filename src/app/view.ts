@@ -1,5 +1,6 @@
 import { isAgentSessionItem } from '../agents/session-name'
 import { getPanelStyle } from '../styles/theme'
+import { getWrappedRowCount } from '../ui/session-viewport'
 import { AppMode, ViewMode, type BackendKind, type Item, type ThemeColors } from '../types'
 import { getActionFooter, getActionTarget } from './action-catalog'
 
@@ -36,20 +37,73 @@ export function getAppTitle(
       : 'Sessions'
 }
 
-export function getListStyle(theme: ThemeColors, appMode: AppMode) {
-  if (appMode === AppMode.NewSession) {
-    return {
-      ...getPanelStyle(theme, 'full'),
-      flexGrow: 1,
-      flexShrink: 1,
-    }
-  }
+const DETAIL_PANEL_SHARE = 0.4
+const DETAIL_PANEL_GAP_COLUMNS = 1
+const HEADER_ROWS = 2
+const SEARCH_INPUT_ROWS = 4
+const FOOTER_HINT_ROWS = 1
+const FOOTER_PADDING_COLUMNS = 1
+const VERSION_BADGE_GAP_COLUMNS = 3
+const LIST_PADDING_COLUMNS = 2
+
+export interface ScreenLayoutInput {
+  rows: number
+  columns: number
+  appMode: AppMode
+  showDetailPanel: boolean
+  message: string
+  versionLabel: string
+}
+
+export interface ScreenLayout {
+  listWidth: number
+  listContentWidth: number
+  detailPanelWidth: number
+  footerWidth: number
+  sectionRows: number
+}
+
+export function getScreenLayout({
+  rows,
+  columns,
+  appMode,
+  showDetailPanel,
+  message,
+  versionLabel,
+}: ScreenLayoutInput): ScreenLayout {
+  const detailPanelWidth = showDetailPanel ? Math.floor(columns * DETAIL_PANEL_SHARE) : 0
+
+  const listWidth = Math.max(
+    1,
+    columns - (showDetailPanel ? detailPanelWidth + DETAIL_PANEL_GAP_COLUMNS : 0)
+  )
+
+  const footerWidth = Math.max(
+    1,
+    columns - FOOTER_PADDING_COLUMNS - versionLabel.length - VERSION_BADGE_GAP_COLUMNS
+  )
+
+  const searchRows =
+    appMode === AppMode.Search || appMode === AppMode.NewSession ? SEARCH_INPUT_ROWS : 0
+
+  const messageRows = message ? getWrappedRowCount(message, footerWidth) : 0
 
   return {
-    ...getPanelStyle(theme, 'split'),
-    flexGrow: 1,
-    flexShrink: 1,
-    minWidth: 40,
+    listWidth,
+    listContentWidth: Math.max(1, listWidth - LIST_PADDING_COLUMNS),
+    detailPanelWidth,
+    footerWidth,
+    sectionRows: Math.max(1, rows - HEADER_ROWS - searchRows - messageRows - FOOTER_HINT_ROWS),
+  }
+}
+
+export function getListStyle(theme: ThemeColors, width: number) {
+  return {
+    ...getPanelStyle(theme, 'full'),
+    width,
+    paddingTop: 0,
+    paddingBottom: 0,
+    flexShrink: 0,
   }
 }
 

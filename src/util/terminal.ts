@@ -18,11 +18,16 @@ export function useTerminalSize(): TerminalSize {
 
 export function getLayoutMode(columns: number): LayoutMode {
   if (columns < 100) return 'compact'
+
   if (columns < 150) return 'normal'
+
   return 'wide'
 }
 
+export const DETAIL_PANEL_MIN_COLUMNS = 120
+
 export function shouldShowDetailPanel(columns: number, isNewSessionMode: boolean): boolean {
   if (isNewSessionMode) return false
-  return columns >= 80
+
+  return columns >= DETAIL_PANEL_MIN_COLUMNS
 }

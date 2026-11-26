@@ -7,6 +7,7 @@ import type { MultiplexerBackend, WorkspaceDetails, WorkspaceRef } from '../mult
 import { getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 
 interface Props {
+  width: number
   selectedItem?: Item
   config: Config | null
   backend: MultiplexerBackend | null
@@ -170,7 +171,7 @@ function SessionDetailsView({ details }: { details: WorkspaceDetails }) {
   )
 }
 
-export default function SessionDetailsPanel({ selectedItem, config, backend }: Props) {
+export default function SessionDetailsPanel({ width, selectedItem, config, backend }: Props) {
   const theme = useTheme()
   const [detailState, setDetailState] = useState<DetailState>({ status: 'idle' })
 
@@ -239,9 +240,9 @@ export default function SessionDetailsPanel({ selectedItem, config, backend }: P
 
   const panelStyle = {
     ...getDetailPanelStyle(theme),
-    flexGrow: 1,
-    flexShrink: 1,
-    minWidth: 40,
+    width,
+    flexShrink: 0,
+    overflow: 'hidden' as const,
   }
 
   return (

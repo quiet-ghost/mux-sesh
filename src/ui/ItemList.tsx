@@ -3,6 +3,7 @@ import { AppMode, type IconConfig } from '../types'
 import HighlightedText from './HighlightedText'
 import { getItemIconPresentation } from './item-icon'
 import { getVisibleWindow } from './list-window'
+import { fitListRow } from './session-viewport'
 import type { Item } from '../types'
 import { getItemKey } from '../multiplexer/items'
 
@@ -10,17 +11,21 @@ interface Props {
   items: Item[]
   cursor: number
   appMode: AppMode
-  maxItems?: number
+  maxItems: number
+  width: number
   searchQuery?: string
   icons?: IconConfig
   pendingKillSessionName?: string | null
 }
 
+const SESSION_ROW_PREFIX_COLUMNS = 4
+
 export default function ItemList({
   items,
   cursor,
   appMode,
-  maxItems = 20,
+  maxItems,
+  width,
   searchQuery = '',
   icons,
   pendingKillSessionName,
@@ -38,20 +43,41 @@ export default function ItemList({
         const hasTitleMatch = titleMatchIndices && titleMatchIndices.length > 0
         const hasDescMatch = descMatchIndices && descMatchIndices.length > 0
         const icon = getItemIconPresentation(theme, item, icons)
+
         const sessionStatusLabel = item.linkedSessionName
           ? 'attach'
           : item.itemKind === 'file'
             ? 'open'
             : 'create'
+
         const linkedSessionLabel = item.linkedSessionName ? ` -> ${item.linkedSessionName}` : ''
         const pendingKill = item.isSession && getItemKey(item) === pendingKillSessionName
         const selected = absoluteIndex === cursor
+
+        const meta = item.isSession
+          ? pendingKill
+            ? 'press d again to kill'
+            : `(${item.windowCount})`
+          : appMode === AppMode.NewSession
+            ? `${sessionStatusLabel}${linkedSessionLabel}`
+            : ''
+
+        const prefixWidth = item.isSession ? SESSION_ROW_PREFIX_COLUMNS : 3 + icon.glyph.length
+        const metaWidth = meta ? meta.length + 1 : 0
+
+        const row = fitListRow(
+          item.title,
+          item.desc,
+          width - prefixWidth - metaWidth,
+          item.title.length
+        )
 
         return (
           <box
             key={`${getItemKey(item)}:${item.path}`}
             style={{
               flexDirection: 'row',
+              flexShrink: 0,
               justifyContent: 'space-between',
               backgroundColor: pendingKill
                 ? theme.dangerSurface
@@ -62,7 +88,7 @@ export default function ItemList({
               paddingRight: 1,
             }}
           >
-            <text>
+            <text style={{ wrapMode: 'none' }}>
               <span style={{ fg: selected ? theme.primary : theme.textSubtle }}>
                 {selected ? '› ' : '  '}
               </span>
@@ -72,29 +98,29 @@ export default function ItemList({
                     {item.isAttached ? '●' : '○'}
                   </span>{' '}
                   {isSearching && hasTitleMatch ? (
-                    <HighlightedText text={item.title} matchIndices={titleMatchIndices} />
+                    <HighlightedText text={row.title} matchIndices={titleMatchIndices} />
                   ) : (
-                    <span style={{ fg: theme.text }}>{item.title}</span>
+                    <span style={{ fg: theme.text }}>{row.title}</span>
                   )}
-                  {item.desc ? (
-                    <span style={{ fg: theme.textSubtle }}>{`  ${item.desc}`}</span>
+                  {row.context ? (
+                    <span style={{ fg: theme.textSubtle }}>{`${row.spacer}${row.context}`}</span>
                   ) : null}
                 </>
               ) : (
                 <>
                   <span style={{ fg: icon.color }}>{icon.glyph}</span>{' '}
                   {isSearching && hasTitleMatch ? (
-                    <HighlightedText text={item.title} matchIndices={titleMatchIndices} />
+                    <HighlightedText text={row.title} matchIndices={titleMatchIndices} />
                   ) : (
-                    <span style={{ fg: theme.text }}>{item.title}</span>
+                    <span style={{ fg: theme.text }}>{row.title}</span>
                   )}
-                  {item.desc ? (
+                  {row.context ? (
                     <>
-                      <span style={{ fg: theme.textSubtle }}>{'  '}</span>
+                      <span style={{ fg: theme.textSubtle }}>{row.spacer}</span>
                       {isSearching && hasDescMatch ? (
-                        <HighlightedText text={item.desc} matchIndices={descMatchIndices} />
+                        <HighlightedText text={row.context} matchIndices={descMatchIndices} />
                       ) : (
-                        <span style={{ fg: theme.textSubtle }}>{item.desc}</span>
+                        <span style={{ fg: theme.textSubtle }}>{row.context}</span>
                       )}
                     </>
                   ) : null}
@@ -102,14 +128,8 @@ export default function ItemList({
               )}
             </text>
 
-            <text style={{ fg: pendingKill ? theme.danger : theme.textSubtle }}>
-              {item.isSession
-                ? pendingKill
-                  ? 'press d again to kill'
-                  : `(${item.windowCount})`
-                : appMode === AppMode.NewSession
-                  ? `${sessionStatusLabel}${linkedSessionLabel}`
-                  : ''}
+            <text style={{ fg: pendingKill ? theme.danger : theme.textSubtle, wrapMode: 'none' }}>
+              {meta}
             </text>
           </box>
         )

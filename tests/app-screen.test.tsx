@@ -36,7 +36,7 @@ describe('production session screen', () => {
     expect(frame).toMatch(/› .*beta/)
     expect(frame).not.toMatch(/› .*alpha/)
 
-    if (dimensions.width >= 80) {
+    if (dimensions.width >= 120) {
       expect(screen.calls).toContainEqual({ operation: 'details', id: 'w2' })
     } else {
       expect(screen.calls).toEqual([{ operation: 'list' }])
@@ -51,13 +51,18 @@ describe('production session screen', () => {
 
     expect(await screen.frame()).toMatch(/› .*beta/)
     expect(screen.captureSpans()).toMatchObject({ cols: 60, rows: 18 })
-    expect(await screen.frame()).toContain('Resize for the detail pane.')
+    expect(await screen.frame()).not.toContain('Status inactive')
 
     await screen.resize(80, 24)
 
     expect(await screen.frame()).toMatch(/› .*beta/)
     expect(screen.captureSpans()).toMatchObject({ cols: 80, rows: 24 })
-    expect(await screen.frame()).not.toContain('Resize for the detail pane.')
+    expect(await screen.frame()).not.toContain('Status inactive')
+
+    await screen.resize(120, 36)
+
+    expect(await screen.frame()).toMatch(/› .*beta/)
+    expect(await screen.frame()).toContain('Status inactive')
   })
 
   test.each(['catppuccin', 'gruvbox'])('paints %s theme colors', async theme => {

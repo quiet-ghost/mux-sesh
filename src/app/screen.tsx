@@ -5,6 +5,7 @@ import {
   getEmptyStateMessage,
   getFooterHint,
   getListStyle,
+  getScreenLayout,
   getStatusLabel,
 } from './view'
 import { syncTextareaValue } from './textarea'
@@ -15,6 +16,8 @@ import SearchInput from '../ui/SearchInput'
 import SessionList from '../ui/SessionList'
 import AgentSessionGroup from '../ui/AgentSessionGroup'
 import ItemList from '../ui/ItemList'
+import { truncateDialogText } from '../ui/dialog-layout'
+import { getListRowWidth, getSessionViewport } from '../ui/session-viewport'
 import SessionDetailsPanel from '../ui/SessionDetailsPanel'
 import Toast from '../ui/Toast'
 import VersionBadge, { formatVersionBadge } from '../ui/VersionBadge'
@@ -75,16 +78,43 @@ export function AppScreen({
   updatedVersion,
 }: Props) {
   const title = getAppTitle(appMode, viewMode, backend?.kind)
-  const listStyle = getListStyle(theme, appMode)
   const totalSessions = sessionItems.filter(item => item.isSession).length
   const activeSessions = items.filter(item => item.isSession && item.isAttached).length
-  const maxVisibleItems = Math.max(8, rows - (appMode === AppMode.NewSession ? 10 : 12))
+
   const versionLabel = formatVersionBadge(
     CURRENT_VERSION,
     updatedVersion,
     process.env.MUX_SESH_DEV === '1'
   )
+
   const footerHint = getFooterHint(appMode, config?.prefixKey, selectedPrimaryItem)
+  const showDetailPanel = shouldShowDetailPanel(columns, appMode === AppMode.NewSession)
+
+  const layout = getScreenLayout({
+    rows,
+    columns,
+    appMode,
+    showDetailPanel,
+    message,
+    versionLabel,
+  })
+
+  const rowWidth = getListRowWidth(layout.listContentWidth)
+
+  const showSections =
+    viewMode === ViewMode.Sessions &&
+    (appMode === AppMode.Normal || appMode === AppMode.AgentsManage)
+
+  const agentsActive = appMode === AppMode.AgentsManage
+
+  const viewport = getSessionViewport({
+    rows: layout.sectionRows,
+    sessions: regularSessions,
+    agents: agentSessions,
+    cursor,
+    agentCursor,
+    agentsActive,
+  })
 
   return (
     <>
@@ -93,7 +123,6 @@ export function AppScreen({
           flexDirection: 'column',
           width: '100%',
           height: '100%',
-          gap: 1,
           backgroundColor: theme.background,
         }}
       >
@@ -101,24 +130,28 @@ export function AppScreen({
           style={{
             flexDirection: 'row',
             alignItems: 'stretch',
-            justifyContent: 'center',
             width: '100%',
             flexGrow: 1,
             flexShrink: 1,
-            gap: 1,
+            gap: showDetailPanel ? 1 : 0,
           }}
         >
-          <box style={listStyle}>
-            <box style={{ justifyContent: 'space-between', marginBottom: 1 }}>
-              <box style={{ flexDirection: 'column' }}>
-                <text style={{ fg: theme.text }}>mux-sesh</text>
-                <text style={{ fg: theme.textSubtle }}>{title}</text>
-              </box>
-              <box style={{ flexDirection: 'column', alignItems: 'flex-end' }}>
-                <text style={{ fg: theme.textMuted }}>
-                  {getStatusLabel(viewMode, activeSessions, totalSessions, projectCount)}
-                </text>
-              </box>
+          <box style={getListStyle(theme, layout.listWidth)}>
+            <box
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                marginBottom: 1,
+                flexShrink: 0,
+              }}
+            >
+              <text style={{ wrapMode: 'none' }}>
+                <span style={{ fg: theme.text }}>mux-sesh</span>
+                <span style={{ fg: theme.textSubtle }}>{`  ${title}`}</span>
+              </text>
+              <text style={{ fg: theme.textMuted, wrapMode: 'none' }}>
+                {getStatusLabel(viewMode, activeSessions, totalSessions, projectCount)}
+              </text>
             </box>
 
             {(appMode === AppMode.Search || appMode === AppMode.NewSession) && (
@@ -134,49 +167,50 @@ export function AppScreen({
 
             <box
               style={{
-                alignSelf: 'auto',
                 flexDirection: 'column',
-                flexGrow: 0,
-                flexShrink: 0,
-                marginTop:
-                  viewMode === ViewMode.Sessions &&
-                  (appMode === AppMode.Normal || appMode === AppMode.AgentsManage)
-                    ? 1
-                    : 0,
+                flexGrow: 1,
+                flexShrink: 1,
+                overflow: 'hidden',
               }}
             >
               {items.length === 0 ? (
                 <text style={{ fg: theme.inactive }}>
                   {getEmptyStateMessage(appMode, searchQuery, isGitHubURL(searchQuery))}
                 </text>
-              ) : viewMode === ViewMode.Sessions &&
-                (appMode === AppMode.Normal || appMode === AppMode.AgentsManage) ? (
+              ) : showSections ? (
                 <>
                   <SessionList
                     items={regularSessions}
+                    window={viewport.sessions}
                     cursor={cursor}
+                    active={!agentsActive}
+                    width={rowWidth}
+                    emptyLabel={backend?.kind === 'herdr' ? 'No workspaces' : 'No sessions'}
                     searchQuery={searchQuery}
-                    maxItems={maxVisibleItems}
                     icons={config?.icons}
                     pendingKillSessionName={pendingKillSessionName}
                   />
 
-                  <AgentSessionGroup
-                    sessions={agentSessions}
-                    appMode={appMode}
-                    cursor={agentCursor}
-                    maxItems={maxVisibleItems}
-                    icons={config?.icons}
-                    pendingKillSessionName={pendingKillSessionName}
-                  />
+                  {viewport.agents.kind === 'shown' && (
+                    <AgentSessionGroup
+                      sessions={agentSessions}
+                      window={viewport.agents.window}
+                      cursor={agentCursor}
+                      active={agentsActive}
+                      width={rowWidth}
+                      icons={config?.icons}
+                      pendingKillSessionName={pendingKillSessionName}
+                    />
+                  )}
                 </>
               ) : (
                 <ItemList
                   items={items}
                   cursor={cursor}
                   appMode={appMode}
+                  maxItems={layout.sectionRows}
+                  width={rowWidth}
                   searchQuery={searchQuery}
-                  maxItems={maxVisibleItems}
                   icons={config?.icons}
                   pendingKillSessionName={pendingKillSessionName}
                 />
@@ -184,8 +218,9 @@ export function AppScreen({
             </box>
           </box>
 
-          {shouldShowDetailPanel(columns, appMode === AppMode.NewSession) && (
+          {showDetailPanel && (
             <SessionDetailsPanel
+              width={layout.detailPanelWidth}
               selectedItem={selectedPrimaryItem}
               config={config}
               backend={backend}
@@ -193,29 +228,21 @@ export function AppScreen({
           )}
         </box>
 
-        {(message || columns < 80 || footerHint) && (
-          <box
-            style={{
-              backgroundColor: theme.surface,
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              paddingTop: 0.4,
-              paddingBottom: 0.4,
-              paddingLeft: 1,
-              paddingRight: versionLabel.length + 3,
-              width: '100%',
-              flexDirection: 'column',
-              flexShrink: 0,
-            }}
-          >
-            {message && <text style={{ fg: theme.action }}>{message}</text>}
-            {columns < 80 && appMode !== AppMode.NewSession && (
-              <text style={{ fg: theme.textSubtle }}>Resize for the detail pane.</text>
-            )}
-            <text style={{ fg: theme.textSubtle }}>{footerHint}</text>
-          </box>
-        )}
+        <box
+          style={{
+            backgroundColor: theme.surface,
+            paddingLeft: 1,
+            paddingRight: versionLabel.length + 3,
+            width: '100%',
+            flexDirection: 'column',
+            flexShrink: 0,
+          }}
+        >
+          {message && <text style={{ fg: theme.action }}>{message}</text>}
+          <text style={{ fg: theme.textSubtle, wrapMode: 'none' }}>
+            {truncateDialogText(footerHint, layout.footerWidth)}
+          </text>
+        </box>
 
         <Toast message={toastMessage} visible={toastVisible} />
         <VersionBadge

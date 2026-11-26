@@ -78,7 +78,11 @@ async function expectDialogFits(
 ) {
   const lines = (await fixture.frame()).split('\n')
   const titleRow = lines.findIndex(line => line.includes(title) && line.includes('esc'))
-  const inputRow = lines.findIndex(line => line.includes(placeholderOrQuery))
+
+  const inputRow = lines.findIndex(
+    (line, index) => index > titleRow && line.includes(placeholderOrQuery)
+  )
+
   const hintRow = lines.findIndex(line => line.includes(hint))
 
   expect(titleRow).toBeGreaterThanOrEqual(0)
