@@ -257,6 +257,7 @@ describe('config normalization', () => {
 
   test('returns defaults for invalid config values', () => {
     const defaults = getDefaultConfig('/home/tester')
+
     const config = normalizeConfig(
       {
         keybind_mode: 'invalid',
@@ -309,7 +310,7 @@ describe('config storage', () => {
       await mkdir(join(home, '.config', 'mux-sesh'), { recursive: true })
       await writeFile(configPath, '{bad json')
 
-      await expect(loadConfig()).rejects.toThrow('Failed to parse mux-sesh config')
+      expect((await rejectionOf(loadConfig())).message).toContain('Failed to parse mux-sesh config')
       expect(await readFile(configPath, 'utf8')).toBe('{bad json')
     } finally {
       await rm(root, { recursive: true, force: true })
@@ -448,3 +449,13 @@ describe('project session resolution', () => {
     expect(merged[0]?.isSession).toBe(true)
   })
 })
+
+async function rejectionOf(run: Promise<unknown>): Promise<Error> {
+  try {
+    await run
+  } catch (cause) {
+    if (cause instanceof Error) return cause
+  }
+
+  throw new Error('Expected the operation to fail with an Error')
+}

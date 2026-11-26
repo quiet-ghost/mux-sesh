@@ -199,13 +199,10 @@ const agentsWorkspaceSnapshot = JSON.stringify({
   },
 })
 
-function recordingRunner(responses: Array<{ exitCode: number; stdout: string; stderr: string }>): {
-  runner: CommandRunner
-  commands: string[][]
-  options: Array<CommandOptions | undefined>
-} {
+function recordingRunner(responses: Array<{ exitCode: number; stdout: string; stderr: string }>) {
   const commands: string[][] = []
   const options: Array<CommandOptions | undefined> = []
+
   return {
     commands,
     options,
@@ -213,9 +210,10 @@ function recordingRunner(responses: Array<{ exitCode: number; stdout: string; st
       async run(command, commandOptions) {
         commands.push([...command])
         options.push(commandOptions)
+
         return responses.shift() ?? { exitCode: 0, stdout: '', stderr: '' }
       },
-    },
+    } satisfies CommandRunner,
   }
 }
 
@@ -224,6 +222,7 @@ describe('Herdr backend', () => {
     const { runner } = recordingRunner([
       { exitCode: 0, stdout: agentsWorkspaceSnapshot, stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     expect(await backend.list()).toEqual([
@@ -351,6 +350,7 @@ describe('Herdr backend', () => {
         },
       },
     })
+
     const { runner } = recordingRunner([{ exitCode: 0, stdout: shared, stderr: '' }])
     const listed = await createHerdrBackend({ runner, insideHerdr: true }).list()
 
@@ -390,6 +390,7 @@ describe('Herdr backend', () => {
         },
       },
     })
+
     const { runner } = recordingRunner([{ exitCode: 0, stdout: dangling, stderr: '' }])
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
@@ -410,10 +411,12 @@ describe('Herdr backend', () => {
       id: 'cli:workspace:focus',
       result: { type: 'workspace_info', workspace: {} },
     })
+
     const { runner, commands, options } = recordingRunner([
       { exitCode: 0, stdout: response, stderr: '' },
       { exitCode: 0, stdout: '', stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: false })
 
     const outcome = await backend.open({ backend: 'herdr', id: 'w7', title: 'duplicate label' })
@@ -428,10 +431,12 @@ describe('Herdr backend', () => {
 
   test('focuses the exact agent pane, not its tab, for agents sharing one tab', async () => {
     const focused = JSON.stringify({ result: { type: 'agent_info', agent: {} } })
+
     const { runner, commands, options } = recordingRunner([
       { exitCode: 0, stdout: focused, stderr: '' },
       { exitCode: 0, stdout: focused, stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     for (const paneId of ['w3:p1', 'w3:p2']) {
@@ -454,6 +459,7 @@ describe('Herdr backend', () => {
     const { runner, commands } = recordingRunner([
       { exitCode: 1, stdout: '', stderr: '{"error":{"message":"agent not found"}}' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: false })
 
     expect.assertions(3)
@@ -484,10 +490,12 @@ describe('Herdr backend', () => {
         root_pane: { pane_id: 'w3:p1' },
       },
     })
+
     const { runner, commands, options } = recordingRunner([
       { exitCode: 0, stdout: created, stderr: '' },
       { exitCode: 0, stdout: '', stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: false })
 
     const receipt = await backend.create({ title: 'web', path: '/repo/web' })
@@ -514,11 +522,13 @@ describe('Herdr backend', () => {
         root_pane: { pane_id: 'w3:p1' },
       },
     })
+
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: snapshot, stderr: '' },
       { exitCode: 0, stdout: created, stderr: '' },
       { exitCode: 0, stdout: '', stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     await backend.openOrCreate({ title: 'web', path: '/repo/web', startupCommand: 'bun dev' })
@@ -535,10 +545,12 @@ describe('Herdr backend', () => {
       id: 'cli:workspace:focus',
       result: { type: 'workspace_info', workspace: {} },
     })
+
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: snapshot, stderr: '' },
       { exitCode: 0, stdout: focused, stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     await backend.openOrCreate({ title: 'api', path: '/repo/api' })
@@ -551,14 +563,17 @@ describe('Herdr backend', () => {
 
   test('reuses a repository-root workspace after its shell changes directory', async () => {
     const changedCwdSnapshot = snapshot.replace('"cwd":"/repo/api"', '"cwd":"/repo/src"')
+
     const focused = JSON.stringify({
       id: 'cli:workspace:focus',
       result: { type: 'workspace_info', workspace: {} },
     })
+
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: changedCwdSnapshot, stderr: '' },
       { exitCode: 0, stdout: focused, stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     await backend.openOrCreate({ title: 'api', path: '/repo' })
@@ -574,11 +589,14 @@ describe('Herdr backend', () => {
       id: 'cli:workspace:rename',
       result: { type: 'workspace_info', workspace: {} },
     })
+
     const closed = JSON.stringify({ id: 'cli:workspace:close', result: { type: 'ok' } })
+
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: renamed, stderr: '' },
       { exitCode: 0, stdout: closed, stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
     const workspace = { backend: 'herdr' as const, id: 'w9', title: 'api' }
 
@@ -594,6 +612,7 @@ describe('Herdr backend', () => {
   test('does not rename or close a targeted agent through its shared workspace', async () => {
     const { runner, commands } = recordingRunner([])
     const backend = createHerdrBackend({ runner, insideHerdr: true })
+
     const agent = {
       backend: 'herdr' as const,
       id: 'agents',
@@ -601,8 +620,10 @@ describe('Herdr backend', () => {
       target: { kind: 'agent' as const, tabId: 'agents:t1', paneId: 'agents:p1' },
     }
 
-    await expect(backend.rename(agent, 'renamed')).rejects.toThrow('Cannot rename an agent tab')
-    await expect(backend.close(agent)).rejects.toThrow('Cannot close an agent tab')
+    expect((await rejectionOf(backend.rename(agent, 'renamed'))).message).toContain(
+      'Cannot rename an agent tab'
+    )
+    expect((await rejectionOf(backend.close(agent))).message).toContain('Cannot close an agent tab')
     expect(commands).toEqual([])
   })
 
@@ -611,6 +632,7 @@ describe('Herdr backend', () => {
       { exitCode: 0, stdout: snapshot, stderr: '' },
       { exitCode: 0, stdout: 'working\nready\n', stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     expect(await backend.details({ backend: 'herdr', id: 'w1', title: 'api' })).toEqual({
@@ -639,6 +661,7 @@ describe('Herdr backend', () => {
       { exitCode: 0, stdout: snapshot, stderr: '' },
       { exitCode: 0, stdout: 'ready\n', stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
     const controller = new AbortController()
 
@@ -656,6 +679,7 @@ describe('Herdr backend', () => {
       { exitCode: 0, stdout: agentsWorkspaceSnapshot, stderr: '' },
       { exitCode: 0, stdout: 'web agent output\n', stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     expect(
@@ -700,11 +724,13 @@ describe('Herdr backend', () => {
         root_pane: { pane_id: 'w1:p2' },
       },
     })
+
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: snapshot, stderr: '' },
       { exitCode: 0, stdout: tabCreated, stderr: '' },
       { exitCode: 0, stdout: '', stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     expect(await backend.openEditor('/repo/api', "nvim '/repo/api'")).toBe(true)
@@ -726,3 +752,13 @@ describe('Herdr backend', () => {
     ])
   })
 })
+
+async function rejectionOf(run: Promise<unknown>): Promise<Error> {
+  try {
+    await run
+  } catch (cause) {
+    if (cause instanceof Error) return cause
+  }
+
+  throw new Error('Expected the operation to fail with an Error')
+}
