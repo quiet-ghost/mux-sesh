@@ -2,69 +2,162 @@ import type { ScrollBoxRenderable } from '@opentui/core'
 import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import { useRef, useState } from 'react'
 import { openBrowser } from '../util/browser'
-import { writeClipboard } from '../util/clipboard'
+import { type ClipboardResult, writeClipboard } from '../util/clipboard'
 import type { DiagnosticReport } from '../util/errors'
 import { requestShutdown } from '../util/shutdown'
+
+interface ErrorScreenActions {
+  copy: (text: string) => ClipboardResult
+  open: (url: string) => Promise<boolean>
+}
 
 interface Props {
   report: DiagnosticReport
   onRetry: () => void
-  actions?: {
-    copy: (text: string) => boolean
-    open: (url: string) => Promise<boolean>
+  onQuit?: () => void
+  actions?: ErrorScreenActions
+}
+
+type ShareState =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'confirming' }
+  | { readonly kind: 'cancelled' }
+  | { readonly kind: 'opening' }
+  | { readonly kind: 'opened' }
+  | { readonly kind: 'open-failed'; readonly urlCopy: ClipboardResult }
+  | { readonly kind: 'report-copied'; readonly result: ClipboardResult }
+
+interface Notice {
+  readonly text: string
+  readonly color: string
+}
+
+const DEFAULT_ACTIONS: ErrorScreenActions = { copy: writeClipboard, open: openBrowser }
+const IDLE: ShareState = { kind: 'idle' }
+const SUCCESS = '#7fd88f'
+const CAUTION = '#e5c07b'
+const FAILURE = '#e06c75'
+
+const quitApp = () => {
+  requestShutdown(1)
+}
+
+function reportCopyNotice(result: ClipboardResult): Notice {
+  if (result.kind === 'copied')
+    return { text: 'Diagnostics copied to the clipboard', color: SUCCESS }
+
+  if (result.kind === 'sent-unconfirmed')
+    return {
+      text: 'Diagnostics sent to the terminal clipboard; the terminal may not support it',
+      color: CAUTION,
+    }
+
+  return { text: 'Clipboard unavailable; select the report text in your terminal', color: FAILURE }
+}
+
+function openFailedNotice(urlCopy: ClipboardResult, report: DiagnosticReport): string {
+  const fullReport = report.issueUrlTruncated
+    ? ' Its report is shortened; c copies the full local report.'
+    : ''
+
+  if (urlCopy.kind === 'copied') return `Could not open the browser; issue URL copied.${fullReport}`
+
+  if (urlCopy.kind === 'sent-unconfirmed')
+    return `Could not open the browser; issue URL sent to the terminal clipboard; the terminal may not support it.${fullReport}`
+
+  return report.issueUrlTruncated
+    ? 'Could not open the browser; c copies the full local report.'
+    : 'Could not open the browser; press c to copy the report.'
+}
+
+function shareNotice(state: ShareState, report: DiagnosticReport): Notice | undefined {
+  switch (state.kind) {
+    case 'idle':
+      return undefined
+    case 'confirming':
+      return {
+        text: [
+          'Send the report below to github.com through your browser? The URL stays in browser',
+          'history; nothing is filed until you submit.',
+          report.issueUrlTruncated
+            ? 'The browser copy is shortened to fit the URL.'
+            : 'The browser copy holds the full report.',
+        ].join(' '),
+        color: CAUTION,
+      }
+    case 'cancelled':
+      return { text: 'Sharing cancelled; nothing was sent', color: SUCCESS }
+    case 'opening':
+      return { text: 'Opening the prefilled GitHub issue in your browser...', color: CAUTION }
+    case 'opened':
+      return {
+        text: 'Sent the prefilled issue to your browser; submit it there to file it',
+        color: SUCCESS,
+      }
+    case 'open-failed':
+      return { text: openFailedNotice(state.urlCopy, report), color: FAILURE }
+    case 'report-copied':
+      return reportCopyNotice(state.result)
   }
 }
 
-const DEFAULT_ACTIONS = { copy: writeClipboard, open: openBrowser }
-
-export function ErrorScreen({ report, onRetry, actions = DEFAULT_ACTIONS }: Props) {
+export function ErrorScreen({
+  report,
+  onRetry,
+  onQuit = quitApp,
+  actions = DEFAULT_ACTIONS,
+}: Props) {
   const { width, height } = useTerminalDimensions()
-  const [status, setStatus] = useState('')
+  const [share, setShare] = useState<ShareState>(IDLE)
   const scrollRef = useRef<ScrollBoxRenderable | null>(null)
 
-  const copy = () => {
-    setStatus(
-      actions.copy(report.text)
-        ? 'Diagnostics copied'
-        : 'Clipboard unavailable; use terminal selection'
-    )
-  }
-
   const openIssue = () => {
-    setStatus('Opening prefilled GitHub issue...')
+    setShare({ kind: 'opening' })
 
     const showOpenResult = (opened: boolean) => {
-      setStatus(
+      setShare(
         opened
-          ? 'Opened prefilled issue in your browser'
-          : 'Could not open browser; report URL copied'
+          ? { kind: 'opened' }
+          : { kind: 'open-failed', urlCopy: actions.copy(report.issueUrl) }
       )
-
-      if (!opened) actions.copy(report.issueUrl)
     }
 
     actions.open(report.issueUrl).then(showOpenResult, () => showOpenResult(false))
   }
 
-  useKeyboard(key => {
-    if ((key.ctrl && key.name === 'c') || key.name === 'q' || key.name === 'escape') {
-      requestShutdown(1)
+  const handleShareKey = (name: string): void => {
+    if (share.kind === 'confirming') {
+      if (name === 'y' || name === 'return' || name === 'enter') openIssue()
+      else if (name === 'n' || name === 'escape') setShare({ kind: 'cancelled' })
 
       return
     }
 
-    if (key.name === 'c') copy()
-    else if (key.name === 'o') openIssue()
-    else if (key.name === 'r') onRetry()
-    else if (key.name === 'up' || key.name === 'k') scrollRef.current?.scrollBy(-1)
+    if (name === 'escape') onQuit()
+    else if (name === 'r') onRetry()
+    else if (share.kind === 'opening') return
+    else if (name === 'c') setShare({ kind: 'report-copied', result: actions.copy(report.text) })
+    else if (name === 'o') setShare({ kind: 'confirming' })
+  }
+
+  useKeyboard(key => {
+    if ((key.ctrl && key.name === 'c') || key.name === 'q') {
+      onQuit()
+
+      return
+    }
+
+    if (key.name === 'up' || key.name === 'k') scrollRef.current?.scrollBy(-1)
     else if (key.name === 'down' || key.name === 'j') scrollRef.current?.scrollBy(1)
     else if (key.name === 'pageup') scrollRef.current?.scrollBy(-Math.max(1, height - 12))
     else if (key.name === 'pagedown') scrollRef.current?.scrollBy(Math.max(1, height - 12))
     else if (key.name === 'home') scrollRef.current?.scrollTo(0)
     else if (key.name === 'end') scrollRef.current?.scrollTo(scrollRef.current.scrollHeight)
+    else handleShareKey(key.name)
   })
 
   const contentWidth = Math.max(24, Math.min(100, width - 4))
+  const notice = shareNotice(share, report)
 
   return (
     <box
@@ -86,15 +179,17 @@ export function ErrorScreen({ report, onRetry, actions = DEFAULT_ACTIONS }: Prop
           flexShrink: 1,
           flexBasis: 0,
           minHeight: 0,
-          gap: 1,
+          gap: height < 24 ? 0 : 1,
         }}
       >
         <text style={{ fg: '#e06c75' }}>mux-sesh crashed</text>
         <text style={{ fg: '#eeeeee' }}>{report.summary}</text>
         <text style={{ fg: '#808080' }}>
-          c copy diagnostics · o open GitHub issue · r retry · q/esc/ctrl+c quit
+          {share.kind === 'confirming'
+            ? 'y/enter open · n/esc cancel · ↑/↓ review · q quit'
+            : 'c copy diagnostics · o review & share on GitHub · r retry · q/esc/ctrl+c quit'}
         </text>
-        {status ? <text style={{ fg: '#7fd88f' }}>{status}</text> : null}
+        {notice ? <text style={{ fg: notice.color, flexShrink: 0 }}>{notice.text}</text> : null}
         <box
           style={{
             flexGrow: 1,
@@ -116,7 +211,7 @@ export function ErrorScreen({ report, onRetry, actions = DEFAULT_ACTIONS }: Prop
             <text style={{ fg: '#b0b0b0' }}>{report.text}</text>
           </scrollbox>
         </box>
-        {report.issueUrlTruncated && (
+        {report.issueUrlTruncated && share.kind !== 'confirming' && (
           <text style={{ fg: '#808080' }}>
             Browser report shortened; c copies the full captured report.
           </text>

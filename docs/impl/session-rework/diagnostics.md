@@ -40,5 +40,19 @@ the full bounded capture. Reports stay in memory until an explicit copy/open act
 
 Redaction is conservative and pattern-based; arbitrary free text still needs local review.
 Opening a prefilled URL sends the shown diagnostics to GitHub and browser history before issue
-submission. The screen states this. DEV-339 owns the expanded review/confirmation flow and
-clipboard/browser outcome handling.
+submission.
+
+## Review before sharing
+
+DEV-339 makes `o` a local review step. The crash screen states that confirming sends the report
+shown below to github.com through the browser, that the URL stays in browser history, and whether
+the browser copy is shortened (`issueUrlTruncated`). Only `y`/Enter opens `report.issueUrl`;
+`n`/Esc cancels with nothing sent, and Esc there does not quit. Sharing state is one discriminated
+union (idle, confirming, cancelled, opening, opened, open-failed, report-copied).
+
+Outcomes are reported as they are known. `writeClipboard` returns a tagged `ClipboardResult`: an
+OSC 52 write is `sent-unconfirmed` because terminals never acknowledge it, so the screen says the
+report was sent to the terminal clipboard and the terminal may not support it. `copied` is only
+shown when an adapter can confirm a copy. A failed browser launch copies the issue URL and reports
+that copy's actual result; without a clipboard it points to `c`, and a shortened URL always notes
+that `c` copies the full local report.
