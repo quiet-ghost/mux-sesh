@@ -8,15 +8,15 @@ import {
   openSettingsModal as showSettingsModal,
   type ModalState,
 } from './modals'
+import { ActionRefused } from './action-outcome'
 import type { Config, Item } from '../types'
-import { getItemKey } from '../multiplexer/items'
-import { requestFatalShutdown } from '../util/shutdown'
+import { CleanupPlan } from '../sessions/cleanup-plan'
 import type { SettingsFieldId } from '../settings'
 
 interface AppControlsOptions {
   config: Config | null
-  pendingKillSessionName: string | null
-  handleKillSession: (item: Item) => Promise<void>
+  sessionItems: Item[]
+  inventoryRevision: () => number
   setPendingKillSessionName: Dispatch<SetStateAction<string | null>>
   setRenameTarget: Dispatch<SetStateAction<Item | null>>
   setModalInputValue: Dispatch<SetStateAction<string>>
@@ -36,16 +36,15 @@ export function createAppControls(options: AppControlsOptions) {
     options.setPendingKillSessionName(null)
   }
 
+  // Opens a review of exactly this target; closing happens only when that review is confirmed.
+  // Callers run inside the action owner, so a refusal is shown rather than thrown away.
   function requestKillSession(item: Item) {
-    const sessionKey = getItemKey(item)
+    const review = CleanupPlan.review(item, options.sessionItems, options.inventoryRevision())
 
-    if (options.pendingKillSessionName === sessionKey) {
-      options.handleKillSession(item).catch(requestFatalShutdown)
+    if (review.kind === 'refused') throw new ActionRefused({ reason: review.reason })
 
-      return
-    }
-
-    options.setPendingKillSessionName(sessionKey)
+    clearPendingKill()
+    options.setModalState({ type: 'close-review', plan: review.plan })
   }
 
   function openRenameModal(item: Item) {

@@ -5,6 +5,7 @@ import type { OperationReport } from './action-outcome'
 import { FocusOwner } from './focus-owner'
 import { handleModalKeyboard } from './modal-keyboard'
 import type { ModalState } from './modals'
+import type { CleanupPlan } from '../sessions/cleanup-plan'
 import {
   handleNewSessionMode,
   handleNormalMode,
@@ -56,6 +57,7 @@ interface UseAppKeyboardOptions {
   handleRenameSubmit: () => Promise<void>
   handleNewSessionSubmit: () => Promise<void>
   handleOutcomeRetry: (report: OperationReport) => Promise<void>
+  confirmCloseReview: (plan: CleanupPlan) => Promise<void>
   // Crash recovery for defects raised by key handlers; production passes requestFatalShutdown.
   onDefect: (cause: unknown) => void
   isOptionSetting: (field: SettingsFieldId) => boolean
@@ -177,6 +179,7 @@ function handleKey(
       handleSettingsEditorSubmit: options.handleSettingsEditorSubmit,
       handleRenameSubmit: options.handleRenameSubmit,
       handleOutcomeRetry: options.handleOutcomeRetry,
+      confirmCloseReview: options.confirmCloseReview,
     })
 
     if (consumed) key.preventDefault()

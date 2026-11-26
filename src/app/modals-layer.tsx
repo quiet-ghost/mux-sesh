@@ -4,6 +4,7 @@ import type { SettingsEntry, SettingsOption, SettingsFieldId } from '../settings
 import type { CommandEntry } from '../ui/CommandsModal'
 import type { ModalState } from './modals'
 import { syncTextareaValue } from './textarea'
+import CloseReviewModal from '../ui/CloseReviewModal'
 import CommandsModal, { getCommandEntryKey } from '../ui/CommandsModal'
 import OperationOutcomeModal from '../ui/OperationOutcomeModal'
 import RenameModal from '../ui/RenameModal'
@@ -104,6 +105,10 @@ export function AppModalsLayer({
     <>
       {modalState?.type === 'outcome' && (
         <OperationOutcomeModal report={modalState.report} columns={columns} />
+      )}
+
+      {modalState?.type === 'close-review' && (
+        <CloseReviewModal plan={modalState.plan} columns={columns} />
       )}
 
       {modalState?.type === 'rename' && (

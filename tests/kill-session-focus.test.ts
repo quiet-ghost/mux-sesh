@@ -4,6 +4,7 @@ import { getItemKey } from '../src/multiplexer/items'
 import type { LiveWorkspace, MultiplexerBackend, WorkspaceRef } from '../src/multiplexer'
 import { CommandTimeoutError } from '../src/multiplexer/command'
 import { MultiplexerError } from '../src/multiplexer/types'
+import { CleanupPlan } from '../src/sessions/cleanup-plan'
 import type { Item } from '../src/types'
 
 function liveItem(id: string, title: string, backend: 'herdr' | 'tmux' = 'herdr'): Item {
@@ -16,6 +17,14 @@ function liveItem(id: string, title: string, backend: 'herdr' | 'tmux' = 'herdr'
     backend,
     sessionId: id,
   }
+}
+
+function planOf(item: Item): CleanupPlan {
+  const review = CleanupPlan.review(item, [item], 0)
+
+  if (review.kind === 'refused') throw new Error(review.reason)
+
+  return review.plan
 }
 
 function createFakeBackend(opts: {
@@ -133,17 +142,11 @@ interface RememberedSelection {
 function createCallbacks(regularSessions: Item[]) {
   const remembered: RememberedSelection = { key: 'unset' }
   const refreshItems = mock(async () => {})
-  const onSuccess = mock(() => {})
-  const onError = mock(() => {})
 
   return {
     remembered,
     refreshItems,
-    onSuccess,
-    onError,
     callbacks: {
-      onSuccess,
-      onError,
       refreshItems,
       regularSessions,
       rememberedSessions: (key: string | null) => {
@@ -165,16 +168,15 @@ describe('handleKillSession focus stability (DEV-85)', () => {
     })
 
     const sessions = [liveItem('a', 'alpha'), liveItem('b', 'beta'), liveItem('c', 'gamma')]
-    const { callbacks, refreshItems, onSuccess, onError, remembered } = createCallbacks(sessions)
+    const { callbacks, refreshItems, remembered } = createCallbacks(sessions)
 
-    await handleKillSession(liveItem('a', 'alpha'), backend, callbacks)
+    const outcome = await handleKillSession(planOf(liveItem('a', 'alpha')), backend, callbacks)
 
     expect((await backend.current())?.id).toBe('b')
     expect(backend.commands).toEqual([['close', 'a']])
     expect(remembered.key).toBe(getItemKey(liveItem('b', 'beta')))
     expect(refreshItems).toHaveBeenCalledTimes(1)
-    expect(onSuccess).toHaveBeenCalled()
-    expect(onError).not.toHaveBeenCalled()
+    expect(outcome).toEqual({ kind: 'completed', message: "Workspace 'alpha' closed" })
   })
 
   test('restores prior focus when close steals focus from a non-active workspace', async () => {
@@ -191,7 +193,7 @@ describe('handleKillSession focus stability (DEV-85)', () => {
     const sessions = [liveItem('a', 'alpha'), liveItem('b', 'beta'), liveItem('c', 'gamma')]
     const { callbacks } = createCallbacks(sessions)
 
-    await handleKillSession(liveItem('a', 'alpha'), backend, callbacks)
+    await handleKillSession(planOf(liveItem('a', 'alpha')), backend, callbacks)
 
     expect((await backend.current())?.id).toBe('b')
     expect(backend.commands).toEqual([
@@ -213,7 +215,7 @@ describe('handleKillSession focus stability (DEV-85)', () => {
     const sessions = [liveItem('a', 'alpha'), liveItem('b', 'beta'), liveItem('c', 'gamma')]
     const { callbacks, remembered } = createCallbacks(sessions)
 
-    await handleKillSession(liveItem('b', 'beta'), backend, callbacks)
+    await handleKillSession(planOf(liveItem('b', 'beta')), backend, callbacks)
 
     expect((await backend.current())?.id).toBe('a')
     expect(remembered.key).toBe(getItemKey(liveItem('a', 'alpha')))
@@ -233,7 +235,7 @@ describe('handleKillSession focus stability (DEV-85)', () => {
     const sessions = [liveItem('a', 'alpha'), liveItem('b', 'beta')]
     const { callbacks, remembered } = createCallbacks(sessions)
 
-    await handleKillSession(liveItem('a', 'alpha'), backend, callbacks)
+    await handleKillSession(planOf(liveItem('a', 'alpha')), backend, callbacks)
 
     expect((await backend.current())?.id).toBe('b')
     expect(remembered.key).toBe(getItemKey(liveItem('b', 'beta')))
@@ -246,15 +248,15 @@ describe('handleKillSession focus stability (DEV-85)', () => {
     })
 
     const sessions = [liveItem('a', 'alpha')]
-    const { callbacks, remembered, refreshItems, onSuccess } = createCallbacks(sessions)
+    const { callbacks, remembered, refreshItems } = createCallbacks(sessions)
 
-    await handleKillSession(liveItem('a', 'alpha'), backend, callbacks)
+    const outcome = await handleKillSession(planOf(liveItem('a', 'alpha')), backend, callbacks)
 
     expect(await backend.current()).toBeUndefined()
     expect(remembered.key).toBeNull()
     expect(backend.commands).toEqual([['close', 'a']])
     expect(refreshItems).toHaveBeenCalledTimes(1)
-    expect(onSuccess).toHaveBeenCalled()
+    expect(outcome.kind).toBe('completed')
   })
 
   test('remembers neighbor selection before refresh for list cursor stability', async () => {
@@ -274,13 +276,7 @@ describe('handleKillSession focus stability (DEV-85)', () => {
       callOrder.push('refresh')
     })
 
-    await handleKillSession(liveItem('b', 'beta'), backend, {
-      onSuccess: () => {
-        callOrder.push('success')
-      },
-      onError: () => {
-        callOrder.push('error')
-      },
+    await handleKillSession(planOf(liveItem('b', 'beta')), backend, {
       refreshItems,
       regularSessions: sessions,
       rememberedSessions: key => {
@@ -304,33 +300,31 @@ describe('handleKillSession focus stability (DEV-85)', () => {
     })
 
     const sessions = [liveItem('dev', 'dev', 'tmux'), liveItem('ops', 'ops', 'tmux')]
-    const { callbacks, remembered, onSuccess } = createCallbacks(sessions)
+    const { callbacks, remembered } = createCallbacks(sessions)
 
-    await handleKillSession(liveItem('dev', 'dev', 'tmux'), backend, callbacks)
-
-    expect((await backend.current())?.id).toBe('ops')
-    expect(remembered.key).toBe(getItemKey(liveItem('ops', 'ops', 'tmux')))
-    expect(onSuccess).toHaveBeenCalledWith("Session 'dev' closed")
-  })
-
-  test('rejects non-session items without touching the backend', async () => {
-    const backend = createFakeBackend({
-      workspaces: [{ id: 'a', title: 'alpha' }],
-      focusedId: 'a',
-    })
-
-    const { callbacks, onError, refreshItems, remembered } = createCallbacks([])
-
-    await handleKillSession(
-      { title: 'project', desc: '', path: '/tmp/project', isSession: false },
+    const outcome = await handleKillSession(
+      planOf(liveItem('dev', 'dev', 'tmux')),
       backend,
       callbacks
     )
 
-    expect(backend.commands).toEqual([])
-    expect(onError).toHaveBeenCalled()
-    expect(refreshItems).not.toHaveBeenCalled()
-    expect(remembered.key).toBe('unset')
+    expect((await backend.current())?.id).toBe('ops')
+    expect(remembered.key).toBe(getItemKey(liveItem('ops', 'ops', 'tmux')))
+    expect(outcome).toEqual({ kind: 'completed', message: "Session 'dev' closed" })
+  })
+
+  // A close needs a reviewed plan, and non-session items never produce one.
+  test('rejects non-session items before any plan reaches the backend', () => {
+    const review = CleanupPlan.review(
+      { title: 'project', desc: '', path: '/tmp/project', isSession: false },
+      [],
+      0
+    )
+
+    expect(review).toEqual({
+      kind: 'refused',
+      reason: 'Select a live session to close. Nothing was closed.',
+    })
   })
 
   test('still refreshes after a successful close when focus restore fails', async () => {
@@ -354,14 +348,14 @@ describe('handleKillSession focus stability (DEV-85)', () => {
     }
 
     const sessions = [liveItem('a', 'alpha'), liveItem('b', 'beta'), liveItem('c', 'gamma')]
-    const { callbacks, refreshItems, onError, remembered } = createCallbacks(sessions)
+    const { callbacks, refreshItems, remembered } = createCallbacks(sessions)
 
-    await handleKillSession(liveItem('a', 'alpha'), backend, callbacks)
+    const outcome = await handleKillSession(planOf(liveItem('a', 'alpha')), backend, callbacks)
 
     expect(backend.commands[0]).toEqual(['close', 'a'])
     expect(remembered.key).toBe(getItemKey(liveItem('b', 'beta')))
     expect(refreshItems).toHaveBeenCalledTimes(1)
-    expect(onError).toHaveBeenCalled()
+    expect(outcome.kind).toBe('partial')
   })
 })
 
@@ -383,14 +377,18 @@ describe('close outcomes (DEV-341)', () => {
       throw new Error('fixture focus failed')
     }
 
-    const { callbacks, onError, onSuccess } = createCallbacks(sessions())
+    const { callbacks } = createCallbacks(sessions())
 
-    await handleKillSession(liveItem('a', 'alpha'), backend, callbacks)
+    const outcome = await handleKillSession(planOf(liveItem('a', 'alpha')), backend, callbacks)
 
-    expect(onSuccess).not.toHaveBeenCalled()
-    expect(onError).toHaveBeenCalledWith(
-      "Workspace 'alpha' closed, but focus could not return to 'beta': fixture focus failed"
-    )
+    expect(outcome).toEqual({
+      kind: 'partial',
+      title: "Workspace 'alpha' closed, but focus did not return",
+      completed: ["Closed workspace 'alpha'"],
+      failed: "Returning focus to 'beta': fixture focus failed",
+      next: 'Nothing else was closed. Pick a workspace from the list to continue.',
+      retry: { kind: 'none' },
+    })
   })
 
   test('a refused close says nothing was closed and does not refresh or move focus', async () => {
@@ -400,13 +398,15 @@ describe('close outcomes (DEV-341)', () => {
       throw new MultiplexerError('unsupported', 'Cannot close an agent tab from mux-sesh.')
     }
 
-    const { callbacks, onError, refreshItems } = createCallbacks(sessions())
+    const { callbacks, refreshItems } = createCallbacks(sessions())
 
-    await handleKillSession(liveItem('a', 'alpha'), backend, callbacks)
+    const outcome = await handleKillSession(planOf(liveItem('a', 'alpha')), backend, callbacks)
 
-    expect(onError).toHaveBeenCalledWith(
-      "Could not close workspace 'alpha': Cannot close an agent tab from mux-sesh. Nothing was closed."
-    )
+    expect(outcome).toEqual({
+      kind: 'failed',
+      message:
+        "Could not close workspace 'alpha': Cannot close an agent tab from mux-sesh. Nothing was closed.",
+    })
     expect(refreshItems).not.toHaveBeenCalled()
     expect(backend.commands).toEqual([])
   })
@@ -424,14 +424,16 @@ describe('close outcomes (DEV-341)', () => {
       throw new CommandTimeoutError({ executable: 'herdr', timeoutMs: 15_000 })
     }
 
-    const { callbacks, onError, refreshItems } = createCallbacks(sessions())
+    const { callbacks, refreshItems } = createCallbacks(sessions())
 
-    await handleKillSession(liveItem('a', 'alpha'), backend, callbacks)
+    const outcome = await handleKillSession(planOf(liveItem('a', 'alpha')), backend, callbacks)
 
-    expect(onError).toHaveBeenCalledTimes(1)
-    expect(onError).toHaveBeenCalledWith(
-      expect.stringContaining("Closing workspace 'alpha' did not finish")
-    )
+    expect(outcome).toMatchObject({
+      kind: 'unknown',
+      title: "Closing workspace 'alpha' did not finish",
+      completed: [],
+      attempted: "Close workspace 'alpha'",
+    })
     expect(refreshItems).toHaveBeenCalledTimes(1)
     expect(backend.commands).toEqual([])
   })
@@ -451,7 +453,7 @@ describe('close outcomes (DEV-341)', () => {
     expect.assertions(1)
 
     try {
-      await handleKillSession(liveItem('a', 'alpha'), backend, failingRefresh)
+      await handleKillSession(planOf(liveItem('a', 'alpha')), backend, failingRefresh)
     } catch (cause) {
       expect(cause).toBe(defect)
     }

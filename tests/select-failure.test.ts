@@ -58,6 +58,7 @@ function handlersFor(runner: CommandRunner, showMessage: (message: string) => vo
     renamedValue: '',
     launchPreview: INACTIVE_LAUNCH,
     rememberedSessions: mock(() => {}),
+    inventoryRevision: () => 0,
     toggleDetails: mock(() => {}),
   })
 }

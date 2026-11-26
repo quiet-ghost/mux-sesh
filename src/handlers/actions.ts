@@ -5,7 +5,6 @@ import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey, getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 import { getLastSessionTarget } from '../tmux/workflows'
 import { isFileItem } from '../files/target'
-import { CommandInterrupted, CommandTimeoutError } from '../multiplexer/command'
 import { isBackendFailure } from '../multiplexer/failure'
 import {
   ActionOutcome,
@@ -16,6 +15,7 @@ import {
 } from '../app/action-outcome'
 import { handoffOf } from '../multiplexer/focus-outcome'
 import type { BackendKind, WorkspaceRef } from '../multiplexer/types'
+import { CleanupPlan } from '../sessions/cleanup-plan'
 import {
   executeLaunchPlan,
   LaunchFollowUpFailed,
@@ -54,9 +54,9 @@ export async function handleSelect(item: Item, config: Config | null, backend: M
   await openProjectSession(item.path, requireConfig(config), backend)
 }
 
-function getKillNeighbor(item: Item, regularSessions: Item[]): Item | undefined {
+function getKillNeighbor(key: string, regularSessions: Item[]): Item | undefined {
   const sessions = regularSessions.filter(isLiveSessionItem)
-  const index = sessions.findIndex(session => getItemKey(session) === getItemKey(item))
+  const index = sessions.findIndex(session => getItemKey(session) === key)
 
   if (index < 0) return undefined
 
@@ -86,26 +86,29 @@ async function restoreFocusAfterClose(
   }
 }
 
+export interface CloseCallbacks {
+  refreshItems: () => Promise<void>
+  regularSessions: Item[]
+  rememberedSessions: (key: string | null) => void
+}
+
+// Closes the reviewed ref and nothing else: no files, worktrees, branches or other targets.
 export async function handleKillSession(
-  item: Item,
+  plan: CleanupPlan,
   backend: MultiplexerBackend,
-  callbacks: {
-    onSuccess: (message: string) => void
-    onError: (message: string) => void
-    refreshItems: () => Promise<void>
-    regularSessions: Item[]
-    rememberedSessions: (key: string | null) => void
-  }
-) {
-  if (!isLiveSessionItem(item)) {
-    callbacks.onError('Select a live session to close.')
+  callbacks: CloseCallbacks
+): Promise<ActionOutcome> {
+  const target = plan.ref
+  const noun = CleanupPlan.nounOf(target)
 
-    return
+  if (target.backend !== backend.kind) {
+    return {
+      kind: 'failed',
+      message: `Did not close ${noun} '${target.title}': it belongs to ${target.backend}, but mux-sesh is using ${backend.kind}. Nothing was closed.`,
+    }
   }
 
-  const noun = backend.kind === 'herdr' ? 'workspace' : 'session'
-  const target = getWorkspaceRef(item)
-  const neighbor = getKillNeighbor(item, callbacks.regularSessions)
+  const neighbor = getKillNeighbor(plan.key, callbacks.regularSessions)
   const prior = await backend.current().catch(() => undefined)
   const wasCurrent = prior !== undefined && prior.id === target.id
 
@@ -113,22 +116,25 @@ export async function handleKillSession(
     await backend.close(target)
   } catch (cause) {
     // An unfinished close may or may not have happened: reconcile with fresh inventory, never replay.
-    if (cause instanceof CommandTimeoutError || cause instanceof CommandInterrupted) {
-      callbacks.onError(
-        `Closing ${noun} '${item.title}' did not finish: ${cause.message} It may already be closed; the list was refreshed, so check it before trying again.`
-      )
+    if (isUncertainMutationFailure(cause)) {
       await callbacks.refreshItems()
 
-      return
+      return {
+        kind: 'unknown',
+        title: `Closing ${noun} '${target.title}' did not finish`,
+        completed: [],
+        attempted: `Close ${noun} '${target.title}'`,
+        reason: reasonOf(cause),
+        next: `It may already be closed. The list was refreshed; check it before closing again. Nothing else was closed.`,
+      }
     }
 
     if (!isBackendFailure(cause)) throw cause
 
-    callbacks.onError(
-      `Could not close ${noun} '${item.title}': ${cause.message} Nothing was closed.`
-    )
-
-    return
+    return {
+      kind: 'failed',
+      message: `Could not close ${noun} '${target.title}': ${cause.message} Nothing was closed.`,
+    }
   }
 
   callbacks.rememberedSessions(neighbor ? getItemKey(neighbor) : null)
@@ -140,17 +146,20 @@ export async function handleKillSession(
     : prior
 
   const restoreFailure = await restoreFocusAfterClose(backend, wanted)
-  const closed = `${noun === 'workspace' ? 'Workspace' : 'Session'} '${item.title}' closed`
-
-  if (restoreFailure) {
-    callbacks.onError(
-      `${closed}, but focus could not return to '${restoreFailure.title}': ${restoreFailure.reason}`
-    )
-  } else {
-    callbacks.onSuccess(closed)
-  }
-
   await callbacks.refreshItems()
+
+  const closed = `${capitalized(noun)} '${target.title}' closed`
+
+  if (!restoreFailure) return { kind: 'completed', message: closed }
+
+  return {
+    kind: 'partial',
+    title: `${closed}, but focus did not return`,
+    completed: [`Closed ${noun} '${target.title}'`],
+    failed: `Returning focus to '${restoreFailure.title}': ${restoreFailure.reason}`,
+    next: `Nothing else was closed. Pick a ${noun} from the list to continue.`,
+    retry: { kind: 'none' },
+  }
 }
 
 export type RenameOutcome =

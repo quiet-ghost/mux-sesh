@@ -17,6 +17,7 @@ import type { FocusOutcome, WorkspaceRef } from '../multiplexer/types'
 import type { LaunchPreview } from '../sessions/launch-plan'
 import { requestShutdown } from '../util/shutdown'
 import { movePinAfterRename } from '../config/pinned-sessions'
+import { CleanupPlan } from '../sessions/cleanup-plan'
 import { applyEditorSetting, applyOptionSetting, getSettingEditorTitle } from '../settings'
 import {
   handleEditTarget as actionHandleEditTarget,
@@ -54,10 +55,14 @@ interface NewSessionHandlerOptions extends Pick<
   showOutcome: (report: OperationReport) => void
 }
 
-interface KillHandlerOptions extends SharedHandlerOptions {
-  setPendingKillSessionName: (sessionName: string | null) => void
+interface ReviewedCloseOptions extends OutcomePresenter {
+  backend: MultiplexerBackend | null
+  sessionItems: Item[]
   regularSessions: Item[]
+  inventoryRevision: () => number
   rememberedSessions: (key: string | null) => void
+  refreshItems: () => Promise<void>
+  closeModal: () => void
 }
 
 interface SettingsHandlerOptions {
@@ -73,20 +78,31 @@ interface SettingsHandlerOptions {
   showOutcome: (report: OperationReport) => void
 }
 
-export async function handleKillSessionWithFeedback(
-  item: Item,
-  options: KillHandlerOptions
+// The review closes first, so a second Enter cannot confirm it twice. The stored ref is closed
+// only if the inventory on screen still shows the target as it was reviewed.
+export async function handleReviewedCloseWithFeedback(
+  plan: CleanupPlan,
+  options: ReviewedCloseOptions
 ): Promise<void> {
-  options.setPendingKillSessionName(null)
+  options.closeModal()
 
   if (!options.backend) return
-  await actionHandleKillSession(item, options.backend, {
-    onSuccess: msg => options.showMessage(msg),
-    onError: msg => options.showMessage(msg, 3000),
-    refreshItems: () => options.refreshItems(),
+
+  const check = CleanupPlan.recheck(plan, options.sessionItems, options.inventoryRevision())
+
+  if (check.kind === 'changed') {
+    options.showMessage(check.message, 5000)
+
+    return
+  }
+
+  const outcome = await actionHandleKillSession(check.plan, options.backend, {
+    refreshItems: options.refreshItems,
     regularSessions: options.regularSessions,
     rememberedSessions: options.rememberedSessions,
   })
+
+  ActionOutcome.present(outcome, options)
 }
 
 export async function handleSelectItem(
@@ -459,6 +475,7 @@ interface CreateAppHandlersOptions extends NewSessionHandlerOptions, SharedHandl
   renamedValue: string
   launchPreview: LaunchPreview
   rememberedSessions: (key: string | null) => void
+  inventoryRevision: () => number
   toggleDetails: () => void
 }
 
@@ -473,12 +490,17 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     refreshItems: options.refreshItems,
   }
 
-  async function handleKillSessionWrapper(item: Item) {
-    await handleKillSessionWithFeedback(item, {
-      ...sharedOptions,
-      setPendingKillSessionName: options.setPendingKillSessionName,
+  async function confirmCloseReview(plan: CleanupPlan) {
+    await handleReviewedCloseWithFeedback(plan, {
+      backend: options.backend,
+      sessionItems: options.sessionItems,
       regularSessions: options.regularSessions,
+      inventoryRevision: options.inventoryRevision,
       rememberedSessions: options.rememberedSessions,
+      refreshItems: () => options.refreshItems(),
+      closeModal: options.closeModal,
+      showMessage: options.showMessage,
+      showOutcome: options.showOutcome,
     })
   }
 
@@ -613,7 +635,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
   }
 
   return {
-    handleKillSessionWrapper,
+    confirmCloseReview,
     handleSelectWrapper,
     handleLastSessionWrapper,
     handleRootSessionWrapper,

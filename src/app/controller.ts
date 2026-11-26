@@ -10,7 +10,7 @@ import { useAppModalState } from './modal-state'
 import { openOutcomeModal } from './modals'
 import { OptionPicker } from './option-picker'
 import { createAppRuntime } from './runtime'
-import { createAppHandlers, handleKillSessionWithFeedback, type LaunchGuard } from './handlers'
+import { createAppHandlers, type LaunchGuard } from './handlers'
 import { useSessionInventory } from './session-inventory'
 import { useAppStartup } from './state'
 import { useEffectRuntime } from './use-effect-runtime'
@@ -212,22 +212,8 @@ export function useAppController(invocationCwd: string) {
     closeModal,
   } = createAppControls({
     config,
-    pendingKillSessionName,
-    handleKillSession: item =>
-      handleKillSessionWithFeedback(item, {
-        backend,
-        config,
-        items,
-        sessionItems,
-        cursor,
-        showMessage,
-        refreshItems,
-        setPendingKillSessionName,
-        regularSessions,
-        rememberedSessions: (key: string | null) => {
-          lastSessionSelectionRef.current = key
-        },
-      }),
+    sessionItems,
+    inventoryRevision: () => inventory.revision(),
     setPendingKillSessionName,
     setRenameTarget,
     setModalInputValue,
@@ -249,7 +235,7 @@ export function useAppController(invocationCwd: string) {
   )
 
   const {
-    handleKillSessionWrapper,
+    confirmCloseReview,
     handleSelectWrapper,
     handleLastSessionWrapper,
     handleRootSessionWrapper,
@@ -277,6 +263,7 @@ export function useAppController(invocationCwd: string) {
     rememberedSessions: (key: string | null) => {
       lastSessionSelectionRef.current = key
     },
+    inventoryRevision: () => inventory.revision(),
     agentSessions,
     selectedPrimaryItem,
     sessionCandidateItems,
@@ -342,6 +329,7 @@ export function useAppController(invocationCwd: string) {
     handleRenameSubmit,
     handleNewSessionSubmit,
     handleOutcomeRetry,
+    confirmCloseReview,
     onDefect: requestFatalShutdown,
     isOptionSetting,
     openSettingOptions,
@@ -355,7 +343,8 @@ export function useAppController(invocationCwd: string) {
     openSettingsModal,
     refreshItems,
     handleSelect: handleSelectWrapper,
-    handleKillSession: handleKillSessionWrapper,
+    // An item never closes directly: the only item-level close entry point opens its review.
+    handleKillSession: async item => requestKillSession(item),
     handleLastSession: handleLastSessionWrapper,
     handleRootSession: handleRootSessionWrapper,
     handleEditTarget: handleEditTargetWrapper,

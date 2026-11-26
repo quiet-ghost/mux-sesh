@@ -54,6 +54,8 @@ interface SessionScreenHarness {
   typeText(text: string): Promise<void>
   replaceQuery(text: string): Promise<void>
   settle(): Promise<void>
+  // Reloads inventory as a manual refresh would, then lets React settle.
+  refresh(): Promise<void>
   resize(width: number, height: number): Promise<void>
   emitPalette(colors: TerminalColors): Promise<void>
   destroy(): void
@@ -72,6 +74,11 @@ interface SessionFixture {
   resolveTheme: ThemeResolver
   themeFollow?: SubscribeThemeFollowOptions
   launcher: LauncherQueryServices
+  handle: FixtureHandle
+}
+
+interface FixtureHandle {
+  refresh?: () => Promise<void>
 }
 
 interface SessionScreenData {
@@ -178,6 +185,10 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     setMessage: core.setMessage,
   })
 
+  useEffect(() => {
+    fixture.handle.refresh = () => refreshItems()
+  })
+
   const {
     setAppMode,
     setItems,
@@ -250,7 +261,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     ...core,
     ...modal,
     config,
-    handleKillSession: unsupportedFixtureAction,
+    inventoryRevision: () => inventory.revision(),
   })
 
   const controls = {
@@ -295,6 +306,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     renamedValue: '',
     launchPreview,
     rememberedSessions: () => {},
+    inventoryRevision: () => inventory.revision(),
   })
 
   useAppKeyboard({
@@ -327,6 +339,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     handleRenameSubmit: unsupportedFixtureAction,
     handleNewSessionSubmit: handlers.handleNewSessionSubmit,
     handleOutcomeRetry: handlers.handleOutcomeRetry,
+    confirmCloseReview: handlers.confirmCloseReview,
     onDefect: cause => {
       fixture.defects.push(cause)
     },
@@ -460,6 +473,7 @@ export async function renderSessionScreen(
   }
 
   const mounted: MountedRenderer = {}
+  const handle: FixtureHandle = {}
 
   try {
     await act(async () => {
@@ -478,6 +492,7 @@ export async function renderSessionScreen(
             resolveTheme: data.resolveTheme ?? resolveTheme,
             themeFollow: data.themeFollow,
             launcher,
+            handle,
           }}
         />,
         { ...options, consoleMode: 'disabled', exitOnCtrlC: false, kittyKeyboard: true }
@@ -531,6 +546,15 @@ export async function renderSessionScreen(
       await act(async () => input.setText(text))
     },
     async settle(): Promise<void> {
+      await act(async () => {
+        for (let tick = 0; tick < 10; tick++) await Bun.sleep(0)
+      })
+    },
+    async refresh(): Promise<void> {
+      const { refresh } = handle
+
+      if (!refresh) throw new Error('The session-screen fixture has not mounted its refresh handle')
+      await act(async () => refresh())
       await act(async () => {
         for (let tick = 0; tick < 10; tick++) await Bun.sleep(0)
       })

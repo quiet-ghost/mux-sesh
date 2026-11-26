@@ -134,9 +134,11 @@ test('a defect while selecting reaches crash recovery instead of escaping as an 
 test('a synchronous defect inside a key handler reaches crash recovery', async () => {
   screen = await renderSessionScreen({ width: 120, height: 36 }, { workspaces: [alpha] })
 
-  // The fixture's close handler throws synchronously, so confirming a close throws inside the key callback.
-  await screen.pressKey('d')
-  await screen.pressKey('d')
+  // The fixture's rename submit throws synchronously, so confirming a rename throws inside the key
+  // callback. (Before DEV-343 this used d d, which no longer closes anything without a review.)
+  await screen.pressKey('x', { ctrl: true })
+  await screen.pressKey('r')
+  await screen.pressKey('RETURN')
 
   expect(screen.defects).toHaveLength(1)
   expect(String(screen.defects[0])).toContain('does not implement that action')

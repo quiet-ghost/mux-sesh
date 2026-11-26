@@ -482,7 +482,8 @@ describe('app state helpers', () => {
 })
 
 describe('app controls', () => {
-  test('requests kill on first press and confirms on second press', async () => {
+  // Before DEV-343 a second press closed immediately; now every request only opens a review.
+  test('requesting a kill opens a review of the exact ref and never closes on a second press', () => {
     const item: Item = {
       title: 'alpha',
       desc: '',
@@ -492,9 +493,10 @@ describe('app controls', () => {
       backend: 'tmux',
       sessionId: 'alpha',
     }
-    const baseOptions = {
+    const options = {
       config: getDefaultConfig('/home/tester'),
-      handleKillSession: mock(async () => {}),
+      sessionItems: [item],
+      inventoryRevision: () => 7,
       setPendingKillSessionName: mock(() => {}),
       setRenameTarget: mock(() => {}),
       setModalInputValue: mock(() => {}),
@@ -509,28 +511,67 @@ describe('app controls', () => {
       setSettingEditorValue: mock(() => {}),
     }
 
-    const firstControls = createAppControls({
-      ...baseOptions,
-      pendingKillSessionName: null,
-    })
-    firstControls.requestKillSession(item)
-    expect(baseOptions.setPendingKillSessionName).toHaveBeenCalledWith('tmux:alpha')
+    const controls = createAppControls(options)
+    controls.requestKillSession(item)
+    controls.requestKillSession(item)
 
-    const secondControls = createAppControls({
-      ...baseOptions,
-      pendingKillSessionName: 'tmux:alpha',
+    const review = {
+      type: 'close-review',
+      plan: {
+        key: 'tmux:alpha',
+        ref: { backend: 'tmux', id: 'alpha', title: 'alpha' },
+        path: '/tmp/alpha',
+        units: undefined,
+        warnings: [],
+        revision: 7,
+      },
+    }
+
+    expect(options.setModalState).toHaveBeenCalledTimes(2)
+    expect(options.setModalState).toHaveBeenNthCalledWith(1, review)
+    expect(options.setModalState).toHaveBeenNthCalledWith(2, review)
+  })
+
+  test('requesting a kill of an agent pane is refused instead of widening to its workspace', () => {
+    const pane: Item = {
+      title: 'opencode-api',
+      desc: '',
+      path: '/tmp/api',
+      isSession: true,
+      itemKind: 'herdr',
+      backend: 'herdr',
+      sessionId: 'w1',
+      target: { kind: 'agent', tabId: 'w1:t1', paneId: 'w1:p1' },
+    }
+    const setModalState = mock(() => {})
+    const controls = createAppControls({
+      config: getDefaultConfig('/home/tester'),
+      sessionItems: [pane],
+      inventoryRevision: () => 1,
+      setPendingKillSessionName: mock(() => {}),
+      setRenameTarget: mock(() => {}),
+      setModalInputValue: mock(() => {}),
+      setModalState,
+      setCommandsSearchQuery: mock(() => {}),
+      setCommandsCursor: mock(() => {}),
+      setSettingEditorError: mock(() => {}),
+      setSettingsSearchQuery: mock(() => {}),
+      setSettingsCursor: mock(() => {}),
+      setSettingOptionsSearchQuery: mock(() => {}),
+      setSettingOptionsCursor: mock(() => {}),
+      setSettingEditorValue: mock(() => {}),
     })
-    secondControls.requestKillSession(item)
-    await Promise.resolve()
-    expect(baseOptions.handleKillSession).toHaveBeenCalledWith(item)
+
+    expect(() => controls.requestKillSession(pane)).toThrow(ActionRefused)
+    expect(setModalState).not.toHaveBeenCalled()
   })
 
   test('opening rename clears pending kill and seeds modal state', () => {
     const item: Item = { title: 'beta', desc: '', path: '/tmp/beta', isSession: true }
     const options = {
       config: getDefaultConfig('/home/tester'),
-      pendingKillSessionName: null,
-      handleKillSession: mock(async () => {}),
+      sessionItems: [],
+      inventoryRevision: () => 0,
       setPendingKillSessionName: mock(() => {}),
       setRenameTarget: mock(() => {}),
       setModalInputValue: mock(() => {}),
@@ -626,6 +667,7 @@ describe('app handler factory', () => {
       renamedValue: 'alpha-2',
       launchPreview: INACTIVE_LAUNCH,
       rememberedSessions: mock(() => {}),
+      inventoryRevision: () => 0,
       toggleDetails: mock(() => {}),
     })
 
@@ -693,6 +735,7 @@ describe('app handler factory', () => {
       renamedValue: 'alpha',
       launchPreview: INACTIVE_LAUNCH,
       rememberedSessions: mock(() => {}),
+      inventoryRevision: () => 0,
       toggleDetails: mock(() => {}),
     })
 
