@@ -209,6 +209,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
   })
 
   useAppKeyboard({
+    active: true,
     ...core,
     ...modal,
     ...derived,

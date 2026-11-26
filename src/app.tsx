@@ -4,6 +4,8 @@ import { AppModalsLayer } from './app/modals-layer'
 import { AppScreen } from './app/screen'
 import { ThemeProvider } from './styles/theme'
 import { ErrorScreen } from './ui/ErrorScreen'
+import { StartupErrorScreen } from './ui/StartupErrorScreen'
+import { requestShutdown } from './util/shutdown'
 import { DiagnosticReport } from './util/errors'
 
 interface ErrorBoundaryState {
@@ -38,13 +40,27 @@ class RootErrorBoundary extends Component<
   }
 }
 
+function quitAfterStartupFailure(): void {
+  requestShutdown(1)
+}
+
 function AppTree({ invocationCwd }: AppProps) {
-  const { theme, screenProps, modalProps } = useAppController(invocationCwd)
+  const { startup, retryStartup, theme, screenProps, modalProps } = useAppController(invocationCwd)
 
   return (
     <ThemeProvider theme={theme}>
-      <AppScreen {...screenProps} />
-      <AppModalsLayer {...modalProps} />
+      {startup.kind === 'failed' || startup.kind === 'retrying' ? (
+        <StartupErrorScreen
+          startup={startup}
+          onRetry={retryStartup}
+          onQuit={quitAfterStartupFailure}
+        />
+      ) : (
+        <>
+          <AppScreen {...screenProps} />
+          <AppModalsLayer {...modalProps} />
+        </>
+      )}
     </ThemeProvider>
   )
 }

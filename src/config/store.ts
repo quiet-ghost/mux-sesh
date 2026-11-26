@@ -17,10 +17,11 @@ export async function loadConfig(): Promise<Config> {
 
   try {
     return normalizeConfig(await file.json(), homeDir)
-  } catch (error) {
-    const detail = error instanceof Error ? ` ${error.message}` : ''
+  } catch (cause) {
+    // The parser's own message can quote file content, so it stays in the cause, not the text.
     throw new Error(
-      `Failed to parse mux-sesh config at ${configPath}. Fix the JSON or move the file aside; existing config was not overwritten.${detail}`
+      `Failed to parse mux-sesh config at ${configPath}: it is not valid JSON. Fix the JSON or move the file aside; existing config was not overwritten.`,
+      { cause }
     )
   }
 }

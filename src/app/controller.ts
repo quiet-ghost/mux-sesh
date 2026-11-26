@@ -152,14 +152,13 @@ export function useAppController(invocationCwd: string) {
     setMessage,
   })
 
-  useAppStartup(
+  const { startup, retryStartup } = useAppStartup(
     effects,
     measure,
     inventory,
     mark,
     setConfig,
     setBackend,
-    setMessage,
     setAppMode,
     setProjectSourceItems
   )
@@ -272,6 +271,7 @@ export function useAppController(invocationCwd: string) {
   })
 
   useAppKeyboard({
+    active: startup.kind === 'loading' || startup.kind === 'ready',
     appMode,
     viewMode,
     config,
@@ -372,6 +372,8 @@ export function useAppController(invocationCwd: string) {
   })
 
   return {
+    startup,
+    retryStartup,
     theme,
     resolvedTheme,
     columns,

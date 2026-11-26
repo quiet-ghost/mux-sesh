@@ -15,6 +15,8 @@ import type { CommandEntry } from '../ui/CommandsModal'
 import { AppMode, ViewMode } from '../types'
 
 interface UseAppKeyboardOptions {
+  // False while another screen (e.g. startup failure) owns the keyboard.
+  active: boolean
   appMode: AppMode
   viewMode: ViewMode
   config: Config | null
@@ -116,6 +118,8 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
   }
 
   useKeyboard(key => {
+    if (!options.active) return
+
     const keybindMode = options.config?.keybindMode || 'vim'
 
     if (
