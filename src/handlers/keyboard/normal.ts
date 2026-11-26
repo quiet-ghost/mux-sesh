@@ -13,6 +13,7 @@ import {
   openAgentsTarget,
   openLastSession,
   openRenameTarget,
+  openSelectedItem,
   openSelectedEditTarget,
   openSelectedRootSession,
   requestKillTarget,
@@ -223,11 +224,7 @@ export function handleNormalMode(
   }
 
   if (keyName === 'return') {
-    const item = getSelectedItem(ctx)
-
-    if (item) {
-      ctx.runAction(() => ctx.handleSelect(item))
-    }
+    openSelectedItem(ctx, getSelectedItem(ctx))
 
     return
   }

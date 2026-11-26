@@ -13,6 +13,7 @@ import {
 import { syncTextareaValue } from './textarea'
 import { getActionFooter, getActionKeyHint, type ActionContext } from './action-catalog'
 import type { FocusOwner } from './focus-owner'
+import { getLaunchScope } from './launch-scope'
 import { getNewSessionEnterAction, type NewSessionSteps } from './new-session-step'
 import type { DetailsInspectorState } from './inspector'
 import { AppMode, ViewMode, type Config, type Item, type ThemeColors } from '../types'
@@ -130,12 +131,14 @@ export function AppScreen({
   )
 
   const showDetailPanel = shouldShowDetailPanel(columns, appMode === AppMode.NewSession)
+  const showLaunchSummary = getLaunchScope(appMode, viewMode, selectedPrimaryItem) !== 'none'
 
   const layout = getScreenLayout({
     rows,
     columns,
     appMode,
     showDetailPanel,
+    showLaunchSummary,
     message,
     versionLabel,
   })
@@ -212,7 +215,7 @@ export function AppScreen({
               />
             )}
 
-            {appMode === AppMode.NewSession && (
+            {showLaunchSummary && (
               <NewSessionSummary preview={launchPreview} width={layout.listContentWidth} />
             )}
 

@@ -479,7 +479,7 @@ function footerAction(context: ActionContext, id: ActionId): string[] {
   return footerPart(context, id, label)
 }
 
-// What Enter on the New screen does for its current frozen launch plan, or 'apply' for an edit.
+// What Enter does for the current frozen launch plan (New, or a Projects row), or 'apply' for an edit.
 export type NewSessionAction = 'focus' | 'create' | 'clone' | 'apply' | 'none'
 
 function newSessionFooter(
@@ -492,9 +492,18 @@ function newSessionFooter(
   return [...enter, ...steps.flatMap(id => footerAction(context, id)), 'esc cancel'].join('  ')
 }
 
+// A Projects row opens through its frozen launch plan, so Enter names that plan's action; while
+// it is still planning or refused, Enter is not advertised.
+function selectFooter(context: ActionContext, enter: NewSessionAction): string[] {
+  if (context.viewMode !== ViewMode.Projects) return footerPart(context, 'select', 'select')
+
+  return enter === 'none' || enter === 'apply' ? [] : footerPart(context, 'select', enter)
+}
+
+// `enter` is what the current frozen launch plan does: New's plan, or the highlighted Projects row's.
 export function getActionFooter(
   context: ActionContext,
-  newSession: NewSessionAction = 'none',
+  enter: NewSessionAction = 'none',
   newSessionSteps: readonly NewSessionStepId[] = []
 ): string {
   const prefixLabel = context.prefixKey ? `${context.prefixKey} ...` : 'direct keys'
@@ -509,16 +518,16 @@ export function getActionFooter(
         prefixLabel,
       ].join('  ')
     case AppMode.NewSession:
-      return newSessionFooter(context, newSession, newSessionSteps)
+      return newSessionFooter(context, enter, newSessionSteps)
     case AppMode.Search:
       return [
-        ...footerPart(context, 'select', 'select'),
+        ...selectFooter(context, enter),
         ...footerAction(context, 'open-commands'),
         'esc cancel',
       ].join('  ')
     case AppMode.Normal:
       return [
-        ...footerPart(context, 'select', 'select'),
+        ...selectFooter(context, enter),
         ...footerAction(context, 'search'),
         ...footerAction(context, 'new-session'),
         ...footerAction(context, 'open-agents'),

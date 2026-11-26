@@ -260,6 +260,29 @@ describe('action catalog footer', () => {
     expect(getActionFooter(ctx)).toBe('esc cancel')
   })
 
+  test.each(MODES)('%s Projects footer names the frozen plan action for Enter', keybindMode => {
+    for (const appMode of [AppMode.Normal, AppMode.Search]) {
+      const ctx = context({
+        appMode,
+        keybindMode,
+        viewMode: ViewMode.Projects,
+        target: getActionTarget(project),
+      })
+
+      const rest = getActionFooter(ctx, 'none')
+
+      expect(getActionFooter(ctx, 'create')).toBe(`enter create  ${rest}`)
+      expect(getActionFooter(ctx, 'focus')).toBe(`enter focus  ${rest}`)
+      expect(rest).not.toContain('enter')
+      expect(getActionFooter({ ...ctx, target: { kind: 'none' } }, 'create')).toBe(
+        getActionFooter({ ...ctx, target: { kind: 'none' } })
+      )
+      expect(getActionFooter({ ...ctx, viewMode: ViewMode.Sessions }, 'create')).toStartWith(
+        'enter select  '
+      )
+    }
+  })
+
   test('advertises available keys for a live session', () => {
     const ctx = context({ agentCount: 1, target: getActionTarget(session) })
 

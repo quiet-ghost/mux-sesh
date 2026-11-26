@@ -17,6 +17,7 @@ import { FocusOwner } from '../../src/app/focus-owner'
 import { createAppHandlers, handleSelectItem, type LaunchGuard } from '../../src/app/handlers'
 import { useDetailsInspector } from '../../src/app/inspector'
 import { useAppKeyboard } from '../../src/app/keyboard'
+import { getLaunchScope, useLaunchRequest } from '../../src/app/launch-scope'
 import {
   LAUNCHER_QUERY_SERVICES,
   useLauncherQuery,
@@ -311,9 +312,17 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     onDefect,
   })
 
+  const launchScope = getLaunchScope(core.appMode, core.viewMode, derived.selectedPrimaryItem)
+
+  const launchRequest = useLaunchRequest(
+    launchScope,
+    newSession.request,
+    derived.selectedPrimaryItem
+  )
+
   const launchPreview = useLaunchPreview({
-    active: core.appMode === AppMode.NewSession,
-    request: newSession.request,
+    active: launchScope !== 'none',
+    request: launchRequest,
     config,
     backend: backend.kind,
     invocationCwd: fixture.invocationCwd,
@@ -357,6 +366,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     config,
     isOptionSetting,
     handleSelect: item => handleSelectItem(item, config, backend),
+    launchPlanned: handlers.handleNewSessionSubmit,
     executeCommand: command =>
       executeAppCommand(command, {
         keybindMode: config.keybindMode ?? 'vim',

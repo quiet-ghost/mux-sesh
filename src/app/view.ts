@@ -41,7 +41,7 @@ const DETAIL_PANEL_SHARE = 0.4
 const DETAIL_PANEL_GAP_COLUMNS = 1
 const HEADER_ROWS = 2
 const SEARCH_INPUT_ROWS = 4
-const NEW_SESSION_SUMMARY_ROWS = 2
+const LAUNCH_SUMMARY_ROWS = 2
 const FOOTER_HINT_ROWS = 1
 const FOOTER_PADDING_COLUMNS = 1
 const VERSION_BADGE_GAP_COLUMNS = 3
@@ -52,6 +52,8 @@ export interface ScreenLayoutInput {
   columns: number
   appMode: AppMode
   showDetailPanel: boolean
+  // The row naming what Enter's frozen launch plan will do.
+  showLaunchSummary: boolean
   message: string
   versionLabel: string
 }
@@ -69,6 +71,7 @@ export function getScreenLayout({
   columns,
   appMode,
   showDetailPanel,
+  showLaunchSummary,
   message,
   versionLabel,
 }: ScreenLayoutInput): ScreenLayout {
@@ -85,11 +88,8 @@ export function getScreenLayout({
   )
 
   const searchRows =
-    appMode === AppMode.Search
-      ? SEARCH_INPUT_ROWS
-      : appMode === AppMode.NewSession
-        ? SEARCH_INPUT_ROWS + NEW_SESSION_SUMMARY_ROWS
-        : 0
+    (appMode === AppMode.Search || appMode === AppMode.NewSession ? SEARCH_INPUT_ROWS : 0) +
+    (showLaunchSummary ? LAUNCH_SUMMARY_ROWS : 0)
 
   const messageRows = message ? getWrappedRowCount(message, footerWidth) : 0
 

@@ -612,7 +612,7 @@ async function launchClone(
   return afterCheckout(checkout.success, await runSessionPlan(session, backend))
 }
 
-// Enter runs the plan the New screen shows; it never re-resolves rules or inventory first.
+// Enter runs the plan New or the Projects view shows; it never re-resolves rules or inventory first.
 export async function handleNewSessionSubmit(
   preview: LaunchPreview,
   backend: MultiplexerBackend,

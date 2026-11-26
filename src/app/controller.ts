@@ -23,6 +23,7 @@ import { requestFatalShutdown } from '../util/shutdown'
 import { getSettingEditorTitle, isOptionSetting } from '../settings'
 import { useLaunchPreview } from '../ui/launch-preview'
 import { CLONE_SERVICES } from '../sessions/clone-plan'
+import { getLaunchScope, useLaunchRequest } from './launch-scope'
 import { useLauncherQuery } from './launcher-query'
 import { getNewSessionStepControls, useNewSessionSteps } from './new-session-step'
 
@@ -212,9 +213,12 @@ export function useAppController(invocationCwd: string) {
     onDefect: requestFatalShutdown,
   })
 
+  const launchScope = getLaunchScope(appMode, viewMode, selectedPrimaryItem)
+  const launchRequest = useLaunchRequest(launchScope, newSession.request, selectedPrimaryItem)
+
   const launchPreview = useLaunchPreview({
-    active: appMode === AppMode.NewSession,
-    request: newSession.request,
+    active: launchScope !== 'none',
+    request: launchRequest,
     config,
     backend: backend?.kind,
     invocationCwd,
@@ -391,6 +395,7 @@ export function useAppController(invocationCwd: string) {
     openSettingsModal,
     refreshItems,
     handleSelect: handleSelectWrapper,
+    launchPlanned: handleNewSessionSubmit,
     handleLastSession: handleLastSessionWrapper,
     handleRootSession: handleRootSessionWrapper,
     handleEditTarget: handleEditTargetWrapper,

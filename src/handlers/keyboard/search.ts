@@ -11,6 +11,7 @@ import {
   openAgentsTarget,
   openLastSession,
   openRenameTarget,
+  openSelectedItem,
   openSelectedRootSession,
   requestKillTarget,
   toggleMarkTarget,
@@ -117,13 +118,10 @@ export function handleSearchMode(
   }
 
   switch (keyName) {
-    case 'return': {
-      const item = ctx.items[clampCursorIndex(ctx.items.length, ctx.cursor)]
-
-      if (item) ctx.runAction(() => ctx.handleSelect(item))
+    case 'return':
+      openSelectedItem(ctx, ctx.items[clampCursorIndex(ctx.items.length, ctx.cursor)])
 
       return true
-    }
 
     case 'down':
       ctx.setCursor(cursor => clampCursorIndex(ctx.items.length, cursor + 1))

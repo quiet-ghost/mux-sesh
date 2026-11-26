@@ -47,6 +47,8 @@ export interface KeyboardHandlerContext {
   togglePinnedSession: (sessionName: string) => Promise<void>
   // No-op left only for new-session.ts, which another slice owns; the pending-kill state is gone.
   handleSelect: (item: Item) => Promise<void>
+  // Runs the frozen launch plan for the highlighted Projects row, the one the footer names.
+  launchPlanned: () => Promise<void>
   handleLastSession: () => Promise<void>
   handleRootSession: (item?: Item) => Promise<void>
   handleEditTarget: (item?: Item) => Promise<void>
@@ -99,6 +101,19 @@ export function getSelectedItem(ctx: KeyboardHandlerContext): Item | undefined {
   return ctx.viewMode === ViewMode.Sessions
     ? ctx.regularSessions[ctx.cursor]
     : ctx.items[ctx.cursor]
+}
+
+// A Projects row opens exactly as New would plan it; every other row opens directly.
+export function openSelectedItem(ctx: KeyboardHandlerContext, item: Item | undefined): void {
+  if (!item) return
+
+  if (ctx.viewMode === ViewMode.Projects) {
+    ctx.runAction(ctx.launchPlanned)
+
+    return
+  }
+
+  ctx.runAction(() => ctx.handleSelect(item))
 }
 
 export function getQuickSelectItem(ctx: KeyboardHandlerContext, index: number): Item | undefined {

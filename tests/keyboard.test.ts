@@ -89,6 +89,7 @@ function createBaseContext(overrides: Partial<KeyboardHandlerContext>): BaseCont
     toggleMark: mock(() => {}),
     togglePinnedSession: mock(async () => {}),
     handleSelect: mock(async () => {}),
+    launchPlanned: mock(async () => {}),
     handleLastSession: mock(async () => {}),
     handleRootSession: mock(async () => {}),
     handleEditTarget: mock(async () => {}),
@@ -249,6 +250,51 @@ describe('keyboard shortcuts', () => {
     handleSearchMode({ name: 'return' }, ctx, 'vim')
 
     expect(ctx.handleSelect).toHaveBeenCalledWith(second)
+  })
+
+  test.each([
+    ['vim normal', 'vim', AppMode.Normal],
+    ['standard normal', 'standard', AppMode.Normal],
+    ['vim search', 'vim', AppMode.Search],
+    ['standard search', 'standard', AppMode.Search],
+  ] as const)('%s: Enter on a Projects row runs the frozen launch plan', (_, mode, appMode) => {
+    const project = createItem({ title: 'api', isSession: false, itemKind: 'project' })
+
+    const ctx = createContext({
+      appMode,
+      viewMode: ViewMode.Projects,
+      prefixActive: false,
+      items: [project],
+    })
+
+    if (appMode === AppMode.Normal) handleNormalMode({ name: 'return' }, ctx, mode)
+    else handleSearchMode({ name: 'return' }, ctx, mode)
+
+    expect(ctx.launchPlanned).toHaveBeenCalledTimes(1)
+    expect(ctx.handleSelect).not.toHaveBeenCalled()
+  })
+
+  test('Enter on an empty Projects view launches nothing', () => {
+    const ctx = createContext({
+      appMode: AppMode.Normal,
+      viewMode: ViewMode.Projects,
+      prefixActive: false,
+      items: [],
+    })
+
+    handleNormalMode({ name: 'return' }, ctx, 'vim')
+
+    expect(ctx.launchPlanned).not.toHaveBeenCalled()
+    expect(ctx.handleSelect).not.toHaveBeenCalled()
+  })
+
+  test('Enter in the Sessions view still opens the selected session directly', () => {
+    const ctx = createContext({ appMode: AppMode.Normal, prefixActive: false })
+
+    handleNormalMode({ name: 'return' }, ctx, 'vim')
+
+    expect(ctx.handleSelect).toHaveBeenCalledWith(ctx.regularSessions[0])
+    expect(ctx.launchPlanned).not.toHaveBeenCalled()
   })
 
   test('opens settings from agents mode with comma in vim mode', () => {

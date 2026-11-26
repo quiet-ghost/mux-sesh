@@ -78,6 +78,7 @@ interface UseAppKeyboardOptions {
   openSettingsModal: () => void
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config | null) => Promise<void>
   handleSelect: (item: Item) => Promise<void>
+  launchPlanned: () => Promise<void>
   handleLastSession: () => Promise<void>
   handleRootSession: (item?: Item) => Promise<void>
   handleEditTarget: (item?: Item) => Promise<void>
@@ -131,6 +132,7 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     toggleMark: options.toggleMark,
     togglePinnedSession: options.togglePinnedSession,
     handleSelect: options.handleSelect,
+    launchPlanned: options.launchPlanned,
     handleLastSession: options.handleLastSession,
     handleRootSession: options.handleRootSession,
     handleEditTarget: options.handleEditTarget,
