@@ -6,14 +6,14 @@ import { annotateProjectItemsWithSessionLinks } from '../projects/session-links'
 import { filterAndSortItems } from '../search'
 import {
   combineFileSearchResults,
+  createFileSearchScope,
   FileSearchUnavailableError,
   isFileSearchFailure,
-  searchFilesAndDirectories,
-  warmFileSearch,
+  type FileSearchScope,
 } from '../search/fff'
 import { AppMode, type Config, type Item } from '../types'
 import { isGitHubURL } from '../util/github'
-import { measure } from '../util/perf'
+import { mark, measure } from '../util/perf'
 import { requestFatalShutdown } from '../util/shutdown'
 import { loadSessionCandidateItems } from './data'
 
@@ -22,8 +22,10 @@ const FILE_SEARCH_DEBOUNCE_MS = 120
 export interface LauncherQueryServices {
   readonly debounceMs: number
   readonly filterItems: (items: Item[], query: string) => Item[]
-  readonly searchFiles: (query: string, config: Config) => Promise<Item[]>
-  readonly warmFiles: (config: Config) => Promise<void>
+  // Each query owner opens one scope and owns the native finders it creates.
+  readonly openFileSearch: () => FileSearchScope
+  // Time a synchronous native search spent on a result that was discarded as stale.
+  readonly onDiscardedSearch: (nativeMs: number) => void
   readonly loadCandidates: (config: Config, backend: MultiplexerBackend) => Promise<Item[]>
   readonly linkSessions: (items: Item[], liveSessions: Item[], config: Config) => Promise<Item[]>
   readonly onDefect: (cause: unknown) => void
@@ -32,8 +34,8 @@ export interface LauncherQueryServices {
 export const LAUNCHER_QUERY_SERVICES: LauncherQueryServices = {
   debounceMs: FILE_SEARCH_DEBOUNCE_MS,
   filterItems: filterAndSortItems,
-  searchFiles: searchFilesAndDirectories,
-  warmFiles: warmFileSearch,
+  openFileSearch: () => createFileSearchScope(),
+  onDiscardedSearch: nativeMs => mark(`fileSearch:discarded ${nativeMs.toFixed(1)}ms`),
   loadCandidates: (config, backend) => loadSessionCandidateItems(config, measure, backend),
   linkSessions: annotateProjectItemsWithSessionLinks,
   onDefect: requestFatalShutdown,
@@ -93,6 +95,13 @@ function createLauncherQuery(
   let published: Item[] | undefined
   let selectedKey: string | undefined
   let reportedFailure: string | undefined
+  let files: FileSearchScope | undefined
+
+  function fileSearch(): FileSearchScope {
+    files ??= services.openFileSearch()
+
+    return files
+  }
 
   function localResults(source: Item[], query: string): Item[] {
     if (local?.source === source && local.query === query) return local.items
@@ -140,6 +149,15 @@ function createLauncherQuery(
     if (recovered) latest.current.setMessage(current => (current === recovered ? '' : current))
   }
 
+  // The native search already ran synchronously; a stale result only costs its measured time.
+  function discarded(started: number, nativeMs: number): boolean {
+    if (started === generation) return false
+
+    services.onDiscardedSearch(nativeMs)
+
+    return true
+  }
+
   function fail(cause: unknown, current: boolean): void {
     if (disposed) return
 
@@ -180,7 +198,19 @@ function createLauncherQuery(
 
     async search(query: string, config: Config, started: number): Promise<void> {
       try {
-        const found = await services.searchFiles(query, config)
+        const outcome = await fileSearch().search(query, config)
+
+        if (disposed || outcome.kind === 'disposed' || outcome.kind === 'disabled') return
+
+        if (outcome.kind === 'failed') {
+          fail(outcome.failure, started === generation)
+
+          return
+        }
+
+        if (discarded(started, outcome.nativeMs)) return
+
+        const found = outcome.items
 
         const linked =
           found.length === 0
@@ -191,7 +221,7 @@ function createLauncherQuery(
                 config
               )
 
-        if (disposed || started !== generation) return
+        if (disposed || discarded(started, outcome.nativeMs)) return
 
         recover()
 
@@ -204,9 +234,9 @@ function createLauncherQuery(
       }
     },
 
-    async warm(config: Config): Promise<void> {
+    async warm(): Promise<void> {
       try {
-        await services.warmFiles(config)
+        await fileSearch().warm()
       } catch (cause) {
         // Warm-up is best effort; the next search reports an expected failure for its query.
         if (!disposed && !isFileSearchFailure(cause)) services.onDefect(cause)
@@ -250,6 +280,7 @@ function createLauncherQuery(
     dispose(): void {
       disposed = true
       generation++
+      files?.dispose()
     },
   }
 }
@@ -284,7 +315,7 @@ export function useLauncherQuery(
     const started = owner.begin()
 
     if (!query || isGitHubURL(query)) {
-      owner.warm(config).catch(services.onDefect)
+      owner.warm().catch(services.onDefect)
 
       return () => owner.cancel(started)
     }

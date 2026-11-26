@@ -1,6 +1,6 @@
 import { basename, join } from 'path'
 import { homedir } from 'os'
-import type { FileFinder, MixedSearchResult } from '@ff-labs/fff-bun'
+import type { MixedSearchResult } from '@ff-labs/fff-bun'
 import { scoreSearchItems } from './index'
 import type { Config, Item } from '../types'
 
@@ -42,15 +42,23 @@ export function isFileSearchFailure(cause: unknown): cause is Error {
   )
 }
 
-interface FileSearchState {
-  module?: FffModule | null
-  unavailable?: FileSearchUnavailableError
-  finders: Map<string, Promise<FileFinder | null>>
+export type NativeResult<T> =
+  { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: string }
+
+// One root's native finder. `mixedSearch` is synchronous: nothing can cancel it once called.
+export interface NativeFinder {
+  mixedSearch(
+    query: string,
+    options: { readonly pageSize: number }
+  ): NativeResult<MixedSearchResult>
+  waitForScan(timeoutMs: number): Promise<NativeResult<boolean>>
+  destroy(): void
 }
 
-const state: FileSearchState = {
-  finders: new Map(),
-}
+export type NativeFileSearch =
+  | { readonly kind: 'disabled' }
+  | { readonly kind: 'unavailable'; readonly failure: FileSearchUnavailableError }
+  | { readonly kind: 'ready'; readonly create: (root: string) => NativeResult<NativeFinder> }
 
 function isFileSearchDisabled(): boolean {
   const flag = process.env.MUX_SESH_DISABLE_FFF?.toLowerCase()
@@ -58,71 +66,48 @@ function isFileSearchDisabled(): boolean {
   return flag === '1' || flag === 'true'
 }
 
-async function loadFffModule(): Promise<FffModule | null> {
-  if (state.module !== undefined) {
-    return state.module
-  }
+async function importNativeFileSearch(): Promise<NativeFileSearch> {
+  if (isFileSearchDisabled()) return { kind: 'disabled' }
 
-  if (isFileSearchDisabled()) {
-    state.module = null
-
-    return null
-  }
+  let loaded: FffModule
 
   try {
-    const loaded = await import('@ff-labs/fff-bun')
-
-    if (loaded.FileFinder.isAvailable()) {
-      state.module = loaded
-    } else {
-      state.module = null
-      state.unavailable = new FileSearchUnavailableError(
-        'the native library is not available on this platform'
-      )
-    }
+    loaded = await import('@ff-labs/fff-bun')
   } catch (cause) {
-    state.module = null
-    state.unavailable = new FileSearchUnavailableError('the native library could not be loaded', {
-      cause,
-    })
+    return {
+      kind: 'unavailable',
+      failure: new FileSearchUnavailableError('the native library could not be loaded', { cause }),
+    }
   }
 
-  return state.module
+  if (!loaded.FileFinder.isAvailable()) {
+    return {
+      kind: 'unavailable',
+      failure: new FileSearchUnavailableError(
+        'the native library is not available on this platform'
+      ),
+    }
+  }
+
+  return {
+    kind: 'ready',
+    create: root =>
+      loaded.FileFinder.create({
+        basePath: root,
+        disableMmapCache: true,
+        disableContentIndexing: true,
+        enableHomeDirScanning: root === homedir(),
+      }),
+  }
 }
 
-async function getFinder(root: string): Promise<FileFinder | null> {
-  const cached = state.finders.get(root)
+let nativeFileSearch: Promise<NativeFileSearch> | undefined
 
-  if (cached) {
-    return cached
-  }
+// The native library loads once per process; disabled and unavailable stay explicit outcomes.
+export function loadNativeFileSearch(): Promise<NativeFileSearch> {
+  nativeFileSearch ??= importNativeFileSearch()
 
-  const created = (async () => {
-    const loaded = await loadFffModule()
-
-    if (!loaded) {
-      return null
-    }
-
-    const made = loaded.FileFinder.create({
-      basePath: root,
-      disableMmapCache: true,
-      disableContentIndexing: true,
-      enableHomeDirScanning: root === homedir(),
-    })
-
-    if (!made.ok) {
-      return null
-    }
-
-    await made.value.waitForScan(SCAN_WAIT_TIMEOUT_MS)
-
-    return made.value
-  })()
-
-  state.finders.set(root, created)
-
-  return created
+  return nativeFileSearch
 }
 
 export function mapMixedResultToScoredItems(root: string, result: MixedSearchResult): ScoredItem[] {
@@ -212,71 +197,187 @@ export function combineFileSearchResults(
   return [...scored.map(result => result.item), ...typoOnlyItems]
 }
 
-async function searchRoot(root: string, query: string, limit: number): Promise<ScoredItem[]> {
-  const finder = await getFinder(root)
+export class FileSearchFailedError extends Error {
+  readonly _tag = 'FileSearchFailedError'
 
-  if (!finder) {
-    return []
+  constructor(reason: string) {
+    super(reason)
+    this.name = 'FileSearchFailedError'
   }
-
-  const result = finder.mixedSearch(query, { pageSize: limit })
-
-  if (!result.ok) {
-    return []
-  }
-
-  return mapMixedResultToScoredItems(root, result.value)
 }
 
-export async function isFileSearchAvailable(): Promise<boolean> {
-  return (await loadFffModule()) !== null
+export type FileSearchOutcome =
+  | { readonly kind: 'found'; readonly items: Item[]; readonly nativeMs: number }
+  | { readonly kind: 'disabled' }
+  | { readonly kind: 'failed'; readonly failure: Error }
+  | { readonly kind: 'disposed' }
+
+export interface FileSearchScope {
+  // Loads the native library only; root finders open on the first explicit query.
+  warm(): Promise<void>
+  search(query: string, config: Config): Promise<FileSearchOutcome>
+  dispose(): void
 }
 
-export async function warmFileSearch(config: Config): Promise<void> {
-  if (!(await loadFffModule())) {
-    return
-  }
-
-  const roots = await getExistingProjectRoots(uniqueNormalizedPaths(config.projectPaths))
-  await Promise.all(roots.map(root => getFinder(root)))
+export interface FileSearchScopeDependencies {
+  readonly load: () => Promise<NativeFileSearch>
+  readonly roots: (config: Config) => Promise<string[]>
+  readonly limit: number
+  readonly scanWaitMs: number
 }
 
-export async function searchFilesAndDirectories(
-  query: string,
-  config: Config,
-  limit = DEFAULT_RESULT_LIMIT
-): Promise<Item[]> {
-  const trimmed = query.trim()
-
-  if (!trimmed) {
-    return []
-  }
-
-  if (!(await loadFffModule())) {
-    if (state.unavailable) throw state.unavailable
-
-    return []
-  }
-
-  const roots = await getExistingProjectRoots(uniqueNormalizedPaths(config.projectPaths))
-
-  if (roots.length === 0) {
-    return []
-  }
-
-  const results = await Promise.all(roots.map(root => searchRoot(root, trimmed, limit)))
-
-  return mergeScoredItems(results, limit)
+export const FILE_SEARCH_SCOPE_DEPENDENCIES: FileSearchScopeDependencies = {
+  load: loadNativeFileSearch,
+  roots: config => getExistingProjectRoots(uniqueNormalizedPaths(config.projectPaths)),
+  limit: DEFAULT_RESULT_LIMIT,
+  scanWaitMs: SCAN_WAIT_TIMEOUT_MS,
 }
 
-export async function destroyFileSearch(): Promise<void> {
-  const pending = [...state.finders.values()]
-  state.finders.clear()
-  state.module = undefined
-  state.unavailable = undefined
+type RootSearch =
+  | { readonly kind: 'found'; readonly items: ScoredItem[]; readonly nativeMs: number }
+  | { readonly kind: 'failed'; readonly reason: string }
+  | { readonly kind: 'released' }
 
-  for (const finderPromise of pending) {
-    const finder = await finderPromise.catch(() => null)
-    finder?.destroy()
+interface OwnedFinder {
+  readonly finder: NativeFinder
+  readonly scanned: Promise<NativeResult<boolean>>
+}
+
+const DISPOSED: FileSearchOutcome = { kind: 'disposed' }
+
+// Owns at most one native finder per configured root. Finders open on the first explicit query,
+// failed starts are never cached, and dispose destroys each owned finder exactly once.
+export function createFileSearchScope(
+  dependencies: FileSearchScopeDependencies = FILE_SEARCH_SCOPE_DEPENDENCIES
+): FileSearchScope {
+  const owned = new Map<string, OwnedFinder>()
+  let disposed = false
+
+  function release(root: string): void {
+    const entry = owned.get(root)
+
+    if (!entry) return
+
+    owned.delete(root)
+    entry.finder.destroy()
+  }
+
+  function open(
+    create: (root: string) => NativeResult<NativeFinder>,
+    root: string
+  ): NativeResult<OwnedFinder> {
+    const existing = owned.get(root)
+
+    if (existing) return { ok: true, value: existing }
+
+    const created = create(root)
+
+    if (!created.ok) return created
+
+    const entry = {
+      finder: created.value,
+      scanned: created.value.waitForScan(dependencies.scanWaitMs),
+    }
+
+    owned.set(root, entry)
+
+    return { ok: true, value: entry }
+  }
+
+  async function searchRoot(
+    create: (root: string) => NativeResult<NativeFinder>,
+    root: string,
+    query: string
+  ): Promise<RootSearch> {
+    const opened = open(create, root)
+
+    if (!opened.ok) {
+      return { kind: 'failed', reason: `the finder for ${root} could not start (${opened.error})` }
+    }
+
+    const entry = opened.value
+
+    try {
+      await entry.scanned
+    } catch (cause) {
+      if (!isFileSearchFailure(cause)) throw cause
+
+      if (owned.get(root) === entry) release(root)
+
+      return { kind: 'failed', reason: `the finder for ${root} could not scan (${cause.message})` }
+    }
+
+    // Released while scanning: the scope was disposed or a newer search dropped this root.
+    if (disposed || owned.get(root) !== entry) return { kind: 'released' }
+
+    const started = performance.now()
+    const result = entry.finder.mixedSearch(query, { pageSize: dependencies.limit })
+    const nativeMs = performance.now() - started
+
+    if (!result.ok) {
+      return { kind: 'failed', reason: `the search in ${root} failed (${result.error})` }
+    }
+
+    return { kind: 'found', items: mapMixedResultToScoredItems(root, result.value), nativeMs }
+  }
+
+  return {
+    async warm() {
+      if (!disposed) await dependencies.load()
+    },
+
+    async search(query, config) {
+      const trimmed = query.trim()
+
+      if (disposed) return DISPOSED
+
+      if (!trimmed) return { kind: 'found', items: [], nativeMs: 0 }
+
+      const native = await dependencies.load()
+
+      if (disposed) return DISPOSED
+
+      if (native.kind === 'disabled') return { kind: 'disabled' }
+
+      if (native.kind === 'unavailable') return { kind: 'failed', failure: native.failure }
+
+      const roots = await dependencies.roots(config)
+
+      if (disposed) return DISPOSED
+
+      const configured = new Set(roots)
+
+      for (const root of owned.keys()) {
+        if (!configured.has(root)) release(root)
+      }
+
+      const searches = await Promise.all(
+        roots.map(root => searchRoot(native.create, root, trimmed))
+      )
+
+      if (disposed) return DISPOSED
+
+      const found = searches.flatMap(search => (search.kind === 'found' ? [search] : []))
+      const reasons = searches.flatMap(search => (search.kind === 'failed' ? [search.reason] : []))
+
+      if (found.length === 0 && reasons.length > 0) {
+        return { kind: 'failed', failure: new FileSearchFailedError(reasons.join('; ')) }
+      }
+
+      return {
+        kind: 'found',
+        items: mergeScoredItems(
+          found.map(search => search.items),
+          dependencies.limit
+        ),
+        nativeMs: found.reduce((total, search) => total + search.nativeMs, 0),
+      }
+    },
+
+    dispose() {
+      disposed = true
+
+      for (const root of owned.keys()) release(root)
+    },
   }
 }

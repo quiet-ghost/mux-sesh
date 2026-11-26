@@ -359,8 +359,12 @@ export async function renderSessionScreen(
       throw cause
     },
     filterItems: data.filterItems ?? filterAndSortItems,
-    searchFiles: async () => [],
-    warmFiles: async () => {},
+    openFileSearch: () => ({
+      warm: async () => {},
+      search: async () => ({ kind: 'found', items: [], nativeMs: 0 }),
+      dispose: () => {},
+    }),
+    onDiscardedSearch: () => {},
     loadCandidates: async () => projects,
     linkSessions: async items => items,
   }
