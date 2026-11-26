@@ -130,7 +130,6 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     requestMarkedClose: options.requestMarkedClose,
     toggleMark: options.toggleMark,
     togglePinnedSession: options.togglePinnedSession,
-    clearPendingKill: () => {},
     handleSelect: options.handleSelect,
     handleLastSession: options.handleLastSession,
     handleRootSession: options.handleRootSession,

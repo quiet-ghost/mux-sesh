@@ -24,6 +24,7 @@ function createItem(overrides: Partial<Item> = {}): Item {
 
 function selectedItem(ctx: BaseContext): Item | undefined {
   if (ctx.appMode === AppMode.AgentsManage) return ctx.agentSessions[ctx.agentCursor]
+
   if (ctx.appMode === AppMode.Normal && ctx.viewMode === ViewMode.Sessions) {
     return ctx.regularSessions[ctx.cursor]
   }
@@ -87,7 +88,6 @@ function createBaseContext(overrides: Partial<KeyboardHandlerContext>): BaseCont
     requestMarkedClose: mock(async () => {}),
     toggleMark: mock(() => {}),
     togglePinnedSession: mock(async () => {}),
-    clearPendingKill: mock(() => {}),
     handleSelect: mock(async () => {}),
     handleLastSession: mock(async () => {}),
     handleRootSession: mock(async () => {}),
@@ -140,6 +140,7 @@ describe('keyboard shortcuts', () => {
     const regular = createItem({ title: 'regular-1' })
     const opencode = createItem({ title: 'opencode-1' })
     const secondRegular = createItem({ title: 'regular-2' })
+
     const ctx = createContext({
       appMode: AppMode.Normal,
       prefixActive: false,
@@ -167,6 +168,7 @@ describe('keyboard shortcuts', () => {
 
   test('enters agents manage mode from standard search prefix action', () => {
     const opencode = createItem({ title: 'opencode-main' })
+
     const ctx = createContext({
       prefixActive: true,
       agentSessions: [opencode],
@@ -186,6 +188,7 @@ describe('keyboard shortcuts', () => {
       itemKind: 'herdr',
       agentStatus: 'working',
     })
+
     const ctx = createContext({
       appMode: AppMode.AgentsManage,
       prefixActive: false,
@@ -204,11 +207,13 @@ describe('keyboard shortcuts', () => {
       sessionId: 'agents',
       target: { kind: 'agent' as const, tabId: 'agents:t1', paneId: 'agents:p1' },
     }
+
     const directCtx = createContext({
       appMode: AppMode.AgentsManage,
       prefixActive: false,
       agentSessions: [herdrAgent],
     })
+
     const prefixCtx = createContext({
       appMode: AppMode.AgentsManage,
       prefixActive: true,
@@ -224,6 +229,7 @@ describe('keyboard shortcuts', () => {
     expect(directCtx.openRenameModal).not.toHaveBeenCalled()
     expect(prefixCtx.requestKillSession).not.toHaveBeenCalled()
     expect(prefixCtx.openRenameModal).not.toHaveBeenCalled()
+
     for (const ctx of [directCtx, prefixCtx]) {
       expect(ctx.setMessage).toHaveBeenCalledWith('Close session unavailable: Close it in Herdr')
       expect(ctx.setMessage).toHaveBeenCalledWith('Rename session unavailable: Rename it in Herdr')
@@ -233,6 +239,7 @@ describe('keyboard shortcuts', () => {
   test('selects highlighted search result with Enter', () => {
     const first = createItem({ title: 'first' })
     const second = createItem({ title: 'second' })
+
     const ctx = createContext({
       prefixActive: false,
       items: [first, second],

@@ -47,7 +47,6 @@ export function handleNewSessionMode(
 
   if (isStandard && key.ctrl) {
     if (keyName === 'i') {
-      ctx.clearPendingKill()
       ctx.setAppMode(AppMode.Search)
       ctx.setViewMode(ViewMode.Sessions)
       ctx.setAllItems(ctx.sessionItems)
@@ -71,15 +70,12 @@ export function handleNewSessionMode(
   )
 
   if (opened) {
-    ctx.clearPendingKill()
     steps.open(opened)
 
     return true
   }
 
   if (keyName === 'escape') {
-    ctx.clearPendingKill()
-
     if (isStandard) {
       ctx.setAppMode(AppMode.Search)
       ctx.setViewMode(ViewMode.Sessions)
@@ -100,12 +96,10 @@ export function handleNewSessionMode(
 
   switch (keyName) {
     case 'down':
-      ctx.clearPendingKill()
       ctx.setCursor(cursor => clampCursorIndex(ctx.items.length, cursor + 1))
 
       return true
     case 'up':
-      ctx.clearPendingKill()
       ctx.setCursor(cursor => clampCursorIndex(ctx.items.length, cursor - 1))
 
       return true

@@ -46,7 +46,6 @@ export interface KeyboardHandlerContext {
   toggleMark: (item: Item) => void
   togglePinnedSession: (sessionName: string) => Promise<void>
   // No-op left only for new-session.ts, which another slice owns; the pending-kill state is gone.
-  clearPendingKill: () => void
   handleSelect: (item: Item) => Promise<void>
   handleLastSession: () => Promise<void>
   handleRootSession: (item?: Item) => Promise<void>
