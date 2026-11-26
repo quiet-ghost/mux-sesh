@@ -184,6 +184,64 @@ describe('shutdown', () => {
   })
 })
 
+async function runTeardownFixture(mode: string) {
+  const proc = Bun.spawn(
+    [process.execPath, join(import.meta.dir, 'fixtures/shutdown-teardown.tsx'), mode],
+    {
+      cwd: repoRoot,
+      stdin: 'ignore',
+      stdout: 'pipe',
+      stderr: 'pipe',
+      timeout: 5000,
+      killSignal: 'SIGKILL',
+    }
+  )
+
+  try {
+    const [exitCode, stdout, stderr] = await Promise.all([
+      proc.exited,
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+    ])
+
+    const report: unknown = JSON.parse(stdout.slice(stdout.indexOf('{')))
+
+    return { exitCode, report, stderr }
+  } finally {
+    if (proc.exitCode === null) proc.kill('SIGKILL')
+    await proc.exited
+  }
+}
+
+describe('bounded teardown', () => {
+  test('a failing renderer teardown step still destroys the renderer and unmounts the UI', async () => {
+    const { exitCode, report, stderr } = await runTeardownFixture('renderer-step')
+
+    expect(exitCode).toBe(0)
+    expect(report).toMatchObject({ destroyed: true, lifecycle: ['mounted', 'unmounted'] })
+    expect(stderr).toContain('could not fully restore the terminal')
+    expect(stderr).not.toContain('fixture-teardown-secret')
+  }, 10000)
+
+  test('a failing terminal write still releases input, keeps the exit code, and exits', async () => {
+    const { exitCode, report, stderr } = await runTeardownFixture('terminal-write')
+
+    expect(exitCode).toBe(6)
+    expect(report).toMatchObject({ destroyed: true, stdinPaused: true })
+    expect(stderr).not.toContain('fixture-teardown-secret')
+  }, 10000)
+
+  test('a fatal error whose terminal reset fails still pauses input and prints the report', async () => {
+    const { exitCode, report, stderr } = await runTeardownFixture('fatal-terminal-write')
+
+    expect(exitCode).toBe(1)
+    expect(report).toMatchObject({ destroyed: true, stdinPaused: true })
+    expect(stderr).toContain('Fatal fatal error')
+    expect(stderr).toContain('fixture fatal failure')
+    expect(stderr).not.toContain('fixture-teardown-secret')
+  }, 10000)
+})
+
 describe('terminal handoff', () => {
   async function runHandoff(mode: 'ok' | 'fail' | 'missing') {
     const proc = Bun.spawn(

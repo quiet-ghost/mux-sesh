@@ -14,13 +14,22 @@ ignoreUnhandledThemeFollowSignal()
 const renderer = await createCliRenderer({
   exitOnCtrlC: false,
   openConsoleOnError: false,
+  // The app owns process signals; a renderer-owned handler would tear down the UI and leave the process running.
+  exitSignals: [],
 })
 
 initializeShutdown(renderer)
 
-for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) {
+const SIGNAL_EXIT_CODES = [
+  ['SIGINT', 130],
+  ['SIGTERM', 0],
+  ['SIGHUP', 0],
+  ['SIGQUIT', 131],
+] as const
+
+for (const [signal, code] of SIGNAL_EXIT_CODES) {
   process.on(signal, () => {
-    requestShutdown(signal === 'SIGINT' ? 130 : 0)
+    requestShutdown(code)
   })
 }
 

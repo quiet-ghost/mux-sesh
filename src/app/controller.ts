@@ -115,7 +115,6 @@ export function useAppController(invocationCwd: string) {
     settingOptionsSearchQuery
   )
 
-  const hasScheduledAutoUpdateRef = useRef(false)
   const launchGuardRef = useRef<LaunchGuard>({ active: false })
 
   const {
@@ -166,7 +165,7 @@ export function useAppController(invocationCwd: string) {
     setProjectSourceItems
   )
 
-  useAutoUpdateScheduler(config, hasScheduledAutoUpdateRef)
+  useAutoUpdateScheduler(config)
 
   const { showMessage, refreshItems } = createAppRuntime({
     config,

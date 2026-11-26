@@ -2,6 +2,7 @@ import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateA
 import { useRenderer } from '@opentui/react'
 import type { TerminalColors } from '@opentui/core'
 import { checkAndUpdate, updateEvents } from '../update'
+import { createAutoUpdateScheduler, type AutoUpdateScheduler } from '../update/scheduler'
 import { showTemporaryMessage, showTemporaryToast } from './notifications'
 import { useHerdrAgentPolling } from './herdr-refresh'
 import type { SessionInventory } from './session-inventory'
@@ -63,6 +64,7 @@ export function useTerminalPalette(
   useEffect(() => {
     if (themeId !== SYSTEM_THEME_ID) {
       onPaletteRef.current(null)
+
       return
     }
 
@@ -74,11 +76,13 @@ export function useTerminalPalette(
       }
     }
 
-    void renderer.getPalette().then(colors => {
-      publish(colors)
+    // A terminal that cannot report its palette keeps the built-in colors.
+    renderer.getPalette().then(publish, () => {
+      if (!cancelled) onPaletteRef.current(null)
     })
 
     renderer.on('palette', publish)
+
     return () => {
       cancelled = true
       renderer.off('palette', publish)
@@ -86,25 +90,25 @@ export function useTerminalPalette(
   }, [renderer, themeId])
 }
 
+// Process-scoped so a retried or remounted app tree cannot start a second update check.
+const AUTO_UPDATE_SCHEDULER = createAutoUpdateScheduler({
+  delayMs: 1000,
+  check: config => {
+    checkAndUpdate(config).catch(error => {
+      console.error('Auto-update check failed:', error)
+    })
+  },
+})
+
 export function useAutoUpdateScheduler(
   config: Config | null,
-  hasScheduledAutoUpdateRef: MutableRefObject<boolean>
+  scheduler: AutoUpdateScheduler = AUTO_UPDATE_SCHEDULER
 ) {
   useEffect(() => {
-    if (!config || hasScheduledAutoUpdateRef.current) {
-      return
-    }
+    if (!config) return
 
-    hasScheduledAutoUpdateRef.current = true
-
-    const timeout = setTimeout(() => {
-      checkAndUpdate(config).catch(error => {
-        console.error('Auto-update check failed:', error)
-      })
-    }, 1000)
-
-    return () => clearTimeout(timeout)
-  }, [config, hasScheduledAutoUpdateRef])
+    return scheduler.schedule(config)
+  }, [config, scheduler])
 }
 
 export function useUpdateEventToasts(
@@ -175,6 +179,7 @@ export function useBoundedCursor(length: number, setCursor: Dispatch<SetStateAct
   useEffect(() => {
     if (length === 0) {
       setCursor(0)
+
       return
     }
 
@@ -202,6 +207,7 @@ export function useSelectionMemory(
       if (!selectedItem.isSession) {
         lastProjectSelectionRef.current = selectedItem.path
       }
+
       return
     }
 
@@ -273,6 +279,7 @@ export function useSearchFiltering(
     if (searchQuery.trim()) {
       setItems(filterItems(allItems, searchQuery))
       setCursor(0)
+
       return
     }
 
