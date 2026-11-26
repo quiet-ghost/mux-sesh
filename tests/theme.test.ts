@@ -48,6 +48,7 @@ describe('theme resolution', () => {
   test('system theme uses an injected Omarchy palette', async () => {
     const palette = parseOmarchyColorsToml(await readFixture('rose-pine-dark.toml'))
     expect(palette).not.toBeNull()
+
     if (!palette) {
       return
     }
@@ -64,6 +65,7 @@ describe('theme resolution', () => {
   test('locked color scheme changes reported mode but not Omarchy colors', async () => {
     const palette = parseOmarchyColorsToml(await readFixture('rose-pine-dark.toml'))
     expect(palette).not.toBeNull()
+
     if (!palette) {
       return
     }
@@ -104,6 +106,7 @@ describe('theme resolution', () => {
   test('Omarchy palette wins over an injected terminal palette', async () => {
     const palette = parseOmarchyColorsToml(await readFixture('rose-pine-dark.toml'))
     expect(palette).not.toBeNull()
+
     if (!palette) {
       return
     }
@@ -135,6 +138,7 @@ describe('theme resolution', () => {
   test('named themes ignore an injected Omarchy palette', async () => {
     const palette = parseOmarchyColorsToml(await readFixture('catppuccin.toml'))
     expect(palette).not.toBeNull()
+
     if (!palette) {
       return
     }

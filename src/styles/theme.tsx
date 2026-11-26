@@ -27,9 +27,15 @@ export interface ResolveThemeOptions {
   terminalPalette?: TerminalPalette | null
 }
 
-export const BUILTIN_THEMES: Record<string, DesktopTheme> = {
+export const BUILTIN_THEMES = {
   ...THEMES_A,
   ...THEMES_B,
+} satisfies Record<string, DesktopTheme>
+
+const BUILTIN_THEME_LOOKUP = new Map<string, DesktopTheme>(Object.entries(BUILTIN_THEMES))
+
+export function getBuiltinTheme(id: string): DesktopTheme | undefined {
+  return BUILTIN_THEME_LOOKUP.get(id)
 }
 
 function clamp(value: number): number {
@@ -66,6 +72,7 @@ function rgbToHex(r: number, g: number, b: number) {
 
 function luminance(color: string) {
   const { r, g, b } = hexToRgb(color)
+
   return 0.299 * r + 0.587 * g + 0.114 * b
 }
 
@@ -101,11 +108,13 @@ function aliasThemeID(themeId?: string) {
 
 export function getSystemColorScheme(): 'light' | 'dark' {
   const envOverride = process.env.MUX_SESH_COLOR_SCHEME
+
   if (envOverride === 'light' || envOverride === 'dark') {
     return envOverride
   }
 
   const detected = colorSchemeFromColorFgbg(process.env.COLORFGBG)
+
   if (detected) {
     return detected
   }
@@ -122,11 +131,14 @@ function themeFromDefinition(id: string, definition: ThemeDefinition): DesktopTh
   }
 }
 
-function pickVariant(
-  theme: DesktopTheme,
-  colorScheme: ThemeColorScheme
-): { mode: 'light' | 'dark'; variant: ThemeVariant } {
+interface ThemeVariantChoice {
+  mode: 'light' | 'dark'
+  variant: ThemeVariant
+}
+
+function pickVariant(theme: DesktopTheme, colorScheme: ThemeColorScheme): ThemeVariantChoice {
   const mode = colorScheme === 'system' ? getSystemColorScheme() : colorScheme
+
   return {
     mode,
     variant: mode === 'light' ? theme.light : theme.dark,
@@ -135,6 +147,7 @@ function pickVariant(
 
 function resolveVariantTheme(theme: DesktopTheme, mode: 'light' | 'dark'): ThemeColors {
   const exactTheme = EXACT_TUI_THEME_COLORS[theme.id]?.[mode]
+
   if (exactTheme) {
     return exactTheme
   }
@@ -145,35 +158,44 @@ function resolveVariantTheme(theme: DesktopTheme, mode: 'light' | 'dark'): Theme
   const background = palette.neutral
   const ink = palette.ink
   const surface = overrides['surface-base'] ?? mix(background, ink, mode === 'dark' ? 0.08 : 0.035)
+
   const surfaceAlt =
     overrides['surface-raised-base'] ??
     overrides['surface-base-hover'] ??
     mix(background, ink, mode === 'dark' ? 0.13 : 0.06)
+
   const surfaceModal =
     overrides['surface-raised-stronger-non-alpha'] ??
     overrides['surface-raised-stronger'] ??
     overrides['surface-raised-base'] ??
     surface
+
   const borderMuted =
     overrides['border-weaker-base'] ?? mix(background, ink, mode === 'dark' ? 0.08 : 0.06)
+
   const border =
     overrides['border-weak-base'] ?? mix(background, ink, mode === 'dark' ? 0.16 : 0.12)
+
   const textMuted = overrides['text-base'] ?? mix(ink, background, mode === 'dark' ? 0.38 : 0.5)
   const textSubtle = overrides['text-weak'] ?? mix(ink, background, mode === 'dark' ? 0.55 : 0.66)
   const primary = palette.primary
+
   const secondary =
     overrides['markdown-heading'] ??
     overrides['syntax-constant'] ??
     palette.accent ??
     palette.primary
+
   const accent = overrides['markdown-link-text'] ?? palette.accent ?? palette.info
   const action = overrides['markdown-link-text'] ?? palette.info
   const fileTree = overrides['markdown-link'] ?? palette.info
   const program = overrides['markdown-code'] ?? palette.warning
   const separator = overrides['markdown-horizontal-rule'] ?? borderMuted
+
   const dangerSurface =
     overrides['surface-critical-base'] ??
     mix(background, palette.error, mode === 'dark' ? 0.2 : 0.12)
+
   const selection = palette.primary
 
   return {
@@ -226,10 +248,12 @@ export function resolveTheme(
       themeFromDefinition(id, definition),
     ])
   )
-  const catalog = {
-    ...BUILTIN_THEMES,
-    ...customCatalog,
-  }
+
+  const catalog = Object.fromEntries<DesktopTheme>([
+    ...Object.entries(BUILTIN_THEMES),
+    ...Object.entries(customCatalog),
+  ])
+
   const normalizedID = aliasThemeID(themeId)
 
   if (normalizedID === SYSTEM_THEME_ID) {
@@ -240,6 +264,7 @@ export function resolveTheme(
 
     if (palette) {
       const mode = colorScheme === 'system' ? palette.mode : colorScheme
+
       return {
         id: SYSTEM_THEME_ID,
         name: 'System',
@@ -251,6 +276,7 @@ export function resolveTheme(
 
     if (options.terminalPalette) {
       const mode = colorScheme === 'system' ? options.terminalPalette.mode : colorScheme
+
       return {
         id: SYSTEM_THEME_ID,
         name: 'System',

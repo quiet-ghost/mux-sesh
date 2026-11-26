@@ -29,6 +29,7 @@ export function ignoreUnhandledThemeFollowSignal(): void {
 
 function defaultWatch(path: string, listener: () => void): ThemeFollowWatchHandle {
   const watcher: FSWatcher = watch(path, listener)
+
   return {
     close: () => {
       watcher.close()
@@ -38,6 +39,7 @@ function defaultWatch(path: string, listener: () => void): ThemeFollowWatchHandl
 
 function defaultOnSignal(signal: ThemeFollowSignal, listener: () => void): () => void {
   process.on(signal, listener)
+
   return () => {
     process.off(signal, listener)
   }
@@ -65,6 +67,7 @@ export function subscribeThemeFollow(
 
     timeout = setTimeout(() => {
       timeout = undefined
+
       if (!stopped) {
         handlers.onRefresh()
       }
@@ -72,6 +75,7 @@ export function subscribeThemeFollow(
   }
 
   let watcher: ThemeFollowWatchHandle | undefined
+
   try {
     watcher = watchPath(getOmarchyThemeNamePath(homeDir), scheduleRefresh)
   } catch {
@@ -83,10 +87,12 @@ export function subscribeThemeFollow(
   return {
     stop: () => {
       stopped = true
+
       if (timeout) {
         clearTimeout(timeout)
         timeout = undefined
       }
+
       watcher?.close()
       unsubscribeSignal()
     },

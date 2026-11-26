@@ -1,5 +1,5 @@
 import { normalizeConfig, serializeConfig } from './config'
-import { BUILTIN_THEMES, DEFAULT_THEME_ID, SYSTEM_THEME_ID } from './styles/theme'
+import { BUILTIN_THEMES, DEFAULT_THEME_ID, SYSTEM_THEME_ID, getBuiltinTheme } from './styles/theme'
 import type { Config, KeybindMode, SortOrder, ThemeColorScheme, ZoxideMode } from './types'
 
 export type SettingsFieldId =
@@ -126,7 +126,7 @@ function themeOptions(config: Config): SettingsOption[] {
 
     return {
       value: id,
-      label: config.themes?.[id]?.name ?? BUILTIN_THEMES[id]?.name ?? id,
+      label: config.themes?.[id]?.name ?? getBuiltinTheme(id)?.name ?? id,
       description: id,
     }
   })

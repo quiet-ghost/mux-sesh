@@ -128,6 +128,7 @@ describe('omarchyPaletteToThemeColors', () => {
   test('maps rose-pine-dark onto ThemeColors', async () => {
     const palette = parseOmarchyColorsToml(await readFixture('rose-pine-dark.toml'))
     expect(palette).not.toBeNull()
+
     if (!palette) {
       return
     }
@@ -163,6 +164,7 @@ describe('omarchyPaletteToThemeColors', () => {
   test('keeps vantablack surfaces black and uses cyan-like roles for chrome', async () => {
     const palette = parseOmarchyColorsToml(await readFixture('vantablack.toml'))
     expect(palette).not.toBeNull()
+
     if (!palette) {
       return
     }

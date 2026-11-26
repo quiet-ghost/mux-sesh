@@ -1,4 +1,5 @@
 import { spawn } from 'bun'
+import { Schema } from 'effect'
 import { join } from 'path'
 import { mkdir, stat } from 'fs/promises'
 import type { Config } from '../types'
@@ -22,6 +23,7 @@ function parseGitHubRepo(input: string): GitHubRepoRef | null {
   if (trimmed.startsWith('git@github.com:')) {
     const path = stripGitSuffix(trimmed.slice('git@github.com:'.length))
     const parts = path.split('/').filter(Boolean)
+
     if (parts.length !== 2 || !parts.every(isSafeGitHubPathSegment)) {
       return null
     }
@@ -31,17 +33,20 @@ function parseGitHubRepo(input: string): GitHubRepoRef | null {
 
   try {
     const url = new URL(trimmed)
+
     if (url.protocol !== 'https:' || url.hostname !== 'github.com') {
       return null
     }
 
     const parts = url.pathname.split('/').filter(Boolean)
+
     if (parts.length !== 2) {
       return null
     }
 
     const owner = parts[0]
     const repo = stripGitSuffix(parts[1])
+
     if (!isSafeGitHubPathSegment(owner) || !isSafeGitHubPathSegment(repo)) {
       return null
     }
@@ -52,9 +57,7 @@ function parseGitHubRepo(input: string): GitHubRepoRef | null {
   }
 }
 
-function isMissingPathError(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
-}
+const isMissingPathError = Schema.is(Schema.Struct({ code: Schema.Literal('ENOENT') }))
 
 export function isGitHubURL(input: string): boolean {
   return parseGitHubRepo(input) !== null
@@ -66,6 +69,7 @@ export function extractRepoName(url: string): string {
 
 export async function cloneGitHubRepo(url: string, config: Config): Promise<string> {
   const repoName = extractRepoName(url)
+
   if (!repoName) {
     throw new Error('Could not extract repository name from URL')
   }
@@ -77,6 +81,7 @@ export async function cloneGitHubRepo(url: string, config: Config): Promise<stri
 
   try {
     const targetStat = await stat(targetDir)
+
     if (!targetStat.isDirectory()) {
       throw new Error(`Clone target exists but is not a directory: ${targetDir}`)
     }

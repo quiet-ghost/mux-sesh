@@ -39,10 +39,12 @@ describe('subscribeThemeFollow', () => {
         debounceMs: 15,
         watch: (_path, listener) => {
           watchers.push(listener)
+
           return { close: () => {} }
         },
         onSignal: (_signal, listener) => {
           signals.push(listener)
+
           return () => {}
         },
       }
@@ -78,6 +80,7 @@ describe('subscribeThemeFollow', () => {
         debounceMs: 10,
         watch: (_path, listener) => {
           watchers.push(listener)
+
           return {
             close: () => {
               closed = true
@@ -101,6 +104,7 @@ describe('subscribeThemeFollow', () => {
 
   test('SIGUSR2 does not shut the process down', async () => {
     const followModule = pathToFileURL(join(repoRoot, 'src/styles/theme-follow.ts')).href
+
     const script = `
       import { ignoreUnhandledThemeFollowSignal } from ${JSON.stringify(followModule)}
       ignoreUnhandledThemeFollowSignal()
@@ -108,6 +112,7 @@ describe('subscribeThemeFollow', () => {
       process.kill(process.pid, 'SIGUSR2')
       setTimeout(() => process.exit(0), 80)
     `
+
     const proc = Bun.spawn([process.execPath, '--eval', script], {
       cwd: repoRoot,
       stdout: 'ignore',
@@ -115,6 +120,7 @@ describe('subscribeThemeFollow', () => {
     })
 
     const exitCode = await waitForExit(proc, 500)
+
     if (exitCode === null) {
       proc.kill()
       await proc.exited

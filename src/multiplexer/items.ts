@@ -34,7 +34,7 @@ export function isLiveSessionItem(item: Item): item is LiveSessionItem {
     item.isSession &&
     (item.itemKind === 'tmux' || item.itemKind === 'herdr') &&
     item.backend === item.itemKind &&
-    typeof item.sessionId === 'string'
+    item.sessionId !== undefined
   )
 }
 

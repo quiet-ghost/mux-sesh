@@ -10,6 +10,7 @@ import {
 } from './modals'
 import type { Config, Item } from '../types'
 import { getItemKey } from '../multiplexer/items'
+import { requestFatalShutdown } from '../util/shutdown'
 import type { SettingsFieldId } from '../settings'
 
 interface AppControlsOptions {
@@ -37,8 +38,10 @@ export function createAppControls(options: AppControlsOptions) {
 
   function requestKillSession(item: Item) {
     const sessionKey = getItemKey(item)
+
     if (options.pendingKillSessionName === sessionKey) {
-      void options.handleKillSession(item)
+      options.handleKillSession(item).catch(requestFatalShutdown)
+
       return
     }
 

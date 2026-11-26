@@ -88,6 +88,7 @@ describe('terminalPaletteToThemeColors', () => {
     })
 
     expect(palette).not.toBeNull()
+
     if (!palette) {
       return
     }
