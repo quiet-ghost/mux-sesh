@@ -248,3 +248,42 @@ Test files are under `tests/`.
   inventory interrupts its load, which never publishes. `fff-search` and `launcher-query`: each
   owned finder is destroyed exactly once. `command-lifetime`: disposing the application runtime
   stops in-flight owned commands. `details-inspector-screen`: unmounting releases a pending read.
+
+## Compiled binary startup (DEV-611)
+
+DEV-611 ships compiled per-platform binaries (`tools/build`). Recorded **2026-11-26** on the
+same host: Linux x64, kernel `7.2.15-1-omarchy`, AMD Ryzen 7 5800X3D; mux-sesh `1.10.0`,
+OpenTUI `0.5.17`, FFF `0.10.1`. Each value is the median of 7 runs of
+`bun tools/build/smoke.ts --runs 7 --source` after `bun run build`.
+
+- **App import**: process start to the evaluated app module graph, read with `performance.now()`
+  in a probe entry compiled with the release build options.
+- **First frame**: spawning the app in a pseudo-terminal (`script`) to the first synchronized
+  frame after it enters the alternate screen.
+- **Failure screen**: spawn to the startup failure screen. The sandbox has no tmux, Herdr, or user
+  config, so this is the no-backend path; real backend probes are excluded. Both timings include
+  the same `script` and `env` overhead.
+
+| Build                 | App import (ms) | First frame (ms) | Failure screen (ms) |
+| --------------------- | --------------: | ---------------: | ------------------: |
+| Source, Bun 1.4.5     |           103.6 |            130.3 |               145.8 |
+| **Binary, Bun 1.4.5** |        **18.3** |         **28.6** |            **45.2** |
+| Source, Bun 1.3.14    |           265.9 |            300.0 |               316.0 |
+| Binary, Bun 1.3.14    |           182.7 |            201.4 |               218.4 |
+
+A binary embeds the Bun runtime that compiled it. Under 1.3.14, `import('@opentui/core')` alone
+takes ~189 ms versus ~42 ms under 1.4.5, so the project pins Bun 1.4.5 (`packageManager`) for
+CI and release builds.
+
+Build option effects (Bun 1.4.5, median of 7, import / first frame): without bytecode
+60.8 / 83.4 ms; with `--smol` 19.6 / 30.3 ms, so it is not used. The embedded sourcemap adds
+2 MB and no measurable startup time. Binaries are 114–136 MiB; the linux-x64 npm tarball is
+64.7 MB.
+
+The `bin/mux-sesh` launcher adds 3.3 ms when postinstall has linked the binary, and 6.5 ms when
+it searches `node_modules` (Bun blocks dependency postinstall scripts). Those figures are the
+median of 60 launches of a no-op binary, compared with running that binary directly.
+
+Not measured: darwin, arm64, and musl binaries were cross-compiled and checked for their
+embedded native libraries, but not executed. The linux-x64 baseline binary was executed and
+matched linux-x64 timings on this AVX2 host.

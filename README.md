@@ -15,19 +15,25 @@ Keyboard-driven tmux session and Herdr workspace switching from a terminal UI.
 
 ## Quick Start
 
-`mux-sesh` runs on Bun and talks directly to tmux or Herdr. Herdr needs no mux-sesh plugin.
+`mux-sesh` talks directly to tmux or Herdr. Herdr needs no mux-sesh plugin.
 
 Prerequisites:
 
-- [Bun](https://bun.sh) 1.3.14 or newer
 - [tmux](https://github.com/tmux/tmux/wiki) or Herdr 0.7.5 or newer
 - [git](https://git-scm.com) for cloning GitHub repositories from the new-session flow
 
 Install globally:
 
 ```bash
+npm install -g mux-sesh
+# or
 bun install -g mux-sesh
 ```
+
+The package installs a prebuilt binary for Linux (x64 or arm64, glibc or musl) or macOS (x64 or
+arm64), so running mux-sesh needs neither Bun nor Node. x64 CPUs without AVX2 get a baseline
+build. If mux-sesh reports a missing prebuilt binary, reinstall without `--omit=optional`: the
+binary ships as an optional dependency.
 
 Run it:
 
@@ -158,7 +164,14 @@ bun run typecheck
 bun test
 ```
 
-Use `bun run build` only when you need the compiled binary in `dist/mux-sesh`.
+A checkout runs from source with Bun (`bun run dev`, or `bin/mux-sesh`).
+
+- `bun run build` compiles this machine's binary to `dist/npm/mux-sesh-<target>/bin/mux-sesh`.
+- `bun run smoke:binary` checks that binary without tmux, Herdr, or your config.
+  `MUX_SESH_BINARY_SMOKE=1 bun test tests/compiled-binary.test.ts` runs the same check.
+- `bun run build:all` cross-compiles every target. It needs every platform's native packages:
+  `bun install --frozen-lockfile --os='*' --cpu='*' --libc='*'`.
+- `bun run pack` writes the npm packages to `dist/npm`.
 
 ## License
 
