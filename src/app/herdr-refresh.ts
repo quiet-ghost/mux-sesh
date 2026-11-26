@@ -2,22 +2,7 @@ import { useEffect } from 'react'
 import type { MultiplexerBackend } from '../multiplexer/types'
 import { AppMode, ViewMode, type Config } from '../types'
 import { requestFatalShutdown } from '../util/shutdown'
-import { loadSessionItems, type Measure } from './data'
-import { readEffect, type AppEffectRuntime } from './effect-runtime'
 import type { SessionInventory } from './session-inventory'
-
-export function refreshHerdrInventory(
-  effects: AppEffectRuntime,
-  config: Config,
-  backend: MultiplexerBackend,
-  measure: Measure,
-  signal?: AbortSignal
-) {
-  return effects.run(
-    readEffect(() => loadSessionItems(config, measure, backend, 'agents-poll')),
-    { signal }
-  )
-}
 
 // Polls only ask the inventory owner to refresh; it coalesces them with any load in flight.
 export function useHerdrAgentPolling(

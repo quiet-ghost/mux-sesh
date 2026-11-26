@@ -5,8 +5,6 @@ export interface TerminalSize {
   rows: number
 }
 
-export type LayoutMode = 'compact' | 'normal' | 'wide'
-
 export function useTerminalSize(): TerminalSize {
   const { width, height } = useTerminalDimensions()
 
@@ -14,14 +12,6 @@ export function useTerminalSize(): TerminalSize {
     columns: width,
     rows: height,
   }
-}
-
-export function getLayoutMode(columns: number): LayoutMode {
-  if (columns < 100) return 'compact'
-
-  if (columns < 150) return 'normal'
-
-  return 'wide'
 }
 
 export const DETAIL_PANEL_MIN_COLUMNS = 120

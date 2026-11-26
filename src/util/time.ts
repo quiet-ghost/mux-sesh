@@ -47,10 +47,3 @@ export function formatSessionAge(createdTimestamp: number): string {
 
   return formatDuration(age)
 }
-
-export function formatLastActivity(activityTimestamp: number): string {
-  const now = Math.floor(Date.now() / 1000)
-  const timeSince = now - activityTimestamp
-
-  return formatDuration(timeSince)
-}

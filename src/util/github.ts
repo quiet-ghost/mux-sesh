@@ -80,12 +80,6 @@ export function isGitHubURL(input: string): boolean {
   return parseGitHubURL(input).kind !== 'unsupported'
 }
 
-export function extractRepoName(url: string): string {
-  const parsed = parseGitHubURL(url)
-
-  return parsed.kind === 'repository' ? parsed.repository.repo : ''
-}
-
 // GitHub owner and repository names are case-insensitive; the transport is not part of identity.
 export function sameGitHubRepository(a: GitHubRepository, b: GitHubRepository): boolean {
   return (

@@ -166,10 +166,6 @@ export function getOmarchyColorsPath(homeDir: string): string {
   return join(homeDir, ...OMARCHY_STATE_DIR, 'theme', 'colors.toml')
 }
 
-export function isOmarchyPresent(homeDir: string): boolean {
-  return existsSync(getOmarchyColorsPath(homeDir))
-}
-
 export function parseOmarchyColorsToml(text: string): OmarchyPalette | null {
   const colors: Partial<Record<OmarchyColorKey, string>> = {}
   let mode: OmarchyMode | null = null

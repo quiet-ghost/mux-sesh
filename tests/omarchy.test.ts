@@ -5,7 +5,6 @@ import { dirname, join } from 'path'
 import {
   getOmarchyColorsPath,
   getOmarchyThemeNamePath,
-  isOmarchyPresent,
   omarchyPaletteToThemeColors,
   parseOmarchyColorsToml,
   readOmarchyPalette,
@@ -100,24 +99,6 @@ describe('readOmarchyPalette', () => {
       const palette = readOmarchyPalette(homeDir)
       expect(palette?.background).toBe('#191724')
       expect(palette?.accent).toBe('#ebbcba')
-    } finally {
-      await rm(homeDir, { recursive: true, force: true })
-    }
-  })
-})
-
-describe('isOmarchyPresent', () => {
-  test('is false for an empty temp home and true after writing colors.toml', async () => {
-    const homeDir = await mkdtemp(join(tmpdir(), 'mux-sesh-omarchy-present-'))
-    const colorsPath = getOmarchyColorsPath(homeDir)
-
-    try {
-      expect(isOmarchyPresent(homeDir)).toBe(false)
-
-      await mkdir(dirname(colorsPath), { recursive: true })
-      await writeFile(colorsPath, await readFixture('rose-pine-dark.toml'))
-
-      expect(isOmarchyPresent(homeDir)).toBe(true)
     } finally {
       await rm(homeDir, { recursive: true, force: true })
     }

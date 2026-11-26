@@ -1,20 +1,10 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  extractRepoName,
-  isGitHubURL,
-  parseGitHubURL,
-  sameGitHubRepository,
-} from '../src/util/github'
+import { isGitHubURL, parseGitHubURL, sameGitHubRepository } from '../src/util/github'
 
 describe('github utilities', () => {
-  test('extracts repository names from supported GitHub URLs', () => {
-    expect(extractRepoName('https://github.com/acme/demo.git')).toBe('demo')
-    expect(extractRepoName('git@github.com:acme/demo.git')).toBe('demo')
-  })
-
   test('rejects unsafe repository names', () => {
-    expect(extractRepoName('https://github.com/acme/..')).toBe('')
-    expect(extractRepoName('git@github.com:acme/.git')).toBe('')
+    expect(parseGitHubURL('https://github.com/acme/..').kind).toBe('unsupported')
+    expect(parseGitHubURL('git@github.com:acme/.git').kind).toBe('unsupported')
   })
 
   test('recognizes only supported GitHub clone URL shapes', () => {
@@ -49,7 +39,6 @@ describe('github utilities', () => {
         repository: { owner: 'acme', repo: 'demo', url: 'https://github.com/acme/demo.git' },
       })
       expect(JSON.stringify(parsed)).not.toContain('s3cret')
-      expect(extractRepoName(input)).toBe('')
     }
   })
 
