@@ -66,7 +66,7 @@ Herdr concepts map directly into the UI:
 | Window   | Tab       |
 | Pane     | Pane      |
 
-Backend detection uses `HERDR_ENV`, then `TMUX`, then an explicit `backend`, then running servers. Auto detection chooses tmux when both run and defaults to installed tmux when neither runs.
+Backend detection uses `HERDR_ENV`, then `TMUX`, then an explicit `backend`, then running servers. Auto detection chooses a running, protocol-compatible Herdr first, then installed tmux (whether or not its server is running). An explicit `backend` checks only that backend and never falls back.
 
 ```json
 { "backend": "herdr" }
