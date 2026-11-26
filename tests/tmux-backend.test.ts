@@ -16,7 +16,12 @@ function recordingRunner(replies: ReadonlyArray<[match: string, reply: Reply]>) 
 
   const runner: CommandRunner = {
     async run(command: readonly string[]): Promise<CommandResult> {
-      const joined = command.join(' ')
+      const [executable = '', utf8 = '', ...args] = command
+
+      // Every captured call forces UTF-8 replies; the recorded commands leave that flag out.
+      if (utf8 !== '-u') throw new Error(`Captured tmux command without -u: ${command.join(' ')}`)
+
+      const joined = [executable, ...args].join(' ')
       calls.push({ command: joined })
       const reply = replies.find(([match]) => joined.startsWith(match))?.[1]
 
@@ -328,10 +333,10 @@ describe('tmux backend details', () => {
         signals.push(options?.signal)
         const joined = command.join(' ')
 
-        if (joined.startsWith('tmux display-message'))
+        if (joined.startsWith('tmux -u display-message'))
           return { exitCode: 0, stdout: '0\n', stderr: '' }
 
-        if (joined.startsWith('tmux list-windows')) {
+        if (joined.startsWith('tmux -u list-windows')) {
           return {
             exitCode: 0,
             stdout: ['@4', '1', 'shell', '/fixture', 'zsh', '1'].join(SEP),

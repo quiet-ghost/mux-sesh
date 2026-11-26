@@ -94,8 +94,12 @@ export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBacke
     return [...(options.socketName ? ['tmux', '-L', options.socketName] : ['tmux']), ...args]
   }
 
+  // Outside a UTF-8 locale tmux rewrites the field separator and non-ASCII names in captured
+  // replies as '_', so captured commands force UTF-8. Attaching keeps the user's locale.
   function tmux(args: readonly string[], commandOptions?: CommandOptions): Promise<CommandResult> {
-    return options.runner.run(tmuxArgv(args), commandOptions)
+    const [executable = 'tmux', ...rest] = tmuxArgv(args)
+
+    return options.runner.run([executable, '-u', ...rest], commandOptions)
   }
 
   async function tmuxOk(
