@@ -4,6 +4,12 @@
 
 You only need to set the values you want to change. Everything else falls back to sane defaults.
 
+A value you do set must be valid. If any are not, mux-sesh opens its startup screen listing each
+invalid field by path (for example `projects[0].path (required)`), without showing the values, and
+leaves the file unchanged; fix them and press `r` to retry. Empty strings and an empty
+`project_paths` list still mean "use the default". Saving from the settings screen keeps any keys
+mux-sesh doesn't manage, and refuses to overwrite a file that is no longer valid JSON.
+
 ## Starter Config
 
 ```json
