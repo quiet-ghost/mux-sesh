@@ -1,11 +1,10 @@
+import { Option, Schema } from 'effect'
 import type { InstallMethod } from '../types'
 
-interface PackageMetadata {
-  name?: string
-  version?: string
-}
-
 const PACKAGE_NAME = 'mux-sesh'
+
+const isMuxSeshPackage = Schema.is(Schema.Struct({ name: Schema.Literal(PACKAGE_NAME) }))
+const decodePackageVersion = Schema.decodeUnknownOption(Schema.Struct({ version: Schema.String }))
 
 function normalizePath(path: string): string {
   return path.replaceAll('\\', '/')
@@ -23,6 +22,7 @@ async function findPackageRoot(startPath: string): Promise<string | null> {
   }
 
   const lastSlash = current.lastIndexOf('/')
+
   if (lastSlash === -1) {
     return null
   }
@@ -34,8 +34,9 @@ async function findPackageRoot(startPath: string): Promise<string | null> {
 
     if (await packageFile.exists()) {
       try {
-        const packageJson = (await packageFile.json()) as PackageMetadata
-        if (packageJson.name === PACKAGE_NAME) {
+        const packageJson: unknown = await packageFile.json()
+
+        if (isMuxSeshPackage(packageJson)) {
           return current
         }
       } catch {
@@ -44,9 +45,11 @@ async function findPackageRoot(startPath: string): Promise<string | null> {
     }
 
     const parent = current.slice(0, current.lastIndexOf('/')) || '/'
+
     if (parent === current) {
       return null
     }
+
     current = parent
   }
 
@@ -75,6 +78,7 @@ export async function detectInstallMethod(
   runtimePath = getDefaultRuntimePath()
 ): Promise<InstallMethod> {
   const activeMethod = await detectInstallMethodFromPath(runtimePath)
+
   if (activeMethod !== 'unknown') {
     return activeMethod
   }
@@ -102,10 +106,11 @@ export async function detectInstallMethod(
       if (output.includes(PACKAGE_NAME)) {
         return check.name
       }
-    } catch (error) {
+    } catch {
       continue
     }
   }
+
   return 'unknown'
 }
 
@@ -123,10 +128,12 @@ export async function getInstalledVersion(
   }
 
   try {
-    const packageJson = (await Bun.file(`${packageRoot}/package.json`).json()) as PackageMetadata
-    return typeof packageJson.version === 'string' ? packageJson.version : null
+    const packageJson: unknown = await Bun.file(`${packageRoot}/package.json`).json()
+
+    return Option.getOrNull(Option.map(decodePackageVersion(packageJson), pkg => pkg.version))
   } catch (error) {
     console.error('Failed to read installed version:', error)
+
     return null
   }
 }
@@ -138,7 +145,9 @@ export async function performUpgrade(
   if (method === 'unknown' || method === 'source') {
     return false
   }
+
   let command: string[]
+
   switch (method) {
     case 'npm':
       command = ['npm', 'install', '-g', `${PACKAGE_NAME}@${targetVersion}`]
@@ -150,12 +159,15 @@ export async function performUpgrade(
       command = ['brew', 'upgrade', PACKAGE_NAME]
       break
   }
+
   try {
     const proc = Bun.spawn(command, { stdout: 'ignore', stderr: 'ignore' })
     await proc.exited
+
     return proc.exitCode === 0
   } catch (error) {
     console.error('Upgrade Failed:', error)
+
     return false
   }
 }

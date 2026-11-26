@@ -30,6 +30,7 @@ const defaultDependencies: UpdateDependencies = {
 
 function truthy(key: string): boolean {
   const value = process.env[key]?.toLowerCase()
+
   return value === 'true' || value === '1'
 }
 
@@ -47,6 +48,7 @@ export async function checkAndUpdate(
   }
 
   const latest = await resolvedDependencies.getLatestVersion()
+
   if (!latest) {
     return
   }
@@ -64,6 +66,7 @@ export async function checkAndUpdate(
       version: latest,
       installMethod: method,
     })
+
     return
   }
 
@@ -77,6 +80,7 @@ export async function checkAndUpdate(
       version: latest,
       installMethod: method,
     })
+
     return
   }
 

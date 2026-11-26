@@ -4,12 +4,10 @@ import type { UpdateEvent } from '../src/types'
 
 describe('UpdateEvents', () => {
   test('should call listener when event is emitted', () => {
-    let called = false
-    let receivedEvent: unknown = null
+    const receivedEvents: UpdateEvent[] = []
 
     const listener = (event: UpdateEvent) => {
-      called = true
-      receivedEvent = event
+      receivedEvents.push(event)
     }
 
     const unsubscribe = updateEvents.on(listener)
@@ -20,13 +18,14 @@ describe('UpdateEvents', () => {
       installMethod: 'npm',
     })
 
-    expect(called).toBe(true)
-    expect(receivedEvent).not.toBeNull()
-    const event = receivedEvent as UpdateEvent
-    expect(event.kind).toBe('updated')
-    expect(event.currentVersion).toBe('1.0.0')
-    expect(event.version).toBe('2.0.0')
-    expect(event.installMethod).toBe('npm')
+    expect(receivedEvents).toEqual([
+      {
+        kind: 'updated',
+        currentVersion: '1.0.0',
+        version: '2.0.0',
+        installMethod: 'npm',
+      },
+    ])
 
     unsubscribe()
   })
@@ -38,6 +37,7 @@ describe('UpdateEvents', () => {
     const listener1 = () => {
       called1 = true
     }
+
     const listener2 = () => {
       called2 = true
     }
@@ -133,21 +133,18 @@ describe('UpdateEvents', () => {
       version: '4.5.6',
       installMethod: 'unknown',
     }
-    let receivedEvent: unknown = null
+
+    const receivedEvents: UpdateEvent[] = []
 
     const listener = (event: UpdateEvent) => {
-      receivedEvent = event
+      receivedEvents.push(event)
     }
 
     const unsubscribe = updateEvents.on(listener)
     updateEvents.emit(testEvent)
 
-    expect(receivedEvent).not.toBeNull()
-    const event = receivedEvent as UpdateEvent
-    expect(event.kind).toBe(testEvent.kind)
-    expect(event.currentVersion).toBe(testEvent.currentVersion)
-    expect(event.version).toBe('4.5.6')
-    expect(event.installMethod).toBe(testEvent.installMethod)
+    expect(receivedEvents).toEqual([testEvent])
+    expect(receivedEvents[0]?.version).toBe('4.5.6')
 
     unsubscribe()
   })
