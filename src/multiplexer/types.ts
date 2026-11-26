@@ -1,7 +1,9 @@
 import type { CommandOptions } from './command'
 
 export type BackendKind = 'tmux' | 'herdr'
+
 export type BackendPreference = BackendKind
+
 export type AgentStatus = 'idle' | 'working' | 'blocked' | 'done' | 'unknown'
 
 interface WorkspaceIdentity {

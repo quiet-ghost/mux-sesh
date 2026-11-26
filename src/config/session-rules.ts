@@ -37,6 +37,7 @@ export async function getGitRoot(projectPath: string): Promise<string | null> {
     const proc = spawn(['git', '-C', projectPath, 'rev-parse', '--show-toplevel'], {
       stderr: 'pipe',
     })
+
     const output = (await new Response(proc.stdout).text()).trim()
     await proc.exited
 
@@ -80,6 +81,7 @@ export async function resolveProjectSession(
   }
 
   const wildcard = findWildcard(normalizedProjectPath, config)
+
   if (wildcard) {
     return {
       sessionName: sanitizeSessionName(

@@ -30,6 +30,7 @@ function getWorktreeProjectName(path: string): string | null {
   }
 
   const projectName = basename(dirname(parentPath))
+
   return projectName && projectName !== '.' && projectName !== '/' ? projectName : null
 }
 
@@ -39,11 +40,13 @@ export function getPathGroupLabel(path: string): string {
   }
 
   const parentPath = dirname(path)
+
   if ((process.env.HOME || '') && parentPath === (process.env.HOME || '')) {
     return '~'
   }
 
   const worktreeProject = getWorktreeProjectName(path)
+
   if (worktreeProject) {
     return worktreeProject
   }
@@ -69,6 +72,7 @@ export function getPathContextLabel(path: string): string {
   }
 
   const worktreeProject = getWorktreeProjectName(path)
+
   if (worktreeProject) {
     return `${toHomeRelativePath(dirname(parentPath))} [worktree]`
   }
@@ -94,5 +98,6 @@ export function getLiveSessionSortKey(path: string, title: string): string {
   }
 
   const baseName = basename(path)
+
   return baseName && baseName !== '.' && baseName !== '/' ? baseName : title
 }

@@ -20,12 +20,14 @@ export function parseZoxideOutput(output: string): ZoxideEntry[] {
     .flatMap(line => {
       const trimmed = line.trim()
       const firstSpaceIndex = trimmed.indexOf(' ')
+
       if (firstSpaceIndex === -1) {
         return []
       }
 
       const score = Number(trimmed.slice(0, firstSpaceIndex))
       const path = trimmed.slice(firstSpaceIndex + 1).trim()
+
       if (!Number.isFinite(score) || !path) {
         return []
       }
@@ -39,6 +41,7 @@ export function isWithinProjectRoots(projectPath: string, projectRoots: string[]
 
   return projectRoots.some(projectRoot => {
     const normalizedRoot = normalizePathForMatching(projectRoot)
+
     return (
       normalizedProjectPath === normalizedRoot ||
       normalizedProjectPath.startsWith(`${normalizedRoot}/`)
@@ -76,6 +79,7 @@ export function applyZoxideMode(items: Item[], entries: ZoxideEntry[], config: C
   }
 
   const existingPaths = new Set(rankedItems.map(item => normalizePathForMatching(item.path)))
+
   const mergedItems = entries.flatMap(entry => {
     const normalizedPath = normalizePathForMatching(entry.path)
     const baseName = basename(entry.path)
@@ -89,6 +93,7 @@ export function applyZoxideMode(items: Item[], entries: ZoxideEntry[], config: C
     }
 
     existingPaths.add(normalizedPath)
+
     return [toProjectItem(entry.path)]
   })
 
@@ -102,6 +107,7 @@ export async function getZoxideEntries(
 ): Promise<ZoxideEntry[]> {
   try {
     const result = await spawnCommand(['zoxide', 'query', '--list', '--score'])
+
     if (result.exitCode !== 0) {
       return []
     }
@@ -117,6 +123,7 @@ export async function getZoxideEntries(
     const projectCandidatePaths = await filterProjectCandidatePaths(
       entriesWithinRoots.map(entry => entry.path)
     )
+
     const projectCandidates = new Set(projectCandidatePaths)
 
     return entriesWithinRoots.filter(entry =>

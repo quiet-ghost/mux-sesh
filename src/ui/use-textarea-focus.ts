@@ -11,6 +11,7 @@ export function focusTextarea(textarea: FocusableTextarea | null, gotoLineEnd = 
   if (!textarea || textarea.isDestroyed) return
 
   textarea.focus()
+
   if (gotoLineEnd && !textarea.isDestroyed) {
     textarea.gotoLineEnd()
   }

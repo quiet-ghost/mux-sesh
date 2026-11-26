@@ -8,6 +8,7 @@ function withSearchMatch(item: Item, searchMatch?: SearchMatchMetadata): Item {
     }
 
     const { searchMatch: _searchMatch, ...itemWithoutSearchMatch } = item
+
     return itemWithoutSearchMatch
   }
 
@@ -36,6 +37,7 @@ export function fuzzyMatch(text: string, query: string): FuzzyMatch | null {
       indices.push(textIndex)
       queryIndex++
     }
+
     textIndex++
   }
 
@@ -54,30 +56,37 @@ export function fuzzyMatch(text: string, query: string): FuzzyMatch | null {
   }
 
   let consecutiveBonus = 0
+
   for (let i = 1; i < indices.length; i++) {
     if (indices[i] === indices[i - 1] + 1) {
       consecutiveBonus += 50
     }
   }
+
   score += consecutiveBonus
 
   let boundaryBonus = 0
+
   for (const idx of indices) {
     if (idx > 0) {
       const prevChar = text[idx - 1]
+
       if (['-', '_', '.', ' ', '/'].includes(prevChar)) {
         boundaryBonus += 30
       }
     }
   }
+
   score += boundaryBonus
 
   let caseBonus = 0
+
   for (let index = 0; index < indices.length; index += 1) {
     if (text[indices[index]] === query[index]) {
       caseBonus += 10
     }
   }
+
   score += caseBonus
 
   const firstMatchPos = indices[0]
@@ -129,6 +138,7 @@ function calculateItemBonus(item: Item, query: string): number {
 
 function buildSearchResult(item: Item, query: string): ScoredSearchResult | null {
   const queryTrimmed = query.trim()
+
   if (queryTrimmed === '') {
     return {
       item: withSearchMatch(item),
@@ -141,6 +151,7 @@ function buildSearchResult(item: Item, query: string): ScoredSearchResult | null
   let searchMatch: SearchMatchMetadata | undefined
 
   const titleMatch = fuzzyMatch(item.title, queryTrimmed)
+
   if (titleMatch && titleMatch.score > 0) {
     searchMatch = {
       ...searchMatch,
@@ -152,6 +163,7 @@ function buildSearchResult(item: Item, query: string): ScoredSearchResult | null
 
   if (item.desc) {
     const descMatch = fuzzyMatch(item.desc, queryTrimmed)
+
     if (descMatch && descMatch.score > 0) {
       searchMatch = {
         ...searchMatch,
@@ -179,6 +191,7 @@ export function clearMatchIndices(items: Item[]): Item[] {
 export function scoreSearchItems(items: Item[], query: string): SearchResult[] {
   return items.flatMap(item => {
     const result = buildSearchResult(item, query)
+
     return result ? [result] : []
   })
 }
@@ -191,6 +204,7 @@ export function filterAndSortItems(items: Item[], query: string): Item[] {
   return items
     .flatMap(item => {
       const result = buildSearchResult(item, query)
+
       return result ? [result] : []
     })
     .sort((a, b) => b.score - a.score)

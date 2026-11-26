@@ -44,6 +44,7 @@ function splitPinnedItems(items: Item[], pinnedSessions: readonly string[]) {
 function sortByGroup(items: Item[], groups: Array<'live' | 'configured'>): Item[] {
   const configuredItems = items.filter(isConfiguredSession).sort(compareByTitle)
   const liveItems = items.filter(item => !isConfiguredSession(item)).sort(compareLiveSessions)
+
   const groupedItems = new Map([
     ['configured', configuredItems],
     ['live', liveItems],

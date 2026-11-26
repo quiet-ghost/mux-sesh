@@ -33,6 +33,7 @@ export default function HighlightedText({ text, matchIndices = [], highlightColo
         segments.push({ text: currentSegment, highlighted: isHighlighted })
         currentSegment = ''
       }
+
       isHighlighted = shouldHighlight
     }
 

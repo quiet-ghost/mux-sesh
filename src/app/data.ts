@@ -19,6 +19,7 @@ export function getSessionSelectionIndex(
   fallbackIndex = 0
 ): number {
   const regularItems = nextItems.filter(item => !isAgentSessionItem(item))
+
   const index = selection
     ? regularItems.findIndex(item => getItemKey(item) === selection || item.title === selection)
     : -1
@@ -32,6 +33,7 @@ export function getProjectSelectionIndex(nextItems: Item[], selection?: string |
   }
 
   const index = nextItems.findIndex(item => item.path === selection)
+
   return index >= 0 ? index : 0
 }
 
@@ -41,16 +43,20 @@ export function getAgentSelectionIndex(
   currentCursor: number
 ): number {
   const agentSessions = nextItems.filter(isAgentSessionItem)
+
   const selectedIndex = selection
     ? agentSessions.findIndex(item => getItemKey(item) === selection)
     : -1
+
   return selectedIndex >= 0 ? selectedIndex : clampCursorIndex(agentSessions.length, currentCursor)
 }
 
 export function reuseSessionItemIdentities(previous: Item[], next: Item[]): Item[] {
   const previousByKey = new Map(previous.map(item => [getItemKey(item), item]))
+
   return next.map(item => {
     const existing = previousByKey.get(getItemKey(item))
+
     return existing && JSON.stringify(existing) === JSON.stringify(item) ? existing : item
   })
 }
@@ -64,10 +70,13 @@ export async function loadSessionItems(
   const sessions = await measure(`${labelPrefix}:listWorkspaces`, async () =>
     (await backend.list()).map(workspaceToItem)
   )
+
   const visibleSessions = filterHiddenSessions(sessions, config.hiddenSessions)
+
   const listedSessions = await measure(`${labelPrefix}:getListedSessionItems`, () =>
     getListedSessionItems(config)
   )
+
   const sessionItems = clearMatchIndices(
     orderSessionItems(
       mergeSessionItems(visibleSessions, listedSessions),
@@ -125,6 +134,7 @@ export async function loadSessionCandidateItems(
   )
 
   const visibleSessions = filterHiddenSessions(sessions, config.hiddenSessions)
+
   return measure('linkSessionCandidateItems', () =>
     annotateProjectItemsWithSessionLinks(candidates, visibleSessions, config)
   )
