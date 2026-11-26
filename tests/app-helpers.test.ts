@@ -11,7 +11,7 @@ import { getSessionCommandState, getSettingsState } from '../src/app/derived'
 import { createAppHandlers, getPinnedSessionsAfterToggle } from '../src/app/handlers'
 import { persistConfigUpdate, runWithErrorMessage } from '../src/app/operations'
 import { createAppRuntime } from '../src/app/runtime'
-import { applyRefreshedViewState } from '../src/app/state'
+import { publishInventory, type SessionInventory } from '../src/app/session-inventory'
 import {
   getAppTitle,
   getEmptyStateMessage,
@@ -356,34 +356,72 @@ describe('app operation helpers', () => {
 })
 
 describe('app state helpers', () => {
-  test('applies refreshed state to all affected collections', () => {
-    const setSessionItems = mock(() => {})
-    const setProjectSourceItems = mock(() => {})
-    const setAllItems = mock(() => {})
-    const setItems = mock(() => {})
-    const setCursor = mock(() => {})
-    const refreshedItems = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
-    const refreshedProjects = [{ title: 'proj', desc: '', path: '/tmp/p', isSession: false }]
+  function createSink(lastSessionSelection: string | null, lastProjectSelection: string | null) {
+    return {
+      lastSessionSelectionRef: { current: lastSessionSelection },
+      lastProjectSelectionRef: { current: lastProjectSelection },
+      setSessionItems: mock(() => {}),
+      setProjectSourceItems: mock(() => {}),
+      setAllItems: mock(() => {}),
+      setItems: mock(() => {}),
+      setCursor: mock(() => {}),
+      setAgentCursor: mock(() => {}),
+    }
+  }
 
-    applyRefreshedViewState(
+  test('publishes a projects inventory to all affected collections', () => {
+    const sink = createSink(null, '/tmp/q')
+    const refreshedItems = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
+    const refreshedProjects = [
+      { title: 'proj', desc: '', path: '/tmp/p', isSession: false },
+      { title: 'other', desc: '', path: '/tmp/q', isSession: false },
+    ]
+
+    publishInventory(
       {
-        items: refreshedItems,
-        cursor: 2,
+        viewMode: ViewMode.Projects,
         sessionItems: refreshedItems,
         projectSourceItems: refreshedProjects,
+        projectItems: refreshedProjects,
       },
-      setSessionItems,
-      setProjectSourceItems,
-      setAllItems,
-      setItems,
-      setCursor
+      { sessionCursor: 0, agentKey: undefined, agentCursor: 0 },
+      sink
     )
 
-    expect(setSessionItems).toHaveBeenCalledWith(refreshedItems)
-    expect(setProjectSourceItems).toHaveBeenCalledWith(refreshedProjects)
-    expect(setAllItems).toHaveBeenCalledWith(refreshedItems)
-    expect(setItems).toHaveBeenCalledWith(refreshedItems)
-    expect(setCursor).toHaveBeenCalledWith(2)
+    expect(sink.setSessionItems).toHaveBeenCalledTimes(1)
+    expect(sink.setProjectSourceItems).toHaveBeenCalledWith(refreshedProjects)
+    expect(sink.setAllItems).toHaveBeenCalledWith(refreshedProjects)
+    expect(sink.setItems).toHaveBeenCalledWith(refreshedProjects)
+    expect(sink.setCursor).toHaveBeenCalledWith(1)
+  })
+
+  test('publishes a sessions inventory and remembers the fallback selection', () => {
+    const sink = createSink('tmux:gone', null)
+    const session = (title: string) =>
+      workspaceToItem({
+        backend: 'tmux',
+        id: title,
+        title,
+        path: `/tmp/${title}`,
+        isActive: false,
+        unitCount: 1,
+      })
+    const delta = session('delta')
+    const sessions = [session('alpha'), session('beta'), delta]
+
+    publishInventory(
+      { viewMode: ViewMode.Sessions, sessionItems: sessions },
+      { sessionCursor: 5, agentKey: undefined, agentCursor: 0 },
+      sink
+    )
+
+    expect(sink.setSessionItems).toHaveBeenCalledTimes(1)
+    expect(sink.setAllItems).toHaveBeenCalledTimes(1)
+    expect(sink.setItems).toHaveBeenCalledTimes(1)
+    expect(sink.setProjectSourceItems).not.toHaveBeenCalled()
+    expect(sink.setCursor).toHaveBeenCalledWith(2)
+    expect(sink.setAgentCursor).toHaveBeenCalledWith(0)
+    expect(sink.lastSessionSelectionRef.current).toBe(getItemKey(delta))
   })
 })
 
@@ -463,18 +501,17 @@ describe('app controls', () => {
 describe('app runtime helpers', () => {
   test('shows messages through shared setter timing helper', () => {
     const setMessage = mock(() => {})
+    const inventory: SessionInventory = {
+      refresh: mock(async () => ({ kind: 'superseded' as const })),
+      observe: mock(() => {}),
+      status: () => ({ kind: 'fresh' }),
+      dispose: mock(() => {}),
+    }
     const runtime = createAppRuntime({
       config: getDefaultConfig('/home/tester'),
       backend: null,
       viewMode: ViewMode.Sessions,
-      measure: async (_name, fn) => fn(),
-      lastSessionSelectionRef: { current: null },
-      lastProjectSelectionRef: { current: null },
-      setSessionItems: mock(() => {}),
-      setProjectSourceItems: mock(() => {}),
-      setAllItems: mock(() => {}),
-      setItems: mock(() => {}),
-      setCursor: mock(() => {}),
+      inventory,
       setMessage,
     })
 

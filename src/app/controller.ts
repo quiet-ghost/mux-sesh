@@ -7,6 +7,7 @@ import { useAppKeyboard } from './keyboard'
 import { useAppModalState } from './modal-state'
 import { createAppRuntime } from './runtime'
 import { createAppHandlers, handleKillSessionWithFeedback, type LaunchGuard } from './handlers'
+import { useSessionInventory } from './session-inventory'
 import { useAppStartup } from './state'
 import { useEffectRuntime } from './use-effect-runtime'
 import { useResolvedTheme } from './resolved-theme'
@@ -116,41 +117,6 @@ export function useAppController(invocationCwd: string) {
   const hasScheduledAutoUpdateRef = useRef(false)
   const launchGuardRef = useRef<LaunchGuard>({ active: false })
 
-  useAppStartup(
-    effects,
-    measure,
-    lastSessionSelectionRef,
-    lastProjectSelectionRef,
-    mark,
-    setConfig,
-    setBackend,
-    setMessage,
-    setAppMode,
-    setViewMode,
-    setSessionItems,
-    setProjectSourceItems,
-    setAllItems,
-    setItems,
-    setCursor
-  )
-
-  useAutoUpdateScheduler(config, hasScheduledAutoUpdateRef)
-
-  const { showMessage, refreshItems } = createAppRuntime({
-    config,
-    backend,
-    viewMode,
-    measure,
-    lastSessionSelectionRef,
-    lastProjectSelectionRef,
-    setSessionItems,
-    setProjectSourceItems,
-    setAllItems,
-    setItems,
-    setCursor,
-    setMessage,
-  })
-
   const {
     regularSessions,
     agentSessions,
@@ -166,6 +132,47 @@ export function useAppController(invocationCwd: string) {
     config,
     commandsSearchQuery
   )
+
+  const inventory = useSessionInventory(effects, measure, {
+    viewMode,
+    config,
+    backend,
+    cursor,
+    agentCursor,
+    selectedAgentSession,
+    lastSessionSelectionRef,
+    lastProjectSelectionRef,
+    setViewMode,
+    setSessionItems,
+    setProjectSourceItems,
+    setAllItems,
+    setItems,
+    setCursor,
+    setAgentCursor,
+    setMessage,
+  })
+
+  useAppStartup(
+    effects,
+    measure,
+    inventory,
+    mark,
+    setConfig,
+    setBackend,
+    setMessage,
+    setAppMode,
+    setProjectSourceItems
+  )
+
+  useAutoUpdateScheduler(config, hasScheduledAutoUpdateRef)
+
+  const { showMessage, refreshItems } = createAppRuntime({
+    config,
+    backend,
+    viewMode,
+    inventory,
+    setMessage,
+  })
 
   const {
     clearPendingKill,
@@ -325,7 +332,8 @@ export function useAppController(invocationCwd: string) {
   })
 
   useAppBehaviors({
-    effects,
+    inventory,
+    setMessage,
     appMode,
     viewMode,
     config,
@@ -337,10 +345,7 @@ export function useAppController(invocationCwd: string) {
     lastProjectSelectionRef,
     setAllItems,
     setItems,
-    setSessionItems,
     setCursor,
-    setAgentCursor,
-    setMessage,
     setSessionCandidateItems,
     filteredCommandEntriesLength: filteredCommandEntries.length,
     setCommandsCursor,
@@ -359,7 +364,6 @@ export function useAppController(invocationCwd: string) {
     setPendingKillSessionName,
     searchQuery,
     allItems,
-    selectedAgentSession,
     setUpdatedVersion,
     setToastMessage,
     setToastVisible,

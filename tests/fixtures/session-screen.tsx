@@ -10,6 +10,7 @@ import { getSessionCommandState } from '../../src/app/derived'
 import {
   useNormalModeSessionReset,
   useSearchFiltering,
+  useSelectionMemory,
   useSystemThemeFollow,
 } from '../../src/app/effects'
 import { handleSelectItem } from '../../src/app/handlers'
@@ -17,7 +18,10 @@ import { useAppKeyboard } from '../../src/app/keyboard'
 import { useAppModalState } from '../../src/app/modal-state'
 import { AppModalsLayer } from '../../src/app/modals-layer'
 import { useResolvedTheme } from '../../src/app/resolved-theme'
+import { createAppRuntime } from '../../src/app/runtime'
 import { AppScreen } from '../../src/app/screen'
+import { useSessionInventory } from '../../src/app/session-inventory'
+import { useEffectRuntime } from '../../src/app/use-effect-runtime'
 import { getDefaultConfig } from '../../src/config'
 import type { LiveWorkspace, MultiplexerBackend } from '../../src/multiplexer'
 import { filterAndSortItems } from '../../src/search'
@@ -38,6 +42,7 @@ interface SessionScreenHarness {
   pressKey(...args: Parameters<TestRendererSetup['mockInput']['pressKey']>): Promise<void>
   typeText(text: string): Promise<void>
   replaceQuery(text: string): Promise<void>
+  settle(): Promise<void>
   resize(width: number, height: number): Promise<void>
   destroy(): void
 }
@@ -75,7 +80,10 @@ function unsupportedFixtureAction(): never {
   throw new Error('This session-screen fixture does not implement that action')
 }
 
+const passthroughMeasure = async <T,>(_name: string, run: () => Promise<T>): Promise<T> => run()
+
 function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
+  const effects = useEffectRuntime()
   const core = useAppCoreState()
   const modal = useAppModalState()
   const dimensions = useTerminalSize()
@@ -102,6 +110,21 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     config,
     modal.commandsSearchQuery
   )
+
+  const inventory = useSessionInventory(effects, passthroughMeasure, {
+    ...core,
+    ...derived,
+    config,
+    backend,
+  })
+
+  const { refreshItems } = createAppRuntime({
+    config,
+    backend,
+    viewMode: core.viewMode,
+    inventory,
+    setMessage: core.setMessage,
+  })
 
   const {
     setAppMode,
@@ -152,6 +175,16 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
 
   useSystemThemeFollow(config.theme, homeDir, refreshSystemTheme, fixture.themeFollow)
 
+  useSelectionMemory(
+    core.appMode,
+    core.viewMode,
+    core.cursor,
+    core.items,
+    derived.selectedPrimaryItem,
+    core.lastProjectSelectionRef,
+    core.lastSessionSelectionRef
+  )
+
   useSearchFiltering(
     core.appMode,
     core.searchQuery,
@@ -185,7 +218,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
         ...derived,
         ...controls,
         togglePinnedSession: unsupportedFixtureAction,
-        refreshItems: unsupportedFixtureAction,
+        refreshItems,
         handleLastSession: unsupportedFixtureAction,
         handleRootSession: unsupportedFixtureAction,
         handleEditTarget: unsupportedFixtureAction,
@@ -196,7 +229,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     handleRenameSubmit: unsupportedFixtureAction,
     handleNewSessionSubmit: unsupportedFixtureAction,
     togglePinnedSession: unsupportedFixtureAction,
-    refreshItems: unsupportedFixtureAction,
+    refreshItems,
     handleKillSession: unsupportedFixtureAction,
     handleLastSession: unsupportedFixtureAction,
     handleRootSession: unsupportedFixtureAction,
@@ -367,6 +400,11 @@ export async function renderSessionScreen(
       }
 
       await act(async () => input.setText(text))
+    },
+    async settle(): Promise<void> {
+      await act(async () => {
+        for (let tick = 0; tick < 10; tick++) await Bun.sleep(0)
+      })
     },
     async resize(width: number, height: number): Promise<void> {
       await act(async () => setup.resize(width, height))

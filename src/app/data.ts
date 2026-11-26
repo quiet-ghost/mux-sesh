@@ -13,16 +13,17 @@ import { clampCursorIndex } from '../ui/list-window'
 
 export type Measure = <T>(name: string, fn: () => Promise<T>) => Promise<T>
 
-export function getSessionSelectionIndex(nextItems: Item[], selection?: string | null): number {
+export function getSessionSelectionIndex(
+  nextItems: Item[],
+  selection?: string | null,
+  fallbackIndex = 0
+): number {
   const regularItems = nextItems.filter(item => !isAgentSessionItem(item))
-  if (regularItems.length === 0 || !selection) {
-    return 0
-  }
+  const index = selection
+    ? regularItems.findIndex(item => getItemKey(item) === selection || item.title === selection)
+    : -1
 
-  const index = regularItems.findIndex(
-    item => getItemKey(item) === selection || item.title === selection
-  )
-  return index >= 0 ? index : 0
+  return index >= 0 ? index : clampCursorIndex(regularItems.length, fallbackIndex)
 }
 
 export function getProjectSelectionIndex(nextItems: Item[], selection?: string | null): number {

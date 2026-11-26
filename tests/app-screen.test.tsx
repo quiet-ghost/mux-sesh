@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { join } from 'path'
 import { RGBA, TextareaRenderable } from '@opentui/core'
+import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
+import { MultiplexerError } from '../src/multiplexer/types'
 import { resolveTheme } from '../src/styles/theme'
 import { renderSessionScreen } from './fixtures/session-screen'
 
@@ -139,4 +141,136 @@ describe('production session screen', () => {
     },
     10000
   )
+})
+
+function liveWorkspace(title: string, isActive = false): LiveWorkspace {
+  return { backend: 'tmux', id: title, title, path: `/fixture/${title}`, isActive, unitCount: 1 }
+}
+
+interface ScriptedBackendState {
+  lists: number
+  next: () => Promise<LiveWorkspace[]>
+}
+
+// Each list() answers with the latest scripted rows or failure; the test counts every query.
+function createScriptedBackend(initial: LiveWorkspace[]) {
+  function unsupportedBackendCall(): never {
+    throw new Error('The inventory screen probe only lists and previews sessions')
+  }
+
+  const state: ScriptedBackendState = {
+    lists: 0,
+    next: async () => initial,
+  }
+
+  const backend: MultiplexerBackend = {
+    kind: 'tmux',
+    capabilities: { previousWorkspace: false },
+    async list() {
+      state.lists++
+
+      return state.next()
+    },
+    async details(workspace) {
+      return { workspace, isActive: false, unitLabel: 'Windows', units: [], agents: [] }
+    },
+    open: unsupportedBackendCall,
+    openOrCreate: unsupportedBackendCall,
+    create: unsupportedBackendCall,
+    start: unsupportedBackendCall,
+    rename: unsupportedBackendCall,
+    close: unsupportedBackendCall,
+    current: unsupportedBackendCall,
+    directory: unsupportedBackendCall,
+    openEditor: unsupportedBackendCall,
+  }
+
+  return {
+    backend,
+    lists: () => state.lists,
+    respond(rows: LiveWorkspace[]) {
+      state.next = async () => rows
+    },
+    fail(error: Error) {
+      state.next = async () => {
+        throw error
+      }
+    },
+  }
+}
+
+async function refreshScreen(fixture: Awaited<ReturnType<typeof renderSessionScreen>>) {
+  await fixture.pressKey('x', { ctrl: true })
+  await fixture.pressKey('R', { shift: true })
+  await fixture.settle()
+}
+
+describe('session inventory on the production screen', () => {
+  test('arrow navigation never queries the backend inventory', async () => {
+    const scripted = createScriptedBackend([
+      liveWorkspace('alpha'),
+      liveWorkspace('beta'),
+      liveWorkspace('delta'),
+    ])
+
+    screen = await renderSessionScreen({ width: 120, height: 36 }, { backend: scripted.backend })
+    const listsAfterMount = scripted.lists()
+
+    for (const key of ['ARROW_DOWN', 'ARROW_DOWN', 'ARROW_UP', 'ARROW_UP']) {
+      await screen.pressKey(key)
+      await screen.settle()
+    }
+
+    expect(await screen.frame()).toMatch(/› .*alpha/)
+    expect(scripted.lists()).toBe(listsAfterMount)
+  })
+
+  test('selection follows its key across refreshes and falls back to the nearest row', async () => {
+    const scripted = createScriptedBackend([
+      liveWorkspace('alpha'),
+      liveWorkspace('beta'),
+      liveWorkspace('delta'),
+    ])
+
+    screen = await renderSessionScreen({ width: 120, height: 36 }, { backend: scripted.backend })
+    await screen.pressKey('ARROW_DOWN')
+    expect(await screen.frame()).toMatch(/› .*beta/)
+
+    scripted.respond([
+      liveWorkspace('aaron'),
+      liveWorkspace('alpha'),
+      liveWorkspace('beta', true),
+      liveWorkspace('delta'),
+    ])
+    await refreshScreen(screen)
+    const reordered = await screen.frame()
+    expect(reordered).toContain('aaron')
+    expect(reordered).toMatch(/› .*beta/)
+
+    scripted.respond([liveWorkspace('aaron'), liveWorkspace('alpha'), liveWorkspace('delta')])
+    await refreshScreen(screen)
+    const removed = await screen.frame()
+    expect(removed).not.toContain('beta')
+    expect(removed).toMatch(/› .*delta/)
+  })
+
+  test('an expected list failure keeps rows and selection, reports staleness, and recovers', async () => {
+    const scripted = createScriptedBackend([liveWorkspace('alpha'), liveWorkspace('beta')])
+    screen = await renderSessionScreen({ width: 120, height: 36 }, { backend: scripted.backend })
+    await screen.pressKey('ARROW_DOWN')
+
+    scripted.fail(new MultiplexerError('server-stopped', 'fixture server stopped'))
+    await refreshScreen(screen)
+    const stale = await screen.frame()
+    expect(stale).toContain('alpha')
+    expect(stale).toMatch(/› .*beta/)
+    expect(stale).toMatch(/fixture server stopped\s+Existing\s+sessions are unchanged/)
+
+    scripted.respond([liveWorkspace('alpha'), liveWorkspace('beta'), liveWorkspace('delta')])
+    await refreshScreen(screen)
+    const recovered = await screen.frame()
+    expect(recovered).toContain('delta')
+    expect(recovered).toMatch(/› .*beta/)
+    expect(recovered).not.toContain('Existing sessions are unchanged')
+  })
 })

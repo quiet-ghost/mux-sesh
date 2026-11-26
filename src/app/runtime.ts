@@ -1,22 +1,14 @@
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import { showTemporaryMessage } from './notifications'
-import { applyRefreshedViewState, loadRefreshedViewState } from './state'
-import type { Measure } from './data'
-import type { Config, Item, ViewMode } from '../types'
+import type { SessionInventory } from './session-inventory'
+import type { Config, ViewMode } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 
 interface AppRuntimeOptions {
   config: Config | null
   backend: MultiplexerBackend | null
   viewMode: ViewMode
-  measure: Measure
-  lastSessionSelectionRef: MutableRefObject<string | null>
-  lastProjectSelectionRef: MutableRefObject<string | null>
-  setSessionItems: Dispatch<SetStateAction<Item[]>>
-  setProjectSourceItems: Dispatch<SetStateAction<Item[]>>
-  setAllItems: Dispatch<SetStateAction<Item[]>>
-  setItems: Dispatch<SetStateAction<Item[]>>
-  setCursor: Dispatch<SetStateAction<number>>
+  inventory: SessionInventory
   setMessage: Dispatch<SetStateAction<string>>
 }
 
@@ -30,24 +22,9 @@ export function createAppRuntime(options: AppRuntimeOptions) {
       return
     }
 
-    const targetMode = forceViewMode ?? options.viewMode
-
-    const refreshedState = await loadRefreshedViewState(
-      targetMode,
-      nextConfig,
-      options.measure,
-      options.backend,
-      options.lastSessionSelectionRef.current,
-      options.lastProjectSelectionRef.current
-    )
-
-    applyRefreshedViewState(
-      refreshedState,
-      options.setSessionItems,
-      options.setProjectSourceItems,
-      options.setAllItems,
-      options.setItems,
-      options.setCursor
+    await options.inventory.refresh(
+      { kind: 'refresh', viewMode: forceViewMode ?? options.viewMode },
+      { config: nextConfig, backend: options.backend }
     )
   }
 

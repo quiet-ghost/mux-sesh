@@ -1,9 +1,10 @@
 import { expect, test } from 'bun:test'
 import { testRender } from '@opentui/react/test-utils'
-import { act, useState } from 'react'
+import { act, useRef, useState } from 'react'
 import { loadSessionItems } from '../src/app/data'
 import { createEffectRuntime, type AppEffectRuntime } from '../src/app/effect-runtime'
 import { useHerdrAgentPolling } from '../src/app/herdr-refresh'
+import { useSessionInventory } from '../src/app/session-inventory'
 import { getDefaultConfig } from '../src/config'
 import { createHerdrBackend } from '../src/herdr/backend'
 import { CommandTransportError } from '../src/multiplexer/command'
@@ -22,22 +23,34 @@ function RefreshScreen({ effects, backend, initialItems }: Props) {
   const [sessionItems, setSessionItems] = useState(initialItems)
   const [allItems, setAllItems] = useState(initialItems)
   const [items, setItems] = useState(initialItems)
+  const [, setProjectSourceItems] = useState<Item[]>([])
+  const [viewMode, setViewMode] = useState(ViewMode.Sessions)
+  const [sessionCursor, setSessionCursor] = useState(0)
   const [cursor, setCursor] = useState(0)
   const [message, setMessage] = useState('')
-  useHerdrAgentPolling(
-    effects,
-    AppMode.AgentsManage,
-    ViewMode.Sessions,
+  const lastSessionSelectionRef = useRef<string | null>(null)
+  const lastProjectSelectionRef = useRef<string | null>(null)
+
+  const inventory = useSessionInventory(effects, async (_name, run) => run(), {
+    viewMode,
     config,
     backend,
-    items[cursor],
-    cursor,
+    cursor: sessionCursor,
+    agentCursor: cursor,
+    selectedAgentSession: items[cursor],
+    lastSessionSelectionRef,
+    lastProjectSelectionRef,
+    setViewMode,
     setSessionItems,
+    setProjectSourceItems,
     setAllItems,
     setItems,
-    setCursor,
-    setMessage
-  )
+    setCursor: setSessionCursor,
+    setAgentCursor: setCursor,
+    setMessage,
+  })
+
+  useHerdrAgentPolling(inventory, AppMode.AgentsManage, viewMode, config, backend)
 
   return (
     <box flexDirection="column">

@@ -4,7 +4,7 @@ import type { TerminalColors } from '@opentui/core'
 import { checkAndUpdate, updateEvents } from '../update'
 import { showTemporaryMessage, showTemporaryToast } from './notifications'
 import { useHerdrAgentPolling } from './herdr-refresh'
-import type { AppEffectRuntime } from './effect-runtime'
+import type { SessionInventory } from './session-inventory'
 import { clearMatchIndices, filterAndSortItems } from '../search'
 import { combineFileSearchResults, searchFilesAndDirectories, warmFileSearch } from '../search/fff'
 import { annotateProjectItemsWithSessionLinks } from '../projects/session-links'
@@ -429,7 +429,8 @@ export function useNewSessionFileSearch(
 }
 
 interface UseAppBehaviorsOptions {
-  effects: AppEffectRuntime
+  inventory: SessionInventory
+  setMessage: Dispatch<SetStateAction<string>>
   appMode: AppMode
   viewMode: ViewMode
   config: Config | null
@@ -441,10 +442,7 @@ interface UseAppBehaviorsOptions {
   lastProjectSelectionRef: MutableRefObject<string | null>
   setAllItems: Dispatch<SetStateAction<Item[]>>
   setItems: Dispatch<SetStateAction<Item[]>>
-  setSessionItems: Dispatch<SetStateAction<Item[]>>
   setCursor: Dispatch<SetStateAction<number>>
-  setAgentCursor: Dispatch<SetStateAction<number>>
-  setMessage: Dispatch<SetStateAction<string>>
   setSessionCandidateItems: Dispatch<SetStateAction<Item[]>>
   filteredCommandEntriesLength: number
   setCommandsCursor: Dispatch<SetStateAction<number>>
@@ -463,7 +461,6 @@ interface UseAppBehaviorsOptions {
   setPendingKillSessionName: Dispatch<SetStateAction<string | null>>
   searchQuery: string
   allItems: Item[]
-  selectedAgentSession: Item | undefined
   setUpdatedVersion: Dispatch<SetStateAction<string | null>>
   setToastMessage: Dispatch<SetStateAction<string>>
   setToastVisible: Dispatch<SetStateAction<boolean>>
@@ -543,17 +540,10 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.setCursor
   )
   useHerdrAgentPolling(
-    options.effects,
+    options.inventory,
     options.appMode,
     options.viewMode,
     options.config,
-    options.backend,
-    options.selectedAgentSession,
-    options.agentCursor,
-    options.setSessionItems,
-    options.setAllItems,
-    options.setItems,
-    options.setAgentCursor,
-    options.setMessage
+    options.backend
   )
 }
