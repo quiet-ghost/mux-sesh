@@ -160,6 +160,22 @@ async function waitForScreen(text: string): Promise<void> {
   await waitFor(`'${text}' on the host screen`, async () => (await hostScreen()).includes(text))
 }
 
+function selectedRow(screen: string): string | undefined {
+  return screen.split('\n').find(line => line.includes('›'))
+}
+
+// Row order follows each session's directory name, which varies with where the repo is checked
+// out, so rows are reached by title rather than by position.
+async function moveCursorTo(title: string): Promise<void> {
+  const isSelected = async () => selectedRow(await hostScreen())?.includes(` ${title} `) === true
+
+  for (let step = 0; step < 6 && !(await isSelected()); step++) await press('k')
+
+  for (let step = 0; step < 6 && !(await isSelected()); step++) await press('j')
+
+  await waitFor(`the cursor on ${title}`, isSelected)
+}
+
 async function press(...keys: string[]): Promise<void> {
   for (const key of keys) {
     await harness().host('send-keys', '-t', 'host', key)
@@ -344,8 +360,11 @@ describe.skipIf(!enabled)('terminal handoff in isolated tmux servers', () => {
 
     const clientSession = () => harness().target('list-clients', '-F', '#{session_id}')
 
-    // Rows are alpha, bravo, picker; mark alpha and the picker host, then review the batch.
-    await press('m', 'j', 'j', 'm', 'd')
+    // Mark alpha and the picker host, then review the batch.
+    await moveCursorTo('alpha')
+    await press('m')
+    await moveCursorTo('picker')
+    await press('m', 'd')
     await waitForScreen("Not closing 'picker'")
     await press('Enter')
     await waitForScreen("Closed session 'alpha'")
@@ -362,8 +381,7 @@ describe.skipIf(!enabled)('terminal handoff in isolated tmux servers', () => {
       'the results to close',
       async () => !(await hostScreen()).includes('Closed session')
     )
-    await press('k')
-    await waitFor('the cursor on bravo', async () => /›.*bravo/.test(await hostScreen()))
+    await moveCursorTo('bravo')
     await press('Enter')
     await waitFor('the client to switch to bravo', async () => (await clientSession()) === bravo)
 
