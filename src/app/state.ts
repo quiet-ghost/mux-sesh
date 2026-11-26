@@ -1,6 +1,7 @@
 import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { loadConfig } from '../config'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
+import type { AppEffectRuntime } from './effect-runtime'
 import { resolveMultiplexerBackend, type MultiplexerBackend } from '../multiplexer'
 import {
   getProjectSelectionIndex,
@@ -71,6 +72,7 @@ export function applyRefreshedViewState(
 }
 
 export function useAppStartup(
+  effects: AppEffectRuntime,
   measure: Measure,
   lastSessionSelectionRef: MutableRefObject<string | null>,
   lastProjectSelectionRef: MutableRefObject<string | null>,
@@ -98,7 +100,7 @@ export function useAppStartup(
 
       const startupAppMode = config.keybindMode === 'standard' ? AppMode.Search : AppMode.Normal
       const backend = await measure('resolveBackend', () =>
-        resolveMultiplexerBackend({ preference: config.backend })
+        resolveMultiplexerBackend({ preference: config.backend, runner: effects.runner })
       )
       if (cancelled) return
       setConfig(config)
@@ -160,6 +162,7 @@ export function useAppStartup(
       cancelled = true
     }
   }, [
+    effects,
     lastProjectSelectionRef,
     lastSessionSelectionRef,
     mark,

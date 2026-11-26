@@ -61,6 +61,7 @@
     "@ff-labs/fff-bun": "0.10.1",
     "@opentui/core": "0.5.17",
     "@opentui/react": "0.5.17",
+    "effect": "4.0.5",
     "react": "19.2.8"
   },
   "devDependencies": {

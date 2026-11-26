@@ -1,5 +1,5 @@
 import { MultiplexerError, type BackendKind, type BackendPreference } from './types'
-import type { CommandRunner } from './command'
+import { CommandTransportError, type CommandRunner } from './command'
 import { MIN_SUPPORTED_HERDR_PROTOCOL, parseHerdrStatus } from '../herdr/protocol'
 
 export interface BackendState {
@@ -14,11 +14,16 @@ export interface BackendAvailability {
 }
 
 export async function probeHerdrAvailability(runner: CommandRunner): Promise<BackendState> {
-  const result = await runner.run(['herdr', 'status', '--json'])
+  const result = await runProbe(runner, ['herdr', 'status', '--json'])
+
+  if (!result) return { installed: false, running: false }
+
   if (result.exitCode !== 0) {
-    return { installed: result.exitCode !== 127, running: false }
+    return { installed: true, running: false }
   }
+
   const status = parseHerdrStatus(result.stdout)
+
   return {
     installed: true,
     running: status.running,
@@ -29,18 +34,29 @@ export async function probeHerdrAvailability(runner: CommandRunner): Promise<Bac
   }
 }
 
+async function runProbe(runner: CommandRunner, command: readonly string[]) {
+  try {
+    return await runner.run(command)
+  } catch (cause) {
+    if (CommandTransportError.isNotFound(cause)) return undefined
+
+    throw cause
+  }
+}
+
 export async function probeBackendAvailability(
   runner: CommandRunner
 ): Promise<BackendAvailability> {
   const [tmuxVersion, tmuxServer, herdr] = await Promise.all([
-    runner.run(['tmux', '-V']),
-    runner.run(['tmux', 'list-sessions']),
+    runProbe(runner, ['tmux', '-V']),
+    runProbe(runner, ['tmux', 'list-sessions']),
     probeHerdrAvailability(runner),
   ])
-  const tmuxInstalled = tmuxVersion.exitCode === 0
+
+  const tmuxInstalled = tmuxVersion?.exitCode === 0
 
   return {
-    tmux: { installed: tmuxInstalled, running: tmuxInstalled && tmuxServer.exitCode === 0 },
+    tmux: { installed: tmuxInstalled, running: tmuxInstalled && tmuxServer?.exitCode === 0 },
     herdr,
   }
 }
@@ -65,12 +81,14 @@ export function resolveBackendKind(
         'Herdr is configured, but its client and server protocols are incompatible. Restart the Herdr server, then relaunch mux-sesh.'
       )
     }
+
     if (!availability.herdr.running) {
       throw new MultiplexerError(
         'server-stopped',
         'Herdr is configured, but its server is not running. Start Herdr, then relaunch mux-sesh.'
       )
     }
+
     return 'herdr'
   }
 
@@ -81,6 +99,7 @@ export function resolveBackendKind(
         'tmux is configured, but its executable is unavailable. Install tmux, then relaunch mux-sesh.'
       )
     }
+
     return 'tmux'
   }
 

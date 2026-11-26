@@ -8,6 +8,7 @@ import { useAppModalState } from './modal-state'
 import { createAppRuntime } from './runtime'
 import { createAppHandlers, handleKillSessionWithFeedback } from './handlers'
 import { useAppStartup } from './state'
+import { useEffectRuntime } from './use-effect-runtime'
 import { getConfigPath, getHomeDir, saveConfig } from '../config'
 import { resolveTheme } from '../styles/theme'
 import type { TerminalPalette } from '../styles/terminal-palette'
@@ -16,6 +17,7 @@ import { mark, measure } from '../util/perf'
 import { getSettingEditorTitle, isOptionSetting } from '../settings'
 
 export function useAppController(invocationCwd: string) {
+  const effects = useEffectRuntime()
   const {
     appMode,
     setAppMode,
@@ -113,6 +115,7 @@ export function useAppController(invocationCwd: string) {
   const hasScheduledAutoUpdateRef = useRef(false)
 
   useAppStartup(
+    effects,
     measure,
     lastSessionSelectionRef,
     lastProjectSelectionRef,
@@ -319,6 +322,7 @@ export function useAppController(invocationCwd: string) {
   })
 
   useAppBehaviors({
+    effects,
     appMode,
     viewMode,
     config,

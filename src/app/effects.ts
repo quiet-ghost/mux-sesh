@@ -3,16 +3,15 @@ import { useRenderer } from '@opentui/react'
 import type { TerminalColors } from '@opentui/core'
 import { checkAndUpdate, updateEvents } from '../update'
 import { showTemporaryToast } from './notifications'
+import { useHerdrAgentPolling } from './herdr-refresh'
+import type { AppEffectRuntime } from './effect-runtime'
 import { clearMatchIndices, filterAndSortItems } from '../search'
 import { combineFileSearchResults, searchFilesAndDirectories, warmFileSearch } from '../search/fff'
 import { annotateProjectItemsWithSessionLinks } from '../projects/session-links'
 import {
   getProjectSelectionIndex,
-  getAgentSelectionIndex,
   getSessionSelectionIndex,
   loadSessionCandidateItems,
-  loadSessionItems,
-  reuseSessionItemIdentities,
 } from './data'
 import { SYSTEM_THEME_ID } from '../styles/theme'
 import { subscribeThemeFollow } from '../styles/theme-follow'
@@ -405,94 +404,8 @@ export function useNewSessionFileSearch(
   }, [appMode, config, searchQuery, setCursor, setItems])
 }
 
-export function useHerdrAgentPolling(
-  appMode: AppMode,
-  viewMode: ViewMode,
-  config: Config | null,
-  backend: MultiplexerBackend | null,
-  selectedAgentSession: Item | undefined,
-  agentCursor: number,
-  setSessionItems: Dispatch<SetStateAction<Item[]>>,
-  setAllItems: Dispatch<SetStateAction<Item[]>>,
-  setItems: Dispatch<SetStateAction<Item[]>>,
-  setAgentCursor: Dispatch<SetStateAction<number>>,
-  setMessage: Dispatch<SetStateAction<string>>
-) {
-  const selectedKeyRef = useRef<string | undefined>(undefined)
-  const agentCursorRef = useRef(agentCursor)
-  selectedKeyRef.current = selectedAgentSession ? getItemKey(selectedAgentSession) : undefined
-  agentCursorRef.current = agentCursor
-
-  useEffect(() => {
-    if (
-      appMode !== AppMode.AgentsManage ||
-      viewMode !== ViewMode.Sessions ||
-      !config ||
-      backend?.kind !== 'herdr'
-    ) {
-      return
-    }
-
-    let cancelled = false
-    let polling = false
-    let reportedError: string | undefined
-
-    const poll = async () => {
-      if (polling) {
-        return
-      }
-      polling = true
-      try {
-        const { sessionItems } = await loadSessionItems(config, measure, backend, 'agents-poll')
-        if (cancelled) {
-          return
-        }
-
-        setSessionItems(current => reuseSessionItemIdentities(current, sessionItems))
-        setAllItems(current => reuseSessionItemIdentities(current, sessionItems))
-        setItems(current => reuseSessionItemIdentities(current, sessionItems))
-        setAgentCursor(
-          getAgentSelectionIndex(sessionItems, selectedKeyRef.current, agentCursorRef.current)
-        )
-        if (reportedError) {
-          const recoveredError = reportedError
-          setMessage(current => (current === recoveredError ? '' : current))
-          reportedError = undefined
-        }
-      } catch (error) {
-        if (!cancelled && !reportedError) {
-          reportedError = error instanceof Error ? error.message : 'Failed to refresh Herdr agents'
-          setMessage(reportedError)
-        }
-      } finally {
-        polling = false
-      }
-    }
-
-    void poll()
-    const interval = setInterval(() => void poll(), 2000)
-    return () => {
-      cancelled = true
-      clearInterval(interval)
-      if (reportedError) {
-        const abandonedError = reportedError
-        setMessage(current => (current === abandonedError ? '' : current))
-      }
-    }
-  }, [
-    appMode,
-    backend,
-    config,
-    setAgentCursor,
-    setAllItems,
-    setItems,
-    setMessage,
-    setSessionItems,
-    viewMode,
-  ])
-}
-
 interface UseAppBehaviorsOptions {
+  effects: AppEffectRuntime
   appMode: AppMode
   viewMode: ViewMode
   config: Config | null
@@ -605,6 +518,7 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.setCursor
   )
   useHerdrAgentPolling(
+    options.effects,
     options.appMode,
     options.viewMode,
     options.config,
