@@ -13,6 +13,8 @@ export const LINT_CORRIDOR = [
   'src/multiplexer/command.ts',
   'src/multiplexer/failure.ts',
   'src/multiplexer/resolve.ts',
+  'src/multiplexer/tmux-backend.ts',
+  'src/tmux/helpers.ts',
   'src/cli/invocation-cwd.ts',
   'src/files/target.ts',
   'src/handlers/keyboard/agents.ts',
@@ -43,6 +45,8 @@ export const LINT_CORRIDOR = [
   'tests/picker-baseline.test.ts',
   'tests/select-failure.test.ts',
   'tests/shutdown.test.ts',
+  'tests/tmux-backend-server.test.ts',
+  'tests/tmux-backend.test.ts',
   'tools/oxlint/lint-corridor.ts',
 ] as const
 

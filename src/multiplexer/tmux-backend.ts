@@ -1,86 +1,280 @@
-import type { CommandRunner } from './command'
-import type {
-  LiveWorkspace,
-  MultiplexerBackend,
-  OpenWorkspaceInput,
-  WorkspaceDetails,
-  WorkspaceRef,
-} from './types'
+import type { CommandOptions, CommandResult, CommandRunner } from './command'
 import {
-  createTmuxSession,
-  getCurrentTmuxSessionName,
-  getSessionDetails,
-  getTmuxSessionDirectory,
-  killTmuxSession,
-  listTmuxSessions,
-  renameTmuxSession,
-  switchTmuxSession,
-} from '../tmux'
+  MultiplexerError,
+  type LiveWorkspace,
+  type MultiplexerBackend,
+  type OpenWorkspaceInput,
+  type WorkspaceDetails,
+  type WorkspaceRef,
+} from './types'
+import { formatPanePreview, formatWindowCommand, sanitizeTmuxSessionName } from '../tmux/helpers'
+import { toHomeRelativePath } from '../util/path-display'
 
 export interface TmuxBackendOptions {
   runner: CommandRunner
   insideTmux: boolean
+  // Selects an isolated tmux server (`tmux -L`). Omit to use the caller's server.
+  socketName?: string
+}
+
+// Unit separator: session names and paths may contain tabs, but not this control character.
+export const TMUX_FIELD_SEPARATOR = '\u001f'
+
+const SESSION_FORMAT = [
+  '#{session_id}',
+  '#{session_name}',
+  '#{session_attached}',
+  '#{session_windows}',
+  '#{session_created}',
+  '#{session_activity}',
+  '#{session_path}',
+].join(TMUX_FIELD_SEPARATOR)
+
+const WINDOW_FORMAT = [
+  '#{window_id}',
+  '#{window_index}',
+  '#{window_name}',
+  '#{pane_current_path}',
+  '#{pane_current_command}',
+  '#{window_active}',
+].join(TMUX_FIELD_SEPARATOR)
+
+const DETAILS_CACHE_TTL_MS = 4000
+const SESSION_ID = /^\$\d+$/
+const WINDOW_ID = /^@\d+$/
+const COUNT = /^\d+$/
+
+// The server is absent, not broken: an empty inventory that the next create starts.
+const NO_SERVER = /no server running|error connecting to .*\(No such file or directory\)/
+
+function invalidReply(detail: string): never {
+  throw new MultiplexerError(
+    'invalid-response',
+    `tmux returned an unexpected reply: ${detail}. Check that a supported tmux version is installed.`
+  )
+}
+
+function count(value: string, field: string): number {
+  return COUNT.test(value) ? Number(value) : invalidReply(`${field} was '${value}', not a number`)
+}
+
+function parseSessionRow(row: string): LiveWorkspace {
+  const fields = row.split(TMUX_FIELD_SEPARATOR)
+
+  if (fields.length !== 7) invalidReply(`session row had ${fields.length} fields instead of 7`)
+
+  const [id = '', title = '', attached = '', windows = '', created = '', activity = '', path = ''] =
+    fields
+
+  if (!SESSION_ID.test(id)) invalidReply(`session id was '${id}'`)
+
+  return {
+    backend: 'tmux',
+    id,
+    title,
+    path,
+    isActive: count(attached, 'session_attached') > 0,
+    unitCount: count(windows, 'session_windows'),
+    createdAt: count(created, 'session_created'),
+    lastActivity: count(activity, 'session_activity'),
+  }
+}
+
+function lines(output: string): string[] {
+  return output.split('\n').filter(line => line.length > 0)
 }
 
 export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBackend {
+  const detailsCache = new Map<string, { details: WorkspaceDetails; expiresAt: number }>()
+
+  function tmux(args: readonly string[], commandOptions?: CommandOptions): Promise<CommandResult> {
+    const prefix = options.socketName ? ['tmux', '-L', options.socketName] : ['tmux']
+
+    return options.runner.run([...prefix, ...args], commandOptions)
+  }
+
+  async function tmuxOk(
+    args: readonly string[],
+    failure: string,
+    commandOptions?: CommandOptions
+  ): Promise<string> {
+    const result = await tmux(args, commandOptions)
+
+    if (result.exitCode !== 0) {
+      const reason = result.stderr.trim()
+
+      throw new MultiplexerError('command-failed', reason ? `${failure}: ${reason}` : failure)
+    }
+
+    return result.stdout
+  }
+
+  async function list(): Promise<LiveWorkspace[]> {
+    const result = await tmux(['list-sessions', '-F', SESSION_FORMAT])
+
+    if (result.exitCode !== 0) {
+      if (NO_SERVER.test(result.stderr)) return []
+
+      throw new MultiplexerError(
+        'command-failed',
+        `Failed to list tmux sessions: ${result.stderr.trim() || `exit code ${result.exitCode}`}`
+      )
+    }
+
+    return lines(result.stdout).map(parseSessionRow)
+  }
+
+  async function open(workspace: WorkspaceRef): Promise<void> {
+    if (options.insideTmux) {
+      await tmuxOk(
+        ['switch-client', '-t', workspace.id],
+        `Failed to switch to tmux session '${workspace.title}'`
+      )
+
+      return
+    }
+
+    await tmuxOk(
+      ['attach-session', '-t', workspace.id],
+      `Failed to attach tmux session '${workspace.title}'`,
+      { inheritStdio: true }
+    )
+  }
+
+  function invalidate(): void {
+    detailsCache.clear()
+  }
+
   return {
     kind: 'tmux',
     capabilities: { previousWorkspace: true },
-    async list(): Promise<LiveWorkspace[]> {
-      return (await listTmuxSessions()).map(item => ({
-        backend: 'tmux',
-        id: item.title,
-        title: item.title,
-        path: item.path,
-        isActive: item.isAttached === true,
-        unitCount: Number.parseInt(item.windowCount ?? '0', 10),
-        createdAt: item.createdAt,
-        lastActivity: item.lastActivity,
-      }))
-    },
-    async open(workspace: WorkspaceRef): Promise<void> {
-      await switchTmuxSession(workspace.id)
-    },
+    list,
+    open,
     async openOrCreate(input: OpenWorkspaceInput): Promise<void> {
-      await createTmuxSession(input.title, input.path, { startupCommand: input.startupCommand })
+      const title = sanitizeTmuxSessionName(input.title)
+      const existing = (await list()).find(session => session.title === title)
+
+      if (existing) {
+        await open(existing)
+
+        return
+      }
+
+      const created = (
+        await tmuxOk(
+          ['new-session', '-d', '-s', title, '-c', input.path, '-P', '-F', '#{session_id}'],
+          `Failed to create tmux session '${title}'`
+        )
+      ).trim()
+
+      if (!SESSION_ID.test(created))
+        invalidReply(`new-session printed '${created}' instead of a session id`)
+
+      invalidate()
+
+      if (input.startupCommand) {
+        await tmuxOk(
+          ['send-keys', '-t', created, input.startupCommand, 'Enter'],
+          `Created tmux session '${title}', but its startup command could not be sent`
+        )
+      }
+
+      await open({ backend: 'tmux', id: created, title })
     },
     async rename(workspace: WorkspaceRef, title: string): Promise<void> {
-      await renameTmuxSession(workspace.id, title)
+      await tmuxOk(
+        ['rename-session', '-t', workspace.id, sanitizeTmuxSessionName(title)],
+        `Failed to rename tmux session '${workspace.title}'`
+      )
+      invalidate()
     },
     async close(workspace: WorkspaceRef): Promise<void> {
-      await killTmuxSession(workspace.id)
+      await tmuxOk(
+        ['kill-session', '-t', workspace.id],
+        `Failed to close tmux session '${workspace.title}'`
+      )
+      invalidate()
     },
     async current(): Promise<WorkspaceRef | undefined> {
-      const title = await getCurrentTmuxSessionName()
-      return { backend: 'tmux', id: title, title }
+      if (!options.insideTmux) return undefined
+
+      const output = await tmuxOk(
+        ['display-message', '-p', `#{session_id}${TMUX_FIELD_SEPARATOR}#{session_name}`],
+        'Failed to read the current tmux session'
+      )
+
+      const [id = '', title = ''] = output.trim().split(TMUX_FIELD_SEPARATOR)
+
+      if (!SESSION_ID.test(id)) invalidReply(`current session id was '${id}'`)
+
+      return { backend: 'tmux', id, title }
     },
     async directory(workspace: WorkspaceRef): Promise<string | undefined> {
-      return getTmuxSessionDirectory(workspace.id)
+      const output = await tmuxOk(
+        ['display-message', '-t', workspace.id, '-p', '#{pane_current_path}'],
+        `Failed to read the directory of tmux session '${workspace.title}'`
+      )
+
+      return output.trim() || undefined
     },
     async details(workspace: WorkspaceRef): Promise<WorkspaceDetails> {
-      const details = await getSessionDetails(workspace.id)
-      return {
+      const cached = detailsCache.get(workspace.id)
+
+      if (cached && cached.expiresAt > Date.now()) return cached.details
+
+      const failure = `Failed to read tmux session '${workspace.title}'`
+
+      const attached = (
+        await tmuxOk(['display-message', '-t', workspace.id, '-p', '#{session_attached}'], failure)
+      ).trim()
+
+      const windows = lines(
+        await tmuxOk(['list-windows', '-t', workspace.id, '-F', WINDOW_FORMAT], failure)
+      ).map(row => {
+        const [windowId = '', index = '', name = '', path = '', command = '', active = ''] =
+          row.split(TMUX_FIELD_SEPARATOR)
+
+        if (!WINDOW_ID.test(windowId)) invalidReply(`window id was '${windowId}'`)
+
+        return {
+          windowId,
+          active: active === '1',
+          unit: {
+            id: index,
+            name,
+            currentPath: toHomeRelativePath(path),
+            currentCommand: formatWindowCommand(command),
+          },
+        }
+      })
+
+      const activeWindow = windows.find(window => window.active)
+
+      // A missing preview leaves the details usable; the inventory and window list still stand.
+      const preview = activeWindow
+        ? await tmux(['capture-pane', '-p', '-t', activeWindow.windowId, '-S', '-16'])
+        : undefined
+
+      const previewLines = preview?.exitCode === 0 ? formatPanePreview(preview.stdout) : undefined
+
+      const details: WorkspaceDetails = {
         workspace,
-        isActive: details.isAttached,
+        isActive: count(attached, 'session_attached') > 0,
         unitLabel: 'Windows',
-        units: details.windows.map(window => ({
-          id: window.index,
-          name: window.name,
-          currentPath: window.currentPath,
-          currentCommand: window.currentCommand,
-        })),
-        previewLines: details.panePreviewLines,
+        units: windows.map(window => window.unit),
+        previewLines: previewLines && previewLines.length > 0 ? previewLines : undefined,
         agents: [],
       }
+
+      detailsCache.set(workspace.id, { details, expiresAt: Date.now() + DETAILS_CACHE_TTL_MS })
+
+      return details
     },
     async openEditor(path: string, command: string): Promise<boolean> {
-      if (!options.insideTmux) {
-        return false
-      }
-      const result = await options.runner.run(['tmux', 'new-window', '-c', path, command])
-      if (result.exitCode !== 0) {
-        throw new Error(`Failed to open tmux editor window: ${result.stderr.trim()}`)
-      }
+      if (!options.insideTmux) return false
+
+      await tmuxOk(['new-window', '-c', path, command], 'Failed to open a tmux editor window')
+
       return true
     },
   }

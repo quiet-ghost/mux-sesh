@@ -161,21 +161,6 @@ export interface Config {
   wildcards?: ProjectWildcard[]
 }
 
-export interface WindowInfo {
-  index: string
-  name: string
-  currentPath: string
-  currentCommand: string
-}
-
-export interface SessionDetails {
-  name: string
-  isAttached: boolean
-  windowCount: string
-  windows: WindowInfo[]
-  panePreviewLines?: string[]
-}
-
 export interface SearchResult {
   item: Item
   score: number
