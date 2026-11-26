@@ -22,6 +22,7 @@ import { mark, measure } from '../util/perf'
 import { requestFatalShutdown } from '../util/shutdown'
 import { getSettingEditorTitle, isOptionSetting } from '../settings'
 import { useLaunchPreview } from '../ui/launch-preview'
+import { CLONE_SERVICES } from '../sessions/clone-plan'
 import { useLauncherQuery } from './launcher-query'
 import { getNewSessionStepControls, useNewSessionSteps } from './new-session-step'
 
@@ -217,6 +218,7 @@ export function useAppController(invocationCwd: string) {
     backend: backend?.kind,
     invocationCwd,
     liveSessions: sessionItems,
+    clone: CLONE_SERVICES,
     onDefect: requestFatalShutdown,
   })
 
@@ -275,7 +277,7 @@ export function useAppController(invocationCwd: string) {
     handleTogglePinnedSessionWrapper,
     executeCommand,
   } = createAppHandlers({
-    invocationCwd,
+    clone: CLONE_SERVICES,
     launchGuard: launchGuardRef.current,
     backend,
     viewMode,

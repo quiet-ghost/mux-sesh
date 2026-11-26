@@ -1,4 +1,3 @@
-import { resolve } from 'path'
 import { Result } from 'effect'
 import type { Item, Config } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
@@ -17,16 +16,24 @@ import { handoffOf } from '../multiplexer/focus-outcome'
 import type { BackendKind, WorkspaceRef } from '../multiplexer/types'
 import { CleanupPlan } from '../sessions/cleanup-plan'
 import {
+  CloneDestinationRefused,
+  executeCheckout,
+  type CheckoutFailure,
+  type CheckoutReceipt,
+  type ClonePlan,
+  type CloneServices,
+} from '../sessions/clone-plan'
+import {
   executeLaunchPlan,
   LaunchFollowUpFailed,
-  prepareLaunch,
-  type LaunchIntent,
   type LaunchOutcome,
   type LaunchPlan,
   type LaunchPreview,
   type PlannedLaunch,
+  type SessionPlan,
 } from '../sessions/launch-plan'
-import { cloneGitHubRepo } from '../util/github'
+import { gitHubRepositoryName } from '../util/github'
+import { toHomeRelativePath } from '../util/path-display'
 import { requestShutdown } from '../util/shutdown'
 import {
   buildEditorCommand,
@@ -231,7 +238,7 @@ function followUpOutcome(failure: LaunchFollowUpFailed, backend: BackendKind): A
 }
 
 function launchFailureOutcome(
-  plan: LaunchPlan,
+  plan: SessionPlan,
   cause: unknown,
   backend: BackendKind
 ): ActionOutcome {
@@ -267,36 +274,19 @@ function launchFailureOutcome(
   }
 }
 
-interface LaunchInputs {
-  readonly config: Config
-  readonly backend: MultiplexerBackend
-  readonly invocationCwd: string
-  readonly sessionItems: Item[]
-}
-
-async function launch(intent: LaunchIntent, inputs: LaunchInputs): Promise<ActionOutcome> {
-  const plan = await prepareLaunch(intent, {
-    config: inputs.config,
-    backend: inputs.backend.kind,
-    invocationCwd: inputs.invocationCwd,
-    liveSessions: inputs.sessionItems,
-  })
-
-  return runPlannedLaunch(plan, inputs.backend)
-}
-
 async function runPlannedLaunch(
   plan: PlannedLaunch,
-  backend: MultiplexerBackend
+  backend: MultiplexerBackend,
+  clone: CloneServices
 ): Promise<ActionOutcome> {
   // Plan failures are expected and local; nothing was opened or created.
   if (Result.isFailure(plan)) return { kind: 'failed', message: plan.failure.message }
 
-  return runLaunchPlan(plan.success, backend)
+  return runLaunchPlan(plan.success, backend, clone)
 }
 
-async function runLaunchPlan(
-  plan: LaunchPlan,
+async function runSessionPlan(
+  plan: SessionPlan,
   backend: MultiplexerBackend
 ): Promise<ActionOutcome> {
   let outcome: LaunchOutcome
@@ -310,36 +300,124 @@ async function runLaunchPlan(
   return requestShutdown(0, handoffOf(outcome.focus))
 }
 
-// A clone (or an existing checkout it reused) is kept whatever happens to the launch after it.
-async function launchClone(url: string, inputs: LaunchInputs): Promise<ActionOutcome> {
-  let clonedPath: string
+async function runLaunchPlan(
+  plan: LaunchPlan,
+  backend: MultiplexerBackend,
+  clone: CloneServices
+): Promise<ActionOutcome> {
+  return plan.kind === 'clone'
+    ? launchClone(plan.clone, plan.session, backend, clone)
+    : runSessionPlan(plan, backend)
+}
 
-  try {
-    clonedPath = await cloneGitHubRepo(url, inputs.config)
-  } catch (cause) {
-    return {
-      kind: 'failed',
-      message: `Could not clone the repository: ${reasonOf(cause)}. Nothing was opened.`,
-    }
+function receiptFact(receipt: CheckoutReceipt): string {
+  const name = gitHubRepositoryName(receipt.repository)
+
+  return receipt.kind === 'cloned'
+    ? `Cloned ${name} into ${receipt.path}`
+    : `Reused the ${name} checkout at ${receipt.path}`
+}
+
+function leftInPlace(at: string, name: string): string {
+  return `${at} may hold a partial checkout. It was left in place and nothing was deleted; no session was created. Inspect it, or remove it yourself; the next Enter checks it again and refuses to reuse it unless it is a complete checkout of ${name}.`
+}
+
+function sentence(text: string): string {
+  return /[.!?]$/.test(text) ? text : `${text}.`
+}
+
+// Nothing is deleted after a failed or unfinished clone; whatever git left is reported, not hidden.
+function checkoutFailureOutcome(plan: ClonePlan, failure: CheckoutFailure): ActionOutcome {
+  const name = gitHubRepositoryName(plan.repository)
+  const at = toHomeRelativePath(plan.destination)
+
+  switch (failure.kind) {
+    case 'changed':
+      return {
+        kind: 'failed',
+        message:
+          failure.destination.kind === 'refused'
+            ? new CloneDestinationRefused({
+                repository: plan.repository,
+                destination: plan.destination,
+                refusal: failure.destination.refusal,
+              }).message
+            : `${at} changed after the plan was shown (it is now ${failure.destination.kind === 'absent' ? 'missing' : 'a checkout'}), so nothing was cloned or created. Press Enter again to review the new plan.`,
+      }
+    case 'failed':
+      if (!failure.left) {
+        return {
+          kind: 'failed',
+          message: `Could not clone ${name}: ${sentence(failure.reason)} Nothing is at ${at} and no session was created.`,
+        }
+      }
+
+      return {
+        kind: 'unknown',
+        title: `Cloning ${name} failed and left files behind`,
+        completed: [],
+        attempted: `Clone ${name} into ${plan.destination}`,
+        reason: failure.reason,
+        next: leftInPlace(at, name),
+      }
+    case 'unknown':
+      return {
+        kind: 'unknown',
+        title: `Cloning ${name} did not finish`,
+        completed: [],
+        attempted: `Clone ${name} into ${plan.destination}`,
+        reason: failure.reason,
+        next: failure.left
+          ? leftInPlace(at, name)
+          : `Nothing is at ${at} now and no session was created. Press Enter again to plan the clone afresh.`,
+      }
   }
+}
 
-  const outcome = await launch({ kind: 'path', input: resolve(clonedPath) }, inputs)
+// The checkout is kept whatever happens to the session after it, and is never cloned again: a
+// later Enter on the same URL verifies and reuses it.
+function afterCheckout(receipt: CheckoutReceipt, outcome: ActionOutcome): ActionOutcome {
+  const fact = receiptFact(receipt)
+  const kept = `The checkout at ${receipt.path} was kept and will not be cloned again.`
 
-  return ActionOutcome.after(
-    `The repository is at ${clonedPath}`,
-    outcome,
-    'Repository ready, but its session was not opened',
-    'The repository was kept and will not be cloned again. Enter the same URL, or pick it on the New screen, to open it.'
-  )
+  switch (outcome.kind) {
+    case 'completed':
+      return outcome
+    case 'failed':
+      return ActionOutcome.after(
+        fact,
+        outcome,
+        `${gitHubRepositoryName(receipt.repository)} is ready, but its session did not open`,
+        `${kept} Press Enter on the same URL to reuse it, or pick it on the New screen.`
+      )
+    case 'partial':
+    case 'unknown':
+      return {
+        ...outcome,
+        completed: [fact, ...outcome.completed],
+        next: `${outcome.next} ${kept}`,
+      }
+  }
+}
+
+async function launchClone(
+  plan: ClonePlan,
+  session: SessionPlan,
+  backend: MultiplexerBackend,
+  clone: CloneServices
+): Promise<ActionOutcome> {
+  const checkout = await executeCheckout(plan, clone)
+
+  if (Result.isFailure(checkout)) return checkoutFailureOutcome(plan, checkout.failure)
+
+  return afterCheckout(checkout.success, await runSessionPlan(session, backend))
 }
 
 // Enter runs the plan the New screen shows; it never re-resolves rules or inventory first.
 export async function handleNewSessionSubmit(
   preview: LaunchPreview,
-  config: Config | null,
   backend: MultiplexerBackend,
-  invocationCwd: string,
-  sessionItems: Item[]
+  clone: CloneServices
 ): Promise<ActionOutcome> {
   switch (preview.kind) {
     case 'inactive':
@@ -380,19 +458,12 @@ export async function handleNewSessionSubmit(
         kind: 'failed',
         message: `Nothing to open: no file matches '${preview.query}', and nothing was created.`,
       }
-    case 'clone':
-      return launchClone(preview.url, {
-        config: requireConfig(config),
-        backend,
-        invocationCwd,
-        sessionItems,
-      })
     case 'planning':
-      return runPlannedLaunch((await preview.prepared).result, backend)
+      return runPlannedLaunch((await preview.prepared).result, backend, clone)
     case 'refused':
       return { kind: 'failed', message: preview.failure.message }
     case 'ready':
-      return runLaunchPlan(preview.plan, backend)
+      return runLaunchPlan(preview.plan, backend, clone)
   }
 }
 

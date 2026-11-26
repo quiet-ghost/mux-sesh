@@ -7,6 +7,7 @@ import {
   NO_LAUNCH_OPTIONS,
   parseStartupOverride,
   settleLaunchPreview,
+  sessionPlanOf,
   type LaunchOptions,
   type LaunchPreview,
   type LaunchRequest,
@@ -73,13 +74,17 @@ function plannedTitle(preview: LaunchPreview): string | undefined {
 
   if (preview.kind !== 'ready') return undefined
 
-  return preview.plan.kind === 'create' ? preview.plan.input.title : preview.plan.target.title
+  const plan = sessionPlanOf(preview.plan)
+
+  return plan.kind === 'create' ? plan.input.title : plan.target.title
 }
 
 function plannedStartup(preview: LaunchPreview): string {
-  return preview.kind === 'ready' && preview.plan.kind === 'create'
-    ? (preview.plan.input.startupCommand ?? '')
-    : ''
+  if (preview.kind !== 'ready') return ''
+
+  const plan = sessionPlanOf(preview.plan)
+
+  return plan.kind === 'create' ? (plan.input.startupCommand ?? '') : ''
 }
 
 function fileSearchFor(query: string): FileStepSearch {

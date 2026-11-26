@@ -1,13 +1,13 @@
 import { expect, test } from 'bun:test'
 import type { OperationReport } from '../src/app/action-outcome'
 import { handleNewSessionSubmitWithPreview, type LaunchGuard } from '../src/app/handlers'
-import { getDefaultConfig } from '../src/config'
 import {
   MultiplexerError,
   type CreatedSessionReceipt,
   type MultiplexerBackend,
 } from '../src/multiplexer/types'
 import type { LaunchPreview } from '../src/sessions/launch-plan'
+import { NO_GIT } from './fixtures/local-github'
 
 const receipt: CreatedSessionReceipt = {
   workspace: { backend: 'herdr', id: 'w9', title: 'scratch' },
@@ -58,10 +58,8 @@ test('a second Enter while a launch runs is refused, and a failed launch refresh
   const launchGuard: LaunchGuard = { active: false }
 
   const options = {
-    invocationCwd: '/fixture',
+    clone: NO_GIT,
     backend,
-    config: getDefaultConfig('/fixture'),
-    sessionItems: [],
     launchGuard,
     showMessage: (message: string) => {
       messages.push(message)
@@ -122,10 +120,8 @@ function recording() {
   }
 
   const options = {
-    invocationCwd: '/fixture',
+    clone: NO_GIT,
     backend,
-    config: getDefaultConfig('/fixture'),
-    sessionItems: [],
     launchGuard: { active: false },
     showMessage: (message: string) => {
       messages.push(message)

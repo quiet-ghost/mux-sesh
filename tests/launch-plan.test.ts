@@ -24,6 +24,7 @@ import {
   type LaunchRequest,
 } from '../src/sessions/launch-plan'
 import type { Item } from '../src/types'
+import { NO_GIT } from './fixtures/local-github'
 
 let root = ''
 
@@ -38,7 +39,13 @@ afterEach(async () => {
 })
 
 function context(backend: BackendKind, liveSessions: Item[] = []): LaunchContext {
-  return { config: getDefaultConfig(root), backend, invocationCwd: root, liveSessions }
+  return {
+    config: getDefaultConfig(root),
+    backend,
+    invocationCwd: root,
+    liveSessions,
+    clone: NO_GIT,
+  }
 }
 
 function project(path: string): Item {
@@ -192,10 +199,29 @@ describe('launch previews', () => {
     })
   })
 
-  test('a GitHub URL is a clone, not a plan', () => {
-    expect(previewLaunch('https://github.com/acme/widget', undefined, context('herdr'))).toEqual({
-      kind: 'clone',
-      url: 'https://github.com/acme/widget',
+  test('a GitHub URL settles to a frozen clone into the repos path, then its session', async () => {
+    const { reposPath, defaultSession } = getDefaultConfig(root)
+
+    expect(await settled('https://github.com/acme/widget', undefined, context('herdr'))).toEqual({
+      kind: 'ready',
+      subject: 'repository',
+      plan: {
+        kind: 'clone',
+        clone: {
+          repository: { owner: 'acme', repo: 'widget', url: 'https://github.com/acme/widget.git' },
+          reposPath,
+          destination: join(reposPath, 'widget'),
+          checkout: 'clone',
+        },
+        session: {
+          kind: 'create',
+          input: {
+            title: 'widget',
+            path: join(reposPath, 'widget'),
+            startupCommand: defaultSession?.startupCommand,
+          },
+        },
+      },
     })
   })
 

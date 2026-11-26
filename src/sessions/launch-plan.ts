@@ -21,7 +21,15 @@ import type {
 import type { FileStepSearch } from '../search/file-step'
 import { sanitizeTmuxSessionName } from '../tmux/helpers'
 import type { Config, Item } from '../types'
-import { isGitHubURL } from '../util/github'
+import { isGitHubURL, parseGitHubURL, type GitHubURL } from '../util/github'
+import {
+  checkCloneDestination,
+  cloneDestinationOf,
+  CloneDestinationRefused,
+  CloneURLHasCredentials,
+  type ClonePlan,
+  type CloneServices,
+} from './clone-plan'
 
 // What the user asked for on the New screen, before any rules or inventory are consulted.
 // Text that matches no row and is not a path is not a launch: it never names a new session.
@@ -31,11 +39,21 @@ export type LaunchIntent =
   | { readonly kind: 'path'; readonly input: string; readonly fallback?: Item }
   | { readonly kind: 'named-here'; readonly name: string }
   | { readonly kind: 'file-path'; readonly input: string }
+  | { readonly kind: 'clone'; readonly url: Exclude<GitHubURL, { kind: 'unsupported' }> }
 
-// The exact operation that will run; the same value drives every label shown for it.
-export type LaunchPlan =
+// What happens to the multiplexer: open an existing session, or create one.
+export type SessionPlan =
   | { readonly kind: 'focus'; readonly target: WorkspaceRef; readonly path: string }
   | { readonly kind: 'create'; readonly input: OpenWorkspaceInput }
+
+// The exact operation that will run; the same value drives every label shown for it. A clone
+// freezes its checkout and the session it then opens together.
+export type LaunchPlan =
+  SessionPlan | { readonly kind: 'clone'; readonly clone: ClonePlan; readonly session: SessionPlan }
+
+export function sessionPlanOf(plan: LaunchPlan): SessionPlan {
+  return plan.kind === 'clone' ? plan.session : plan
+}
 
 export type StartupOverride =
   { readonly kind: 'none' } | { readonly kind: 'command'; readonly command: string }
@@ -105,12 +123,15 @@ export type LaunchPlanFailure =
   | LaunchDirectoryMissing
   | InvalidSessionName
   | SessionNameCollision
+  | CloneURLHasCredentials
+  | CloneDestinationRefused
 
 export interface LaunchContext {
   readonly config: Config
   readonly backend: BackendKind
   readonly invocationCwd: string
   readonly liveSessions: readonly Item[]
+  readonly clone: CloneServices
 }
 
 export function launchIntentFor(
@@ -205,7 +226,7 @@ function planCreate(
   requested: OpenWorkspaceInput,
   context: LaunchContext,
   options: LaunchOptions = NO_LAUNCH_OPTIONS
-): Result.Result<LaunchPlan, LaunchPlanFailure> {
+): Result.Result<SessionPlan, LaunchPlanFailure> {
   const applied = applyOptions(requested, options, context.backend)
 
   if (Result.isFailure(applied)) return Result.fail(applied.failure)
@@ -240,7 +261,11 @@ function planCreate(
   return Result.succeed({ kind: 'create', input })
 }
 
-async function planDirectory(path: string, context: LaunchContext, options?: LaunchOptions) {
+async function planDirectory(
+  path: string,
+  context: LaunchContext,
+  options?: LaunchOptions
+): Promise<Result.Result<SessionPlan, LaunchPlanFailure>> {
   const rules = await resolveProjectSession(path, context.config)
 
   return planCreate(
@@ -262,7 +287,7 @@ function planFile(path: string, context: LaunchContext, options?: LaunchOptions)
 
 async function planCandidate(item: Item, context: LaunchContext, options?: LaunchOptions) {
   if (isLiveSessionItem(item))
-    return Result.succeed<LaunchPlan>({
+    return Result.succeed<SessionPlan>({
       kind: 'focus',
       target: getWorkspaceRef(item),
       path: item.path,
@@ -285,7 +310,7 @@ async function isDirectory(path: string): Promise<boolean> {
 async function planNamedHere(
   draft: string,
   context: LaunchContext
-): Promise<Result.Result<LaunchPlan, LaunchPlanFailure>> {
+): Promise<Result.Result<SessionPlan, LaunchPlanFailure>> {
   const name = parseSessionName(draft, context.backend)
 
   if (Result.isFailure(name)) return Result.fail(name.failure)
@@ -302,7 +327,7 @@ async function planNamedHere(
 async function planFilePath(
   input: string,
   context: LaunchContext
-): Promise<Result.Result<LaunchPlan, LaunchPlanFailure>> {
+): Promise<Result.Result<SessionPlan, LaunchPlanFailure>> {
   const target = await resolveTypedPathTarget(input, { invocationCwd: context.invocationCwd })
 
   if (!target) {
@@ -317,11 +342,46 @@ async function planFilePath(
   return planFile(target.path, context)
 }
 
+// The destination and the session rules are both resolved before anything runs; a destination
+// that exists is reused only once it is verified as this repository's complete checkout.
+async function planClone(
+  url: Extract<LaunchIntent, { kind: 'clone' }>['url'],
+  context: LaunchContext
+): Promise<Result.Result<LaunchPlan, LaunchPlanFailure>> {
+  const { repository } = url
+
+  if (url.kind === 'credentialed') return Result.fail(new CloneURLHasCredentials({ repository }))
+
+  const { reposPath } = context.config
+  const destination = cloneDestinationOf(repository, reposPath)
+  const found = await checkCloneDestination(repository, reposPath, context.clone.inspect)
+
+  if (found.kind === 'refused')
+    return Result.fail(
+      new CloneDestinationRefused({ repository, destination, refusal: found.refusal })
+    )
+
+  const session = await planDirectory(destination, context)
+
+  if (Result.isFailure(session)) return Result.fail(session.failure)
+
+  return Result.succeed({
+    kind: 'clone',
+    clone: {
+      repository,
+      reposPath,
+      destination,
+      checkout: found.kind === 'absent' ? 'clone' : 'reuse',
+    },
+    session: session.success,
+  })
+}
+
 export type PlannedLaunch = Result.Result<LaunchPlan, LaunchPlanFailure>
 
-// Whether the plan opens the highlighted row, a typed path, or a named session in the caller's
-// directory, so a row label never claims a plan that belongs to something else.
-export type LaunchSubject = 'selected' | 'typed-path' | 'named-here'
+// Whether the plan opens the highlighted row, a typed path, a named session in the caller's
+// directory, or a typed repository, so a row label never claims a plan that is not its own.
+export type LaunchSubject = 'selected' | 'typed-path' | 'named-here' | 'repository'
 
 export interface PreparedLaunch {
   readonly subject: LaunchSubject
@@ -340,6 +400,8 @@ async function prepareIntent(
       return { subject: 'named-here', result: await planNamedHere(intent.name, context) }
     case 'file-path':
       return { subject: 'typed-path', result: await planFilePath(intent.input, context) }
+    case 'clone':
+      return { subject: 'repository', result: await planClone(intent.url, context) }
     case 'path':
       break
   }
@@ -386,7 +448,6 @@ export type LaunchPreview =
   | { readonly kind: 'inactive' }
   | { readonly kind: 'no-candidates' }
   | { readonly kind: 'no-match'; readonly query: string }
-  | { readonly kind: 'clone'; readonly url: string }
   | { readonly kind: 'name-required'; readonly directory: string }
   | { readonly kind: 'file-prompt' }
   | { readonly kind: 'file-searching'; readonly query: string }
@@ -409,8 +470,10 @@ export function previewLaunch(
   options: LaunchOptions = NO_LAUNCH_OPTIONS
 ): LaunchPreview {
   const query = searchQuery.trim()
+  const url = parseGitHubURL(query)
 
-  if (isGitHubURL(query)) return { kind: 'clone', url: query }
+  if (url.kind !== 'unsupported')
+    return { kind: 'planning', prepared: prepareIntent({ kind: 'clone', url }, context) }
 
   const intent = launchIntentFor(query, selected)
 
@@ -527,7 +590,7 @@ async function followUp<A>(
 }
 
 export async function executeLaunchPlan(
-  plan: LaunchPlan,
+  plan: SessionPlan,
   backend: MultiplexerBackend
 ): Promise<LaunchOutcome> {
   if (plan.kind === 'focus') {

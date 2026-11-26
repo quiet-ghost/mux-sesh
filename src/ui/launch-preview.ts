@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { NewSessionAction } from '../app/action-catalog'
 import type { BackendKind } from '../multiplexer/types'
+import type { CloneServices } from '../sessions/clone-plan'
 import {
   INACTIVE_LAUNCH,
   previewLaunchRequest,
   settleLaunchPreview,
+  type LaunchPlan,
   type LaunchPreview,
   type LaunchRequest,
+  type SessionPlan,
 } from '../sessions/launch-plan'
 import type { Config, Item } from '../types'
+import { gitHubRepositoryName } from '../util/github'
 import { toHomeRelativePath } from '../util/path-display'
 
 export interface LaunchPreviewInput {
@@ -19,6 +23,7 @@ export interface LaunchPreviewInput {
   readonly backend: BackendKind | undefined
   readonly invocationCwd: string
   readonly liveSessions: Item[]
+  readonly clone: CloneServices
   // A planner that rejects instead of returning a failure is a defect.
   readonly onDefect: (cause: unknown) => void
 }
@@ -31,14 +36,14 @@ interface Settled {
 // Plans the requested launch once per request and inventory. The returned value is what the
 // screen labels and what Enter executes, so the two cannot disagree.
 export function useLaunchPreview(input: LaunchPreviewInput): LaunchPreview {
-  const { active, request, config, backend, invocationCwd, liveSessions } = input
+  const { active, request, config, backend, invocationCwd, liveSessions, clone } = input
 
   const planned = useMemo(
     () =>
       active && config && backend
-        ? previewLaunchRequest(request, { config, backend, invocationCwd, liveSessions })
+        ? previewLaunchRequest(request, { config, backend, invocationCwd, liveSessions, clone })
         : INACTIVE_LAUNCH,
-    [active, backend, config, invocationCwd, liveSessions, request]
+    [active, backend, clone, config, invocationCwd, liveSessions, request]
   )
 
   const [settled, setSettled] = useState<Settled | undefined>(undefined)
@@ -65,12 +70,17 @@ export function useLaunchPreview(input: LaunchPreviewInput): LaunchPreview {
   return settled?.from === planned ? settled.preview : planned
 }
 
+// A reused checkout is not a clone: Enter only does what the session plan does.
+function enterActionOf(plan: LaunchPlan): NewSessionAction {
+  if (plan.kind !== 'clone') return plan.kind
+
+  return plan.clone.checkout === 'clone' ? 'clone' : plan.session.kind
+}
+
 export function getNewSessionAction(preview: LaunchPreview): NewSessionAction {
   switch (preview.kind) {
     case 'ready':
-      return preview.plan.kind
-    case 'clone':
-      return 'clone'
+      return enterActionOf(preview.plan)
     case 'inactive':
     case 'no-candidates':
     case 'no-match':
@@ -89,13 +99,13 @@ export function getNewSessionAction(preview: LaunchPreview): NewSessionAction {
 export function getSelectedRowAction(preview: LaunchPreview): string | undefined {
   switch (preview.kind) {
     case 'ready':
-      return preview.subject === 'selected' ? preview.plan.kind : ''
     case 'refused':
-      return ''
+      if (preview.subject === 'repository') return undefined
+
+      return preview.kind === 'ready' && preview.subject === 'selected' ? preview.plan.kind : ''
     case 'inactive':
     case 'no-candidates':
     case 'no-match':
-    case 'clone':
     case 'name-required':
     case 'file-prompt':
     case 'file-searching':
@@ -122,8 +132,6 @@ export function describeLaunchPreview(preview: LaunchPreview): LaunchSummary {
         kind: 'note',
         text: `No project matches '${preview.query}'. Type a path, or clear the query to pick a project.`,
       }
-    case 'clone':
-      return { kind: 'action', verb: 'Clone', detail: `${preview.url}, then create its session` }
     case 'name-required':
       return {
         kind: 'note',
@@ -147,25 +155,47 @@ export function describeLaunchPreview(preview: LaunchPreview): LaunchSummary {
       return { kind: 'note', text: 'Checking what Enter will open…' }
     case 'refused':
       return { kind: 'note', text: preview.failure.message }
-    case 'ready': {
-      const { plan } = preview
+    case 'ready':
+      return describePlan(preview.plan)
+  }
+}
 
-      if (plan.kind === 'focus') {
-        return {
-          kind: 'action',
-          verb: 'Focus',
-          detail: `existing '${plan.target.title}' in ${toHomeRelativePath(plan.path)}`,
-        }
+function startupOf(plan: Extract<SessionPlan, { kind: 'create' }>): string {
+  const { startupCommand } = plan.input
+
+  return startupCommand ? `, then run: ${startupCommand}` : ''
+}
+
+// The session half of a clone, after its checkout: the directory is already named.
+function describeSessionAfterCheckout(plan: SessionPlan): string {
+  return plan.kind === 'focus'
+    ? `focus existing '${plan.target.title}'`
+    : `create '${plan.input.title}'${startupOf(plan)}`
+}
+
+function describePlan(plan: LaunchPlan): LaunchSummary {
+  switch (plan.kind) {
+    case 'focus':
+      return {
+        kind: 'action',
+        verb: 'Focus',
+        detail: `existing '${plan.target.title}' in ${toHomeRelativePath(plan.path)}`,
       }
-
-      const { title, path, startupCommand } = plan.input
-      const startup = startupCommand ? `, then run: ${startupCommand}` : ''
-
+    case 'create':
       return {
         kind: 'action',
         verb: 'Create',
-        detail: `'${title}' in ${toHomeRelativePath(path)}${startup}`,
+        detail: `'${plan.input.title}' in ${toHomeRelativePath(plan.input.path)}${startupOf(plan)}`,
       }
+    case 'clone': {
+      const { repository, destination, checkout } = plan.clone
+      const name = gitHubRepositoryName(repository)
+      const then = describeSessionAfterCheckout(plan.session)
+      const at = toHomeRelativePath(destination)
+
+      return checkout === 'clone'
+        ? { kind: 'action', verb: 'Clone', detail: `${name} into ${at}, then ${then}` }
+        : { kind: 'action', verb: 'Reuse', detail: `the ${name} checkout at ${at}, then ${then}` }
     }
   }
 }

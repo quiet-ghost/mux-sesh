@@ -31,6 +31,7 @@ import { createHerdrBackend } from '../src/herdr/backend'
 import { getItemKey, workspaceToItem } from '../src/multiplexer/items'
 import { filterHiddenSessions } from '../src/tmux/workflows'
 import { INACTIVE_LAUNCH } from '../src/sessions/launch-plan'
+import { NO_GIT } from './fixtures/local-github'
 
 function actionContext(overrides: Partial<ActionContext> = {}): ActionContext {
   return {
@@ -628,7 +629,7 @@ describe('app handler factory', () => {
     const showMessage = mock(() => {})
 
     const handlers = createAppHandlers({
-      invocationCwd: '/home/tester',
+      clone: NO_GIT,
       launchGuard: { active: false },
       showOutcome: mock(() => {}),
       viewMode: ViewMode.Sessions,
@@ -696,7 +697,7 @@ describe('app handler factory', () => {
     })
 
     const handlers = createAppHandlers({
-      invocationCwd: '/home/tester',
+      clone: NO_GIT,
       launchGuard: { active: false },
       showOutcome: mock(() => {}),
       viewMode: ViewMode.Sessions,

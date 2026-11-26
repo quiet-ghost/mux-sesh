@@ -7,6 +7,7 @@ import { handleNewSessionSubmitWithPreview } from '@/app/handlers'
 import { captureInvocationCwd } from '@/cli/invocation-cwd'
 import { getDefaultConfig } from '@/config'
 import type { MultiplexerBackend, OpenWorkspaceInput } from '@/multiplexer'
+import type { CloneServices } from '@/sessions/clone-plan'
 import { previewLaunch } from '@/sessions/launch-plan'
 import { initializeShutdown } from '@/util/shutdown'
 
@@ -15,6 +16,12 @@ const created: OpenWorkspaceInput[] = []
 
 function unexpectedBackendCall(): never {
   throw new Error('The wrapper probe must only record session creation')
+}
+
+// The probe is copied alone into an install directory, so it carries its own git refusal.
+const NO_GIT: CloneServices = {
+  inspect: { run: unexpectedBackendCall },
+  clone: { run: unexpectedBackendCall },
 }
 
 const backend: MultiplexerBackend = {
@@ -101,15 +108,14 @@ try {
       backend: backend.kind,
       invocationCwd,
       liveSessions: [],
+      clone: NO_GIT,
     })
 
     await act(async () => {
       await handleNewSessionSubmitWithPreview(preview, {
-        invocationCwd,
+        clone: NO_GIT,
         launchGuard: { active: false },
         backend,
-        config,
-        sessionItems: [],
         showMessage: message => {
           throw new Error(message)
         },

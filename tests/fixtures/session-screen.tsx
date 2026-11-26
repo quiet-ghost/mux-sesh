@@ -36,6 +36,7 @@ import { getDefaultConfig } from '../../src/config'
 import type { LiveWorkspace, MultiplexerBackend } from '../../src/multiplexer'
 import { filterAndSortItems } from '../../src/search'
 import type { FileSearchOutcome } from '../../src/search/fff'
+import type { CloneServices } from '../../src/sessions/clone-plan'
 import { getSettingEditorTitle, isOptionSetting } from '../../src/settings'
 import { resolveTheme, ThemeProvider, type ThemeResolver } from '../../src/styles/theme'
 import type { SubscribeThemeFollowOptions } from '../../src/styles/theme-follow'
@@ -77,6 +78,7 @@ interface SessionFixture {
   themeFollow?: SubscribeThemeFollowOptions
   launcher: LauncherQueryServices
   invocationCwd: string
+  clone: CloneServices
   handle: FixtureHandle
 }
 
@@ -97,6 +99,8 @@ interface SessionScreenData {
   fileSearchDebounceMs?: number
   // The directory mux-sesh was started in; defaults to '/fixture'.
   invocationCwd?: string
+  // Git for clones; defaults to refusing to run git at all.
+  clone?: CloneServices
   config?: Partial<Config>
   filterItems?: typeof filterAndSortItems
   homeDir?: string
@@ -112,6 +116,11 @@ interface MountedRenderer {
 
 function unsupportedFixtureAction(): never {
   throw new Error('This session-screen fixture does not implement that action')
+}
+
+const NO_GIT: CloneServices = {
+  inspect: { run: unsupportedFixtureAction },
+  clone: { run: unsupportedFixtureAction },
 }
 
 const passthroughMeasure = async <T,>(_name: string, run: () => Promise<T>): Promise<T> => run()
@@ -307,6 +316,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     backend: backend.kind,
     invocationCwd: fixture.invocationCwd,
     liveSessions: core.sessionItems,
+    clone: fixture.clone,
     onDefect: cause => {
       fixture.defects.push(cause)
     },
@@ -317,7 +327,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     ...modal,
     ...derived,
     ...controls,
-    invocationCwd: fixture.invocationCwd,
+    clone: fixture.clone,
     launchGuard: launchGuard.current,
     backend,
     config,
@@ -528,6 +538,7 @@ export async function renderSessionScreen(
             launcher,
             handle,
             invocationCwd: data.invocationCwd ?? '/fixture',
+            clone: data.clone ?? NO_GIT,
           }}
         />,
         { ...options, consoleMode: 'disabled', exitOnCtrlC: false, kittyKeyboard: true }

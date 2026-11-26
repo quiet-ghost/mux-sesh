@@ -1,6 +1,4 @@
 import { afterEach, expect, test } from 'bun:test'
-import { mkdir, mkdtemp, rm } from 'fs/promises'
-import { tmpdir } from 'os'
 import { join } from 'path'
 import type { OperationReport } from '../src/app/action-outcome'
 import {
@@ -18,8 +16,10 @@ import {
   type CreatedSessionReceipt,
   type MultiplexerBackend,
 } from '../src/multiplexer/types'
+import type { CloneServices } from '../src/sessions/clone-plan'
 import { previewLaunch, type LaunchPreview } from '../src/sessions/launch-plan'
 import type { Config, Item } from '../src/types'
+import { createLocalGitHub, NO_GIT, type LocalGitHub } from './fixtures/local-github'
 
 const receipt: CreatedSessionReceipt = {
   workspace: { backend: 'herdr', id: 'w9', title: 'scratch' },
@@ -42,6 +42,7 @@ function highlighted(item: Item, config: Config): LaunchPreview {
     backend: 'herdr',
     invocationCwd: '/fixture',
     liveSessions: [],
+    clone: NO_GIT,
   })
 }
 
@@ -87,7 +88,7 @@ function scriptedBackend(script: BackendScript) {
   return { backend, calls }
 }
 
-function launchOptions(backend: MultiplexerBackend, config: Config = getDefaultConfig('/fixture')) {
+function launchOptions(backend: MultiplexerBackend, clone: CloneServices = NO_GIT) {
   const messages: string[] = []
   const reports: OperationReport[] = []
   const launchGuard: LaunchGuard = { active: false }
@@ -98,10 +99,8 @@ function launchOptions(backend: MultiplexerBackend, config: Config = getDefaultC
     reports,
     refreshes: () => refreshes,
     options: {
-      invocationCwd: '/fixture',
+      clone,
       backend,
-      config,
-      sessionItems: [],
       launchGuard,
       showMessage: (message: string) => {
         messages.push(message)
@@ -162,7 +161,7 @@ test('a failed startup command keeps the workspace and offers opening it, not re
   })
 
   const config = { ...getDefaultConfig('/fixture'), defaultSession: { startupCommand: 'bun dev' } }
-  const launch = launchOptions(backend, config)
+  const launch = launchOptions(backend)
 
   const project = {
     title: 'api',
@@ -224,37 +223,40 @@ test('a definite create failure stays a local message and creates nothing', asyn
   expect(launch.messages[0]).toContain('label already used')
 })
 
-let reposPath: string | undefined
+let github: LocalGitHub | undefined
 
 afterEach(async () => {
-  if (reposPath) await rm(reposPath, { recursive: true, force: true })
-  reposPath = undefined
+  await github?.remove()
+  github = undefined
 })
 
 test('a reused clone whose workspace cannot be opened reports the repository and the created workspace', async () => {
-  reposPath = await mkdtemp(join(tmpdir(), 'mux-sesh-outcome-'))
-  const clonePath = join(reposPath, 'widget')
-  await mkdir(clonePath)
+  const local = await createLocalGitHub()
+  github = local
+  const clonePath = join(local.reposPath, 'widget')
+  await local.checkout(clonePath, 'https://github.com/acme/widget.git', true)
 
   const { backend, calls } = scriptedBackend({})
+  const launch = launchOptions(backend, local.services)
 
-  const launch = launchOptions(backend, {
-    ...getDefaultConfig('/fixture'),
-    reposPath,
-    defaultSession: {},
+  const preview = previewLaunch('https://github.com/acme/widget', undefined, {
+    config: { ...getDefaultConfig('/fixture'), reposPath: local.reposPath, defaultSession: {} },
+    backend: 'herdr',
+    invocationCwd: '/fixture',
+    liveSessions: [],
+    clone: local.services,
   })
 
-  await handleNewSessionSubmitWithPreview(
-    { kind: 'clone', url: 'https://github.com/acme/widget' },
-    launch.options
-  )
+  await handleNewSessionSubmitWithPreview(preview, launch.options)
 
   const report = onlyReport(launch.reports)
   expect(report).toMatchObject({
     kind: 'partial',
-    completed: [`The repository is at ${clonePath}`, "Created workspace 'scratch'"],
+    completed: [`Reused the acme/widget checkout at ${clonePath}`, "Created workspace 'scratch'"],
     retry: { kind: 'open', target: receipt.workspace },
   })
+  expect(report.next).toContain(`The checkout at ${clonePath} was kept`)
+  expect(local.clones).toEqual([])
   expect(calls).toEqual(['create widget', 'open w9'])
 })
 

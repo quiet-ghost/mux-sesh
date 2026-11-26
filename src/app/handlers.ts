@@ -14,6 +14,7 @@ import type { SettingsFieldId } from '../settings'
 import type { MultiplexerBackend } from '../multiplexer'
 import { handoffOf } from '../multiplexer/focus-outcome'
 import type { FocusOutcome, WorkspaceRef } from '../multiplexer/types'
+import type { CloneServices } from '../sessions/clone-plan'
 import type { LaunchPreview } from '../sessions/launch-plan'
 import { requestShutdown } from '../util/shutdown'
 import { movePinAfterRename } from '../config/pinned-sessions'
@@ -48,9 +49,9 @@ export interface LaunchGuard {
 
 interface NewSessionHandlerOptions extends Pick<
   SharedHandlerOptions,
-  'backend' | 'config' | 'sessionItems' | 'showMessage' | 'refreshItems'
+  'backend' | 'showMessage' | 'refreshItems'
 > {
-  invocationCwd: string
+  clone: CloneServices
   launchGuard: LaunchGuard
   showOutcome: (report: OperationReport) => void
 }
@@ -231,13 +232,7 @@ export async function handleNewSessionSubmitWithPreview(
   options.launchGuard.active = true
 
   try {
-    const outcome = await actionHandleNewSessionSubmit(
-      preview,
-      options.config,
-      options.backend,
-      options.invocationCwd,
-      options.sessionItems
-    )
+    const outcome = await actionHandleNewSessionSubmit(preview, options.backend, options.clone)
 
     ActionOutcome.present(outcome, options)
 
@@ -539,7 +534,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
   async function handleNewSessionSubmit() {
     await handleNewSessionSubmitWithPreview(options.launchPreview, {
       ...sharedOptions,
-      invocationCwd: options.invocationCwd,
+      clone: options.clone,
       launchGuard: options.launchGuard,
       showOutcome: options.showOutcome,
     })

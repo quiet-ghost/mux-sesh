@@ -6,6 +6,7 @@ import type { CommandRunner } from '../src/multiplexer/command'
 import { workspaceToItem } from '../src/multiplexer/items'
 import { INACTIVE_LAUNCH } from '../src/sessions/launch-plan'
 import { ViewMode } from '../src/types'
+import { NO_GIT } from './fixtures/local-github'
 
 const agent = workspaceToItem({
   backend: 'herdr',
@@ -19,7 +20,7 @@ const agent = workspaceToItem({
 
 function handlersFor(runner: CommandRunner, showMessage: (message: string) => void) {
   return createAppHandlers({
-    invocationCwd: '/fixture',
+    clone: NO_GIT,
     launchGuard: { active: false },
     viewMode: ViewMode.Sessions,
     config: getDefaultConfig('/fixture'),
