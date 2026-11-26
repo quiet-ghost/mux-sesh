@@ -1,5 +1,8 @@
-import { Cause, Context, Data, Effect, Exit, Layer, ManagedRuntime, Result } from 'effect'
+import { Cause, Context, Effect, Exit, Layer, ManagedRuntime, Result } from 'effect'
 import {
+  CommandInterrupted,
+  CommandOutputLimitError,
+  CommandTimeoutError,
   CommandTransportError,
   createCommandRunner,
   type CommandOptions,
@@ -8,7 +11,8 @@ import {
 } from '../multiplexer/command'
 import { MultiplexerError } from '../multiplexer/types'
 
-export type ReadFailure = CommandTransportError | MultiplexerError
+export type ReadFailure =
+  CommandTransportError | CommandTimeoutError | CommandOutputLimitError | MultiplexerError
 
 export type OperationOutcome<A, E> =
   | { readonly kind: 'success'; readonly value: A }
@@ -18,14 +22,17 @@ export type OperationOutcome<A, E> =
 
 class Commands extends Context.Service<Commands, CommandRunner>()('mux-sesh/Commands') {}
 
-class CommandInterrupted extends Data.TaggedError('CommandInterrupted') {}
-
-export const readEffect = <A>(read: () => Promise<A>): Effect.Effect<A, ReadFailure> =>
+export const readEffect = <A>(
+  read: (signal: AbortSignal) => Promise<A>
+): Effect.Effect<A, ReadFailure> =>
   Effect.tryPromise({ try: read, catch: cause => cause }).pipe(
     Effect.catch(cause =>
       cause instanceof CommandInterrupted
         ? Effect.interrupt
-        : cause instanceof CommandTransportError || cause instanceof MultiplexerError
+        : cause instanceof CommandTransportError ||
+            cause instanceof CommandTimeoutError ||
+            cause instanceof CommandOutputLimitError ||
+            cause instanceof MultiplexerError
           ? Effect.fail(cause)
           : Effect.die(cause)
     )
@@ -60,11 +67,22 @@ export function createEffectRuntime(transport: CommandRunner = createCommandRunn
 
   const runner: CommandRunner = {
     async run(command: readonly string[], options?: CommandOptions): Promise<CommandResult> {
+      let settled: Promise<unknown> = Promise.resolve()
+
       const result = await run(
         Effect.gen(function* () {
           const commands = yield* Commands
 
-          return yield* readEffect(() => commands.run(command, options))
+          return yield* readEffect(signal => {
+            const pending = commands.run(command, {
+              ...options,
+              signal: options?.signal ? AbortSignal.any([signal, options.signal]) : signal,
+            })
+
+            settled = pending.catch(() => undefined)
+
+            return pending
+          })
         })
       )
 
@@ -76,7 +94,9 @@ export function createEffectRuntime(transport: CommandRunner = createCommandRunn
         case 'defect':
           throw result.cause
         case 'interrupted':
-          throw new CommandInterrupted()
+          // Interruption resumes before the child exits; report it only once the command is released.
+          await settled
+          throw new CommandInterrupted({ executable: command[0] ?? '(empty command)' })
       }
     },
   }

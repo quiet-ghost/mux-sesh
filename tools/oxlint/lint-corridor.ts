@@ -21,6 +21,7 @@ export const LINT_CORRIDOR = [
   'tests/agents-navigation.test.tsx',
   'tests/app-screen.test.tsx',
   'tests/cli-wrapper.test.ts',
+  'tests/command-lifetime.test.ts',
   'tests/command.test.ts',
   'tests/effect-runtime.test.ts',
   'tests/herdr-refresh.test.ts',

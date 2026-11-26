@@ -26,9 +26,26 @@ Availability probes recognize only spawn ENOENT as a missing executable. Other t
 remain failures rather than silently becoming "not installed."
 
 The command runner drains stdout/stderr concurrently and observes exit in the same `Promise.all`.
-Effect's `tryPromise` is not subprocess cancellation: aborting a refresh discards its result, but
-does not yet kill its underlying legacy command. DEV-313 owns command scopes, output limits,
-timeouts, and subprocess interruption. There is no mutation retry policy in this tracer.
+
+## Command lifetime (DEV-313)
+
+Captured commands (not `inheritStdio`) follow `DEFAULT_COMMAND_POLICY`: a 15 s deadline,
+8 MiB of stdout, 64 KiB of stderr, and a 1 s grace period between SIGTERM and SIGKILL. Both
+streams are drained to EOF, so noisy stderr cannot block stdout.
+
+- Deadline → `CommandTimeoutError`; stdout over its limit → `CommandOutputLimitError`. The child
+  is stopped and its output is discarded. Excess stderr is cut, with a truncation marker.
+- `AbortSignal` → `CommandInterrupted`. An already-aborted signal never spawns. The Effect bridge
+  passes each fiber's signal, so disposing the application runtime stops in-flight commands. The
+  bridge reports the interruption only after the child has exited.
+- Only the spawned child pid is signalled; Herdr/tmux servers and session jobs are never targeted.
+- Interactive clients (`inheritStdio`) own the terminal: no deadline, limit, or cancellation.
+- Nothing is retried. A stopped mutation's effect is unknown; the timeout message asks for a
+  refresh before retrying.
+
+A Herdr refresh still cannot stop its own subprocess when only that refresh is aborted, because
+`MultiplexerBackend` methods take no signal; its result is discarded and the deadline bounds the
+child. Threading signals through backend methods belongs with the backend contract work.
 
 ## Verification
 
