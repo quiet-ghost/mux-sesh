@@ -6,13 +6,8 @@ import { showTemporaryMessage, showTemporaryToast } from './notifications'
 import { useHerdrAgentPolling } from './herdr-refresh'
 import type { SessionInventory } from './session-inventory'
 import { clearMatchIndices, filterAndSortItems } from '../search'
-import { combineFileSearchResults, searchFilesAndDirectories, warmFileSearch } from '../search/fff'
-import { annotateProjectItemsWithSessionLinks } from '../projects/session-links'
-import {
-  getProjectSelectionIndex,
-  getSessionSelectionIndex,
-  loadSessionCandidateItems,
-} from './data'
+import { getSessionSelectionIndex } from './data'
+import { useLauncherQuery } from './launcher-query'
 import { SYSTEM_THEME_ID } from '../styles/theme'
 import { subscribeThemeFollow, type SubscribeThemeFollowOptions } from '../styles/theme-follow'
 import { terminalColorsToPalette, type TerminalPalette } from '../styles/terminal-palette'
@@ -22,10 +17,7 @@ import { getItemKey } from '../multiplexer/items'
 import { describeDiscoveryFailures } from '../tmux/project-discovery-service'
 import { subscribeProjectDiscoveryFailures } from '../tmux/projects'
 import { clampCursorIndex } from '../ui/list-window'
-import { isGitHubURL } from '../util/github'
-import { measure } from '../util/perf'
 
-const FILE_SEARCH_DEBOUNCE_MS = 120
 const DISCOVERY_FAILURE_MESSAGE_MS = 8000
 
 export function useSystemThemeFollow(
@@ -165,35 +157,6 @@ export function useNormalModeSessionReset(
   }, [appMode, lastSessionSelectionRef, sessionItems, setAllItems, setCursor, setItems, viewMode])
 }
 
-export function useNewSessionProjectCursor(
-  appMode: AppMode,
-  viewMode: ViewMode,
-  projectSourceItems: Item[],
-  sessionCandidateItems: Item[],
-  lastProjectSelectionRef: MutableRefObject<string | null>,
-  setCursor: Dispatch<SetStateAction<number>>
-) {
-  useEffect(() => {
-    if (appMode !== AppMode.NewSession || viewMode !== ViewMode.Projects) {
-      return
-    }
-
-    setCursor(
-      getProjectSelectionIndex(
-        sessionCandidateItems.length > 0 ? sessionCandidateItems : projectSourceItems,
-        lastProjectSelectionRef.current
-      )
-    )
-  }, [
-    appMode,
-    lastProjectSelectionRef,
-    projectSourceItems,
-    sessionCandidateItems,
-    setCursor,
-    viewMode,
-  ])
-}
-
 export function useProjectDiscoveryFailureMessages(setMessage: Dispatch<SetStateAction<string>>) {
   useEffect(
     () =>
@@ -206,54 +169,6 @@ export function useProjectDiscoveryFailureMessages(setMessage: Dispatch<SetState
       }),
     [setMessage]
   )
-}
-
-export function useSessionCandidateLoader(
-  appMode: AppMode,
-  config: Config | null,
-  backend: MultiplexerBackend | null,
-  lastProjectSelectionRef: MutableRefObject<string | null>,
-  setSessionCandidateItems: Dispatch<SetStateAction<Item[]>>,
-  setAllItems: Dispatch<SetStateAction<Item[]>>,
-  setItems: Dispatch<SetStateAction<Item[]>>,
-  setCursor: Dispatch<SetStateAction<number>>
-) {
-  useEffect(() => {
-    if (appMode !== AppMode.NewSession || !config || !backend) {
-      return
-    }
-
-    const nextConfig = config
-    const activeBackend = backend
-    let cancelled = false
-
-    async function loadCandidates() {
-      const linkedCandidates = await loadSessionCandidateItems(nextConfig, measure, activeBackend)
-      if (cancelled) {
-        return
-      }
-
-      setSessionCandidateItems(linkedCandidates)
-      setAllItems(linkedCandidates)
-      setItems(linkedCandidates)
-      setCursor(getProjectSelectionIndex(linkedCandidates, lastProjectSelectionRef.current))
-    }
-
-    void loadCandidates()
-
-    return () => {
-      cancelled = true
-    }
-  }, [
-    appMode,
-    backend,
-    config,
-    lastProjectSelectionRef,
-    setAllItems,
-    setCursor,
-    setItems,
-    setSessionCandidateItems,
-  ])
 }
 
 export function useBoundedCursor(length: number, setCursor: Dispatch<SetStateAction<number>>) {
@@ -350,7 +265,8 @@ export function useSearchFiltering(
   filterItems: typeof filterAndSortItems = filterAndSortItems
 ) {
   useEffect(() => {
-    if (appMode !== AppMode.Search && appMode !== AppMode.NewSession) {
+    // New-session rows belong to useLauncherQuery, which merges native file search in.
+    if (appMode !== AppMode.Search) {
       return
     }
 
@@ -363,63 +279,6 @@ export function useSearchFiltering(
     setItems(allItems)
     setCursor(0)
   }, [allItems, appMode, filterItems, searchQuery, setCursor, setItems])
-}
-
-export function useNewSessionFileSearch(
-  appMode: AppMode,
-  config: Config | null,
-  searchQuery: string,
-  sessionItems: Item[],
-  setItems: Dispatch<SetStateAction<Item[]>>,
-  setCursor: Dispatch<SetStateAction<number>>
-) {
-  const sessionItemsRef = useRef(sessionItems)
-  sessionItemsRef.current = sessionItems
-
-  useEffect(() => {
-    if (appMode !== AppMode.NewSession || !config) {
-      return
-    }
-
-    const nextConfig = config
-    const query = searchQuery.trim()
-
-    if (!query || isGitHubURL(query)) {
-      void warmFileSearch(nextConfig)
-      return
-    }
-
-    let cancelled = false
-
-    async function runFileSearch() {
-      const fileSearchItems = await searchFilesAndDirectories(query, nextConfig)
-      if (cancelled || fileSearchItems.length === 0) {
-        return
-      }
-
-      const liveSessions = sessionItemsRef.current.filter(item => item.isSession)
-      const annotated = await annotateProjectItemsWithSessionLinks(
-        fileSearchItems,
-        liveSessions,
-        nextConfig
-      )
-      if (cancelled) {
-        return
-      }
-
-      setItems(current => combineFileSearchResults(annotated, current, query))
-      setCursor(0)
-    }
-
-    const timeout = setTimeout(() => {
-      void runFileSearch()
-    }, FILE_SEARCH_DEBOUNCE_MS)
-
-    return () => {
-      cancelled = true
-      clearTimeout(timeout)
-    }
-  }, [appMode, config, searchQuery, setCursor, setItems])
 }
 
 interface UseAppBehaviorsOptions {
@@ -475,25 +334,7 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.setItems,
     options.setCursor
   )
-  useNewSessionProjectCursor(
-    options.appMode,
-    options.viewMode,
-    options.projectSourceItems,
-    options.sessionCandidateItems,
-    options.lastProjectSelectionRef,
-    options.setCursor
-  )
   useProjectDiscoveryFailureMessages(options.setMessage)
-  useSessionCandidateLoader(
-    options.appMode,
-    options.config,
-    options.backend,
-    options.lastProjectSelectionRef,
-    options.setSessionCandidateItems,
-    options.setAllItems,
-    options.setItems,
-    options.setCursor
-  )
   useBoundedCursor(options.filteredCommandEntriesLength, options.setCommandsCursor)
   useBoundedCursor(options.filteredSettingsEntriesLength, options.setSettingsCursor)
   useBoundedCursor(options.filteredSettingOptionsLength, options.setSettingOptionsCursor)
@@ -523,14 +364,7 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.setItems,
     options.setCursor
   )
-  useNewSessionFileSearch(
-    options.appMode,
-    options.config,
-    options.searchQuery,
-    options.sessionItems,
-    options.setItems,
-    options.setCursor
-  )
+  useLauncherQuery(options)
   useHerdrAgentPolling(
     options.inventory,
     options.appMode,

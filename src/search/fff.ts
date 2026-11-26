@@ -8,6 +8,7 @@ declare global {
   // Build-time constant used by @ff-labs/fff-bun for compiled binaries.
   const FFF_LIBC: 'gnu' | 'musl'
 }
+
 import { getExistingProjectRoots, uniqueNormalizedPaths } from '../tmux/project-discovery'
 import { getPathContextLabel } from '../util/path-display'
 
@@ -21,15 +22,39 @@ interface ScoredItem {
 
 type FffModule = typeof import('@ff-labs/fff-bun')
 
-const state: {
+export class FileSearchUnavailableError extends Error {
+  readonly _tag = 'FileSearchUnavailableError'
+
+  constructor(reason: string, options?: ErrorOptions) {
+    super(reason, options)
+    this.name = 'FileSearchUnavailableError'
+  }
+}
+
+// Expected native search failures; programming errors and non-Error throws are defects.
+export function isFileSearchFailure(cause: unknown): cause is Error {
+  return (
+    cause instanceof Error &&
+    !(cause instanceof TypeError) &&
+    !(cause instanceof ReferenceError) &&
+    !(cause instanceof SyntaxError) &&
+    !(cause instanceof RangeError)
+  )
+}
+
+interface FileSearchState {
   module?: FffModule | null
+  unavailable?: FileSearchUnavailableError
   finders: Map<string, Promise<FileFinder | null>>
-} = {
+}
+
+const state: FileSearchState = {
   finders: new Map(),
 }
 
 function isFileSearchDisabled(): boolean {
   const flag = process.env.MUX_SESH_DISABLE_FFF?.toLowerCase()
+
   return flag === '1' || flag === 'true'
 }
 
@@ -40,14 +65,26 @@ async function loadFffModule(): Promise<FffModule | null> {
 
   if (isFileSearchDisabled()) {
     state.module = null
+
     return null
   }
 
   try {
     const loaded = await import('@ff-labs/fff-bun')
-    state.module = loaded.FileFinder.isAvailable() ? loaded : null
-  } catch {
+
+    if (loaded.FileFinder.isAvailable()) {
+      state.module = loaded
+    } else {
+      state.module = null
+      state.unavailable = new FileSearchUnavailableError(
+        'the native library is not available on this platform'
+      )
+    }
+  } catch (cause) {
     state.module = null
+    state.unavailable = new FileSearchUnavailableError('the native library could not be loaded', {
+      cause,
+    })
   }
 
   return state.module
@@ -55,12 +92,14 @@ async function loadFffModule(): Promise<FffModule | null> {
 
 async function getFinder(root: string): Promise<FileFinder | null> {
   const cached = state.finders.get(root)
+
   if (cached) {
     return cached
   }
 
   const created = (async () => {
     const loaded = await loadFffModule()
+
     if (!loaded) {
       return null
     }
@@ -71,15 +110,18 @@ async function getFinder(root: string): Promise<FileFinder | null> {
       disableContentIndexing: true,
       enableHomeDirScanning: root === homedir(),
     })
+
     if (!made.ok) {
       return null
     }
 
     await made.value.waitForScan(SCAN_WAIT_TIMEOUT_MS)
+
     return made.value
   })()
 
   state.finders.set(root, created)
+
   return created
 }
 
@@ -89,6 +131,7 @@ export function mapMixedResultToScoredItems(root: string, result: MixedSearchRes
 
     if (mixed.type === 'file') {
       const path = join(root, mixed.item.relativePath)
+
       return [
         {
           score,
@@ -104,11 +147,13 @@ export function mapMixedResultToScoredItems(root: string, result: MixedSearchRes
     }
 
     const relative = mixed.item.relativePath.replace(/[\\/]+$/, '')
+
     if (!relative) {
       return []
     }
 
     const path = join(root, relative)
+
     return [
       {
         score,
@@ -138,6 +183,7 @@ export function mergeScoredItems(results: ScoredItem[][], limit: number): Item[]
       }
 
       seenPaths.add(scored.item.path)
+
       return [scored.item]
     })
     .slice(0, limit)
@@ -168,11 +214,13 @@ export function combineFileSearchResults(
 
 async function searchRoot(root: string, query: string, limit: number): Promise<ScoredItem[]> {
   const finder = await getFinder(root)
+
   if (!finder) {
     return []
   }
 
   const result = finder.mixedSearch(query, { pageSize: limit })
+
   if (!result.ok) {
     return []
   }
@@ -199,16 +247,25 @@ export async function searchFilesAndDirectories(
   limit = DEFAULT_RESULT_LIMIT
 ): Promise<Item[]> {
   const trimmed = query.trim()
-  if (!trimmed || !(await loadFffModule())) {
+
+  if (!trimmed) {
+    return []
+  }
+
+  if (!(await loadFffModule())) {
+    if (state.unavailable) throw state.unavailable
+
     return []
   }
 
   const roots = await getExistingProjectRoots(uniqueNormalizedPaths(config.projectPaths))
+
   if (roots.length === 0) {
     return []
   }
 
   const results = await Promise.all(roots.map(root => searchRoot(root, trimmed, limit)))
+
   return mergeScoredItems(results, limit)
 }
 
@@ -216,6 +273,7 @@ export async function destroyFileSearch(): Promise<void> {
   const pending = [...state.finders.values()]
   state.finders.clear()
   state.module = undefined
+  state.unavailable = undefined
 
   for (const finderPromise of pending) {
     const finder = await finderPromise.catch(() => null)

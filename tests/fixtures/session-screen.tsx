@@ -15,6 +15,11 @@ import {
 } from '../../src/app/effects'
 import { handleSelectItem } from '../../src/app/handlers'
 import { useAppKeyboard } from '../../src/app/keyboard'
+import {
+  LAUNCHER_QUERY_SERVICES,
+  useLauncherQuery,
+  type LauncherQueryServices,
+} from '../../src/app/launcher-query'
 import { useAppModalState } from '../../src/app/modal-state'
 import { AppModalsLayer } from '../../src/app/modals-layer'
 import { useResolvedTheme } from '../../src/app/resolved-theme'
@@ -57,6 +62,7 @@ interface SessionFixture {
   homeDir: string
   resolveTheme: ThemeResolver
   themeFollow?: SubscribeThemeFollowOptions
+  launcher: LauncherQueryServices
 }
 
 interface SessionScreenData {
@@ -202,6 +208,8 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     filterItems
   )
 
+  useLauncherQuery({ ...core, config, backend }, fixture.launcher)
+
   const controls = createAppControls({
     ...core,
     ...modal,
@@ -342,6 +350,21 @@ export async function renderSessionScreen(
   }
 
   const { sessionItems } = await loadSessionItems(config, async (_name, run) => run(), backend)
+  const projects = data.projects ?? []
+
+  // Native search, warm-up, and candidate discovery stay offline; candidates are the fixture rows.
+  const launcher: LauncherQueryServices = {
+    debounceMs: LAUNCHER_QUERY_SERVICES.debounceMs,
+    onDefect: cause => {
+      throw cause
+    },
+    filterItems: data.filterItems ?? filterAndSortItems,
+    searchFiles: async () => [],
+    warmFiles: async () => {},
+    loadCandidates: async () => projects,
+    linkSessions: async items => items,
+  }
+
   const mounted: MountedRenderer = {}
 
   try {
@@ -352,12 +375,13 @@ export async function renderSessionScreen(
             config,
             backend,
             items: sessionItems,
-            projects: data.projects ?? [],
+            projects,
             filterItems: data.filterItems ?? filterAndSortItems,
             lifecycle,
             homeDir: data.homeDir ?? '/fixture',
             resolveTheme: data.resolveTheme ?? resolveTheme,
             themeFollow: data.themeFollow,
+            launcher,
           }}
         />,
         { ...options, consoleMode: 'disabled', exitOnCtrlC: false, kittyKeyboard: true }
