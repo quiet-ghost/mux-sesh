@@ -17,9 +17,13 @@ function commandOutput(command: string[]): string {
   }
 }
 
-// Same checks as bin/platform.sh: Alpine marker first, then the libc named by `ldd --version`.
+// Same checks as bin/platform.sh: Alpine marker, glibc loader, then the libc named by `ldd --version`.
 function detectLinuxLibc(): LinuxLibc {
   if (existsSync('/etc/alpine-release')) return 'musl'
+
+  if (existsSync('/lib64/ld-linux-x86-64.so.2') || existsSync('/lib/ld-linux-aarch64.so.1')) {
+    return 'glibc'
+  }
 
   return commandOutput(['ldd', '--version']).toLowerCase().includes('musl') ? 'musl' : 'glibc'
 }

@@ -1,0 +1,22 @@
+#!/bin/sh
+# Links the platform binary bin/mux-sesh should run. It never fails the install: the launcher
+# searches again at startup and explains what is missing.
+
+script_dir="$(cd "$(dirname "$0")" && pwd -P)"
+link="$script_dir/.platform-binary"
+
+. "$script_dir/platform.sh"
+
+rm -f "$link"
+
+if binary="$(mux_sesh_find_binary "${script_dir%/*}")"; then
+    ln -s "$binary" "$link" 2>/dev/null || true
+    exit 0
+fi
+
+{
+    printf 'mux-sesh postinstall warning: '
+    mux_sesh_missing_binary_message
+} >&2
+
+exit 0

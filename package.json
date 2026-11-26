@@ -2,6 +2,7 @@
   "$schema": "https://json.schemastore.org/package.json",
   "name": "mux-sesh",
   "version": "1.10.0",
+  "private": true,
   "description": "An OpenTUI manager for tmux sessions and Herdr workspaces with fuzzy project search",
   "type": "module",
   "packageManager": "bun@1.3.14",
@@ -17,6 +18,7 @@
     "dev": "MUX_SESH_DEV=1 bun run src/index.tsx",
     "build": "bun tools/build/build.ts --single",
     "build:all": "bun tools/build/build.ts",
+    "pack": "bun tools/build/pack.ts",
     "smoke:binary": "bun tools/build/smoke.ts",
     "start": "bun run src/index.tsx",
     "lint": "bun run --bun oxlint --deny-warnings",
@@ -26,8 +28,7 @@
     "format:check": "prettier --check .",
     "test": "bun test",
     "bench:picker": "bun tests/perf/run-baseline.ts",
-    "schema": "bun tools/schema/generate.ts",
-    "prepublishOnly": "bun run typecheck"
+    "schema": "bun tools/schema/generate.ts"
   },
   "keywords": [
     "tmux",

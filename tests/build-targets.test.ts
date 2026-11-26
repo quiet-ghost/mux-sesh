@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { mainManifest, platformManifest, readRootManifest } from '../tools/build/pack'
 import { BUILD_TARGETS, BuildTarget, Host } from '../tools/build/targets'
 
 const names = (targets: readonly BuildTarget[]) =>
@@ -92,5 +93,42 @@ describe('host candidates', () => {
     expect(
       names(Host.candidates({ os: 'linux', arch: 'arm64', libc: 'musl', avx2: false }))
     ).toEqual(['mux-sesh-linux-arm64-musl', 'mux-sesh-linux-arm64'])
+  })
+})
+
+describe('npm manifests', () => {
+  test('the main package depends on every platform package at its own version', async () => {
+    const root = await readRootManifest()
+    const manifest = mainManifest(root)
+
+    expect(manifest).toMatchObject({
+      name: 'mux-sesh',
+      version: root.version,
+      bin: { 'mux-sesh': 'bin/mux-sesh' },
+      scripts: { postinstall: 'sh ./bin/postinstall' },
+      files: ['bin'],
+    })
+    expect(Object.keys(manifest.optionalDependencies)).toEqual(names(BUILD_TARGETS))
+    expect(new Set(Object.values(manifest.optionalDependencies))).toEqual(new Set([root.version]))
+    expect(manifest).not.toHaveProperty('private')
+    expect(manifest).not.toHaveProperty('dependencies')
+  })
+
+  test('platform packages carry only the binary and declare no command', async () => {
+    const root = await readRootManifest()
+    const target = { os: 'linux', arch: 'x64', libc: 'musl', baseline: true } as const
+
+    const manifest = platformManifest(root, target)
+
+    expect(manifest).toMatchObject({
+      name: 'mux-sesh-linux-x64-baseline-musl',
+      version: root.version,
+      os: ['linux'],
+      cpu: ['x64'],
+      libc: ['musl'],
+      files: ['bin'],
+    })
+    expect(manifest).not.toHaveProperty('bin')
+    expect(manifest).not.toHaveProperty('scripts')
   })
 })

@@ -1,5 +1,5 @@
 import { existsSync } from 'fs'
-import { mkdir, rm } from 'fs/promises'
+import { mkdir, readdir, rm } from 'fs/promises'
 import { dirname, join } from 'path'
 import { BuildTarget } from './targets'
 
@@ -131,6 +131,11 @@ export async function compileBinary(request: CompileRequest): Promise<CompileOut
         'Fix the reported errors, then build again; no binary was written.',
       ].join('\n'),
     }
+  }
+
+  // The sourcemap is embedded in the binary; Bun still writes copies beside it that nothing reads.
+  for (const entry of await readdir(dirname(request.outfile))) {
+    if (entry.endsWith('.map')) await rm(join(dirname(request.outfile), entry))
   }
 
   const missing = await missingEmbeddedLibraries(request.outfile, request.target)
