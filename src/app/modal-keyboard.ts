@@ -47,24 +47,28 @@ function openSelectedSetting(ctx: ModalKeyboardContext) {
   ctx.openSettingEditor(entry.id)
 }
 
+// Every modal is a focused text field, so only non-text keys act; letters stay in the field.
+// Returns whether the modal consumed the key, so the field must not also handle it.
 export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContext): boolean {
   if (ctx.modalState?.type === 'rename') {
     if (key.name === 'return') {
       void ctx.handleRenameSubmit()
     } else if (key.name === 'escape') {
       ctx.closeModal()
+    } else {
+      return false
     }
     return true
   }
 
   if (ctx.modalState?.type === 'commands') {
-    if (key.name === 'escape' || key.name === 'q') {
+    if (key.name === 'escape') {
       ctx.closeModal()
-    } else if (key.name === 'down' || key.name === 'j') {
+    } else if (key.name === 'down') {
       ctx.setCommandsCursor(current =>
         clampCursorIndex(ctx.filteredCommandEntries.length, current + 1)
       )
-    } else if (key.name === 'up' || key.name === 'k') {
+    } else if (key.name === 'up') {
       ctx.setCommandsCursor(current =>
         clampCursorIndex(ctx.filteredCommandEntries.length, current - 1)
       )
@@ -79,6 +83,8 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
         return true
       }
       void ctx.executeCommand(command.id)
+    } else {
+      return false
     }
     return true
   }
@@ -86,16 +92,18 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
   if (ctx.modalState?.type === 'settings') {
     if (key.name === 'escape') {
       ctx.closeModal()
-    } else if (key.name === 'down' || key.name === 'j') {
+    } else if (key.name === 'down') {
       ctx.setSettingsCursor(current =>
         clampCursorIndex(ctx.filteredSettingsEntries.length, current + 1)
       )
-    } else if (key.name === 'up' || key.name === 'k') {
+    } else if (key.name === 'up') {
       ctx.setSettingsCursor(current =>
         clampCursorIndex(ctx.filteredSettingsEntries.length, current - 1)
       )
-    } else if (key.name === 'return' || key.name === 'e') {
+    } else if (key.name === 'return') {
       openSelectedSetting(ctx)
+    } else {
+      return false
     }
     return true
   }
@@ -113,11 +121,11 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
       } else {
         ctx.setModalState({ type: 'settings' })
       }
-    } else if (key.name === 'down' || key.name === 'j') {
+    } else if (key.name === 'down') {
       const next = clampCursorIndex(ctx.filteredSettingOptions.length, ctx.settingOptionsCursor + 1)
       ctx.setSettingOptionsCursor(() => next)
       previewIfTheme(next)
-    } else if (key.name === 'up' || key.name === 'k') {
+    } else if (key.name === 'up') {
       const next = clampCursorIndex(ctx.filteredSettingOptions.length, ctx.settingOptionsCursor - 1)
       ctx.setSettingOptionsCursor(() => next)
       previewIfTheme(next)
@@ -126,6 +134,8 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
       if (!option) return true
       void ctx.handleSettingOptionSubmit(ctx.modalState.field, option.value)
       ctx.previewThemeOption?.(null)
+    } else {
+      return false
     }
     return true
   }
@@ -136,6 +146,8 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
       ctx.setSettingEditorError('')
     } else if (key.name === 'return') {
       void ctx.handleSettingsEditorSubmit(ctx.modalState.field)
+    } else {
+      return false
     }
     return true
   }

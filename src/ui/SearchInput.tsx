@@ -1,4 +1,6 @@
 import type { TextareaRenderable } from '@opentui/core'
+import { useLayoutEffect } from 'react'
+import { reconcileTextareaValue } from '../app/textarea'
 import { useTheme } from '../styles/theme'
 import { AppMode } from '../types'
 
@@ -7,6 +9,7 @@ interface Props {
   searchQuery: string
   textareaRef: { current: TextareaRenderable | null }
   onContentChange: () => void
+  focused: boolean
   prefixActive?: boolean
 }
 
@@ -15,13 +18,20 @@ export default function SearchInput({
   searchQuery,
   textareaRef,
   onContentChange,
+  focused,
   prefixActive = false,
 }: Props) {
   const theme = useTheme()
+
   const placeholder =
     appMode === AppMode.NewSession
       ? 'Type project name, GitHub URL, or custom session name...'
       : 'Type to search...'
+
+  // A layout effect runs in the same commit, before newer typing can make the query stale.
+  useLayoutEffect(() => {
+    reconcileTextareaValue(textareaRef.current, searchQuery)
+  }, [searchQuery, textareaRef])
 
   return (
     <box
@@ -36,7 +46,7 @@ export default function SearchInput({
         placeholder={placeholder}
         initialValue={searchQuery}
         onContentChange={onContentChange}
-        focused={!prefixActive}
+        focused={focused}
       />
     </box>
   )

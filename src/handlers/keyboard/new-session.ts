@@ -11,7 +11,7 @@ export function handleNewSessionMode(
   key: KeyboardInput,
   ctx: KeyboardHandlerContext,
   keybindMode: KeybindMode = 'vim'
-) {
+): boolean {
   const keyName = getKeyName(key)
   const isStandard = keybindMode === 'standard'
 
@@ -24,13 +24,13 @@ export function handleNewSessionMode(
       ctx.setItems(ctx.sessionItems)
       ctx.setSearchQuery('')
 
-      return
+      return true
     }
 
     if (keyName === 'd') {
       requestKillTarget(ctx)
 
-      return
+      return true
     }
   }
 
@@ -44,7 +44,7 @@ export function handleNewSessionMode(
       ctx.setCursor(0)
       void ctx.refreshItems(ViewMode.Sessions)
 
-      return
+      return true
     }
 
     ctx.setAppMode(AppMode.Normal)
@@ -52,17 +52,21 @@ export function handleNewSessionMode(
     ctx.setSearchQuery('')
     ctx.setCursor(0)
 
-    return
+    return true
   }
 
   switch (keyName) {
     case 'down':
       ctx.clearPendingKill()
       ctx.setCursor(cursor => clampCursorIndex(ctx.items.length, cursor + 1))
-      break
+
+      return true
     case 'up':
       ctx.clearPendingKill()
       ctx.setCursor(cursor => clampCursorIndex(ctx.items.length, cursor - 1))
-      break
+
+      return true
   }
+
+  return false
 }

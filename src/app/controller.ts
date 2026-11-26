@@ -3,6 +3,7 @@ import { useAppCoreState } from './core-state'
 import { useAutoUpdateScheduler, useAppBehaviors } from './effects'
 import { createAppControls } from './controls'
 import { getSessionCommandState, getSettingsState } from './derived'
+import { FocusOwner } from './focus-owner'
 import { useAppKeyboard } from './keyboard'
 import { useAppModalState } from './modal-state'
 import { createAppRuntime } from './runtime'
@@ -384,6 +385,7 @@ export function useAppController(invocationCwd: string) {
     screenProps: {
       theme,
       actionContext,
+      focusOwner: FocusOwner.of({ appMode, modalState, prefixActive }),
       appMode,
       viewMode,
       config,

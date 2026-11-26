@@ -9,6 +9,7 @@ import {
 } from './view'
 import { syncTextareaValue } from './textarea'
 import { getActionFooter, type ActionContext } from './action-catalog'
+import type { FocusOwner } from './focus-owner'
 import { AppMode, ViewMode, type Config, type Item, type ThemeColors } from '../types'
 import { isGitHubURL } from '../util/github'
 import { shouldShowDetailPanel } from '../util/terminal'
@@ -27,6 +28,7 @@ import type { MultiplexerBackend } from '../multiplexer'
 interface Props {
   theme: ThemeColors
   actionContext: ActionContext
+  focusOwner: FocusOwner
   appMode: AppMode
   viewMode: ViewMode
   config: Config | null
@@ -55,6 +57,7 @@ interface Props {
 export function AppScreen({
   theme,
   actionContext,
+  focusOwner,
   appMode,
   viewMode,
   config,
@@ -162,6 +165,7 @@ export function AppScreen({
                 appMode={appMode}
                 searchQuery={searchQuery}
                 textareaRef={textareaRef}
+                focused={focusOwner.kind === 'search-field'}
                 prefixActive={prefixActive}
                 onContentChange={() => syncTextareaValue(textareaRef, setSearchQuery)}
               />

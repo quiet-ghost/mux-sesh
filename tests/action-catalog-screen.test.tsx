@@ -137,9 +137,8 @@ describe('actions on an empty session list', () => {
     expect(searching).not.toContain('Commands')
     expect(searching).toContain('Type to search...')
 
-    if (keybindMode === 'vim') {
-      expect(screen.renderer.currentFocusedRenderable instanceof TextareaRenderable).toBe(true)
-    }
+    const search = screen.renderer.currentFocusedRenderable
+    expect(search instanceof TextareaRenderable && !search.isDestroyed).toBe(true)
 
     await runPaletteCommand(screen, 'New session')
     expect(await screen.frame()).toContain('New Workspace')

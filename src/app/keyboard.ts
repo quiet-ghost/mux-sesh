@@ -1,5 +1,6 @@
 import { useKeyboard } from '@opentui/react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import { FocusOwner } from './focus-owner'
 import { handleModalKeyboard } from './modal-keyboard'
 import type { ModalState } from './modals'
 import {
@@ -125,9 +126,10 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     if (!options.active) return
 
     const keybindMode = options.config?.keybindMode || 'vim'
+    const owner = FocusOwner.of(options)
 
-    if (
-      handleModalKeyboard(key, {
+    if (owner.kind === 'modal') {
+      const consumed = handleModalKeyboard(key, {
         modalState: options.modalState,
         filteredCommandEntries: options.filteredCommandEntries,
         commandsCursor: options.commandsCursor,
@@ -151,22 +153,30 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
         handleSettingsEditorSubmit: options.handleSettingsEditorSubmit,
         handleRenameSubmit: options.handleRenameSubmit,
       })
-    ) {
+
+      if (consumed) key.preventDefault()
+
       return
     }
+
+    let consumed = false
 
     if (options.appMode === AppMode.Normal) {
       handleNormalMode(key, keyboardContext, keybindMode)
     } else if (options.appMode === AppMode.Search) {
-      handleSearchMode(key, keyboardContext, keybindMode)
+      consumed = handleSearchMode(key, keyboardContext, keybindMode)
     } else if (options.appMode === AppMode.NewSession) {
       if (key.name === 'return') {
         void options.handleNewSessionSubmit()
+        consumed = true
       } else {
-        handleNewSessionMode(key, keyboardContext, keybindMode)
+        consumed = handleNewSessionMode(key, keyboardContext, keybindMode)
       }
     } else if (options.appMode === AppMode.AgentsManage) {
       handleAgentsManageMode(key, keyboardContext, keybindMode)
     }
+
+    // A consumed key must not also edit the search text.
+    if (consumed && owner.kind === 'search-field') key.preventDefault()
   })
 }

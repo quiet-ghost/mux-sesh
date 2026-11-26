@@ -22,7 +22,7 @@ export function handleSearchMode(
   key: KeyboardInput,
   ctx: KeyboardHandlerContext,
   keybindMode: KeybindMode = 'vim'
-) {
+): boolean {
   const keyName = getKeyName(key)
   const isStandard = keybindMode === 'standard'
 
@@ -33,53 +33,53 @@ export function handleSearchMode(
       switch (keyName) {
         case 'd':
           requestKillTarget(ctx)
-          return
+          return true
         case 'n':
           enterNewSessionMode(ctx)
-          return
+          return true
         case 'o':
           openAgentsTarget(ctx)
-          return
+          return true
         case 's':
           ctx.clearPendingKill()
           ctx.openSettingsModal()
-          return
+          return true
         case 'l':
           openLastSession(ctx)
-          return
+          return true
         case 'g':
           openSelectedRootSession(ctx)
-          return
+          return true
         case 'r':
           if (key.shift) {
             refreshProjectDiscovery()
             void ctx.refreshItems()
             setTimedMessage(ctx, 'Refreshed')
-            return
+            return true
           }
 
           openRenameTarget(ctx)
-          return
+          return true
         default:
-          return
+          return true
       }
     }
 
     if (matchesPrefixKey(key, ctx.prefixKey)) {
       activatePrefix(ctx)
-      return
+      return true
     }
 
     if (key.ctrl && keyName === 'q') {
       void requestShutdown(0)
-      return
+      return true
     }
   }
 
   if (key.ctrl && keyName === 'p') {
     ctx.clearPendingKill()
     ctx.openCommandsModal()
-    return
+    return true
   }
 
   if (keyName === 'escape') {
@@ -87,13 +87,13 @@ export function handleSearchMode(
     if (isStandard) {
       ctx.setSearchQuery('')
       ctx.setCursor(0)
-      return
+      return true
     }
 
     ctx.setAppMode(AppMode.Normal)
     ctx.setSearchQuery('')
     ctx.setCursor(0)
-    return
+    return true
   }
 
   switch (keyName) {
@@ -102,14 +102,16 @@ export function handleSearchMode(
       if (ctx.items.length > 0) {
         void ctx.handleSelect(ctx.items[clampCursorIndex(ctx.items.length, ctx.cursor)])
       }
-      break
+      return true
     case 'down':
       ctx.clearPendingKill()
       ctx.setCursor(cursor => clampCursorIndex(ctx.items.length, cursor + 1))
-      break
+      return true
     case 'up':
       ctx.clearPendingKill()
       ctx.setCursor(cursor => clampCursorIndex(ctx.items.length, cursor - 1))
-      break
+      return true
   }
+
+  return false
 }

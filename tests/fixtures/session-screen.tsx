@@ -13,6 +13,7 @@ import {
   useSelectionMemory,
   useSystemThemeFollow,
 } from '../../src/app/effects'
+import { FocusOwner } from '../../src/app/focus-owner'
 import { handleSelectItem } from '../../src/app/handlers'
 import { useAppKeyboard } from '../../src/app/keyboard'
 import {
@@ -260,6 +261,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
         {...derived}
         {...dimensions}
         theme={theme}
+        focusOwner={FocusOwner.of({ ...core, modalState: modal.modalState })}
         config={config}
         backend={backend}
         projectCount={projects.length}
