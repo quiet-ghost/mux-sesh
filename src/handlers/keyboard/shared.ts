@@ -49,6 +49,7 @@ export interface KeyboardHandlerContext {
   handleEditTarget: (item?: Item) => Promise<void>
   openRenameModal: (item: Item) => void
   openCommandsModal: () => void
+  toggleDetails: () => void
   openSettingsModal: () => void
   setMessage: (message: string) => void
 }
@@ -147,6 +148,13 @@ export function openAgentsTarget(ctx: KeyboardHandlerContext) {
   runAvailableAction(ctx, 'open-agents', () => {
     ctx.setAppMode(AppMode.AgentsManage)
     ctx.setAgentCursor(0)
+  })
+}
+
+export function toggleDetailsPanel(ctx: KeyboardHandlerContext) {
+  runAvailableAction(ctx, 'toggle-details', () => {
+    ctx.clearPendingKill()
+    ctx.toggleDetails()
   })
 }
 

@@ -87,6 +87,7 @@ function createBaseContext(overrides: Partial<KeyboardHandlerContext>): BaseCont
     openRenameModal: mock(() => {}),
     openCommandsModal: mock(() => {}),
     openSettingsModal: mock(() => {}),
+    toggleDetails: mock(() => {}),
     setMessage: mock(() => {}),
     ...overrides,
   }

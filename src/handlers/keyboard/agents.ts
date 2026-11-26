@@ -8,6 +8,7 @@ import {
   matchesPrefixKey,
   openRenameTarget,
   requestKillTarget,
+  toggleDetailsPanel,
   type KeyboardHandlerContext,
   type KeyboardInput,
 } from './shared'
@@ -43,6 +44,10 @@ export function handleAgentsManageMode(
         return
       case 'r':
         openRenameTarget(ctx)
+
+        return
+      case 'v':
+        toggleDetailsPanel(ctx)
 
         return
     }
@@ -90,6 +95,12 @@ export function handleAgentsManageMode(
 
   if (!isStandard && keyName === 'd') {
     requestKillTarget(ctx)
+
+    return
+  }
+
+  if (!isStandard && keyName === 'v') {
+    toggleDetailsPanel(ctx)
 
     return
   }

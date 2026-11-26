@@ -62,6 +62,7 @@ interface UseAppKeyboardOptions {
   togglePinnedSession: (sessionName: string) => Promise<void>
   openRenameModal: (item: Item) => void
   openCommandsModal: () => void
+  toggleDetails: () => void
   openSettingsModal: () => void
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config | null) => Promise<void>
   handleSelect: (item: Item) => Promise<void>
@@ -118,6 +119,7 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     handleEditTarget: options.handleEditTarget,
     openRenameModal: options.openRenameModal,
     openCommandsModal: options.openCommandsModal,
+    toggleDetails: options.toggleDetails,
     openSettingsModal: options.openSettingsModal,
     setMessage: options.setMessage,
   }

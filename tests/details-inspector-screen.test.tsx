@@ -124,6 +124,30 @@ describe('details stay compact during routine navigation', () => {
   })
 })
 
+describe('the details key', () => {
+  test.each(MODES)('%s key opens the inspector and closes it again', async keybindMode => {
+    const deferred = createDeferredBackend([workspace('alpha'), workspace('beta')])
+    screen = await renderSessionScreen(
+      { width: 120, height: 36 },
+      { keybindMode, backend: deferred.backend }
+    )
+
+    const pressDetailsKey = async (fixture: Screen): Promise<void> => {
+      if (keybindMode === 'standard') await fixture.pressKey('x', { ctrl: true })
+      await fixture.pressKey('v')
+      await fixture.settle()
+    }
+
+    await pressDetailsKey(screen)
+    expect(await screen.frame()).toContain('Loading…')
+    expect(deferred.reads).toHaveLength(1)
+
+    await pressDetailsKey(screen)
+    expect(deferred.read(0).signal?.aborted).toBe(true)
+    expect(await screen.frame()).not.toContain('Loading…')
+  })
+})
+
 describe('inspecting details on request', () => {
   test('a slower earlier selection never replaces the latest one', async () => {
     const deferred = createDeferredBackend([workspace('alpha'), workspace('beta')])

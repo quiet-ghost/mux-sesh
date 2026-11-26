@@ -17,6 +17,7 @@ import {
   openSelectedRootSession,
   requestKillTarget,
   setTimedMessage,
+  toggleDetailsPanel,
   togglePinnedTarget,
   type KeyboardHandlerContext,
   type KeyboardInput,
@@ -56,6 +57,9 @@ export function handleNormalMode(
         return
       case 'r':
         openRenameTarget(ctx)
+        return
+      case 'v':
+        toggleDetailsPanel(ctx)
         return
       case 's':
         ctx.clearPendingKill()
@@ -130,6 +134,11 @@ export function handleNormalMode(
 
   if (!isStandard && keyName === 'd') {
     requestKillTarget(ctx)
+    return
+  }
+
+  if (!isStandard && keyName === 'v') {
+    toggleDetailsPanel(ctx)
     return
   }
 

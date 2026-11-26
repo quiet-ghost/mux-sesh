@@ -14,6 +14,7 @@ import {
   openSelectedRootSession,
   requestKillTarget,
   setTimedMessage,
+  toggleDetailsPanel,
   type KeyboardHandlerContext,
   type KeyboardInput,
 } from './shared'
@@ -49,6 +50,9 @@ export function handleSearchMode(
           return true
         case 'g':
           openSelectedRootSession(ctx)
+          return true
+        case 'v':
+          toggleDetailsPanel(ctx)
           return true
         case 'r':
           if (key.shift) {

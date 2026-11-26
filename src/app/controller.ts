@@ -286,6 +286,7 @@ export function useAppController(invocationCwd: string) {
 
   useAppKeyboard({
     active: startup.kind === 'loading' || startup.kind === 'ready',
+    toggleDetails: details.toggle,
     appMode,
     viewMode,
     config,
