@@ -1,8 +1,7 @@
 import { isAgentSessionItem } from '../agents/session-name'
 import { getPanelStyle } from '../styles/theme'
 import { getWrappedRowCount } from '../ui/session-viewport'
-import { AppMode, ViewMode, type BackendKind, type Item, type ThemeColors } from '../types'
-import { getActionFooter, getActionTarget } from './action-catalog'
+import { AppMode, ViewMode, type BackendKind, type ThemeColors } from '../types'
 
 export function splitVisibleSessions<T extends { isSession: boolean; title: string }>(
   items: readonly T[]
@@ -116,23 +115,6 @@ export function getStatusLabel(
   return viewMode === ViewMode.Sessions
     ? `${activeSessions}/${totalSessions} active`
     : `${projectCount} projects`
-}
-
-// Callers with the full context should use getActionFooter. Without it this assumes vim keys,
-// an unresolved backend, and no agents, so it never advertises a key it cannot confirm.
-export function getFooterHint(appMode: AppMode, prefixKey?: string, selectedItem?: Item): string {
-  const target = getActionTarget(selectedItem)
-
-  return getActionFooter({
-    appMode,
-    viewMode:
-      target.kind === 'project' || target.kind === 'file' ? ViewMode.Projects : ViewMode.Sessions,
-    keybindMode: 'vim',
-    prefixKey,
-    backend: null,
-    agentCount: 0,
-    target,
-  })
 }
 
 export function getEmptyStateMessage(

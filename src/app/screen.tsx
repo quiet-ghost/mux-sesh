@@ -3,12 +3,12 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import {
   getAppTitle,
   getEmptyStateMessage,
-  getFooterHint,
   getListStyle,
   getScreenLayout,
   getStatusLabel,
 } from './view'
 import { syncTextareaValue } from './textarea'
+import { getActionFooter, type ActionContext } from './action-catalog'
 import { AppMode, ViewMode, type Config, type Item, type ThemeColors } from '../types'
 import { isGitHubURL } from '../util/github'
 import { shouldShowDetailPanel } from '../util/terminal'
@@ -26,6 +26,7 @@ import type { MultiplexerBackend } from '../multiplexer'
 
 interface Props {
   theme: ThemeColors
+  actionContext: ActionContext
   appMode: AppMode
   viewMode: ViewMode
   config: Config | null
@@ -53,6 +54,7 @@ interface Props {
 
 export function AppScreen({
   theme,
+  actionContext,
   appMode,
   viewMode,
   config,
@@ -87,7 +89,7 @@ export function AppScreen({
     process.env.MUX_SESH_DEV === '1'
   )
 
-  const footerHint = getFooterHint(appMode, config?.prefixKey, selectedPrimaryItem)
+  const footerHint = getActionFooter(actionContext)
   const showDetailPanel = shouldShowDetailPanel(columns, appMode === AppMode.NewSession)
 
   const layout = getScreenLayout({

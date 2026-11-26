@@ -383,6 +383,7 @@ export function useAppController(invocationCwd: string) {
     rows,
     screenProps: {
       theme,
+      actionContext,
       appMode,
       viewMode,
       config,

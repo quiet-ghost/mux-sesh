@@ -169,6 +169,26 @@ describe('actions on an empty session list', () => {
   })
 })
 
+describe('footer follows the live screen context', () => {
+  test('vim footer offers agents when agent panes exist', async () => {
+    screen = await renderSessionScreen({ width: 120, height: 36 }, { workspaces: agentWorkspaces })
+
+    expect(footerOf(await screen.frame())).toContain('o agents')
+  })
+
+  test('standard footer omits vim-only direct keys', async () => {
+    screen = await renderSessionScreen(
+      { width: 120, height: 36 },
+      { keybindMode: 'standard', workspaces: agentWorkspaces }
+    )
+
+    const footer = footerOf(await screen.frame())
+    expect(footer).toContain('ctrl+p commands')
+    expect(footer).not.toContain('i search')
+    expect(footer).not.toMatch(/(^|\s)o agents/)
+  })
+})
+
 describe('actions on a targeted Herdr agent', () => {
   test.each(MODES)('%s palette shows rename and close as unavailable', async keybindMode => {
     screen = await renderSessionScreen(

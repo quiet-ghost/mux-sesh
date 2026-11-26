@@ -21,7 +21,6 @@ import { publishInventory, type SessionInventory } from '../src/app/session-inve
 import {
   getAppTitle,
   getEmptyStateMessage,
-  getFooterHint,
   getStatusLabel,
   splitVisibleSessions,
 } from '../src/app/view'
@@ -99,9 +98,9 @@ describe('app view helpers', () => {
   test('builds title, footer, status, and empty messages from app state', () => {
     expect(getAppTitle(AppMode.NewSession, ViewMode.Projects)).toBe('New Session')
     expect(getAppTitle(AppMode.AgentsManage, ViewMode.Sessions)).toBe('Agent Sessions')
-    expect(getFooterHint(AppMode.AgentsManage, 'ctrl+x')).toContain('ctrl+x')
+    expect(getActionFooter(actionContext({ appMode: AppMode.AgentsManage }))).toContain('ctrl+x')
     expect(getActionFooter(actionContext({ agentCount: 1 }))).toContain('o agents')
-    expect(getFooterHint(AppMode.Normal)).not.toContain('o agents')
+    expect(getActionFooter(actionContext())).not.toContain('o agents')
     expect(getStatusLabel(ViewMode.Sessions, 2, 5, 9)).toBe('2/5 active')
     expect(getEmptyStateMessage(AppMode.NewSession, 'https://github.com/acme/repo', true)).toBe(
       'Clone & create session'
@@ -137,7 +136,16 @@ describe('app view helpers', () => {
       kind: 'unavailable',
       reason: 'Rename it in Herdr',
     })
-    expect(getFooterHint(AppMode.AgentsManage, undefined, agent)).not.toContain('d kill')
+    expect(
+      getActionFooter(
+        actionContext({
+          appMode: AppMode.AgentsManage,
+          prefixKey: undefined,
+          agentCount: 1,
+          target: getActionTarget(agent),
+        })
+      )
+    ).not.toContain('d kill')
   })
 })
 
