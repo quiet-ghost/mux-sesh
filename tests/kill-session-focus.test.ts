@@ -2,6 +2,8 @@ import { describe, expect, mock, test } from 'bun:test'
 import { handleKillSession } from '../src/handlers/actions'
 import { getItemKey } from '../src/multiplexer/items'
 import type { LiveWorkspace, MultiplexerBackend, WorkspaceRef } from '../src/multiplexer'
+import { CommandTimeoutError } from '../src/multiplexer/command'
+import { MultiplexerError } from '../src/multiplexer/types'
 import type { Item } from '../src/types'
 
 function liveItem(id: string, title: string, backend: 'herdr' | 'tmux' = 'herdr'): Item {
@@ -23,11 +25,14 @@ function createFakeBackend(opts: {
   /** When true, close always jumps focus to next remaining workspace (even if non-focused). */
   stealFocusOnAnyClose?: boolean
 }): MultiplexerBackend & { focusedId: string; commands: string[][] } {
+  const commands: string[][] = []
+
   const state = {
     focusedId: opts.focusedId,
     workspaces: opts.workspaces.map(workspace => ({ ...workspace })),
-    commands: [] as string[][],
+    commands,
   }
+
   const kind = opts.kind ?? 'herdr'
 
   const backend: MultiplexerBackend & { focusedId: string; commands: string[][] } = {
@@ -54,13 +59,16 @@ function createFakeBackend(opts: {
     },
     async current() {
       const workspace = state.workspaces.find(entry => entry.id === state.focusedId)
+
       return workspace ? { backend: kind, id: workspace.id, title: workspace.title } : undefined
     },
     async open(workspace: WorkspaceRef) {
       state.commands.push(['open', workspace.id])
+
       if (!state.workspaces.some(entry => entry.id === workspace.id)) {
         throw new Error(`Cannot open missing workspace ${workspace.id}`)
       }
+
       state.focusedId = workspace.id
 
       return { kind: 'focused' as const }
@@ -68,21 +76,27 @@ function createFakeBackend(opts: {
     async close(workspace: WorkspaceRef) {
       state.commands.push(['close', workspace.id])
       const index = state.workspaces.findIndex(entry => entry.id === workspace.id)
+
       if (index < 0) {
         throw new Error(`Cannot close missing workspace ${workspace.id}`)
       }
+
       const priorFocusedId = state.focusedId
       const closingFocused = priorFocusedId === workspace.id
       state.workspaces.splice(index, 1)
+
       if (closingFocused) {
         const next = state.workspaces[index] ?? state.workspaces[index - 1]
         state.focusedId = next?.id ?? ''
+
         return
       }
+
       if (opts.stealFocusOnAnyClose) {
         // Force drift away from the prior focus so restore logic can be asserted.
         const stolen =
           state.workspaces.find(entry => entry.id !== priorFocusedId) ?? state.workspaces[0]
+
         state.focusedId = stolen?.id ?? ''
       }
     },
@@ -112,8 +126,12 @@ function createFakeBackend(opts: {
   return backend
 }
 
+interface RememberedSelection {
+  key: string | null
+}
+
 function createCallbacks(regularSessions: Item[]) {
-  const remembered: { key: string | null } = { key: 'unset' }
+  const remembered: RememberedSelection = { key: 'unset' }
   const refreshItems = mock(async () => {})
   const onSuccess = mock(() => {})
   const onError = mock(() => {})
@@ -145,6 +163,7 @@ describe('handleKillSession focus stability (DEV-85)', () => {
       ],
       focusedId: 'b',
     })
+
     const sessions = [liveItem('a', 'alpha'), liveItem('b', 'beta'), liveItem('c', 'gamma')]
     const { callbacks, refreshItems, onSuccess, onError, remembered } = createCallbacks(sessions)
 
@@ -168,6 +187,7 @@ describe('handleKillSession focus stability (DEV-85)', () => {
       focusedId: 'b',
       stealFocusOnAnyClose: true,
     })
+
     const sessions = [liveItem('a', 'alpha'), liveItem('b', 'beta'), liveItem('c', 'gamma')]
     const { callbacks } = createCallbacks(sessions)
 
@@ -189,6 +209,7 @@ describe('handleKillSession focus stability (DEV-85)', () => {
       ],
       focusedId: 'b',
     })
+
     const sessions = [liveItem('a', 'alpha'), liveItem('b', 'beta'), liveItem('c', 'gamma')]
     const { callbacks, remembered } = createCallbacks(sessions)
 
@@ -208,6 +229,7 @@ describe('handleKillSession focus stability (DEV-85)', () => {
       ],
       focusedId: 'a',
     })
+
     const sessions = [liveItem('a', 'alpha'), liveItem('b', 'beta')]
     const { callbacks, remembered } = createCallbacks(sessions)
 
@@ -222,6 +244,7 @@ describe('handleKillSession focus stability (DEV-85)', () => {
       workspaces: [{ id: 'a', title: 'alpha' }],
       focusedId: 'a',
     })
+
     const sessions = [liveItem('a', 'alpha')]
     const { callbacks, remembered, refreshItems, onSuccess } = createCallbacks(sessions)
 
@@ -243,8 +266,10 @@ describe('handleKillSession focus stability (DEV-85)', () => {
       ],
       focusedId: 'c',
     })
+
     const sessions = [liveItem('a', 'alpha'), liveItem('b', 'beta'), liveItem('c', 'gamma')]
     const callOrder: string[] = []
+
     const refreshItems = mock(async () => {
       callOrder.push('refresh')
     })
@@ -277,6 +302,7 @@ describe('handleKillSession focus stability (DEV-85)', () => {
       ],
       focusedId: 'ops',
     })
+
     const sessions = [liveItem('dev', 'dev', 'tmux'), liveItem('ops', 'ops', 'tmux')]
     const { callbacks, remembered, onSuccess } = createCallbacks(sessions)
 
@@ -292,6 +318,7 @@ describe('handleKillSession focus stability (DEV-85)', () => {
       workspaces: [{ id: 'a', title: 'alpha' }],
       focusedId: 'a',
     })
+
     const { callbacks, onError, refreshItems, remembered } = createCallbacks([])
 
     await handleKillSession(
@@ -316,11 +343,13 @@ describe('handleKillSession focus stability (DEV-85)', () => {
       focusedId: 'b',
       stealFocusOnAnyClose: true,
     })
+
     const originalOpen = backend.open.bind(backend)
     backend.open = async workspace => {
       if (workspace.id === 'b') {
         throw new Error('focus restore failed')
       }
+
       return originalOpen(workspace)
     }
 
@@ -333,5 +362,98 @@ describe('handleKillSession focus stability (DEV-85)', () => {
     expect(remembered.key).toBe(getItemKey(liveItem('b', 'beta')))
     expect(refreshItems).toHaveBeenCalledTimes(1)
     expect(onError).toHaveBeenCalled()
+  })
+})
+
+describe('close outcomes (DEV-341)', () => {
+  const sessions = () => [liveItem('a', 'alpha'), liveItem('b', 'beta')]
+
+  test('a completed close with failed focus restore reports the close and the restore failure', async () => {
+    const backend = createFakeBackend({
+      workspaces: [
+        { id: 'a', title: 'alpha' },
+        { id: 'b', title: 'beta' },
+        { id: 'c', title: 'gamma' },
+      ],
+      focusedId: 'b',
+      stealFocusOnAnyClose: true,
+    })
+
+    backend.open = async () => {
+      throw new Error('fixture focus failed')
+    }
+
+    const { callbacks, onError, onSuccess } = createCallbacks(sessions())
+
+    await handleKillSession(liveItem('a', 'alpha'), backend, callbacks)
+
+    expect(onSuccess).not.toHaveBeenCalled()
+    expect(onError).toHaveBeenCalledWith(
+      "Workspace 'alpha' closed, but focus could not return to 'beta': fixture focus failed"
+    )
+  })
+
+  test('a refused close says nothing was closed and does not refresh or move focus', async () => {
+    const backend = createFakeBackend({ workspaces: [{ id: 'a', title: 'alpha' }], focusedId: 'a' })
+
+    backend.close = async () => {
+      throw new MultiplexerError('unsupported', 'Cannot close an agent tab from mux-sesh.')
+    }
+
+    const { callbacks, onError, refreshItems } = createCallbacks(sessions())
+
+    await handleKillSession(liveItem('a', 'alpha'), backend, callbacks)
+
+    expect(onError).toHaveBeenCalledWith(
+      "Could not close workspace 'alpha': Cannot close an agent tab from mux-sesh. Nothing was closed."
+    )
+    expect(refreshItems).not.toHaveBeenCalled()
+    expect(backend.commands).toEqual([])
+  })
+
+  test('a close with an unknown outcome refreshes instead of retrying or moving focus', async () => {
+    const backend = createFakeBackend({
+      workspaces: [
+        { id: 'a', title: 'alpha' },
+        { id: 'b', title: 'beta' },
+      ],
+      focusedId: 'b',
+    })
+
+    backend.close = async () => {
+      throw new CommandTimeoutError({ executable: 'herdr', timeoutMs: 15_000 })
+    }
+
+    const { callbacks, onError, refreshItems } = createCallbacks(sessions())
+
+    await handleKillSession(liveItem('a', 'alpha'), backend, callbacks)
+
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenCalledWith(
+      expect.stringContaining("Closing workspace 'alpha' did not finish")
+    )
+    expect(refreshItems).toHaveBeenCalledTimes(1)
+    expect(backend.commands).toEqual([])
+  })
+
+  test('a failed refresh after a completed close is not swallowed', async () => {
+    const backend = createFakeBackend({ workspaces: [{ id: 'a', title: 'alpha' }], focusedId: 'a' })
+    const { callbacks } = createCallbacks([liveItem('a', 'alpha')])
+    const defect = new TypeError('fixture refresh defect')
+
+    const failingRefresh = {
+      ...callbacks,
+      refreshItems: async () => {
+        throw defect
+      },
+    }
+
+    expect.assertions(1)
+
+    try {
+      await handleKillSession(liveItem('a', 'alpha'), backend, failingRefresh)
+    } catch (cause) {
+      expect(cause).toBe(defect)
+    }
   })
 })

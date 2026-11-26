@@ -93,7 +93,8 @@ export interface MultiplexerBackend {
   create(input: CreateSessionInput): Promise<CreatedSessionReceipt>
   // Runs the command in the receipt's root pane.
   start(receipt: CreatedSessionReceipt, command: string): Promise<void>
-  rename(workspace: WorkspaceRef, title: string): Promise<void>
+  // Resolves to the renamed ref carrying the name the backend actually applied.
+  rename(workspace: WorkspaceRef, title: string): Promise<WorkspaceRef>
   close(workspace: WorkspaceRef): Promise<void>
   current(): Promise<WorkspaceRef | undefined>
   directory(workspace: WorkspaceRef): Promise<string | undefined>

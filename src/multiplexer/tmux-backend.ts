@@ -216,12 +216,16 @@ export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBacke
 
       return open(receipt.workspace)
     },
-    async rename(workspace: WorkspaceRef, title: string): Promise<void> {
+    async rename(workspace: WorkspaceRef, title: string): Promise<WorkspaceRef> {
+      const applied = sanitizeTmuxSessionName(title)
+
       await tmuxOk(
-        ['rename-session', '-t', workspace.id, sanitizeTmuxSessionName(title)],
+        ['rename-session', '-t', workspace.id, applied],
         `Failed to rename tmux session '${workspace.title}'`
       )
       invalidate()
+
+      return { backend: 'tmux', id: workspace.id, title: applied }
     },
     async close(workspace: WorkspaceRef): Promise<void> {
       await tmuxOk(

@@ -4,7 +4,10 @@ import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey, getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 import { getLastSessionTarget } from '../tmux/workflows'
 import { isFileItem } from '../files/target'
+import { CommandInterrupted, CommandTimeoutError } from '../multiplexer/command'
+import { isBackendFailure } from '../multiplexer/failure'
 import { handoffOf } from '../multiplexer/focus-outcome'
+import type { WorkspaceRef } from '../multiplexer/types'
 import { executeLaunchPlan, launchIntentFor, prepareLaunch } from '../sessions/launch-plan'
 import { isGitHubURL, cloneGitHubRepo } from '../util/github'
 import { requestShutdown } from '../util/shutdown'
@@ -21,11 +24,13 @@ import {
 export async function handleSelect(item: Item, config: Config | null, backend: MultiplexerBackend) {
   if (isLiveSessionItem(item)) {
     await requestShutdown(0, handoffOf(await backend.open(getWorkspaceRef(item))))
+
     return
   }
 
   if (isFileItem(item)) {
     await openFileSession(item.path, requireConfig(config), backend)
+
     return
   }
 
@@ -35,8 +40,37 @@ export async function handleSelect(item: Item, config: Config | null, backend: M
 function getKillNeighbor(item: Item, regularSessions: Item[]): Item | undefined {
   const sessions = regularSessions.filter(isLiveSessionItem)
   const index = sessions.findIndex(session => getItemKey(session) === getItemKey(item))
+
   if (index < 0) return undefined
+
   return sessions[index - 1] ?? sessions[index + 1]
+}
+
+interface FocusRestoreFailure {
+  readonly title: string
+  readonly reason: string
+}
+
+function reasonOf(cause: unknown): string {
+  return cause instanceof Error ? cause.message : 'unknown error'
+}
+
+// Restoring focus after a close is a follow-up: it never attaches, and its failure does not undo the close.
+async function restoreFocusAfterClose(
+  backend: MultiplexerBackend,
+  wanted: WorkspaceRef | undefined
+): Promise<FocusRestoreFailure | undefined> {
+  if (!wanted) return undefined
+
+  try {
+    const now = await backend.current().catch(() => undefined)
+
+    if (!now || now.id !== wanted.id) await backend.open(wanted)
+
+    return undefined
+  } catch (cause) {
+    return { title: wanted.title, reason: reasonOf(cause) }
+  }
 }
 
 export async function handleKillSession(
@@ -50,70 +84,92 @@ export async function handleKillSession(
     rememberedSessions: (key: string | null) => void
   }
 ) {
-  let closed = false
+  if (!isLiveSessionItem(item)) {
+    callbacks.onError('Select a live session to close.')
+
+    return
+  }
+
+  const noun = backend.kind === 'herdr' ? 'workspace' : 'session'
+  const target = getWorkspaceRef(item)
+  const neighbor = getKillNeighbor(item, callbacks.regularSessions)
+  const prior = await backend.current().catch(() => undefined)
+  const wasCurrent = prior !== undefined && prior.id === target.id
 
   try {
-    if (!isLiveSessionItem(item)) throw new Error('Select a live session to close')
-
-    const target = getWorkspaceRef(item)
-    const neighbor = getKillNeighbor(item, callbacks.regularSessions)
-    const prior = await backend.current().catch(() => undefined)
-    const wasCurrent = prior !== undefined && prior.id === target.id
-
     await backend.close(target)
-    closed = true
+  } catch (cause) {
+    // An unfinished close may or may not have happened: reconcile with fresh inventory, never replay.
+    if (cause instanceof CommandTimeoutError || cause instanceof CommandInterrupted) {
+      callbacks.onError(
+        `Closing ${noun} '${item.title}' did not finish: ${cause.message} It may already be closed; the list was refreshed, so check it before trying again.`
+      )
+      await callbacks.refreshItems()
 
-    callbacks.rememberedSessions(neighbor ? getItemKey(neighbor) : null)
-
-    if (!wasCurrent && prior) {
-      const now = await backend.current().catch(() => undefined)
-      if (!now || now.id !== prior.id) {
-        await backend.open(prior)
-      }
-    } else if (wasCurrent && neighbor && isLiveSessionItem(neighbor)) {
-      const preferred = getWorkspaceRef(neighbor)
-      const now = await backend.current().catch(() => undefined)
-      if (!now || now.id !== preferred.id) {
-        await backend.open(preferred)
-      }
+      return
     }
 
-    callbacks.onSuccess(
-      `${backend.kind === 'herdr' ? 'Workspace' : 'Session'} '${item.title}' closed`
+    if (!isBackendFailure(cause)) throw cause
+
+    callbacks.onError(
+      `Could not close ${noun} '${item.title}': ${cause.message} Nothing was closed.`
     )
-  } catch (error) {
-    callbacks.onError(`Error killing session: ${error}`)
-  } finally {
-    if (closed) {
-      await callbacks.refreshItems().catch(() => {})
-    }
+
+    return
   }
+
+  callbacks.rememberedSessions(neighbor ? getItemKey(neighbor) : null)
+
+  const wanted = wasCurrent
+    ? neighbor && isLiveSessionItem(neighbor)
+      ? getWorkspaceRef(neighbor)
+      : undefined
+    : prior
+
+  const restoreFailure = await restoreFocusAfterClose(backend, wanted)
+  const closed = `${noun === 'workspace' ? 'Workspace' : 'Session'} '${item.title}' closed`
+
+  if (restoreFailure) {
+    callbacks.onError(
+      `${closed}, but focus could not return to '${restoreFailure.title}': ${restoreFailure.reason}`
+    )
+  } else {
+    callbacks.onSuccess(closed)
+  }
+
+  await callbacks.refreshItems()
 }
+
+export type RenameOutcome =
+  | { readonly kind: 'unchanged' }
+  | { readonly kind: 'renamed'; readonly target: WorkspaceRef }
+  | { readonly kind: 'failed'; readonly message: string }
 
 export async function handleRenameSubmit(
   renameTarget: Item,
   newName: string,
-  backend: MultiplexerBackend,
-  callbacks: {
-    onSuccess: (message: string) => void
-    onError: (message: string) => void
-    refreshItems: () => Promise<void>
-  }
-) {
-  if (!isLiveSessionItem(renameTarget)) return
+  backend: MultiplexerBackend
+): Promise<RenameOutcome> {
+  if (!isLiveSessionItem(renameTarget)) return { kind: 'unchanged' }
+
   const nextSessionName = getNextSessionName(renameTarget.title, newName)
-  if (!nextSessionName) {
-    return
-  }
+
+  if (!nextSessionName) return { kind: 'unchanged' }
 
   try {
-    await backend.rename(getWorkspaceRef(renameTarget), nextSessionName)
-    callbacks.onSuccess(
-      `${backend.kind === 'herdr' ? 'Workspace' : 'Session'} renamed to '${nextSessionName}'`
-    )
-    await callbacks.refreshItems()
-  } catch (error) {
-    callbacks.onError(`Error renaming session: ${error}`)
+    return {
+      kind: 'renamed',
+      target: await backend.rename(getWorkspaceRef(renameTarget), nextSessionName),
+    }
+  } catch (cause) {
+    if (!isBackendFailure(cause)) throw cause
+
+    const noun = backend.kind === 'herdr' ? 'workspace' : 'session'
+
+    return {
+      kind: 'failed',
+      message: `Could not rename ${noun} '${renameTarget.title}': ${cause.message} The name is unchanged.`,
+    }
   }
 }
 
@@ -132,8 +188,9 @@ export async function handleNewSessionSubmit(
       const clonedPath = await cloneGitHubRepo(searchTerm, config)
       await openProjectSession(clonedPath, config, backend)
     } catch (error) {
-      throw new Error(`Error cloning repository: ${error}`)
+      throw new Error(`Could not clone the repository: ${reasonOf(error)}`, { cause: error })
     }
+
     return
   }
 
@@ -161,6 +218,7 @@ export async function handleLastSession(items: Item[], backend: MultiplexerBacke
       'Previous workspace is unavailable because Herdr does not expose workspace activity history'
     )
   }
+
   const currentSessionName = (await backend.current().catch(() => undefined))?.title
   const target = getLastSessionTarget(items, currentSessionName)
 
@@ -195,6 +253,7 @@ export async function handleEditTarget(
 
   if (await backend.openEditor(configuredItem.path, command)) {
     await requestShutdown(0)
+
     return
   }
 

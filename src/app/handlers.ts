@@ -4,6 +4,7 @@ import { AppMode, type Config, type Item, type ViewMode } from '../types'
 import type { SettingsFieldId } from '../settings'
 import type { MultiplexerBackend } from '../multiplexer'
 import { isBackendFailure } from '../multiplexer/failure'
+import { movePinAfterRename } from '../config/pinned-sessions'
 import { applyEditorSetting, applyOptionSetting, getSettingEditorTitle } from '../settings'
 import {
   handleEditTarget as actionHandleEditTarget,
@@ -116,21 +117,73 @@ export async function handleEditTargetWithFeedback(
   )
 }
 
+interface RenameHandlerOptions extends Pick<
+  SharedHandlerOptions,
+  'backend' | 'config' | 'sessionItems' | 'showMessage' | 'refreshItems'
+> {
+  saveConfig: (config: Config) => Promise<void>
+  setConfig: (config: Config) => void
+}
+
+// A failed rename keeps the dialog and its draft open; a completed one closes it even if follow-ups fail.
 export async function handleRenameSubmitWithFeedback(
   renameTarget: Item | null,
   newName: string,
   closeModal: () => void,
-  options: Pick<SharedHandlerOptions, 'backend' | 'showMessage' | 'refreshItems'>
+  options: RenameHandlerOptions
 ): Promise<void> {
-  if (renameTarget && newName && newName !== renameTarget.title && options.backend) {
-    await actionHandleRenameSubmit(renameTarget, newName, options.backend, {
-      onSuccess: msg => options.showMessage(msg),
-      onError: msg => options.showMessage(msg, 3000),
-      refreshItems: () => options.refreshItems(),
-    })
+  if (!renameTarget || !options.backend) {
+    closeModal()
+
+    return
+  }
+
+  const outcome = await actionHandleRenameSubmit(renameTarget, newName, options.backend)
+
+  if (outcome.kind === 'unchanged') {
+    closeModal()
+
+    return
+  }
+
+  if (outcome.kind === 'failed') {
+    options.showMessage(outcome.message, 5000)
+
+    return
   }
 
   closeModal()
+
+  const noun = options.backend.kind === 'herdr' ? 'Workspace' : 'Session'
+
+  const pin = options.config
+    ? movePinAfterRename(
+        options.config.pinnedSessions ?? [],
+        renameTarget,
+        outcome.target.title,
+        options.sessionItems
+      )
+    : { kind: 'none' as const }
+
+  let message = `${noun} renamed to '${outcome.target.title}'`
+
+  if (pin.kind === 'ambiguous') {
+    message += `. The pin on '${renameTarget.title}' was kept because another ${noun.toLowerCase()} still uses that name.`
+  }
+
+  if (pin.kind === 'moved' && options.config) {
+    const next = { ...options.config, pinnedSessions: [...pin.pinnedSessions] }
+
+    try {
+      await options.saveConfig(next)
+      options.setConfig(next)
+    } catch (cause) {
+      message += `. The pin could not be moved to the new name: ${cause instanceof Error ? cause.message : 'unknown error'}`
+    }
+  }
+
+  options.showMessage(message)
+  await options.refreshItems()
 }
 
 export async function handleNewSessionSubmitWithSearch(
@@ -235,10 +288,12 @@ export async function handleTogglePinnedSessionWithFeedback(
   }
 
   const pinnedSessions = getPinnedSessionsAfterToggle(options.config, sessionName)
+
   const nextConfig = {
     ...options.config,
     pinnedSessions,
   }
+
   const isPinned = pinnedSessions.includes(sessionName)
 
   await persistConfigUpdate(
@@ -339,7 +394,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       options.renameTarget,
       options.renamedValue,
       options.closeModal,
-      sharedOptions
+      { ...sharedOptions, saveConfig: options.saveConfig, setConfig: options.setConfig }
     )
   }
 

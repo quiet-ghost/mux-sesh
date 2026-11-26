@@ -253,7 +253,7 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
     async start(receipt: CreatedSessionReceipt, startupCommand: string): Promise<void> {
       await commandWithoutOutput(['herdr', 'pane', 'run', receipt.rootPaneId, startupCommand])
     },
-    async rename(workspace: WorkspaceRef, title: string): Promise<void> {
+    async rename(workspace: WorkspaceRef, title: string): Promise<WorkspaceRef> {
       if (isAgentTarget(workspace)) {
         throw new MultiplexerError(
           'unsupported',
@@ -263,6 +263,8 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
 
       await command(['herdr', 'workspace', 'rename', workspace.id, title], 'workspace_info')
       latestSnapshot = undefined
+
+      return { backend: 'herdr', id: workspace.id, title }
     },
     async close(workspace: WorkspaceRef): Promise<void> {
       if (isAgentTarget(workspace)) {
