@@ -1,18 +1,42 @@
 import * as Option from 'effect/Option'
 import * as Schema from 'effect/Schema'
 import type { InstallMethod } from '../types'
+import { isCompiledBinary } from './build'
 
 const PACKAGE_NAME = 'mux-sesh'
 
-const isMuxSeshPackage = Schema.is(Schema.Struct({ name: Schema.Literal(PACKAGE_NAME) }))
+// Compiled installs run from a platform package such as mux-sesh-linux-x64 or mux-sesh-darwin-arm64.
+const PACKAGE_DIRECTORY = String.raw`${PACKAGE_NAME}(?:-(?:linux|darwin)-[a-z0-9-]+)?`
+
+const BUN_GLOBAL_PACKAGE_PATH = new RegExp(
+  String.raw`/\.bun/install/global/node_modules/${PACKAGE_DIRECTORY}/`
+)
+
+const NODE_MODULES_PACKAGE_PATH = new RegExp(String.raw`/node_modules/${PACKAGE_DIRECTORY}/`)
+
+const isMuxSeshPackage = Schema.is(
+  Schema.Struct({
+    name: Schema.Union([
+      Schema.Literal(PACKAGE_NAME),
+      Schema.TemplateLiteral([
+        `${PACKAGE_NAME}-`,
+        Schema.Literals(['linux', 'darwin']),
+        '-',
+        Schema.String,
+      ]),
+    ]),
+  })
+)
+
 const decodePackageVersion = Schema.decodeUnknownOption(Schema.Struct({ version: Schema.String }))
 
 function normalizePath(path: string): string {
   return path.replaceAll('\\', '/')
 }
 
-function getDefaultRuntimePath(): string {
-  return process.argv[1] ?? import.meta.path
+// A compiled binary's modules live in its embedded filesystem; only the executable shows the install location.
+export function getDefaultRuntimePath(compiled = isCompiledBinary()): string {
+  return compiled ? process.execPath : (process.argv[1] ?? import.meta.path)
 }
 
 async function findPackageRoot(startPath: string): Promise<string | null> {
@@ -60,7 +84,7 @@ async function findPackageRoot(startPath: string): Promise<string | null> {
 async function detectInstallMethodFromPath(runtimePath: string): Promise<InstallMethod> {
   const normalizedPath = normalizePath(runtimePath)
 
-  if (normalizedPath.includes(`/.bun/install/global/node_modules/${PACKAGE_NAME}/`)) {
+  if (BUN_GLOBAL_PACKAGE_PATH.test(normalizedPath)) {
     return 'bun'
   }
 
@@ -68,7 +92,7 @@ async function detectInstallMethodFromPath(runtimePath: string): Promise<Install
     return 'brew'
   }
 
-  if (normalizedPath.includes(`/node_modules/${PACKAGE_NAME}/`)) {
+  if (NODE_MODULES_PACKAGE_PATH.test(normalizedPath)) {
     return 'npm'
   }
 

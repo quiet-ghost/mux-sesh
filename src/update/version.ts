@@ -1,8 +1,9 @@
 import * as Option from 'effect/Option'
 import * as Schema from 'effect/Schema'
 import packageJson from '../../package.json'
+import { buildVersion } from './build'
 
-export const CURRENT_VERSION = packageJson.version
+export const CURRENT_VERSION = buildVersion() ?? packageJson.version
 const PACKAGE_NAME = packageJson.name
 
 const decodeRegistryLatest = Schema.decodeUnknownOption(Schema.Struct({ version: Schema.String }))
