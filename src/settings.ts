@@ -41,12 +41,14 @@ export interface SettingsOption {
 const COLOR_SCHEME_OPTIONS: ThemeColorScheme[] = ['system', 'dark', 'light']
 const KEYBIND_OPTIONS: KeybindMode[] = ['vim', 'standard']
 const PREFIX_OPTIONS = ['ctrl+x', 'ctrl+space', 'space', ',', ';'] as const
+
 const SORT_ORDER_OPTIONS: SortOrder[] = [
   'live-first',
   'configured-first',
   'zoxide-first',
   'alphabetical',
 ]
+
 const ZOXIDE_OPTIONS: ZoxideMode[] = ['off', 'rank', 'merge']
 const BACKEND_OPTIONS = ['auto', 'tmux', 'herdr'] as const
 
@@ -62,20 +64,53 @@ interface SettingsFieldDefinition {
   getEditorValue?: (config: Config) => string
   getOptions?: (config: Config) => SettingsOption[]
   applyOption?: (config: Config, value: string) => Config
-  applyEditor?: (raw: Record<string, unknown>, value: string) => void
+  applyEditor?: (config: Config, value: string) => SerializedConfigPatch
 }
 
-function formatJSON(value: unknown): string {
+interface SerializedSessionDefaults {
+  startup_command: string | undefined
+  preview_command: string | undefined
+}
+
+// JSON-edited values stay unparsed here; normalizeConfig validates every serialized field.
+interface SerializedConfigPatch {
+  repos_path?: string
+  editor?: string
+  editor_cmd?: string
+  default_session?: SerializedSessionDefaults
+  project_paths?: unknown
+  hidden_sessions?: unknown
+  pinned_sessions?: unknown
+  icons?: unknown
+  projects?: unknown
+  wildcards?: unknown
+}
+
+type JsonSettingValue =
+  | NonNullable<
+      Config['projectPaths' | 'hiddenSessions' | 'pinnedSessions' | 'projects' | 'wildcards']
+    >
+  | Partial<NonNullable<Config['icons']>>
+
+function formatJSON(value: JsonSettingValue): string {
   return JSON.stringify(value, null, 2)
+}
+
+function findChoice<T extends string>(choices: readonly T[], value: string): T | undefined {
+  return choices.find(choice => choice === value)
 }
 
 export function getThemeOptions(config?: Config): string[] {
   const builtin = Object.keys(BUILTIN_THEMES).sort((left, right) => {
     if (left === DEFAULT_THEME_ID) return -1
+
     if (right === DEFAULT_THEME_ID) return 1
+
     return left.localeCompare(right)
   })
+
   const custom = Object.keys(config?.themes ?? {}).sort((left, right) => left.localeCompare(right))
+
   return [SYSTEM_THEME_ID, ...builtin, ...custom]
 }
 
@@ -88,6 +123,7 @@ function themeOptions(config: Config): SettingsOption[] {
         description: 'Follow the desktop or terminal theme',
       }
     }
+
     return {
       value: id,
       label: config.themes?.[id]?.name ?? BUILTIN_THEMES[id]?.name ?? id,
@@ -107,8 +143,8 @@ function choiceOptions(
   }))
 }
 
-const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
-  {
+const SETTINGS_FIELD_MAP = {
+  backend: {
     id: 'backend',
     label: 'Backend',
     hint: 'Multiplexer selection; applies next launch',
@@ -125,7 +161,7 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
       backend: value === 'tmux' || value === 'herdr' ? value : undefined,
     }),
   },
-  {
+  theme: {
     id: 'theme',
     label: 'Theme',
     hint: 'Built-in, custom, or system',
@@ -137,7 +173,7 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
       theme: value,
     }),
   },
-  {
+  colorScheme: {
     id: 'colorScheme',
     label: 'Color Scheme',
     hint: 'System, dark, or light',
@@ -149,12 +185,13 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
         dark: 'Force dark mode',
         light: 'Force light mode',
       }),
-    applyOption: (config, value) => ({
-      ...config,
-      colorScheme: value as ThemeColorScheme,
-    }),
+    applyOption: (config, value) => {
+      const colorScheme = findChoice(COLOR_SCHEME_OPTIONS, value)
+
+      return colorScheme ? { ...config, colorScheme } : config
+    },
   },
-  {
+  keybindMode: {
     id: 'keybindMode',
     label: 'Keybind Mode',
     hint: 'Navigation style',
@@ -165,12 +202,13 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
         vim: 'Single-key navigation and actions',
         standard: 'Arrow keys with prefixed commands',
       }),
-    applyOption: (config, value) => ({
-      ...config,
-      keybindMode: value as KeybindMode,
-    }),
+    applyOption: (config, value) => {
+      const keybindMode = findChoice(KEYBIND_OPTIONS, value)
+
+      return keybindMode ? { ...config, keybindMode } : config
+    },
   },
-  {
+  prefixKey: {
     id: 'prefixKey',
     label: 'Prefix Key',
     hint: 'Prefixed command trigger',
@@ -191,31 +229,33 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
       prefixKey: value,
     }),
   },
-  {
+  sortOrder: {
     id: 'sortOrder',
     label: 'Sort Order',
     hint: 'List ordering',
     kind: 'options',
     getValue: config => config.sortOrder ?? 'live-first',
     getOptions: () => choiceOptions(SORT_ORDER_OPTIONS),
-    applyOption: (config, value) => ({
-      ...config,
-      sortOrder: value as SortOrder,
-    }),
+    applyOption: (config, value) => {
+      const sortOrder = findChoice(SORT_ORDER_OPTIONS, value)
+
+      return sortOrder ? { ...config, sortOrder } : config
+    },
   },
-  {
+  zoxideMode: {
     id: 'zoxideMode',
     label: 'Zoxide Mode',
     hint: 'Project discovery weighting',
     kind: 'options',
     getValue: config => config.zoxideMode ?? 'off',
     getOptions: () => choiceOptions(ZOXIDE_OPTIONS),
-    applyOption: (config, value) => ({
-      ...config,
-      zoxideMode: value as ZoxideMode,
-    }),
+    applyOption: (config, value) => {
+      const zoxideMode = findChoice(ZOXIDE_OPTIONS, value)
+
+      return zoxideMode ? { ...config, zoxideMode } : config
+    },
   },
-  {
+  autoUpdate: {
     id: 'autoUpdate',
     label: 'Auto Update',
     hint: 'Background update checks',
@@ -230,14 +270,14 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
       autoUpdate: value === 'true',
     }),
   },
-  {
+  dirLength: {
     id: 'dirLength',
     label: 'Dir Length',
     hint: 'Session naming depth',
     kind: 'number',
     getValue: config => String(config.dirLength ?? 1),
   },
-  {
+  reposPath: {
     id: 'reposPath',
     label: 'Repos Path',
     hint: 'Git clone destination',
@@ -245,11 +285,9 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
     title: 'Repos Path',
     getValue: config => config.reposPath,
     getEditorValue: config => config.reposPath,
-    applyEditor: (raw, value) => {
-      raw.repos_path = value.trim()
-    },
+    applyEditor: (_config, value) => ({ repos_path: value.trim() }),
   },
-  {
+  editor: {
     id: 'editor',
     label: 'Editor',
     hint: 'Short editor name',
@@ -257,11 +295,9 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
     title: 'Editor',
     getValue: config => config.editor,
     getEditorValue: config => config.editor,
-    applyEditor: (raw, value) => {
-      raw.editor = value.trim()
-    },
+    applyEditor: (_config, value) => ({ editor: value.trim() }),
   },
-  {
+  editorCmd: {
     id: 'editorCmd',
     label: 'Editor Command',
     hint: 'Launch command',
@@ -269,11 +305,9 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
     title: 'Editor Command',
     getValue: config => config.editorCmd,
     getEditorValue: config => config.editorCmd,
-    applyEditor: (raw, value) => {
-      raw.editor_cmd = value
-    },
+    applyEditor: (_config, value) => ({ editor_cmd: value }),
   },
-  {
+  defaultStartupCommand: {
     id: 'defaultStartupCommand',
     label: 'Default Startup',
     hint: 'Fallback project startup command',
@@ -281,16 +315,14 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
     title: 'Default Startup Command',
     getValue: config => config.defaultSession?.startupCommand ?? '',
     getEditorValue: config => config.defaultSession?.startupCommand ?? '',
-    applyEditor: (raw, value) => {
-      raw.default_session = {
-        ...(typeof raw.default_session === 'object' && raw.default_session
-          ? raw.default_session
-          : {}),
+    applyEditor: (config, value) => ({
+      default_session: {
         startup_command: value,
-      }
-    },
+        preview_command: config.defaultSession?.previewCommand,
+      },
+    }),
   },
-  {
+  defaultPreviewCommand: {
     id: 'defaultPreviewCommand',
     label: 'Default Preview',
     hint: 'Fallback preview command',
@@ -298,17 +330,14 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
     title: 'Default Preview Command',
     getValue: config => config.defaultSession?.previewCommand ?? '',
     getEditorValue: config => config.defaultSession?.previewCommand ?? '',
-    applyEditor: (raw, value) => {
-      const trimmed = value.trim()
-      raw.default_session = {
-        ...(typeof raw.default_session === 'object' && raw.default_session
-          ? raw.default_session
-          : {}),
-        preview_command: trimmed.length > 0 ? value : undefined,
-      }
-    },
+    applyEditor: (config, value) => ({
+      default_session: {
+        startup_command: config.defaultSession?.startupCommand,
+        preview_command: value.trim().length > 0 ? value : undefined,
+      },
+    }),
   },
-  {
+  projectPaths: {
     id: 'projectPaths',
     label: 'Project Paths',
     hint: 'JSON array of roots',
@@ -316,11 +345,9 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
     title: 'Project Paths',
     getValue: config => `${config.projectPaths.length} entries`,
     getEditorValue: config => formatJSON(config.projectPaths),
-    applyEditor: (raw, value) => {
-      raw.project_paths = JSON.parse(value) as unknown
-    },
+    applyEditor: (_config, value) => ({ project_paths: JSON.parse(value) }),
   },
-  {
+  hiddenSessions: {
     id: 'hiddenSessions',
     label: 'Hidden Sessions',
     hint: 'JSON array of filters',
@@ -328,11 +355,9 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
     title: 'Hidden Sessions',
     getValue: config => `${config.hiddenSessions?.length ?? 0} patterns`,
     getEditorValue: config => formatJSON(config.hiddenSessions ?? []),
-    applyEditor: (raw, value) => {
-      raw.hidden_sessions = JSON.parse(value) as unknown
-    },
+    applyEditor: (_config, value) => ({ hidden_sessions: JSON.parse(value) }),
   },
-  {
+  pinnedSessions: {
     id: 'pinnedSessions',
     label: 'Pinned Sessions',
     hint: 'JSON array of session names',
@@ -340,11 +365,9 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
     title: 'Pinned Sessions',
     getValue: config => `${config.pinnedSessions?.length ?? 0} pinned`,
     getEditorValue: config => formatJSON(config.pinnedSessions ?? []),
-    applyEditor: (raw, value) => {
-      raw.pinned_sessions = JSON.parse(value) as unknown
-    },
+    applyEditor: (_config, value) => ({ pinned_sessions: JSON.parse(value) }),
   },
-  {
+  icons: {
     id: 'icons',
     label: 'Icons',
     hint: 'JSON object',
@@ -352,11 +375,9 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
     title: 'Icons',
     getValue: () => 'customize glyphs',
     getEditorValue: config => formatJSON(config.icons ?? {}),
-    applyEditor: (raw, value) => {
-      raw.icons = JSON.parse(value) as unknown
-    },
+    applyEditor: (_config, value) => ({ icons: JSON.parse(value) }),
   },
-  {
+  projects: {
     id: 'projects',
     label: 'Projects',
     hint: 'JSON array of exact rules',
@@ -364,11 +385,9 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
     title: 'Projects',
     getValue: config => `${config.projects?.length ?? 0} rules`,
     getEditorValue: config => formatJSON(config.projects ?? []),
-    applyEditor: (raw, value) => {
-      raw.projects = JSON.parse(value) as unknown
-    },
+    applyEditor: (_config, value) => ({ projects: JSON.parse(value) }),
   },
-  {
+  wildcards: {
     id: 'wildcards',
     label: 'Wildcards',
     hint: 'JSON array of wildcard rules',
@@ -376,15 +395,11 @@ const SETTINGS_FIELDS: readonly SettingsFieldDefinition[] = [
     title: 'Wildcards',
     getValue: config => `${config.wildcards?.length ?? 0} rules`,
     getEditorValue: config => formatJSON(config.wildcards ?? []),
-    applyEditor: (raw, value) => {
-      raw.wildcards = JSON.parse(value) as unknown
-    },
+    applyEditor: (_config, value) => ({ wildcards: JSON.parse(value) }),
   },
-]
+} satisfies { readonly [Id in SettingsFieldId]: SettingsFieldDefinition & { id: Id } }
 
-const SETTINGS_FIELD_MAP = Object.fromEntries(
-  SETTINGS_FIELDS.map(field => [field.id, field])
-) as Record<SettingsFieldId, SettingsFieldDefinition>
+const SETTINGS_FIELDS = Object.values<SettingsFieldDefinition>(SETTINGS_FIELD_MAP)
 
 function getSettingsField(field: SettingsFieldId): SettingsFieldDefinition {
   return SETTINGS_FIELD_MAP[field]
@@ -422,19 +437,18 @@ export function applyEditorSetting(
   value: string,
   homeDir: string
 ): Config {
-  const raw = serializeConfig(config)
   const applyEditor = getSettingsField(field).applyEditor
+
   if (!applyEditor) {
     return config
   }
 
-  applyEditor(raw, value)
-
-  return normalizeConfig(raw, homeDir)
+  return normalizeConfig({ ...serializeConfig(config), ...applyEditor(config, value) }, homeDir)
 }
 
 export function getSettingEditorTitle(field: SettingsFieldId): string {
   const setting = getSettingsField(field)
+
   return setting.title ?? setting.label
 }
 
@@ -447,6 +461,7 @@ export function filterSettingsEntries(entries: SettingsEntry[], query: string): 
 
   return entries.filter(entry => {
     const haystack = `${entry.label} ${entry.value} ${entry.hint}`.toLowerCase()
+
     return haystack.includes(normalizedQuery)
   })
 }
@@ -460,6 +475,7 @@ export function filterSettingsOptions(options: SettingsOption[], query: string):
 
   return options.filter(option => {
     const haystack = `${option.label} ${option.value} ${option.description ?? ''}`.toLowerCase()
+
     return haystack.includes(normalizedQuery)
   })
 }
