@@ -131,9 +131,6 @@ export async function handleNewSessionSubmitWithSearch(
   searchTerm: string,
   options: NewSessionHandlerOptions
 ): Promise<void> {
-  if (!searchTerm) {
-    return
-  }
   if (!options.backend) return
   const backend = options.backend
 
@@ -145,7 +142,8 @@ export async function handleNewSessionSubmitWithSearch(
         options.items,
         options.cursor,
         backend,
-        options.invocationCwd
+        options.invocationCwd,
+        options.sessionItems
       ),
     'Failed to create session',
     options.showMessage

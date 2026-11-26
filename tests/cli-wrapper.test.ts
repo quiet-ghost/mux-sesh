@@ -132,6 +132,19 @@ describe('packaged CLI wrapper', () => {
     }
   )
 
+  test('Enter on a highlighted project with an empty query launches that project', async () => {
+    if (!fixture) throw new Error('Wrapper fixture was not created')
+
+    const report: unknown = JSON.parse(
+      await runWrapperProbe(fixture, 'symlink', ['launch-selected', 'notes'])
+    )
+
+    expect(report).toMatchObject({
+      invocationCwd: fixture.caller,
+      created: [{ title: 'notes', path: join(fixture.caller, 'notes') }],
+    })
+  })
+
   test.each([
     { input: './notes/todo.md', title: 'notes_todo_md', directory: 'notes' },
     { input: './notes', title: 'notes', directory: 'notes' },

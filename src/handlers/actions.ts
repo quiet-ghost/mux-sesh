@@ -1,9 +1,11 @@
 import { spawn } from 'bun'
+import { Result } from 'effect'
 import type { Item, Config } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey, getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 import { getLastSessionTarget } from '../tmux/workflows'
-import { isFileItem, resolveTypedPathTarget } from '../files/target'
+import { isFileItem } from '../files/target'
+import { executeLaunchPlan, launchIntentFor, prepareLaunch } from '../sessions/launch-plan'
 import { isGitHubURL, cloneGitHubRepo } from '../util/github'
 import { requestShutdown } from '../util/shutdown'
 import {
@@ -122,10 +124,9 @@ export async function handleNewSessionSubmit(
   items: Item[],
   cursor: number,
   backend: MultiplexerBackend,
-  invocationCwd: string
+  invocationCwd: string,
+  sessionItems: Item[]
 ): Promise<void> {
-  if (!searchTerm) return
-
   if (isGitHubURL(searchTerm)) {
     try {
       if (!config) return
@@ -137,29 +138,21 @@ export async function handleNewSessionSubmit(
     return
   }
 
-  const typedTarget = await resolveTypedPathTarget(searchTerm, { invocationCwd })
-  if (typedTarget) {
-    if (typedTarget.kind === 'file') {
-      await openFileSession(typedTarget.path, requireConfig(config), backend)
-      return
-    }
+  const intent = launchIntentFor(searchTerm, items[cursor])
 
-    await openProjectSession(typedTarget.path, requireConfig(config), backend)
-    return
-  }
+  if (!intent) return
 
-  if (items.length > 0 && cursor < items.length) {
-    const selectedItem = items[cursor]
-    if (isFileItem(selectedItem)) {
-      await openFileSession(selectedItem.path, requireConfig(config), backend)
-      return
-    }
+  const plan = await prepareLaunch(intent, {
+    config: requireConfig(config),
+    backend: backend.kind,
+    invocationCwd,
+    liveSessions: sessionItems,
+  })
 
-    await openProjectSession(selectedItem.path, requireConfig(config), backend)
-    return
-  }
+  // Plan failures are expected and shown by the caller; nothing was opened or created.
+  if (Result.isFailure(plan)) throw plan.failure
 
-  await backend.openOrCreate({ title: searchTerm, path: invocationCwd })
+  await executeLaunchPlan(plan.success, backend)
   await requestShutdown(0)
 }
 

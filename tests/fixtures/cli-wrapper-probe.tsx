@@ -1,4 +1,5 @@
 import { writeSync } from 'fs'
+import { join } from 'path'
 import { testRender } from '@opentui/react/test-utils'
 import { act, isValidElement } from 'react'
 import { App } from '@/app'
@@ -59,16 +60,32 @@ try {
     )
   })
 
-  if (process.argv[2] === 'launch') {
+  if (process.argv[2] === 'launch' || process.argv[2] === 'launch-selected') {
     const input = process.argv[3]
 
     if (!input) throw new Error('The wrapper launch probe requires an input')
+
+    // launch-selected: empty query with one highlighted project row at the given directory.
+    const selected = process.argv[2] === 'launch-selected'
+
+    const items = selected
+      ? [
+          {
+            title: input,
+            desc: '',
+            path: join(invocationCwd, input),
+            isSession: false,
+            itemKind: 'project' as const,
+          },
+        ]
+      : []
+
     await act(async () => {
-      await handleNewSessionSubmitWithSearch(input, {
+      await handleNewSessionSubmitWithSearch(selected ? '' : input, {
         invocationCwd,
         backend,
         config: getDefaultConfig(),
-        items: [],
+        items,
         sessionItems: [],
         cursor: 0,
         showMessage: message => {
