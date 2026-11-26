@@ -422,22 +422,53 @@ describe('Herdr backend', () => {
     expect(options).toEqual([undefined, { inheritStdio: true }])
   })
 
-  test('focuses the exact tab for an agent target', async () => {
-    const response = JSON.stringify({
-      id: 'cli:tab:focus',
-      result: { type: 'tab_info', tab: {} },
-    })
-    const { runner, commands } = recordingRunner([{ exitCode: 0, stdout: response, stderr: '' }])
+  test('focuses the exact agent pane, not its tab, for agents sharing one tab', async () => {
+    const focused = JSON.stringify({ result: { type: 'agent_info', agent: {} } })
+    const { runner, commands, options } = recordingRunner([
+      { exitCode: 0, stdout: focused, stderr: '' },
+      { exitCode: 0, stdout: focused, stderr: '' },
+    ])
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
-    await backend.open({
-      backend: 'herdr',
-      id: 'agents',
-      title: 'pi-web',
-      target: { kind: 'agent', tabId: 'agents:t2', paneId: 'agents:p2' },
-    })
+    for (const paneId of ['w3:p1', 'w3:p2']) {
+      await backend.open({
+        backend: 'herdr',
+        id: 'w3',
+        title: 'twin',
+        target: { kind: 'agent', tabId: 'w3:t1', paneId },
+      })
+    }
 
-    expect(commands).toEqual([['herdr', 'tab', 'focus', 'agents:t2']])
+    expect(commands).toEqual([
+      ['herdr', 'agent', 'focus', 'w3:p1'],
+      ['herdr', 'agent', 'focus', 'w3:p2'],
+    ])
+    expect(options.every(option => option?.inheritStdio !== true)).toBe(true)
+  })
+
+  test('a failed agent focus explains recovery without focusing another pane or attaching', async () => {
+    const { runner, commands } = recordingRunner([
+      { exitCode: 1, stdout: '', stderr: '{"error":{"message":"agent not found"}}' },
+    ])
+    const backend = createHerdrBackend({ runner, insideHerdr: false })
+
+    expect.assertions(3)
+
+    try {
+      await backend.open({
+        backend: 'herdr',
+        id: 'w3',
+        title: 'twin',
+        target: { kind: 'agent', tabId: 'w3:t1', paneId: 'w3:p2' },
+      })
+    } catch (cause) {
+      expect(cause instanceof Error ? cause.message : '').toContain(
+        "Herdr could not focus agent pane 'w3:p2'"
+      )
+      expect(cause instanceof Error ? cause.message : '').toContain('Refresh the list')
+    }
+
+    expect(commands).toEqual([['herdr', 'agent', 'focus', 'w3:p2']])
   })
 
   test('creates a workspace, runs startup command in its root pane, then focuses it', async () => {

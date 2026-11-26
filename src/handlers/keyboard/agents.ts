@@ -77,7 +77,7 @@ export function handleAgentsManageMode(
     const selectedAgent = ctx.agentSessions[ctx.agentCursor]
 
     if (selectedAgent) {
-      // Selection failures remain fatal until action outcomes get recoverable screens.
+      // Expected selection failures are shown by the handler; only defects reach here.
       ctx.handleSelect(selectedAgent).catch(requestFatalShutdown)
     }
 

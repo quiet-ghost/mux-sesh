@@ -1,0 +1,95 @@
+import { expect, mock, test } from 'bun:test'
+import { createAppHandlers } from '../src/app/handlers'
+import { getDefaultConfig } from '../src/config'
+import { createHerdrBackend } from '../src/herdr/backend'
+import type { CommandRunner } from '../src/multiplexer/command'
+import { workspaceToItem } from '../src/multiplexer/items'
+import { AppMode, ViewMode } from '../src/types'
+
+const agent = workspaceToItem({
+  backend: 'herdr',
+  id: 'w3',
+  title: 'twin',
+  path: '/fixture/twin',
+  isActive: false,
+  unitCount: 1,
+  target: { kind: 'agent', tabId: 'w3:t1', paneId: 'w3:p2' },
+})
+
+function handlersFor(runner: CommandRunner, showMessage: (message: string) => void) {
+  return createAppHandlers({
+    invocationCwd: '/fixture',
+    appMode: AppMode.AgentsManage,
+    viewMode: ViewMode.Sessions,
+    config: getDefaultConfig('/fixture'),
+    backend: createHerdrBackend({ runner, insideHerdr: true }),
+    items: [agent],
+    sessionItems: [agent],
+    cursor: 0,
+    showMessage,
+    refreshItems: mock(async () => {}),
+    agentCursor: 0,
+    regularSessions: [],
+    agentSessions: [agent],
+    selectedPrimaryItem: agent,
+    sessionCandidateItems: [],
+    projectSourceItems: [],
+    closeModal: mock(() => {}),
+    openRenameModal: mock(() => {}),
+    openSettingsModal: mock(() => {}),
+    openSettingOptions: mock(() => {}),
+    requestKillSession: mock(() => {}),
+    setAppMode: mock(() => {}),
+    setViewMode: mock(() => {}),
+    setAllItems: mock(() => {}),
+    setItems: mock(() => {}),
+    setCursor: mock(() => {}),
+    setSearchQuery: mock(() => {}),
+    setAgentCursor: mock(() => {}),
+    setPendingKillSessionName: mock(() => {}),
+    saveConfig: mock(async () => {}),
+    setConfig: mock(() => {}),
+    setSettingEditorError: mock(() => {}),
+    settingEditorValue: '',
+    settingEditorPlainText: undefined,
+    renameTarget: null,
+    renamedValue: '',
+    searchTerm: '',
+    rememberedSessions: mock(() => {}),
+  })
+}
+
+test('an expected backend failure while selecting is shown, not treated as a crash', async () => {
+  const messages: string[] = []
+
+  const handlers = handlersFor(
+    { run: async () => ({ exitCode: 1, stdout: '', stderr: 'agent not found' }) },
+    message => messages.push(message)
+  )
+
+  await handlers.handleSelectWrapper(agent)
+
+  expect(messages).toHaveLength(1)
+  expect(messages[0]).toContain("Herdr could not focus agent pane 'w3:p2'")
+})
+
+test('a programming error while selecting still propagates to crash handling', async () => {
+  const defect = new TypeError('fixture defect')
+
+  const handlers = handlersFor(
+    {
+      run: async () => {
+        throw defect
+      },
+    },
+    () => {}
+  )
+
+  expect.assertions(1)
+
+  try {
+    await handlers.handleSelectWrapper(agent)
+  } catch (cause) {
+    expect(cause).toBe(defect)
+  }
+})

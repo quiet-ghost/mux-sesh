@@ -11,6 +11,7 @@ export const LINT_CORRIDOR = [
   'src/agents/session-name.ts',
   'src/multiplexer/backend.ts',
   'src/multiplexer/command.ts',
+  'src/multiplexer/failure.ts',
   'src/multiplexer/resolve.ts',
   'src/cli/invocation-cwd.ts',
   'src/files/target.ts',
@@ -40,6 +41,7 @@ export const LINT_CORRIDOR = [
   'tests/perf',
   'tests/perf.test.ts',
   'tests/picker-baseline.test.ts',
+  'tests/select-failure.test.ts',
   'tests/shutdown.test.ts',
   'tools/oxlint/lint-corridor.ts',
 ] as const

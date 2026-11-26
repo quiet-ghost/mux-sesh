@@ -1,10 +1,6 @@
 import { MultiplexerError, type BackendKind, type BackendPreference } from './types'
-import {
-  CommandOutputLimitError,
-  CommandTimeoutError,
-  CommandTransportError,
-  type CommandRunner,
-} from './command'
+import { CommandTransportError, type CommandRunner } from './command'
+import { isBackendFailure } from './failure'
 import { MIN_SUPPORTED_HERDR_PROTOCOL, parseHerdrStatus } from '../herdr/protocol'
 
 export interface BackendState {
@@ -56,12 +52,7 @@ async function probeHerdrForAutoDetection(runner: CommandRunner): Promise<Backen
   try {
     return await probeHerdrAvailability(runner)
   } catch (cause) {
-    if (
-      cause instanceof MultiplexerError ||
-      cause instanceof CommandTransportError ||
-      cause instanceof CommandTimeoutError ||
-      cause instanceof CommandOutputLimitError
-    ) {
+    if (isBackendFailure(cause)) {
       return { installed: true, running: false, problem: cause.message }
     }
 

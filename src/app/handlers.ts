@@ -3,6 +3,7 @@ import { persistConfigUpdate, runWithErrorMessage } from './operations'
 import { AppMode, type Config, type Item, type ViewMode } from '../types'
 import type { SettingsFieldId } from '../settings'
 import type { MultiplexerBackend } from '../multiplexer'
+import { isBackendFailure } from '../multiplexer/failure'
 import { applyEditorSetting, applyOptionSetting, getSettingEditorTitle } from '../settings'
 import {
   handleEditTarget as actionHandleEditTarget,
@@ -293,7 +294,14 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
   }
 
   async function handleSelectWrapper(item: Item) {
-    await handleSelectItem(item, options.config, options.backend)
+    try {
+      await handleSelectItem(item, options.config, options.backend)
+    } catch (cause) {
+      // Expected failures leave the picker and its inventory usable; defects still crash.
+      if (!isBackendFailure(cause)) throw cause
+
+      options.showMessage(cause.message, 5000)
+    }
   }
 
   async function handleLastSessionWrapper() {

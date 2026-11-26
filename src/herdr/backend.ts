@@ -119,6 +119,22 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
     latestSnapshot = undefined
   }
 
+  // Focus the exact pane. Never substitute its tab: that focuses whichever pane the tab last used.
+  async function focusAgent(paneId: string): Promise<void> {
+    const result = await options.runner.run(['herdr', 'agent', 'focus', paneId])
+
+    if (result.exitCode !== 0) {
+      const reason = result.stderr.trim() || `exit code ${result.exitCode}`
+
+      throw new MultiplexerError(
+        'command-failed',
+        `Herdr could not focus agent pane '${paneId}': ${reason}. The agent may have exited, so nothing was focused. Refresh the list; if this Herdr version lacks 'herdr agent focus', update Herdr.`
+      )
+    }
+
+    latestSnapshot = undefined
+  }
+
   async function attachIfNeeded(): Promise<void> {
     if (options.insideHerdr) {
       return
@@ -181,8 +197,7 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
     },
     async open(workspace: WorkspaceRef): Promise<void> {
       if (isAgentTarget(workspace)) {
-        await command(['herdr', 'tab', 'focus', workspace.target.tabId], 'tab_info')
-        latestSnapshot = undefined
+        await focusAgent(workspace.target.paneId)
       } else {
         await focus(workspace.id)
       }

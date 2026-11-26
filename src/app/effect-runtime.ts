@@ -1,18 +1,14 @@
 import { Cause, Context, Effect, Exit, Layer, ManagedRuntime, Result } from 'effect'
 import {
   CommandInterrupted,
-  CommandOutputLimitError,
-  CommandTimeoutError,
-  CommandTransportError,
   createCommandRunner,
   type CommandOptions,
   type CommandResult,
   type CommandRunner,
 } from '../multiplexer/command'
-import { MultiplexerError } from '../multiplexer/types'
+import { isBackendFailure, type BackendFailure } from '../multiplexer/failure'
 
-export type ReadFailure =
-  CommandTransportError | CommandTimeoutError | CommandOutputLimitError | MultiplexerError
+export type ReadFailure = BackendFailure
 
 export type OperationOutcome<A, E> =
   | { readonly kind: 'success'; readonly value: A }
@@ -29,10 +25,7 @@ export const readEffect = <A>(
     Effect.catch(cause =>
       cause instanceof CommandInterrupted
         ? Effect.interrupt
-        : cause instanceof CommandTransportError ||
-            cause instanceof CommandTimeoutError ||
-            cause instanceof CommandOutputLimitError ||
-            cause instanceof MultiplexerError
+        : isBackendFailure(cause)
           ? Effect.fail(cause)
           : Effect.die(cause)
     )
