@@ -29,11 +29,11 @@ Named catalog ids stay pinned. They do not follow desktop or terminal changes.
 
 `color_scheme` is separate from `theme`:
 
-| Value    | Effect                                      |
-| -------- | ------------------------------------------- |
-| `system` | Follow Omarchy `mode` or the terminal mode  |
-| `dark`   | Lock reported mode to dark                  |
-| `light`  | Lock reported mode to light                 |
+| Value    | Effect                                     |
+| -------- | ------------------------------------------ |
+| `system` | Follow Omarchy `mode` or the terminal mode |
+| `dark`   | Lock reported mode to dark                 |
+| `light`  | Lock reported mode to light                |
 
 A locked scheme does not invent the opposite Omarchy palette. System still uses the current desktop or terminal colors.
 

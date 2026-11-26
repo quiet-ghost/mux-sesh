@@ -28,7 +28,16 @@ describe('terminalColorsToPalette', () => {
     const palette = terminalColorsToPalette({
       defaultBackground: '#1a1a1a',
       defaultForeground: '#eeeeee',
-      palette: ['#000000', '#cc0000', '#00cc00', '#cccc00', '#0000cc', '#cc00cc', '#00cccc', '#dddddd'],
+      palette: [
+        '#000000',
+        '#cc0000',
+        '#00cc00',
+        '#cccc00',
+        '#0000cc',
+        '#cc00cc',
+        '#00cccc',
+        '#dddddd',
+      ],
     })
 
     expect(palette?.mode).toBe('dark')

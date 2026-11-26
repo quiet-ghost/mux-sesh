@@ -16,12 +16,12 @@ This phase makes `theme: "system"` mean: if this home dir has a readable Omarchy
 
 After this phase:
 
-* Launch mux-sesh with `"theme": "system"` on an Omarchy box → UI colors come from `colors.toml`, not catalog Rose Pine (unless those hexes happen to match)
-* Named catalog / custom ids still ignore Omarchy files
-* Default theme stays `rosepine`
-* `resolveTheme` stays **synchronous**
-* Tests do not need Omarchy installed; they inject a fake home dir or a parsed palette
-* Live reload when Omarchy switches is P3. This phase is resolve-once (startup + each `resolveTheme` call)
+- Launch mux-sesh with `"theme": "system"` on an Omarchy box → UI colors come from `colors.toml`, not catalog Rose Pine (unless those hexes happen to match)
+- Named catalog / custom ids still ignore Omarchy files
+- Default theme stays `rosepine`
+- `resolveTheme` stays **synchronous**
+- Tests do not need Omarchy installed; they inject a fake home dir or a parsed palette
+- Live reload when Omarchy switches is P3. This phase is resolve-once (startup + each `resolveTheme` call)
 
 ## How the current code works
 
@@ -43,8 +43,8 @@ Read these first:
 
 Canonical files (read only). Both are under the injected home dir, never hardcoded `/home/...`:
 
-* `join(homeDir, '.local/state/omarchy/current/theme.name')` — slug, e.g. `rose-pine-dark`. Overwritten in place. Optional for P2. Export the path helper so P3 can watch it. Do **not** use the slug as mux-sesh's theme id. Resolved id stays `'system'`.
-* `join(homeDir, '.local/state/omarchy/current/theme/colors.toml')` — current semantic colors. The **directory** `theme/` is deleted and replaced on every `omarchy theme set`. Do not treat that path as a stable inode (P3 watches `theme.name`, never this file).
+- `join(homeDir, '.local/state/omarchy/current/theme.name')` — slug, e.g. `rose-pine-dark`. Overwritten in place. Optional for P2. Export the path helper so P3 can watch it. Do **not** use the slug as mux-sesh's theme id. Resolved id stays `'system'`.
+- `join(homeDir, '.local/state/omarchy/current/theme/colors.toml')` — current semantic colors. The **directory** `theme/` is deleted and replaced on every `omarchy theme set`. Do not treat that path as a stable inode (P3 watches `theme.name`, never this file).
 
 A real `colors.toml` looks like this (rose-pine-dark, 2026-08):
 
@@ -245,40 +245,40 @@ export function omarchyPaletteToThemeColors(palette: OmarchyPalette): ThemeColor
 
 Using rose-pine-dark.toml above, the mapped colors **must** be:
 
-| ThemeColors     | hex       | from                  |
-| --------------- | --------- | --------------------- |
-| background      | `#191724` | background            |
-| surface         | `#191724` | background            |
-| surfaceAlt      | `#26233a` | lighter_background    |
-| surfaceModal    | `#13111b` | dark_background       |
-| overlay         | `#000000` | overlay               |
-| border          | `#6e6a86` | muted                 |
-| borderMuted     | `#6e6a86` | dark_foreground       |
-| text            | `#e0def4` | foreground            |
-| textMuted       | `#6e6a86` | muted                 |
-| textSubtle      | `#6e6a86` | muted                 |
-| primary         | `#9ccfd8` | cyan                  |
-| secondary       | `#c4a7e7` | magenta               |
-| accent          | `#ebbcba` | accent                |
-| active          | `#31748f` | green                 |
-| inactive        | `#6e6a86` | muted                 |
-| key             | `#f6c177` | yellow                |
-| action          | `#ebbcba` | accent                |
-| separator       | `#6e6a86` | muted                 |
-| program         | `#31748f` | green                 |
-| fileTree        | `#9ccfd8` | cyan                  |
-| danger          | `#eb6f92` | red                   |
-| dangerSurface   | mix       | background+red        |
-| selection       | `#9ccfd8` | cyan                  |
-| selectionText   | `#171717` | `readableText`        |
+| ThemeColors   | hex       | from               |
+| ------------- | --------- | ------------------ |
+| background    | `#191724` | background         |
+| surface       | `#191724` | background         |
+| surfaceAlt    | `#26233a` | lighter_background |
+| surfaceModal  | `#13111b` | dark_background    |
+| overlay       | `#000000` | overlay            |
+| border        | `#6e6a86` | muted              |
+| borderMuted   | `#6e6a86` | dark_foreground    |
+| text          | `#e0def4` | foreground         |
+| textMuted     | `#6e6a86` | muted              |
+| textSubtle    | `#6e6a86` | muted              |
+| primary       | `#9ccfd8` | cyan               |
+| secondary     | `#c4a7e7` | magenta            |
+| accent        | `#ebbcba` | accent             |
+| active        | `#31748f` | green              |
+| inactive      | `#6e6a86` | muted              |
+| key           | `#f6c177` | yellow             |
+| action        | `#ebbcba` | accent             |
+| separator     | `#6e6a86` | muted              |
+| program       | `#31748f` | green              |
+| fileTree      | `#9ccfd8` | cyan               |
+| danger        | `#eb6f92` | red                |
+| dangerSurface | mix       | background+red     |
+| selection     | `#9ccfd8` | cyan               |
+| selectionText | `#171717` | `readableText`     |
 
 ### Test fixtures
 
 Copy real Omarchy key sets. Do not invent a different schema.
 
-* `tests/fixtures/omarchy/rose-pine-dark.toml` — the dark file quoted above (`mode = "dark"`, `background = "#191724"`)
-* `tests/fixtures/omarchy/catppuccin.toml` — copy `/usr/share/omarchy/themes/catppuccin/colors.toml` (`mode = "dark"`, `background = "#1e1e2e"`, `accent = "#89b4fa"`)
-* `tests/fixtures/omarchy/light-sample.toml` — copy `/usr/share/omarchy/themes/catppuccin-latte/colors.toml` (`mode = "light"`, `background = "#eff1f5"`)
+- `tests/fixtures/omarchy/rose-pine-dark.toml` — the dark file quoted above (`mode = "dark"`, `background = "#191724"`)
+- `tests/fixtures/omarchy/catppuccin.toml` — copy `/usr/share/omarchy/themes/catppuccin/colors.toml` (`mode = "dark"`, `background = "#1e1e2e"`, `accent = "#89b4fa"`)
+- `tests/fixtures/omarchy/light-sample.toml` — copy `/usr/share/omarchy/themes/catppuccin-latte/colors.toml` (`mode = "light"`, `background = "#eff1f5"`)
 
 Also useful in unit tests (inline strings, not extra files): missing `background`, invalid hex, comments / blank lines, unquoted hex, `#rgb` short form.
 
@@ -336,14 +336,14 @@ const id = normalizedID && catalog[normalizedID] ? normalizedID : DEFAULT_THEME_
 
 Rules:
 
-* `omarchyPalette !== undefined` (including explicit `null`) means "do not read the filesystem". This is the test seam.
-* `omarchyPalette` omitted means read `readOmarchyPalette(options.homeDir ?? getHomeDir())`.
-* Palette present → `id: 'system'`, `name: 'System'`, colors from the mapper. Do **not** put a fake `DesktopTheme` into `catalog`.
-* Palette absent → fall through to today's unknown-id behavior (`rosepine`). P4 replaces that fallback.
-* Named catalog ids (`rosepine`, `catppuccin`, custom, …) never call `readOmarchyPalette`.
-* `color_scheme: dark|light` locks **reported** `mode` only. Colors still come from the current `colors.toml`. Do not synthesize a light palette from a dark file or the reverse.
-* `color_scheme: system` (default) uses `palette.mode`.
-* Keep `DEFAULT_THEME_ID = 'rosepine'`. Do not change the default theme.
+- `omarchyPalette !== undefined` (including explicit `null`) means "do not read the filesystem". This is the test seam.
+- `omarchyPalette` omitted means read `readOmarchyPalette(options.homeDir ?? getHomeDir())`.
+- Palette present → `id: 'system'`, `name: 'System'`, colors from the mapper. Do **not** put a fake `DesktopTheme` into `catalog`.
+- Palette absent → fall through to today's unknown-id behavior (`rosepine`). P4 replaces that fallback.
+- Named catalog ids (`rosepine`, `catppuccin`, custom, …) never call `readOmarchyPalette`.
+- `color_scheme: dark|light` locks **reported** `mode` only. Colors still come from the current `colors.toml`. Do not synthesize a light palette from a dark file or the reverse.
+- `color_scheme: system` (default) uses `palette.mode`.
+- Keep `DEFAULT_THEME_ID = 'rosepine'`. Do not change the default theme.
 
 Build `catalog` **before** the system branch so the returned object still has it (callers / tests may read `resolved.catalog`).
 
@@ -417,23 +417,23 @@ Disk is read only when `themeId` (or preview id) is `'system'` and no injected p
 
 Parser / mapper / path helpers. No live `$HOME`.
 
-* `getOmarchyColorsPath('/tmp/fake-home')` ends with `/.local/state/omarchy/current/theme/colors.toml`
-* `getOmarchyThemeNamePath('/tmp/fake-home')` ends with `/.local/state/omarchy/current/theme.name`
-* `parseOmarchyColorsToml` of `tests/fixtures/omarchy/rose-pine-dark.toml`:
-  * `mode === 'dark'`
-  * `background === '#191724'`
-  * `foreground === '#e0def4'`
-  * `accent === '#ebbcba'`
-* `parseOmarchyColorsToml` of `light-sample.toml`: `mode === 'light'`, `background === '#eff1f5'`
-* Comments, blank lines, and `key = "#abc"` short hex still parse
-* Unquoted `#191724` still parses
-* Missing `background` → `null`
-* `background = "nope"` → `null`
-* No `mode` key + dark background → `mode === 'dark'`
-* `readOmarchyPalette('/tmp/does-not-exist-omarchy')` → `null`
-* `readOmarchyPalette(tempHome)` where you wrote the rose-pine-dark fixture under the Omarchy path → parsed palette
-* `omarchyPaletteToThemeColors` of the rose-pine-dark parse matches the table above (`background`, `primary`, `selection`, `selectionText`)
-* `isOmarchyPresent` is false for an empty temp home, true after writing `theme/colors.toml`
+- `getOmarchyColorsPath('/tmp/fake-home')` ends with `/.local/state/omarchy/current/theme/colors.toml`
+- `getOmarchyThemeNamePath('/tmp/fake-home')` ends with `/.local/state/omarchy/current/theme.name`
+- `parseOmarchyColorsToml` of `tests/fixtures/omarchy/rose-pine-dark.toml`:
+  - `mode === 'dark'`
+  - `background === '#191724'`
+  - `foreground === '#e0def4'`
+  - `accent === '#ebbcba'`
+- `parseOmarchyColorsToml` of `light-sample.toml`: `mode === 'light'`, `background === '#eff1f5'`
+- Comments, blank lines, and `key = "#abc"` short hex still parse
+- Unquoted `#191724` still parses
+- Missing `background` → `null`
+- `background = "nope"` → `null`
+- No `mode` key + dark background → `mode === 'dark'`
+- `readOmarchyPalette('/tmp/does-not-exist-omarchy')` → `null`
+- `readOmarchyPalette(tempHome)` where you wrote the rose-pine-dark fixture under the Omarchy path → parsed palette
+- `omarchyPaletteToThemeColors` of the rose-pine-dark parse matches the table above (`background`, `primary`, `selection`, `selectionText`)
+- `isOmarchyPresent` is false for an empty temp home, true after writing `theme/colors.toml`
 
 Use `mkdtemp` from `fs/promises` like `tests/config.test.ts`. Do not read the developer's real `~/.local/state/omarchy`.
 
@@ -443,57 +443,57 @@ Keep existing Rose Pine / `COLORFGBG` tests.
 
 Add:
 
-* `resolveTheme('system', {}, 'system', { omarchyPalette: parsedRosePineDark })`:
-  * `id === 'system'`
-  * `name === 'System'`
-  * `mode === 'dark'`
-  * `colors.background === '#191724'`
-  * `colors.primary === '#ebbcba'`
-* `resolveTheme('system', {}, 'light', { omarchyPalette: parsedRosePineDark })`:
-  * `mode === 'light'` (locked)
-  * `colors.background === '#191724'` (still the Omarchy file, not catalog light Rose Pine)
-* `resolveTheme('system', {}, 'system', { omarchyPalette: null })`:
-  * `id === 'rosepine'` (today's fallback)
-  * `colors.background === '#191724'` (catalog dark Rose Pine — same hex, different id)
-* `resolveTheme('rosepine', {}, 'dark', { omarchyPalette: parsedCatppuccin })`:
-  * `id === 'rosepine'`
-  * `colors.primary === '#9ccfd8'` (catalog, **not** Catppuccin `#89b4fa`)
-* `resolveTheme('system', {}, 'system', { homeDir: tempHomeWithFixture })` reads disk and returns `id === 'system'`
-* `resolveTheme('system', {}, 'system', { homeDir: emptyTempHome })` returns `id === 'rosepine'`
+- `resolveTheme('system', {}, 'system', { omarchyPalette: parsedRosePineDark })`:
+  - `id === 'system'`
+  - `name === 'System'`
+  - `mode === 'dark'`
+  - `colors.background === '#191724'`
+  - `colors.primary === '#ebbcba'`
+- `resolveTheme('system', {}, 'light', { omarchyPalette: parsedRosePineDark })`:
+  - `mode === 'light'` (locked)
+  - `colors.background === '#191724'` (still the Omarchy file, not catalog light Rose Pine)
+- `resolveTheme('system', {}, 'system', { omarchyPalette: null })`:
+  - `id === 'rosepine'` (today's fallback)
+  - `colors.background === '#191724'` (catalog dark Rose Pine — same hex, different id)
+- `resolveTheme('rosepine', {}, 'dark', { omarchyPalette: parsedCatppuccin })`:
+  - `id === 'rosepine'`
+  - `colors.primary === '#9ccfd8'` (catalog, **not** Catppuccin `#89b4fa`)
+- `resolveTheme('system', {}, 'system', { homeDir: tempHomeWithFixture })` reads disk and returns `id === 'system'`
+- `resolveTheme('system', {}, 'system', { homeDir: emptyTempHome })` returns `id === 'rosepine'`
 
 When asserting the no-Omarchy fallback, pass `{ omarchyPalette: null }` or a dedicated temp home so the test does not accidentally read the machine's real Omarchy files.
 
 ### `tests/config.test.ts`
 
-* `normalizeConfig({ theme: 'system' }, '/home/tester').theme === 'system'`
-* `getDefaultConfig('/home/tester').theme === 'rosepine'`
+- `normalizeConfig({ theme: 'system' }, '/home/tester').theme === 'system'`
+- `getDefaultConfig('/home/tester').theme === 'rosepine'`
 
 ### `tests/settings.test.ts`
 
 If not already present from P1:
 
-* `getSettingOptions(config, 'theme')[0].value === 'system'`
-* values do **not** include `'omarchy'`
-* `applyOptionSetting(config, 'theme', 'system').theme === 'system'`
+- `getSettingOptions(config, 'theme')[0].value === 'system'`
+- values do **not** include `'omarchy'`
+- `applyOptionSetting(config, 'theme', 'system').theme === 'system'`
 
 ## Out of scope
 
-* Watching `theme.name` or `colors.toml` (P3)
-* SIGUSR2 retint (P3)
-* Terminal OSC / `COLORFGBG` as the system **palette** (P4). `COLORFGBG` may still drive `getSystemColorScheme` for named themes
-* User-facing docs (P5)
-* Changing the default theme away from `rosepine`
-* Adding an `omarchy` picker / config id
-* Shelling out to `omarchy-theme-color` or `omarchy theme get`
-* Making `resolveTheme` async
-* Rewriting `config.json` when Omarchy files change
-* Reading `/usr/share/omarchy/themes/*` — only the **current** `~/.local/state/omarchy/current/theme/colors.toml`
+- Watching `theme.name` or `colors.toml` (P3)
+- SIGUSR2 retint (P3)
+- Terminal OSC / `COLORFGBG` as the system **palette** (P4). `COLORFGBG` may still drive `getSystemColorScheme` for named themes
+- User-facing docs (P5)
+- Changing the default theme away from `rosepine`
+- Adding an `omarchy` picker / config id
+- Shelling out to `omarchy-theme-color` or `omarchy theme get`
+- Making `resolveTheme` async
+- Rewriting `config.json` when Omarchy files change
+- Reading `/usr/share/omarchy/themes/*` — only the **current** `~/.local/state/omarchy/current/theme/colors.toml`
 
 ## Done when
 
-* `theme: "system"` + readable Omarchy `colors.toml` under that home dir → `resolveTheme` returns `id: 'system'` and mapped `colors.toml` hexes
-* Named themes still ignore Omarchy
-* Missing / unreadable / invalid Omarchy files → same Rose Pine fallback as today
-* Config still stores `"system"`, never an Omarchy slug
-* Tests pass without a live Omarchy install
-* `bun test` and `bun run typecheck` pass
+- `theme: "system"` + readable Omarchy `colors.toml` under that home dir → `resolveTheme` returns `id: 'system'` and mapped `colors.toml` hexes
+- Named themes still ignore Omarchy
+- Missing / unreadable / invalid Omarchy files → same Rose Pine fallback as today
+- Config still stores `"system"`, never an Omarchy slug
+- Tests pass without a live Omarchy install
+- `bun test` and `bun run typecheck` pass

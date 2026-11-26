@@ -97,16 +97,16 @@ Full configuration reference: [docs/configuration.md](docs/configuration.md)
 
 Default mode is `vim`.
 
-| Key         | Action                |
-| ----------- | --------------------- |
-| `j` / `k`   | Move                  |
-| `Enter`     | Attach or create      |
-| `i`         | Search                |
-| `n`         | New session           |
-| `d`         | Kill selected session |
-| `1-9`       | Quick select          |
+| Key         | Action                                                  |
+| ----------- | ------------------------------------------------------- |
+| `j` / `k`   | Move                                                    |
+| `Enter`     | Attach or create                                        |
+| `i`         | Search                                                  |
+| `n`         | New session                                             |
+| `d`         | Kill selected session                                   |
+| `1-9`       | Quick select                                            |
 | `Ctrl+P`    | Open command palette. Type `theme` for the theme picker |
-| `q` / `Esc` | Quit                  |
+| `q` / `Esc` | Quit                                                    |
 
 With the default prefix key, secondary actions live behind `ctrl+x`:
 

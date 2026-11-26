@@ -19,6 +19,6 @@ On machines without Omarchy, `theme: "system"` should still look like the termin
 
 ## Done when
 
-* Without Omarchy files, System still produces a coherent theme from the terminal palette
-* With Omarchy files, the terminal palette is ignored
-* `bun test` and `bun run typecheck` pass
+- Without Omarchy files, System still produces a coherent theme from the terminal palette
+- With Omarchy files, the terminal palette is ignored
+- `bun test` and `bun run typecheck` pass

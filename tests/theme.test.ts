@@ -81,7 +81,16 @@ describe('theme resolution', () => {
         mode: 'dark',
         background: '#0b0b0b',
         foreground: '#f2f2f2',
-        palette: ['#0b0b0b', '#cc3333', '#33cc33', '#cccc33', '#3333cc', '#cc33cc', '#33cccc', '#f2f2f2'],
+        palette: [
+          '#0b0b0b',
+          '#cc3333',
+          '#33cc33',
+          '#cccc33',
+          '#3333cc',
+          '#cc33cc',
+          '#33cccc',
+          '#f2f2f2',
+        ],
       },
     })
 

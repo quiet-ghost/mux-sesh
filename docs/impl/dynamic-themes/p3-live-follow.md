@@ -21,8 +21,8 @@ Never watch `theme/colors.toml`. That directory is deleted and replaced every se
 
 ## Done when
 
-* System theme follows Omarchy live
-* Named themes do not retint
-* SIGUSR2 is not shutdown
-* Config file is not rewritten on desktop theme change
-* `bun test` and `bun run typecheck` pass
+- System theme follows Omarchy live
+- Named themes do not retint
+- SIGUSR2 is not shutdown
+- Config file is not rewritten on desktop theme change
+- `bun test` and `bun run typecheck` pass

@@ -30,9 +30,11 @@ describe('subscribeThemeFollow', () => {
 
     const subscription = subscribeThemeFollow(
       '/tmp/fake-home',
-      { onRefresh: () => {
-        refreshCount += 1
-      } },
+      {
+        onRefresh: () => {
+          refreshCount += 1
+        },
+      },
       {
         debounceMs: 15,
         watch: (_path, listener) => {
@@ -67,9 +69,11 @@ describe('subscribeThemeFollow', () => {
 
     const subscription = subscribeThemeFollow(
       '/tmp/fake-home',
-      { onRefresh: () => {
-        refreshCount += 1
-      } },
+      {
+        onRefresh: () => {
+          refreshCount += 1
+        },
+      },
       {
         debounceMs: 10,
         watch: (_path, listener) => {
