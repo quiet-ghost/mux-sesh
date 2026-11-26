@@ -3,6 +3,8 @@ import { useRef, useState } from 'react'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 
+const NO_MARKS: ReadonlyMap<string, Item> = new Map()
+
 export function useAppCoreState() {
   const [appMode, setAppMode] = useState(AppMode.Normal)
   const [viewMode, setViewMode] = useState(ViewMode.Sessions)
@@ -18,7 +20,8 @@ export function useAppCoreState() {
   const [renameTarget, setRenameTarget] = useState<Item | null>(null)
   const [config, setConfig] = useState<Config | null>(null)
   const [backend, setBackend] = useState<MultiplexerBackend | null>(null)
-  const [pendingKillSessionName, setPendingKillSessionName] = useState<string | null>(null)
+  // Rows the user marked for a batch close, keyed by item key, in the order they were marked.
+  const [markedItems, setMarkedItems] = useState<ReadonlyMap<string, Item>>(NO_MARKS)
   const [prefixActive, setPrefixActive] = useState(false)
   const prefixTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const textareaRef = useRef<TextareaRenderable | null>(null)
@@ -57,8 +60,8 @@ export function useAppCoreState() {
     setConfig,
     backend,
     setBackend,
-    pendingKillSessionName,
-    setPendingKillSessionName,
+    markedItems,
+    setMarkedItems,
     prefixActive,
     setPrefixActive,
     prefixTimeoutRef,

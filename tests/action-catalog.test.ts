@@ -55,6 +55,7 @@ function context(overrides: Partial<ActionContext> = {}): ActionContext {
     backend: tmux,
     agentCount: 0,
     target: { kind: 'none' },
+    marked: new Map(),
     ...overrides,
   }
 }
@@ -199,7 +200,7 @@ const FOOTER_ACTIONS: ReadonlyArray<readonly [ActionId, string]> = [
   ['search', 'search'],
   ['new-session', 'new'],
   ['open-agents', 'agents'],
-  ['kill-session', 'kill'],
+  ['kill-session', 'close'],
   ['back', 'back'],
 ]
 
@@ -263,7 +264,7 @@ describe('action catalog footer', () => {
     const ctx = context({ agentCount: 1, target: getActionTarget(session) })
 
     expect(getActionFooter(ctx)).toBe(
-      'enter select  i search  n new  o agents  d kill  ctrl+p commands  ctrl+x ...'
+      'enter select  i search  n new  o agents  d close  ctrl+p commands  ctrl+x ...'
     )
     expect(getActionFooter(context())).toBe('i search  n new  ctrl+p commands  ctrl+x ...')
     expect(

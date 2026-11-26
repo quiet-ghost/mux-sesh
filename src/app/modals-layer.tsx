@@ -4,7 +4,9 @@ import type { SettingsEntry, SettingsOption, SettingsFieldId } from '../settings
 import type { CommandEntry } from '../ui/CommandsModal'
 import type { ModalState } from './modals'
 import { syncTextareaValue } from './textarea'
+import CloseReviewBatch from '../ui/CloseReviewBatch'
 import CloseReviewModal from '../ui/CloseReviewModal'
+import CloseReviewResults from '../ui/CloseReviewResults'
 import CommandsModal, { getCommandEntryKey } from '../ui/CommandsModal'
 import OperationOutcomeModal from '../ui/OperationOutcomeModal'
 import RenameModal from '../ui/RenameModal'
@@ -109,6 +111,14 @@ export function AppModalsLayer({
 
       {modalState?.type === 'close-review' && (
         <CloseReviewModal plan={modalState.plan} columns={columns} />
+      )}
+
+      {modalState?.type === 'close-batch-review' && (
+        <CloseReviewBatch batch={modalState.batch} columns={columns} />
+      )}
+
+      {modalState?.type === 'close-batch-results' && (
+        <CloseReviewResults receipt={modalState.receipt} columns={columns} />
       )}
 
       {modalState?.type === 'rename' && (

@@ -16,6 +16,7 @@ import {
   openSelectedEditTarget,
   openSelectedRootSession,
   requestKillTarget,
+  toggleMarkTarget,
   setTimedMessage,
   toggleDetailsPanel,
   togglePinnedTarget,
@@ -35,7 +36,6 @@ export function handleNormalMode(
     clearPrefix(ctx)
 
     if (key.shift && keyName.toLowerCase() === 'r') {
-      ctx.clearPendingKill()
       refreshProjectDiscovery()
       ctx.runAction(() => ctx.refreshItems())
       setTimedMessage(ctx, 'Refreshed')
@@ -60,6 +60,10 @@ export function handleNormalMode(
         requestKillTarget(ctx)
 
         return
+      case 'm':
+        toggleMarkTarget(ctx)
+
+        return
       case 'r':
         openRenameTarget(ctx)
 
@@ -69,13 +73,11 @@ export function handleNormalMode(
 
         return
       case 's':
-        ctx.clearPendingKill()
         ctx.setViewMode(ViewMode.Sessions)
         ctx.runAction(() => ctx.refreshItems(ViewMode.Sessions))
 
         return
       case 'p':
-        ctx.clearPendingKill()
         ctx.setViewMode(ViewMode.Projects)
         ctx.runAction(() => ctx.refreshItems(ViewMode.Projects))
 
@@ -101,7 +103,6 @@ export function handleNormalMode(
   }
 
   if (!isStandard && keyName === 'i') {
-    ctx.clearPendingKill()
     ctx.setAppMode(AppMode.Search)
     ctx.setSearchQuery('')
 
@@ -121,7 +122,6 @@ export function handleNormalMode(
   }
 
   if (key.ctrl && keyName === 'p') {
-    ctx.clearPendingKill()
     ctx.openCommandsModal()
 
     return
@@ -157,6 +157,12 @@ export function handleNormalMode(
     return
   }
 
+  if (!isStandard && keyName === 'm') {
+    toggleMarkTarget(ctx)
+
+    return
+  }
+
   if (!isStandard && keyName === 'v') {
     toggleDetailsPanel(ctx)
 
@@ -170,7 +176,6 @@ export function handleNormalMode(
   }
 
   if (!ctx.prefixKey && !isStandard && keyName === 'R') {
-    ctx.clearPendingKill()
     refreshProjectDiscovery()
     ctx.runAction(() => ctx.refreshItems())
     setTimedMessage(ctx, 'Refreshed')
@@ -180,7 +185,6 @@ export function handleNormalMode(
 
   if (!isStandard) {
     if (keyName === 's') {
-      ctx.clearPendingKill()
       ctx.setViewMode(ViewMode.Sessions)
       ctx.runAction(() => ctx.refreshItems(ViewMode.Sessions))
 
@@ -188,7 +192,6 @@ export function handleNormalMode(
     }
 
     if (keyName === 'p') {
-      ctx.clearPendingKill()
       ctx.setViewMode(ViewMode.Projects)
       ctx.runAction(() => ctx.refreshItems(ViewMode.Projects))
 
@@ -197,8 +200,6 @@ export function handleNormalMode(
   }
 
   if (keyName === 'down' || (!isStandard && keyName === 'j')) {
-    ctx.clearPendingKill()
-
     if (ctx.viewMode === ViewMode.Sessions) {
       ctx.setCursor(cursor => clampCursorIndex(ctx.regularSessions.length, cursor + 1))
 
@@ -211,7 +212,6 @@ export function handleNormalMode(
   }
 
   if (keyName === 'up' || (!isStandard && keyName === 'k')) {
-    ctx.clearPendingKill()
     ctx.setCursor(cursor =>
       clampCursorIndex(
         ctx.viewMode === ViewMode.Sessions ? ctx.regularSessions.length : ctx.items.length,
@@ -223,7 +223,6 @@ export function handleNormalMode(
   }
 
   if (keyName === 'return') {
-    ctx.clearPendingKill()
     const item = getSelectedItem(ctx)
 
     if (item) {
@@ -234,7 +233,6 @@ export function handleNormalMode(
   }
 
   if (!isStandard && keyName >= '1' && keyName <= '9') {
-    ctx.clearPendingKill()
     const item = getQuickSelectItem(ctx, Number.parseInt(keyName, 10) - 1)
 
     if (item) {

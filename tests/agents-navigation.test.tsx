@@ -117,7 +117,7 @@ describe('Agents navigation through production keyboard wiring', () => {
       await screen.pressKey('p', { ctrl: true })
       const commands = await screen.frame()
       expect(commands).toContain('Commands')
-      expect(commands).toMatch(/Kill session\s+Close it in Herdr/)
+      expect(commands).toMatch(/Close session\s+Close it in Herdr/)
       expect(commands).toMatch(/Rename session\s+Rename it in Herdr/)
 
       await screen.replaceQuery('Back')
@@ -147,7 +147,7 @@ describe('Agents navigation through production keyboard wiring', () => {
       expect(agents).not.toContain('opencode-native-unknown')
 
       for (const [key, refusal] of [
-        ['d', 'Kill session unavailable: Close it in Herdr'],
+        ['d', 'Close session unavailable: Close it in Herdr'],
         ['r', 'Rename session unavailable: Rename it in Herdr'],
       ] as const) {
         await screen.pressKey('x', { ctrl: true })

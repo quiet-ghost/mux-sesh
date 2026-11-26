@@ -42,6 +42,7 @@ function actionContext(overrides: Partial<ActionContext> = {}): ActionContext {
     backend: { kind: 'tmux', capabilities: { previousWorkspace: true } },
     agentCount: 0,
     target: { kind: 'none' },
+    marked: new Map(),
     ...overrides,
   }
 }
@@ -149,7 +150,7 @@ describe('app view helpers', () => {
           target: getActionTarget(agent),
         })
       )
-    ).not.toContain('d kill')
+    ).not.toContain('d close')
   })
 })
 
@@ -498,7 +499,9 @@ describe('app controls', () => {
       config: getDefaultConfig('/home/tester'),
       sessionItems: [item],
       inventoryRevision: () => 7,
-      setPendingKillSessionName: mock(() => {}),
+      backend: null,
+      markedItems: new Map(),
+      setMarkedItems: mock(() => {}),
       setRenameTarget: mock(() => {}),
       setModalInputValue: mock(() => {}),
       setModalState: mock(() => {}),
@@ -549,7 +552,9 @@ describe('app controls', () => {
       config: getDefaultConfig('/home/tester'),
       sessionItems: [pane],
       inventoryRevision: () => 1,
-      setPendingKillSessionName: mock(() => {}),
+      backend: null,
+      markedItems: new Map(),
+      setMarkedItems: mock(() => {}),
       setRenameTarget: mock(() => {}),
       setModalInputValue: mock(() => {}),
       setModalState,
@@ -567,13 +572,15 @@ describe('app controls', () => {
     expect(setModalState).not.toHaveBeenCalled()
   })
 
-  test('opening rename clears pending kill and seeds modal state', () => {
+  test('opening rename seeds modal state', () => {
     const item: Item = { title: 'beta', desc: '', path: '/tmp/beta', isSession: true }
     const options = {
       config: getDefaultConfig('/home/tester'),
       sessionItems: [],
       inventoryRevision: () => 0,
-      setPendingKillSessionName: mock(() => {}),
+      backend: null,
+      markedItems: new Map(),
+      setMarkedItems: mock(() => {}),
       setRenameTarget: mock(() => {}),
       setModalInputValue: mock(() => {}),
       setModalState: mock(() => {}),
@@ -589,7 +596,6 @@ describe('app controls', () => {
 
     createAppControls(options).openRenameModal(item)
 
-    expect(options.setPendingKillSessionName).toHaveBeenCalledWith(null)
     expect(options.setRenameTarget).toHaveBeenCalledWith(item)
     expect(options.setModalInputValue).toHaveBeenCalledWith('beta')
     expect(options.setModalState).toHaveBeenCalledWith({ type: 'rename', target: 'beta' })
@@ -658,7 +664,11 @@ describe('app handler factory', () => {
       setCursor: mock(() => {}),
       setSearchQuery: mock(() => {}),
       setAgentCursor: mock(() => {}),
-      setPendingKillSessionName: mock(() => {}),
+      requestMarkedClose: mock(async () => {}),
+      toggleMark: mock(() => {}),
+      clearMarks: mock(() => {}),
+      markedItems: new Map(),
+      reloadSessions: mock(async () => undefined),
       saveConfig: mock(async () => {}),
       setConfig: mock(() => {}),
       setSettingEditorError: mock(() => {}),
@@ -726,7 +736,11 @@ describe('app handler factory', () => {
       setCursor: mock(() => {}),
       setSearchQuery: mock(() => {}),
       setAgentCursor: mock(() => {}),
-      setPendingKillSessionName: mock(() => {}),
+      requestMarkedClose: mock(async () => {}),
+      toggleMark: mock(() => {}),
+      clearMarks: mock(() => {}),
+      markedItems: new Map(),
+      reloadSessions: mock(async () => undefined),
       saveConfig: mock(async () => {}),
       setConfig: mock(() => {}),
       setSettingEditorError: mock(() => {}),

@@ -1,0 +1,35 @@
+import { CloseReceipt } from '../sessions/cleanup-batch'
+import { useTheme } from '../styles/theme'
+import { stripAnsi } from '../util/ansi'
+import Modal from './Modal'
+
+interface Props {
+  receipt: CloseReceipt
+  columns: number
+}
+
+// Backend text can carry terminal escapes and control characters; the screen shows plain text.
+function plain(text: string): string {
+  return stripAnsi(text).replace(/\p{Cc}+/gu, ' ')
+}
+
+// One line per reviewed target, so completed closes are never read as lost or retried.
+export default function CloseReviewResults({ receipt, columns }: Props) {
+  const theme = useTheme()
+  const retry = CloseReceipt.retryable(receipt).length
+
+  return (
+    <Modal
+      title={plain(CloseReceipt.title(receipt))}
+      footer={retry > 0 ? `enter retry ${retry}  esc close` : 'enter close  esc close'}
+      columns={columns}
+    >
+      {CloseReceipt.lines(receipt).map(line => (
+        <text key={line} style={{ fg: line.startsWith('✓') ? theme.active : theme.danger }}>
+          {plain(line)}
+        </text>
+      ))}
+      <text style={{ fg: theme.textMuted, marginTop: 1 }}>{plain(CloseReceipt.next(receipt))}</text>
+    </Modal>
+  )
+}

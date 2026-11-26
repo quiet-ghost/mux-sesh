@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { showTemporaryMessage } from './notifications'
 import type { SessionInventory } from './session-inventory'
-import type { Config, ViewMode } from '../types'
+import type { Config, Item, ViewMode } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 
 interface AppRuntimeOptions {
@@ -28,8 +28,21 @@ export function createAppRuntime(options: AppRuntimeOptions) {
     )
   }
 
+  // Refreshes like refreshItems, and returns the published session list for reconciling a close.
+  async function reloadSessions(): Promise<readonly Item[] | undefined> {
+    if (!options.config || !options.backend) return undefined
+
+    const outcome = await options.inventory.refresh(
+      { kind: 'refresh', viewMode: options.viewMode },
+      { config: options.config, backend: options.backend }
+    )
+
+    return outcome.kind === 'published' ? outcome.snapshot.sessionItems : undefined
+  }
+
   return {
     showMessage,
     refreshItems,
+    reloadSessions,
   }
 }

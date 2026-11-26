@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { OperationReport } from './action-outcome'
+import type { CleanupBatch, CloseReceipt } from '../sessions/cleanup-batch'
 import type { CleanupPlan } from '../sessions/cleanup-plan'
 import { OptionPicker } from './option-picker'
 import { getSettingEditorValue, type SettingsFieldId } from '../settings'
@@ -18,6 +19,8 @@ export type ModalState =
   | { type: 'setting-editor'; field: SettingsFieldId }
   | { type: 'outcome'; report: OperationReport }
   | { type: 'close-review'; plan: CleanupPlan }
+  | { type: 'close-batch-review'; batch: CleanupBatch }
+  | { type: 'close-batch-results'; receipt: CloseReceipt }
   | null
 
 interface ModalSetters {
@@ -36,24 +39,20 @@ interface ModalSetters {
 
 export function openRenameModal(
   item: Item,
-  clearPendingKill: () => void,
   setRenameTarget: Dispatch<SetStateAction<Item | null>>,
   setModalInputValue: Dispatch<SetStateAction<string>>,
   setModalState: Dispatch<SetStateAction<ModalState>>
 ) {
-  clearPendingKill()
   setRenameTarget(item)
   setModalInputValue(item.title)
   setModalState({ type: 'rename', target: item.title })
 }
 
 export function openCommandsModal(
-  clearPendingKill: () => void,
   setCommandsSearchQuery: Dispatch<SetStateAction<string>>,
   setCommandsCursor: Dispatch<SetStateAction<number>>,
   setModalState: Dispatch<SetStateAction<ModalState>>
 ) {
-  clearPendingKill()
   setCommandsSearchQuery('')
   setCommandsCursor(0)
   setModalState({ type: 'commands' })
@@ -61,7 +60,6 @@ export function openCommandsModal(
 
 export function openSettingsModal(
   config: Config | null,
-  clearPendingKill: () => void,
   setSettingEditorError: Dispatch<SetStateAction<string>>,
   setSettingsSearchQuery: Dispatch<SetStateAction<string>>,
   setSettingsCursor: Dispatch<SetStateAction<number>>,
@@ -71,7 +69,6 @@ export function openSettingsModal(
     return
   }
 
-  clearPendingKill()
   setSettingEditorError('')
   setSettingsSearchQuery('')
   setSettingsCursor(0)

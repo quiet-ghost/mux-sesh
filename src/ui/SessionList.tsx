@@ -6,6 +6,7 @@ import HighlightedText from './HighlightedText'
 import { formatSectionHeader, getItemIconPresentation } from './item-icon'
 import type { VisibleWindow } from './list-window'
 import { fitListRow, getTitleColumnWidth } from './session-viewport'
+import { markedMeta, rowMarker } from './row-mark'
 import { getSessionMeta } from './session-meta'
 
 interface Props {
@@ -17,7 +18,7 @@ interface Props {
   emptyLabel: string
   searchQuery?: string
   icons?: IconConfig
-  pendingKillSessionName?: string | null
+  marked?: ReadonlyMap<string, Item>
 }
 
 function getSessionContext(item: Item): string {
@@ -33,7 +34,7 @@ export default function SessionList({
   emptyLabel,
   searchQuery = '',
   icons,
-  pendingKillSessionName,
+  marked,
 }: Props) {
   const theme = useTheme()
   const isSearching = searchQuery.trim().length > 0
@@ -56,12 +57,9 @@ export default function SessionList({
           !previousItem || currentSection !== getSessionSection(previousItem)
 
         const sectionHeader = formatSectionHeader(theme, currentSection, icons, item.backend)
-        const pendingKill = getItemKey(item) === pendingKillSessionName
+        const isMarked = marked?.has(getItemKey(item)) ?? false
         const selected = active && absoluteIndex === cursor
-
-        const meta = pendingKill
-          ? `press d again to ${item.itemKind === 'herdr' ? 'close' : 'kill'}`
-          : getSessionMeta(item)
+        const meta = markedMeta(isMarked, getSessionMeta(item))
 
         const iconText = icon.glyph ? ` ${icon.glyph}` : ''
         const prefixWidth = 4 + iconText.length
@@ -89,7 +87,7 @@ export default function SessionList({
               style={{
                 flexDirection: 'row',
                 justifyContent: 'space-between',
-                backgroundColor: pendingKill
+                backgroundColor: isMarked
                   ? theme.dangerSurface
                   : selected
                     ? theme.surfaceAlt
@@ -99,8 +97,8 @@ export default function SessionList({
               }}
             >
               <text style={{ wrapMode: 'none' }}>
-                <span style={{ fg: selected ? theme.primary : theme.textSubtle }}>
-                  {selected ? '› ' : '  '}
+                <span style={{ fg: selected ? theme.primary : theme.danger }}>
+                  {rowMarker(selected, isMarked)}
                 </span>
                 <span style={{ fg: item.isAttached ? theme.active : theme.inactive }}>
                   {item.isAttached ? '●' : '○'}
@@ -119,7 +117,7 @@ export default function SessionList({
               <text
                 style={{
                   wrapMode: 'none',
-                  fg: pendingKill
+                  fg: isMarked
                     ? theme.danger
                     : item.agentStatus === 'blocked'
                       ? theme.danger

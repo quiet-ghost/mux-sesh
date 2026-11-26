@@ -58,8 +58,8 @@ export function useAppController(invocationCwd: string) {
     setConfig,
     backend,
     setBackend,
-    pendingKillSessionName,
-    setPendingKillSessionName,
+    markedItems,
+    setMarkedItems,
     prefixActive,
     setPrefixActive,
     prefixTimeoutRef,
@@ -141,7 +141,8 @@ export function useAppController(invocationCwd: string) {
     agentCursor,
     config,
     commandsSearchQuery,
-    backend
+    backend,
+    markedItems
   )
 
   const inventory = useSessionInventory(effects, measure, {
@@ -222,7 +223,7 @@ export function useAppController(invocationCwd: string) {
     onDefect: requestFatalShutdown,
   })
 
-  const { showMessage, refreshItems } = createAppRuntime({
+  const { showMessage, refreshItems, reloadSessions } = createAppRuntime({
     config,
     backend,
     viewMode,
@@ -231,8 +232,10 @@ export function useAppController(invocationCwd: string) {
   })
 
   const {
-    clearPendingKill,
     requestKillSession,
+    toggleMark,
+    clearMarks,
+    requestMarkedClose,
     openRenameModal,
     openCommandsModal,
     openSettingsModal,
@@ -241,9 +244,11 @@ export function useAppController(invocationCwd: string) {
     closeModal,
   } = createAppControls({
     config,
+    backend,
     sessionItems,
     inventoryRevision: () => inventory.revision(),
-    setPendingKillSessionName,
+    markedItems,
+    setMarkedItems,
     setRenameTarget,
     setModalInputValue,
     setModalState,
@@ -265,6 +270,8 @@ export function useAppController(invocationCwd: string) {
 
   const {
     confirmCloseReview,
+    confirmBatchClose,
+    retryBatchClose,
     handleSelectWrapper,
     handleLastSessionWrapper,
     handleRootSessionWrapper,
@@ -303,6 +310,11 @@ export function useAppController(invocationCwd: string) {
     openSettingOptions,
     setModalState,
     requestKillSession,
+    requestMarkedClose,
+    toggleMark,
+    clearMarks,
+    markedItems,
+    reloadSessions,
     setAppMode,
     setViewMode,
     setAllItems,
@@ -310,7 +322,6 @@ export function useAppController(invocationCwd: string) {
     setCursor,
     setSearchQuery,
     setAgentCursor,
-    setPendingKillSessionName,
     saveConfig,
     setConfig,
     setSettingEditorError,
@@ -364,21 +375,22 @@ export function useAppController(invocationCwd: string) {
     ),
     handleOutcomeRetry,
     confirmCloseReview,
+    confirmBatchClose,
+    retryBatchClose,
     onDefect: requestFatalShutdown,
     isOptionSetting,
     openSettingOptions,
     openSettingEditor,
     closeModal,
-    clearPendingKill,
     requestKillSession,
+    requestMarkedClose,
+    toggleMark,
     togglePinnedSession: handleTogglePinnedSessionWrapper,
     openRenameModal,
     openCommandsModal,
     openSettingsModal,
     refreshItems,
     handleSelect: handleSelectWrapper,
-    // An item never closes directly: the only item-level close entry point opens its review.
-    handleKillSession: async item => requestKillSession(item),
     handleLastSession: handleLastSessionWrapper,
     handleRootSession: handleRootSessionWrapper,
     handleEditTarget: handleEditTargetWrapper,
@@ -416,11 +428,6 @@ export function useAppController(invocationCwd: string) {
     cursor,
     items,
     selectedPrimaryItem,
-    pendingKillSessionName,
-    agentSessions,
-    agentCursor,
-    regularSessions,
-    setPendingKillSessionName,
     searchQuery,
     allItems,
     setUpdatedVersion,
@@ -454,7 +461,7 @@ export function useAppController(invocationCwd: string) {
       launchPreview,
       newSession,
       prefixActive,
-      pendingKillSessionName,
+      markedItems,
       projectCount: projectSourceItems.length,
       sessionItems,
       rows,

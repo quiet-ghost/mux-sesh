@@ -18,9 +18,13 @@ import type { CloneServices } from '../sessions/clone-plan'
 import type { LaunchPreview } from '../sessions/launch-plan'
 import { requestShutdown } from '../util/shutdown'
 import { movePinAfterRename } from '../config/pinned-sessions'
+import type { CleanupBatch, CloseReceipt } from '../sessions/cleanup-batch'
 import { CleanupPlan } from '../sessions/cleanup-plan'
 import { applyEditorSetting, applyOptionSetting, getSettingEditorTitle } from '../settings'
 import {
+  handleCloseBatch,
+  handleRetryCloseBatch,
+  type BatchCloseOutcome,
   handleEditTarget as actionHandleEditTarget,
   handleKillSession as actionHandleKillSession,
   handleLastSession as actionHandleLastSession,
@@ -104,6 +108,70 @@ export async function handleReviewedCloseWithFeedback(
   })
 
   ActionOutcome.present(outcome, options)
+}
+
+interface BatchCloseOptions {
+  backend: MultiplexerBackend | null
+  sessionItems: Item[]
+  inventoryRevision: () => number
+  reloadSessions: () => Promise<readonly Item[] | undefined>
+  clearMarks: () => void
+  closeModal: () => void
+  showMessage: ShowMessage
+  showReceipt: (receipt: CloseReceipt) => void
+}
+
+function presentBatch(outcome: BatchCloseOutcome, options: BatchCloseOptions): void {
+  switch (outcome.kind) {
+    case 'completed':
+      options.showMessage(outcome.message)
+
+      return
+    case 'failed':
+      options.showMessage(outcome.message, 5000)
+
+      return
+    case 'receipt':
+      options.showReceipt(outcome.receipt)
+  }
+}
+
+// The review and the marks close first, so a second Enter cannot confirm the batch twice.
+export async function handleReviewedBatchCloseWithFeedback(
+  batch: CleanupBatch,
+  options: BatchCloseOptions
+): Promise<void> {
+  options.closeModal()
+  options.clearMarks()
+
+  if (!options.backend) return
+
+  const outcome = await handleCloseBatch(batch, options.backend, {
+    sessionItems: options.sessionItems,
+    revision: options.inventoryRevision(),
+    reloadSessions: options.reloadSessions,
+  })
+
+  presentBatch(outcome, options)
+}
+
+export async function handleBatchRetryWithFeedback(
+  receipt: CloseReceipt,
+  options: BatchCloseOptions
+): Promise<void> {
+  options.closeModal()
+
+  if (!options.backend) return
+
+  const outcome = await handleRetryCloseBatch(receipt, options.backend, {
+    revision: options.inventoryRevision(),
+    reloadSessions: options.reloadSessions,
+  })
+
+  // A retry that could not start keeps the earlier receipt on screen.
+  if (outcome.kind === 'failed') options.showReceipt(receipt)
+
+  presentBatch(outcome, options)
 }
 
 export async function handleSelectItem(
@@ -453,6 +521,11 @@ interface CreateAppHandlersOptions extends NewSessionHandlerOptions, SharedHandl
   openSettingOptions: (field: 'theme') => void
   setModalState: Dispatch<SetStateAction<ModalState>>
   requestKillSession: (item: Item) => void
+  requestMarkedClose: () => Promise<void>
+  toggleMark: (item: Item) => void
+  clearMarks: () => void
+  markedItems: ReadonlyMap<string, Item>
+  reloadSessions: () => Promise<readonly Item[] | undefined>
   setAppMode: (mode: AppMode) => void
   setViewMode: (mode: ViewMode) => void
   setAllItems: (items: Item[]) => void
@@ -460,7 +533,6 @@ interface CreateAppHandlersOptions extends NewSessionHandlerOptions, SharedHandl
   setCursor: (cursor: number) => void
   setSearchQuery: (value: string) => void
   setAgentCursor: (cursor: number) => void
-  setPendingKillSessionName: (sessionName: string | null) => void
   saveConfig: (config: Config) => Promise<void>
   setConfig: (config: Config) => void
   setSettingEditorError: (message: string) => void
@@ -497,6 +569,25 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       showMessage: options.showMessage,
       showOutcome: options.showOutcome,
     })
+  }
+
+  const batchOptions: BatchCloseOptions = {
+    backend: options.backend,
+    sessionItems: options.sessionItems,
+    inventoryRevision: options.inventoryRevision,
+    reloadSessions: options.reloadSessions,
+    clearMarks: options.clearMarks,
+    closeModal: options.closeModal,
+    showMessage: options.showMessage,
+    showReceipt: receipt => options.setModalState({ type: 'close-batch-results', receipt }),
+  }
+
+  async function confirmBatchClose(batch: CleanupBatch) {
+    await handleReviewedBatchCloseWithFeedback(batch, batchOptions)
+  }
+
+  async function retryBatchClose(receipt: CloseReceipt) {
+    await handleBatchRetryWithFeedback(receipt, batchOptions)
   }
 
   async function handleSelectWrapper(item: Item) {
@@ -612,6 +703,9 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       openSettingsModal: options.openSettingsModal,
       openSettingOptions: options.openSettingOptions,
       requestKillSession: options.requestKillSession,
+      requestMarkedClose: options.requestMarkedClose,
+      toggleMark: options.toggleMark,
+      markedItems: options.markedItems,
       togglePinnedSession: handleTogglePinnedSessionWrapper,
       setAppMode: options.setAppMode,
       setViewMode: options.setViewMode,
@@ -631,6 +725,8 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
 
   return {
     confirmCloseReview,
+    confirmBatchClose,
+    retryBatchClose,
     handleSelectWrapper,
     handleLastSessionWrapper,
     handleRootSessionWrapper,

@@ -13,6 +13,7 @@ import {
   openRenameTarget,
   openSelectedRootSession,
   requestKillTarget,
+  toggleMarkTarget,
   setTimedMessage,
   toggleDetailsPanel,
   type KeyboardHandlerContext,
@@ -36,6 +37,10 @@ export function handleSearchMode(
           requestKillTarget(ctx)
 
           return true
+        case 'm':
+          toggleMarkTarget(ctx)
+
+          return true
         case 'n':
           enterNewSessionMode(ctx)
 
@@ -45,7 +50,6 @@ export function handleSearchMode(
 
           return true
         case 's':
-          ctx.clearPendingKill()
           ctx.openSettingsModal()
 
           return true
@@ -92,15 +96,12 @@ export function handleSearchMode(
   }
 
   if (key.ctrl && keyName === 'p') {
-    ctx.clearPendingKill()
     ctx.openCommandsModal()
 
     return true
   }
 
   if (keyName === 'escape') {
-    ctx.clearPendingKill()
-
     if (isStandard) {
       ctx.setSearchQuery('')
       ctx.setCursor(0)
@@ -117,7 +118,6 @@ export function handleSearchMode(
 
   switch (keyName) {
     case 'return': {
-      ctx.clearPendingKill()
       const item = ctx.items[clampCursorIndex(ctx.items.length, ctx.cursor)]
 
       if (item) ctx.runAction(() => ctx.handleSelect(item))
@@ -126,12 +126,10 @@ export function handleSearchMode(
     }
 
     case 'down':
-      ctx.clearPendingKill()
       ctx.setCursor(cursor => clampCursorIndex(ctx.items.length, cursor + 1))
 
       return true
     case 'up':
-      ctx.clearPendingKill()
       ctx.setCursor(cursor => clampCursorIndex(ctx.items.length, cursor - 1))
 
       return true

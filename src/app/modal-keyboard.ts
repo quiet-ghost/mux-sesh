@@ -1,6 +1,7 @@
 import { describeUnavailableAction } from './action-catalog'
 import type { OperationReport } from './action-outcome'
 import type { ModalState } from './modals'
+import { CloseReceipt, type CleanupBatch } from '../sessions/cleanup-batch'
 import type { CleanupPlan } from '../sessions/cleanup-plan'
 import type { SettingsEntry, SettingsOption } from '../settings'
 import type { CommandEntry } from '../ui/CommandsModal'
@@ -31,6 +32,8 @@ interface ModalKeyboardContext {
   handleRenameSubmit: () => Promise<void>
   handleOutcomeRetry: (report: OperationReport) => Promise<void>
   confirmCloseReview: (plan: CleanupPlan) => Promise<void>
+  confirmBatchClose: (batch: CleanupBatch) => Promise<void>
+  retryBatchClose: (receipt: CloseReceipt) => Promise<void>
 }
 
 interface KeyboardInput {
@@ -77,6 +80,36 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
     if (key.name === 'return') {
       ctx.runAction(() => ctx.confirmCloseReview(plan))
     } else if (key.name === 'escape') {
+      ctx.closeModal()
+    } else {
+      return false
+    }
+
+    return true
+  }
+
+  // The batch review closes only its stored set, so cursor or filter changes cannot widen it.
+  if (ctx.modalState?.type === 'close-batch-review') {
+    const { batch } = ctx.modalState
+
+    if (key.name === 'return') {
+      ctx.runAction(() => ctx.confirmBatchClose(batch))
+    } else if (key.name === 'escape') {
+      ctx.closeModal()
+    } else {
+      return false
+    }
+
+    return true
+  }
+
+  // Enter retries only what the receipt still shows as open; with nothing to retry, it closes.
+  if (ctx.modalState?.type === 'close-batch-results') {
+    const { receipt } = ctx.modalState
+
+    if (key.name === 'return' && CloseReceipt.retryable(receipt).length > 0) {
+      ctx.runAction(() => ctx.retryBatchClose(receipt))
+    } else if (key.name === 'return' || key.name === 'escape') {
       ctx.closeModal()
     } else {
       return false

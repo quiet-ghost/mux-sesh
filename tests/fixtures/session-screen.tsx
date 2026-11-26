@@ -175,7 +175,8 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     core.agentCursor,
     config,
     modal.commandsSearchQuery,
-    backend
+    backend,
+    core.markedItems
   )
 
   const inventory = useSessionInventory(effects, passthroughMeasure, {
@@ -194,7 +195,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     backend,
   })
 
-  const { refreshItems, showMessage } = createAppRuntime({
+  const { refreshItems, reloadSessions, showMessage } = createAppRuntime({
     config,
     backend,
     viewMode: core.viewMode,
@@ -278,6 +279,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     ...core,
     ...modal,
     config,
+    backend,
     inventoryRevision: () => inventory.revision(),
   })
 
@@ -334,6 +336,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     showMessage,
     showOutcome: report => openOutcomeModal(report, modal.setModalState),
     refreshItems,
+    reloadSessions,
     toggleDetails: details.toggle,
     saveConfig: fixture.saveConfig,
     setConfig,
@@ -379,12 +382,13 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     ),
     handleOutcomeRetry: handlers.handleOutcomeRetry,
     confirmCloseReview: handlers.confirmCloseReview,
+    confirmBatchClose: handlers.confirmBatchClose,
+    retryBatchClose: handlers.retryBatchClose,
     onDefect: cause => {
       fixture.defects.push(cause)
     },
     togglePinnedSession: unsupportedFixtureAction,
     refreshItems,
-    handleKillSession: unsupportedFixtureAction,
     handleLastSession: unsupportedFixtureAction,
     handleRootSession: unsupportedFixtureAction,
     handleEditTarget: unsupportedFixtureAction,

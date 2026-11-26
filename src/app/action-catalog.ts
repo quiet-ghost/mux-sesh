@@ -1,4 +1,9 @@
-import { isHerdrAgentItem, isLiveSessionItem, type LiveSessionItem } from '../multiplexer/items'
+import {
+  getItemKey,
+  isHerdrAgentItem,
+  isLiveSessionItem,
+  type LiveSessionItem,
+} from '../multiplexer/items'
 import type { MultiplexerBackend } from '../multiplexer/types'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../types'
 
@@ -11,6 +16,7 @@ export type CommandId =
   | 'view-sessions'
   | 'rename-session'
   | 'kill-session'
+  | 'mark-target'
   | 'toggle-pin-session'
   | 'last-session'
   | 'root-session'
@@ -50,6 +56,8 @@ export interface ActionContext {
   backend: ActionBackend | null
   agentCount: number
   target: ActionTarget
+  // Rows marked for a batch close; when any are marked, close reviews them instead of the cursor.
+  marked: ReadonlyMap<string, Item>
 }
 
 export interface ActionEntry<Id extends ActionId = ActionId> {
@@ -70,6 +78,7 @@ const TARGET_ACTIONS: ReadonlySet<ActionId> = new Set<ActionId>([
   'select',
   'rename-session',
   'kill-session',
+  'mark-target',
   'toggle-pin-session',
   'root-session',
   'edit-target',
@@ -82,6 +91,7 @@ const AGENT_PALETTE: readonly CommandId[] = [
   'open-themes',
   'rename-session',
   'toggle-details',
+  'mark-target',
 ]
 
 const SESSION_PALETTE: readonly CommandId[] = [
@@ -100,6 +110,7 @@ const SESSION_PALETTE: readonly CommandId[] = [
   'refresh',
   'edit-target',
   'toggle-details',
+  'mark-target',
 ]
 
 const DIRECT_COMMANDS: ReadonlySet<CommandId> = new Set<CommandId>([
@@ -108,12 +119,15 @@ const DIRECT_COMMANDS: ReadonlySet<CommandId> = new Set<CommandId>([
   'new-session',
   'open-agents',
   'kill-session',
+  'mark-target',
   'toggle-pin-session',
   'open-settings',
   'open-themes',
 ])
 
 const KEYWORDS: Partial<Record<CommandId, string>> = {
+  'kill-session': 'kill',
+  'mark-target': 'select batch multiple close',
   'open-themes': 'theme color scheme appearance',
   'toggle-details': 'inspect preview panes windows tabs',
 }
@@ -123,7 +137,8 @@ const FOOTER_LABELS: Partial<Record<ActionId, string>> = {
   search: 'search',
   'new-session': 'new',
   'open-agents': 'agents',
-  'kill-session': 'kill',
+  'kill-session': 'close',
+  'mark-target': 'mark',
   'open-commands': 'commands',
   'new-session-name': 'name',
   'new-session-startup': 'startup',
@@ -163,6 +178,24 @@ function liveSessionAvailability(target: ActionTarget, verb: 'Rename' | 'Close')
     case 'file':
     case 'configured':
       return unavailable('Select a live session')
+  }
+}
+
+function closeAvailability(context: ActionContext): ActionAvailability {
+  return context.marked.size > 0 ? AVAILABLE : liveSessionAvailability(context.target, 'Close')
+}
+
+function markAvailability(target: ActionTarget): ActionAvailability {
+  switch (target.kind) {
+    case 'none':
+      return unavailable('Select a session first')
+    case 'file':
+      return unavailable('Files cannot be closed')
+    case 'session':
+    case 'agent':
+    case 'project':
+    case 'configured':
+      return AVAILABLE
   }
 }
 
@@ -210,7 +243,9 @@ export function getActionAvailability(context: ActionContext, id: ActionId): Act
     case 'rename-session':
       return liveSessionAvailability(target, 'Rename')
     case 'kill-session':
-      return liveSessionAvailability(target, 'Close')
+      return closeAvailability(context)
+    case 'mark-target':
+      return markAvailability(target)
     case 'toggle-pin-session':
       return pinAvailability(context)
     case 'root-session':
@@ -288,6 +323,7 @@ const KEY_HINTS: Record<AppMode, Partial<Record<ActionId, KeyHint>>> = {
     back: fixed('esc'),
     select: fixed('enter'),
     'kill-session': vimOrPrefix('d'),
+    'mark-target': vimOrPrefix('m'),
     'rename-session': prefixOrVim('r'),
     'open-settings': context => (context.keybindMode === 'vim' && !context.prefixKey ? ',' : ''),
     'toggle-details': vimOrPrefix('v'),
@@ -298,6 +334,7 @@ const KEY_HINTS: Record<AppMode, Partial<Record<ActionId, KeyHint>>> = {
     'new-session': vimOnly('n'),
     'open-agents': vimOnly('o'),
     'kill-session': vimOrPrefix('d'),
+    'mark-target': vimOrPrefix('m'),
     'toggle-pin-session': fixed('ctrl+f'),
     'view-projects': prefixOrVim('p'),
     'view-sessions': prefixOrVim('s'),
@@ -311,6 +348,7 @@ const KEY_HINTS: Record<AppMode, Partial<Record<ActionId, KeyHint>>> = {
   [AppMode.Search]: {
     select: fixed('enter'),
     'kill-session': standardPrefix('d'),
+    'mark-target': standardPrefix('m'),
     'new-session': standardPrefix('n'),
     'open-agents': standardPrefix('o'),
     'open-settings': standardPrefix('s'),
@@ -350,7 +388,15 @@ function getActionTitle(context: ActionContext, id: CommandId): string {
     case 'open-agents':
       return 'Open agent sessions'
     case 'kill-session':
-      return 'Kill session'
+      return context.marked.size > 0 ? `Close ${context.marked.size} marked` : 'Close session'
+    case 'mark-target': {
+      const item = getActionTargetItem(context.target)
+
+      return item && context.marked.has(getItemKey(item))
+        ? 'Unmark for closing'
+        : 'Mark for closing'
+    }
+
     case 'toggle-pin-session':
       return getActionTargetItem(context.target)?.isPinned ? 'Unpin session' : 'Pin session'
     case 'open-settings':
@@ -424,7 +470,13 @@ function footerPart(context: ActionContext, id: ActionId, label: string): string
 }
 
 function footerAction(context: ActionContext, id: ActionId): string[] {
-  return footerPart(context, id, FOOTER_LABELS[id] ?? id)
+  const label = FOOTER_LABELS[id] ?? id
+
+  if (id === 'kill-session' && context.marked.size > 0) {
+    return footerPart(context, id, `${label} ${context.marked.size} marked`)
+  }
+
+  return footerPart(context, id, label)
 }
 
 // What Enter on the New screen does for its current frozen launch plan, or 'apply' for an edit.

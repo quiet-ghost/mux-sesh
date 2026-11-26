@@ -8,16 +8,21 @@ import {
   openSettingsModal as showSettingsModal,
   type ModalState,
 } from './modals'
-import { ActionRefused } from './action-outcome'
+import { ActionRefused, reasonOf } from './action-outcome'
 import type { Config, Item } from '../types'
+import type { MultiplexerBackend } from '../multiplexer'
+import { getItemKey } from '../multiplexer/items'
+import { CleanupBatch, type PickerHost } from '../sessions/cleanup-batch'
 import { CleanupPlan } from '../sessions/cleanup-plan'
 import type { SettingsFieldId } from '../settings'
 
 interface AppControlsOptions {
   config: Config | null
+  backend: MultiplexerBackend | null
   sessionItems: Item[]
   inventoryRevision: () => number
-  setPendingKillSessionName: Dispatch<SetStateAction<string | null>>
+  markedItems: ReadonlyMap<string, Item>
+  setMarkedItems: Dispatch<SetStateAction<ReadonlyMap<string, Item>>>
   setRenameTarget: Dispatch<SetStateAction<Item | null>>
   setModalInputValue: Dispatch<SetStateAction<string>>
   setModalState: Dispatch<SetStateAction<ModalState>>
@@ -31,11 +36,17 @@ interface AppControlsOptions {
   setSettingEditorValue: Dispatch<SetStateAction<string>>
 }
 
-export function createAppControls(options: AppControlsOptions) {
-  function clearPendingKill() {
-    options.setPendingKillSessionName(null)
-  }
+async function pickerHost(backend: MultiplexerBackend | null): Promise<PickerHost> {
+  if (!backend) return { kind: 'unknown', reason: 'the backend is still loading' }
 
+  try {
+    return { kind: 'known', id: (await backend.current())?.id }
+  } catch (cause) {
+    return { kind: 'unknown', reason: reasonOf(cause) }
+  }
+}
+
+export function createAppControls(options: AppControlsOptions) {
   // Opens a review of exactly this target; closing happens only when that review is confirmed.
   // Callers run inside the action owner, so a refusal is shown rather than thrown away.
   function requestKillSession(item: Item) {
@@ -43,14 +54,45 @@ export function createAppControls(options: AppControlsOptions) {
 
     if (review.kind === 'refused') throw new ActionRefused({ reason: review.reason })
 
-    clearPendingKill()
     options.setModalState({ type: 'close-review', plan: review.plan })
+  }
+
+  // Marks are explicit and per row; nothing is ever marked on the user's behalf.
+  function toggleMark(item: Item) {
+    const key = getItemKey(item)
+
+    options.setMarkedItems(current => {
+      const next = new Map(current)
+
+      if (!next.delete(key)) next.set(key, item)
+
+      return next
+    })
+  }
+
+  function clearMarks() {
+    options.setMarkedItems(new Map())
+  }
+
+  // Reviews every marked row as it is listed now; the review stores the exact set to close.
+  async function requestMarkedClose() {
+    const host = await pickerHost(options.backend)
+
+    const review = CleanupBatch.review(
+      [...options.markedItems.values()],
+      options.sessionItems,
+      options.inventoryRevision(),
+      host
+    )
+
+    if (review.kind === 'refused') throw new ActionRefused({ reason: review.reason })
+
+    options.setModalState({ type: 'close-batch-review', batch: review.batch })
   }
 
   function openRenameModal(item: Item) {
     showRenameModal(
       item,
-      clearPendingKill,
       options.setRenameTarget,
       options.setModalInputValue,
       options.setModalState
@@ -59,7 +101,6 @@ export function createAppControls(options: AppControlsOptions) {
 
   function openCommandsModal() {
     showCommandsModal(
-      clearPendingKill,
       options.setCommandsSearchQuery,
       options.setCommandsCursor,
       options.setModalState
@@ -69,7 +110,6 @@ export function createAppControls(options: AppControlsOptions) {
   function openSettingsModal() {
     showSettingsModal(
       options.config,
-      clearPendingKill,
       options.setSettingEditorError,
       options.setSettingsSearchQuery,
       options.setSettingsCursor,
@@ -113,8 +153,10 @@ export function createAppControls(options: AppControlsOptions) {
   }
 
   return {
-    clearPendingKill,
     requestKillSession,
+    toggleMark,
+    clearMarks,
+    requestMarkedClose,
     openRenameModal,
     openCommandsModal,
     openSettingsModal,

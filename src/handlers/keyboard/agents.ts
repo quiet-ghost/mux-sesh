@@ -7,6 +7,7 @@ import {
   matchesPrefixKey,
   openRenameTarget,
   requestKillTarget,
+  toggleMarkTarget,
   toggleDetailsPanel,
   type KeyboardHandlerContext,
   type KeyboardInput,
@@ -22,7 +23,6 @@ export function handleAgentsManageMode(
   const returnMode = isStandard ? AppMode.Search : AppMode.Normal
 
   if (key.ctrl && keyName === 'p') {
-    ctx.clearPendingKill()
     ctx.openCommandsModal()
 
     return
@@ -33,12 +33,15 @@ export function handleAgentsManageMode(
 
     switch (keyName) {
       case 'o':
-        ctx.clearPendingKill()
         ctx.setAppMode(returnMode)
 
         return
       case 'd':
         requestKillTarget(ctx)
+
+        return
+      case 'm':
+        toggleMarkTarget(ctx)
 
         return
       case 'r':
@@ -61,7 +64,6 @@ export function handleAgentsManageMode(
   }
 
   if (keyName === 'escape' || (!ctx.prefixKey && !isStandard && keyName === 'o')) {
-    ctx.clearPendingKill()
     ctx.setAppMode(returnMode)
 
     return
@@ -78,14 +80,12 @@ export function handleAgentsManageMode(
   }
 
   if (keyName === 'down' || (!isStandard && keyName === 'j')) {
-    ctx.clearPendingKill()
     ctx.setAgentCursor(cursor => clampCursorIndex(ctx.agentSessions.length, cursor + 1))
 
     return
   }
 
   if (keyName === 'up' || (!isStandard && keyName === 'k')) {
-    ctx.clearPendingKill()
     ctx.setAgentCursor(cursor => clampCursorIndex(ctx.agentSessions.length, cursor - 1))
 
     return
@@ -93,6 +93,12 @@ export function handleAgentsManageMode(
 
   if (!isStandard && keyName === 'd') {
     requestKillTarget(ctx)
+
+    return
+  }
+
+  if (!isStandard && keyName === 'm') {
+    toggleMarkTarget(ctx)
 
     return
   }
@@ -110,7 +116,6 @@ export function handleAgentsManageMode(
   }
 
   if (!ctx.prefixKey && !isStandard && keyName === ',') {
-    ctx.clearPendingKill()
     ctx.openSettingsModal()
 
     return

@@ -224,43 +224,6 @@ export function useSelectionMemory(
   ])
 }
 
-export function usePendingKillReset(
-  pendingKillSessionName: string | null,
-  appMode: AppMode,
-  viewMode: ViewMode,
-  agentSessions: Item[],
-  agentCursor: number,
-  regularSessions: Item[],
-  cursor: number,
-  setPendingKillSessionName: Dispatch<SetStateAction<string | null>>
-) {
-  useEffect(() => {
-    if (!pendingKillSessionName) {
-      return
-    }
-
-    const selectedSession =
-      appMode === AppMode.AgentsManage
-        ? agentSessions[agentCursor]
-        : viewMode === ViewMode.Sessions
-          ? regularSessions[cursor]
-          : undefined
-
-    if (!selectedSession || getItemKey(selectedSession) !== pendingKillSessionName) {
-      setPendingKillSessionName(null)
-    }
-  }, [
-    appMode,
-    cursor,
-    agentCursor,
-    agentSessions,
-    pendingKillSessionName,
-    regularSessions,
-    setPendingKillSessionName,
-    viewMode,
-  ])
-}
-
 export function useSearchFiltering(
   appMode: AppMode,
   searchQuery: string,
@@ -310,11 +273,6 @@ interface UseAppBehaviorsOptions {
   cursor: number
   items: Item[]
   selectedPrimaryItem: Item | undefined
-  pendingKillSessionName: string | null
-  agentSessions: Item[]
-  agentCursor: number
-  regularSessions: Item[]
-  setPendingKillSessionName: Dispatch<SetStateAction<string | null>>
   searchQuery: string
   allItems: Item[]
   setUpdatedVersion: Dispatch<SetStateAction<string | null>>
@@ -345,16 +303,6 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.selectedPrimaryItem,
     options.lastProjectSelectionRef,
     options.lastSessionSelectionRef
-  )
-  usePendingKillReset(
-    options.pendingKillSessionName,
-    options.appMode,
-    options.viewMode,
-    options.agentSessions,
-    options.agentCursor,
-    options.regularSessions,
-    options.cursor,
-    options.setPendingKillSessionName
   )
   useSearchFiltering(
     options.appMode,

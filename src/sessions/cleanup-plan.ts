@@ -197,4 +197,16 @@ function scope(plan: CleanupPlan): string {
   return `Closes ${unitNoun(plan.ref, plan.units)} and ${plan.units === 1 ? 'its' : 'their'} panes`
 }
 
-export const CleanupPlan = { review, recheck, describeWarning, title, scope, nounOf } as const
+function unitsLabel(plan: CleanupPlan): string {
+  return plan.units === undefined ? 'every pane' : unitNoun(plan.ref, plan.units)
+}
+
+export const CleanupPlan = {
+  review,
+  recheck,
+  describeWarning,
+  title,
+  scope,
+  nounOf,
+  unitsLabel,
+} as const

@@ -18,6 +18,8 @@ import {
 import type { ModalState } from './modals'
 import { splitVisibleSessions } from './view'
 
+const NO_MARKS: ReadonlyMap<string, Item> = new Map()
+
 interface SessionCommandState {
   regularSessions: Item[]
   agentSessions: Item[]
@@ -40,7 +42,8 @@ export function getSessionCommandState(
   agentCursor: number,
   config: Config | null,
   commandsSearchQuery: string,
-  backend: ActionBackend | null = null
+  backend: ActionBackend | null = null,
+  marked: ReadonlyMap<string, Item> = NO_MARKS
 ): SessionCommandState {
   const sessionSplit =
     viewMode === ViewMode.Sessions
@@ -62,6 +65,7 @@ export function getSessionCommandState(
     backend,
     agentCount: sessionSplit.agentSessions.length,
     target: getActionTarget(selectedPrimaryItem),
+    marked,
   }
 
   return {

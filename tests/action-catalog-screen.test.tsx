@@ -152,7 +152,7 @@ describe('actions on an empty session list', () => {
     expect(footer).toContain('n new')
     expect(footer).toContain('ctrl+p commands')
     expect(footer).not.toContain('enter select')
-    expect(footer).not.toContain('d kill')
+    expect(footer).not.toContain('d close')
     expect(footer).not.toContain('o agents')
   })
 
@@ -198,19 +198,19 @@ describe('actions on a targeted Herdr agent', () => {
 
     const footer = footerOf(await screen.frame())
     expect(footer).toContain('esc back')
-    expect(footer).not.toContain('kill')
+    expect(footer).not.toContain('close')
     expect(footer).not.toContain('rename')
 
     await screen.pressKey('p', { ctrl: true })
     const palette = await screen.frame()
-    expect(palette).toMatch(/Kill session\s+Close it in Herdr/)
+    expect(palette).toMatch(/Close session\s+Close it in Herdr/)
     expect(palette).toMatch(/Rename session\s+Rename it in Herdr/)
 
-    await screen.replaceQuery('Kill session')
+    await screen.replaceQuery('Close session')
     await screen.pressKey('RETURN')
     const refused = await screen.frame()
     expect(refused).toContain('Commands')
-    expect(refused).toContain('Kill session unavailable: Close it in Herdr')
+    expect(refused).toContain('Close session unavailable: Close it in Herdr')
     expect(screen.calls.filter(call => call.operation === 'open')).toEqual([])
   })
 
@@ -227,7 +227,7 @@ describe('actions on a targeted Herdr agent', () => {
       await pressPrefixed(screen, 'd')
     }
 
-    expect(await screen.frame()).toContain('Kill session unavailable: Close it in Herdr')
+    expect(await screen.frame()).toContain('Close session unavailable: Close it in Herdr')
 
     await pressPrefixed(screen, 'r')
     const renamed = await screen.frame()
@@ -273,12 +273,12 @@ describe('actions on a live tmux session', () => {
     expect(footer).toContain('enter select')
     expect(footer).not.toContain('o agents')
 
-    if (keybindMode === 'vim') expect(footer).toContain('d kill')
+    if (keybindMode === 'vim') expect(footer).toContain('d close')
 
     await screen.pressKey('p', { ctrl: true })
     const palette = await screen.frame()
 
-    for (const title of ['Kill session', 'Rename session', 'Pin session', 'Last session']) {
+    for (const title of ['Close session', 'Rename session', 'Pin session', 'Last session']) {
       expect(palette).toContain(title)
     }
 

@@ -14,6 +14,13 @@ import {
 } from '../app/action-outcome'
 import { handoffOf } from '../multiplexer/focus-outcome'
 import type { BackendKind, WorkspaceRef } from '../multiplexer/types'
+import {
+  CleanupBatch,
+  CloseReceipt,
+  type CloseResult,
+  type FocusRestore,
+  type PickerHost,
+} from '../sessions/cleanup-batch'
 import { CleanupPlan } from '../sessions/cleanup-plan'
 import {
   CloneDestinationRefused,
@@ -167,6 +174,198 @@ export async function handleKillSession(
     next: `Nothing else was closed. Pick a ${noun} from the list to continue.`,
     retry: { kind: 'none' },
   }
+}
+
+export interface BatchCloseCallbacks {
+  // The inventory on screen when the batch was confirmed, and its revision.
+  readonly sessionItems: readonly Item[]
+  readonly revision: number
+  // Reads and publishes the session list again; undefined when it could not be read.
+  readonly reloadSessions: () => Promise<readonly Item[] | undefined>
+}
+
+export type BatchCloseOutcome =
+  | { readonly kind: 'completed'; readonly message: string }
+  | { readonly kind: 'receipt'; readonly receipt: CloseReceipt }
+  | { readonly kind: 'failed'; readonly message: string }
+
+interface CurrentWorkspace {
+  readonly host: PickerHost
+  readonly ref: WorkspaceRef | undefined
+}
+
+async function currentWorkspace(
+  backend: MultiplexerBackend,
+  fallback: PickerHost
+): Promise<CurrentWorkspace> {
+  try {
+    const ref = await backend.current()
+
+    return { host: { kind: 'known', id: ref?.id }, ref }
+  } catch {
+    return { host: fallback, ref: undefined }
+  }
+}
+
+// Closes each plan once, in order, after re-checking it against `inventory`. An unfinished close
+// stops the batch: later targets are reported as not attempted instead of piling on more doubt.
+async function closeEach(
+  plans: readonly CleanupPlan[],
+  backend: MultiplexerBackend,
+  inventory: readonly Item[],
+  revision: number,
+  host: PickerHost
+): Promise<CloseResult[]> {
+  const results: CloseResult[] = []
+  let stopped: string | undefined
+
+  for (const plan of plans) {
+    const noun = CleanupPlan.nounOf(plan.ref)
+
+    if (stopped) {
+      results.push({ kind: 'unattempted', plan, cause: 'stopped', reason: stopped })
+      continue
+    }
+
+    if (host.kind === 'known' && host.id === plan.ref.id) {
+      results.push({
+        kind: 'unattempted',
+        plan,
+        cause: 'picker-host',
+        reason: CleanupBatch.hostReason(),
+      })
+      continue
+    }
+
+    if (plan.ref.backend !== backend.kind) {
+      results.push({
+        kind: 'failed',
+        plan,
+        reason: `it belongs to ${plan.ref.backend}, but mux-sesh is using ${backend.kind}`,
+      })
+      continue
+    }
+
+    if (!CleanupBatch.isListed(plan, inventory)) {
+      results.push({ kind: 'disappeared', plan })
+      continue
+    }
+
+    const check = CleanupPlan.recheck(plan, inventory, revision)
+
+    if (check.kind === 'changed') {
+      results.push({
+        kind: 'unattempted',
+        plan,
+        cause: 'changed',
+        reason: 'it changed since you reviewed it; press d to review it again',
+      })
+      continue
+    }
+
+    try {
+      await backend.close(plan.ref)
+      results.push({ kind: 'closed', plan, via: 'backend' })
+    } catch (cause) {
+      if (isUncertainMutationFailure(cause)) {
+        results.push({ kind: 'unknown', plan, reason: reasonOf(cause) })
+        stopped = `stopped after closing ${noun} '${plan.ref.title}' did not finish`
+        continue
+      }
+
+      if (!isBackendFailure(cause)) throw cause
+
+      results.push({ kind: 'failed', plan, reason: cause.message })
+    }
+  }
+
+  return results
+}
+
+async function restoreFocusOnce(
+  backend: MultiplexerBackend,
+  results: readonly CloseResult[],
+  prior: WorkspaceRef | undefined
+): Promise<FocusRestore> {
+  if (!results.some(result => result.kind === 'closed')) return { kind: 'kept' }
+
+  const failure = await restoreFocusAfterClose(backend, prior)
+
+  return failure ? { kind: 'failed', ...failure } : { kind: 'kept' }
+}
+
+async function settle(
+  receipt: CloseReceipt,
+  reloadSessions: BatchCloseCallbacks['reloadSessions']
+): Promise<BatchCloseOutcome> {
+  const fresh = await reloadSessions()
+  const settled = fresh ? CloseReceipt.reconcile(receipt, fresh) : receipt
+
+  return CloseReceipt.isComplete(settled)
+    ? { kind: 'completed', message: CloseReceipt.completedMessage(settled) }
+    : { kind: 'receipt', receipt: settled }
+}
+
+// Closes the reviewed batch's stored refs and nothing else, then restores focus and refreshes
+// once. Every reviewed target gets a result; unmarked rows are never read as targets.
+export async function handleCloseBatch(
+  batch: CleanupBatch,
+  backend: MultiplexerBackend,
+  callbacks: BatchCloseCallbacks
+): Promise<BatchCloseOutcome> {
+  const current = await currentWorkspace(backend, batch.host)
+
+  const results = await closeEach(
+    CleanupBatch.readyPlans(batch),
+    backend,
+    callbacks.sessionItems,
+    callbacks.revision,
+    current.host
+  )
+
+  const focus = await restoreFocusOnce(backend, results, current.ref)
+
+  return settle(
+    { backend: batch.backend, results, refused: CleanupBatch.refusedMembers(batch), focus },
+    callbacks.reloadSessions
+  )
+}
+
+// Reconciles with a fresh list before any mutation, then closes only targets still known to be
+// open; a completed close is never repeated.
+export async function handleRetryCloseBatch(
+  receipt: CloseReceipt,
+  backend: MultiplexerBackend,
+  callbacks: Pick<BatchCloseCallbacks, 'revision' | 'reloadSessions'>
+): Promise<BatchCloseOutcome> {
+  const fresh = await callbacks.reloadSessions()
+
+  if (!fresh) {
+    return {
+      kind: 'failed',
+      message:
+        'Could not refresh the session list, so nothing was retried and nothing else was closed. Refresh, then press d to review what is still open.',
+    }
+  }
+
+  const reconciled = CloseReceipt.reconcile(receipt, fresh)
+
+  const current = await currentWorkspace(backend, {
+    kind: 'unknown',
+    reason: 'the backend did not report its current workspace',
+  })
+
+  const retried = await closeEach(
+    CloseReceipt.retryable(reconciled),
+    backend,
+    fresh,
+    callbacks.revision,
+    current.host
+  )
+
+  const focus = await restoreFocusOnce(backend, retried, current.ref)
+
+  return settle(CloseReceipt.merge(reconciled, retried, focus), callbacks.reloadSessions)
 }
 
 export type RenameOutcome =

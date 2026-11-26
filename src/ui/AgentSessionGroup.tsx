@@ -2,6 +2,7 @@ import { useTheme } from '../styles/theme'
 import type { IconConfig, Item } from '../types'
 import { formatSectionHeader } from './item-icon'
 import { getItemKey } from '../multiplexer/items'
+import { markedMeta, rowMarker } from './row-mark'
 import { getSessionMeta } from './session-meta'
 import type { VisibleWindow } from './list-window'
 import { fitListRow, getTitleColumnWidth } from './session-viewport'
@@ -13,7 +14,7 @@ interface Props {
   active: boolean
   width: number
   icons?: IconConfig
-  pendingKillSessionName?: string | null
+  marked?: ReadonlyMap<string, Item>
 }
 
 const AGENT_ROW_PREFIX_COLUMNS = 4
@@ -29,7 +30,7 @@ export default function AgentSessionGroup({
   active,
   width,
   icons,
-  pendingKillSessionName,
+  marked,
 }: Props) {
   const theme = useTheme()
   const header = formatSectionHeader(theme, 'agents', icons)
@@ -45,12 +46,9 @@ export default function AgentSessionGroup({
       ) : null}
       {window.items.map((item, i) => {
         const absoluteIndex = window.startIndex + i
-        const pendingKill = getItemKey(item) === pendingKillSessionName
+        const isMarked = marked?.has(getItemKey(item)) ?? false
         const selected = active && absoluteIndex === cursor
-
-        const meta = pendingKill
-          ? `press d again to ${item.itemKind === 'herdr' ? 'close' : 'kill'}`
-          : getSessionMeta(item)
+        const meta = markedMeta(isMarked, getSessionMeta(item))
 
         const metaWidth = meta ? meta.length + 1 : 0
 
@@ -68,7 +66,7 @@ export default function AgentSessionGroup({
               flexDirection: 'row',
               flexShrink: 0,
               justifyContent: 'space-between',
-              backgroundColor: pendingKill
+              backgroundColor: isMarked
                 ? theme.dangerSurface
                 : selected
                   ? theme.surfaceAlt
@@ -78,8 +76,8 @@ export default function AgentSessionGroup({
             }}
           >
             <text style={{ wrapMode: 'none' }}>
-              <span style={{ fg: selected ? theme.primary : theme.textSubtle }}>
-                {selected ? '› ' : '  '}
+              <span style={{ fg: selected ? theme.primary : theme.danger }}>
+                {rowMarker(selected, isMarked)}
               </span>
               <span style={{ fg: item.isAttached ? theme.active : theme.inactive }}>
                 {item.isAttached ? '●' : '○'}
@@ -93,7 +91,7 @@ export default function AgentSessionGroup({
             <text
               style={{
                 wrapMode: 'none',
-                fg: pendingKill
+                fg: isMarked
                   ? theme.danger
                   : item.agentStatus === 'blocked'
                     ? theme.danger

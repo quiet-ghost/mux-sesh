@@ -52,7 +52,7 @@ interface Props {
   launchPreview: LaunchPreview
   newSession: NewSessionSteps
   prefixActive: boolean
-  pendingKillSessionName: string | null
+  markedItems: ReadonlyMap<string, Item>
   projectCount: number
   sessionItems: Item[]
   rows: number
@@ -93,7 +93,7 @@ export function AppScreen({
   launchPreview,
   newSession,
   prefixActive,
-  pendingKillSessionName,
+  markedItems,
   projectCount,
   sessionItems,
   rows,
@@ -241,7 +241,7 @@ export function AppScreen({
                     emptyLabel={backend?.kind === 'herdr' ? 'No workspaces' : 'No sessions'}
                     searchQuery={searchQuery}
                     icons={config?.icons}
-                    pendingKillSessionName={pendingKillSessionName}
+                    marked={markedItems}
                   />
 
                   {viewport.agents.kind === 'shown' && (
@@ -252,7 +252,7 @@ export function AppScreen({
                       active={agentsActive}
                       width={rowWidth}
                       icons={config?.icons}
-                      pendingKillSessionName={pendingKillSessionName}
+                      marked={markedItems}
                     />
                   )}
                 </>
@@ -266,7 +266,7 @@ export function AppScreen({
                   searchQuery={listQuery}
                   selectedAction={getSelectedRowAction(launchPreview)}
                   icons={config?.icons}
-                  pendingKillSessionName={pendingKillSessionName}
+                  marked={markedItems}
                 />
               )}
             </box>

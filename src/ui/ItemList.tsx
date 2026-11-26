@@ -3,6 +3,7 @@ import { AppMode, type IconConfig } from '../types'
 import HighlightedText from './HighlightedText'
 import { getItemIconPresentation } from './item-icon'
 import { getVisibleWindow } from './list-window'
+import { markedMeta, rowMarker } from './row-mark'
 import { fitListRow } from './session-viewport'
 import type { Item } from '../types'
 import { getItemKey } from '../multiplexer/items'
@@ -17,7 +18,7 @@ interface Props {
   // New only: the frozen plan's action for the selected row; undefined falls back to the row hint.
   selectedAction?: string
   icons?: IconConfig
-  pendingKillSessionName?: string | null
+  marked?: ReadonlyMap<string, Item>
 }
 
 const SESSION_ROW_PREFIX_COLUMNS = 4
@@ -31,7 +32,7 @@ export default function ItemList({
   searchQuery = '',
   selectedAction,
   icons,
-  pendingKillSessionName,
+  marked,
 }: Props) {
   const theme = useTheme()
   const isSearching = searchQuery.trim().length > 0
@@ -57,15 +58,15 @@ export default function ItemList({
 
         const linkedSessionLabel = item.linkedSessionName ? ` -> ${item.linkedSessionName}` : ''
         const rowAction = `${sessionStatusLabel}${linkedSessionLabel}`
-        const pendingKill = item.isSession && getItemKey(item) === pendingKillSessionName
+        const isMarked = marked?.has(getItemKey(item)) ?? false
 
-        const meta = item.isSession
-          ? pendingKill
-            ? 'press d again to kill'
-            : `(${item.windowCount})`
+        const rowMeta = item.isSession
+          ? `(${item.windowCount})`
           : appMode === AppMode.NewSession
             ? ((selected ? selectedAction : undefined) ?? rowAction)
             : ''
+
+        const meta = markedMeta(isMarked, rowMeta)
 
         const prefixWidth = item.isSession ? SESSION_ROW_PREFIX_COLUMNS : 3 + icon.glyph.length
         const metaWidth = meta ? meta.length + 1 : 0
@@ -84,7 +85,7 @@ export default function ItemList({
               flexDirection: 'row',
               flexShrink: 0,
               justifyContent: 'space-between',
-              backgroundColor: pendingKill
+              backgroundColor: isMarked
                 ? theme.dangerSurface
                 : selected
                   ? theme.surfaceAlt
@@ -94,8 +95,8 @@ export default function ItemList({
             }}
           >
             <text style={{ wrapMode: 'none' }}>
-              <span style={{ fg: selected ? theme.primary : theme.textSubtle }}>
-                {selected ? '› ' : '  '}
+              <span style={{ fg: selected ? theme.primary : theme.danger }}>
+                {rowMarker(selected, isMarked)}
               </span>
               {item.isSession ? (
                 <>
@@ -133,7 +134,7 @@ export default function ItemList({
               )}
             </text>
 
-            <text style={{ fg: pendingKill ? theme.danger : theme.textSubtle, wrapMode: 'none' }}>
+            <text style={{ fg: isMarked ? theme.danger : theme.textSubtle, wrapMode: 'none' }}>
               {meta}
             </text>
           </box>

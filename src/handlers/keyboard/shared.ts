@@ -42,10 +42,12 @@ export interface KeyboardHandlerContext {
   setPrefixActive: (active: boolean) => void
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config) => Promise<void>
   requestKillSession: (item: Item) => void
+  requestMarkedClose: () => Promise<void>
+  toggleMark: (item: Item) => void
   togglePinnedSession: (sessionName: string) => Promise<void>
+  // No-op left only for new-session.ts, which another slice owns; the pending-kill state is gone.
   clearPendingKill: () => void
   handleSelect: (item: Item) => Promise<void>
-  handleKillSession: (item: Item) => Promise<void>
   handleLastSession: () => Promise<void>
   handleRootSession: (item?: Item) => Promise<void>
   handleEditTarget: (item?: Item) => Promise<void>
@@ -105,7 +107,6 @@ export function getQuickSelectItem(ctx: KeyboardHandlerContext, index: number): 
 }
 
 export function enterNewSessionMode(ctx: KeyboardHandlerContext) {
-  ctx.clearPendingKill()
   openNewSession(ctx, ctx.projectItems)
 }
 
@@ -126,22 +127,33 @@ export function runAvailableAction(
   run(getActionTargetItem(ctx.actionContext.target))
 }
 
+// With rows marked, close reviews exactly the marked set; otherwise the row under the cursor.
 export function requestKillTarget(ctx: KeyboardHandlerContext) {
   runAvailableAction(ctx, 'kill-session', item => {
+    if (ctx.actionContext.marked.size > 0) {
+      ctx.runAction(ctx.requestMarkedClose)
+
+      return
+    }
+
     if (item) ctx.requestKillSession(item)
+  })
+}
+
+export function toggleMarkTarget(ctx: KeyboardHandlerContext) {
+  runAvailableAction(ctx, 'mark-target', item => {
+    if (item) ctx.toggleMark(item)
   })
 }
 
 export function openRenameTarget(ctx: KeyboardHandlerContext) {
   runAvailableAction(ctx, 'rename-session', item => {
     if (!item) return
-    ctx.clearPendingKill()
     ctx.openRenameModal(item)
   })
 }
 
 export function openAgentsTarget(ctx: KeyboardHandlerContext) {
-  ctx.clearPendingKill()
   runAvailableAction(ctx, 'open-agents', () => {
     ctx.setAppMode(AppMode.AgentsManage)
     ctx.setAgentCursor(0)
@@ -150,28 +162,24 @@ export function openAgentsTarget(ctx: KeyboardHandlerContext) {
 
 export function toggleDetailsPanel(ctx: KeyboardHandlerContext) {
   runAvailableAction(ctx, 'toggle-details', () => {
-    ctx.clearPendingKill()
     ctx.toggleDetails()
   })
 }
 
 export function openLastSession(ctx: KeyboardHandlerContext) {
   runAvailableAction(ctx, 'last-session', () => {
-    ctx.clearPendingKill()
     ctx.runAction(ctx.handleLastSession)
   })
 }
 
 export function openSelectedRootSession(ctx: KeyboardHandlerContext) {
   runAvailableAction(ctx, 'root-session', item => {
-    ctx.clearPendingKill()
     ctx.runAction(() => ctx.handleRootSession(item))
   })
 }
 
 export function openSelectedEditTarget(ctx: KeyboardHandlerContext) {
   runAvailableAction(ctx, 'edit-target', item => {
-    ctx.clearPendingKill()
     ctx.runAction(() => ctx.handleEditTarget(item))
   })
 }
@@ -179,7 +187,6 @@ export function openSelectedEditTarget(ctx: KeyboardHandlerContext) {
 export function togglePinnedTarget(ctx: KeyboardHandlerContext) {
   runAvailableAction(ctx, 'toggle-pin-session', item => {
     if (!item) return
-    ctx.clearPendingKill()
     ctx.runAction(() => ctx.togglePinnedSession(item.title))
   })
 }

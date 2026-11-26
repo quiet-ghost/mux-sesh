@@ -42,6 +42,7 @@ function actionContextOf(ctx: BaseContext): ActionContext {
     backend: { kind: 'tmux', capabilities: { previousWorkspace: true } },
     agentCount: ctx.agentSessions.length,
     target: getActionTarget(selectedItem(ctx)),
+    marked: new Map(),
   }
 }
 
@@ -83,10 +84,11 @@ function createBaseContext(overrides: Partial<KeyboardHandlerContext>): BaseCont
     setPrefixActive: mock(() => {}),
     refreshItems: mock(async () => {}),
     requestKillSession: mock(() => {}),
+    requestMarkedClose: mock(async () => {}),
+    toggleMark: mock(() => {}),
     togglePinnedSession: mock(async () => {}),
     clearPendingKill: mock(() => {}),
     handleSelect: mock(async () => {}),
-    handleKillSession: mock(async () => {}),
     handleLastSession: mock(async () => {}),
     handleRootSession: mock(async () => {}),
     handleEditTarget: mock(async () => {}),
@@ -119,7 +121,6 @@ describe('keyboard shortcuts', () => {
 
     handleNormalMode({ name: 'p', ctrl: true }, ctx, 'standard')
 
-    expect(ctx.clearPendingKill).toHaveBeenCalledTimes(1)
     expect(ctx.openCommandsModal).toHaveBeenCalledTimes(1)
   })
 
@@ -161,7 +162,6 @@ describe('keyboard shortcuts', () => {
 
     handleNormalMode({ name: 'f', ctrl: true }, ctx, 'vim')
 
-    expect(ctx.clearPendingKill).toHaveBeenCalledTimes(1)
     expect(ctx.togglePinnedSession).toHaveBeenCalledWith('session-1')
   })
 
@@ -225,7 +225,7 @@ describe('keyboard shortcuts', () => {
     expect(prefixCtx.requestKillSession).not.toHaveBeenCalled()
     expect(prefixCtx.openRenameModal).not.toHaveBeenCalled()
     for (const ctx of [directCtx, prefixCtx]) {
-      expect(ctx.setMessage).toHaveBeenCalledWith('Kill session unavailable: Close it in Herdr')
+      expect(ctx.setMessage).toHaveBeenCalledWith('Close session unavailable: Close it in Herdr')
       expect(ctx.setMessage).toHaveBeenCalledWith('Rename session unavailable: Rename it in Herdr')
     }
   })
@@ -252,7 +252,6 @@ describe('keyboard shortcuts', () => {
 
     handleAgentsManageMode({ name: ',' }, ctx, 'vim')
 
-    expect(ctx.clearPendingKill).toHaveBeenCalledTimes(1)
     expect(ctx.openSettingsModal).toHaveBeenCalledTimes(1)
   })
 })

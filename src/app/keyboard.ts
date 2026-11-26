@@ -6,6 +6,7 @@ import { FocusOwner } from './focus-owner'
 import { handleModalKeyboard } from './modal-keyboard'
 import type { NewSessionStepControls } from './new-session-step'
 import type { ModalState } from './modals'
+import type { CleanupBatch, CloseReceipt } from '../sessions/cleanup-batch'
 import type { CleanupPlan } from '../sessions/cleanup-plan'
 import {
   handleNewSessionMode,
@@ -59,14 +60,17 @@ interface UseAppKeyboardOptions {
   newSession: NewSessionStepControls
   handleOutcomeRetry: (report: OperationReport) => Promise<void>
   confirmCloseReview: (plan: CleanupPlan) => Promise<void>
+  confirmBatchClose: (batch: CleanupBatch) => Promise<void>
+  retryBatchClose: (receipt: CloseReceipt) => Promise<void>
   // Crash recovery for defects raised by key handlers; production passes requestFatalShutdown.
   onDefect: (cause: unknown) => void
   isOptionSetting: (field: SettingsFieldId) => boolean
   openSettingOptions: (field: SettingsFieldId) => void
   openSettingEditor: (field: SettingsFieldId) => void
   closeModal: () => void
-  clearPendingKill: () => void
   requestKillSession: (item: Item) => void
+  requestMarkedClose: () => Promise<void>
+  toggleMark: (item: Item) => void
   togglePinnedSession: (sessionName: string) => Promise<void>
   openRenameModal: (item: Item) => void
   openCommandsModal: () => void
@@ -74,7 +78,6 @@ interface UseAppKeyboardOptions {
   openSettingsModal: () => void
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config | null) => Promise<void>
   handleSelect: (item: Item) => Promise<void>
-  handleKillSession: (item: Item) => Promise<void>
   handleLastSession: () => Promise<void>
   handleRootSession: (item?: Item) => Promise<void>
   handleEditTarget: (item?: Item) => Promise<void>
@@ -124,10 +127,11 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     setPrefixActive: options.setPrefixActive,
     refreshItems: options.refreshItems,
     requestKillSession: options.requestKillSession,
+    requestMarkedClose: options.requestMarkedClose,
+    toggleMark: options.toggleMark,
     togglePinnedSession: options.togglePinnedSession,
-    clearPendingKill: options.clearPendingKill,
+    clearPendingKill: () => {},
     handleSelect: options.handleSelect,
-    handleKillSession: options.handleKillSession,
     handleLastSession: options.handleLastSession,
     handleRootSession: options.handleRootSession,
     handleEditTarget: options.handleEditTarget,
@@ -181,6 +185,8 @@ function handleKey(
       handleRenameSubmit: options.handleRenameSubmit,
       handleOutcomeRetry: options.handleOutcomeRetry,
       confirmCloseReview: options.confirmCloseReview,
+      confirmBatchClose: options.confirmBatchClose,
+      retryBatchClose: options.retryBatchClose,
     })
 
     if (consumed) key.preventDefault()

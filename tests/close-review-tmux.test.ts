@@ -2,10 +2,11 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { mkdtemp, readdir, realpath, rm, writeFile } from 'fs/promises'
 import { tmpdir, userInfo } from 'os'
 import { join } from 'path'
-import { handleKillSession } from '../src/handlers/actions'
+import { handleCloseBatch, handleKillSession } from '../src/handlers/actions'
 import { createCommandRunner } from '../src/multiplexer/command'
 import { workspaceToItem } from '../src/multiplexer/items'
 import { createTmuxBackend } from '../src/multiplexer/tmux-backend'
+import { CleanupBatch } from '../src/sessions/cleanup-batch'
 import { CleanupPlan } from '../src/sessions/cleanup-plan'
 
 // Only a harness-owned server on its own socket is touched; the user's tmux server never is.
@@ -28,6 +29,10 @@ beforeAll(async () => {
   // 'alpha' is a prefix of 'alpha-2', so a name-based close could hit the wrong session.
   await ownedTmux('new-session', '-d', '-s', 'alpha-2', '-c', directory, 'sleep', '600')
   await ownedTmux('new-session', '-d', '-s', 'alpha', '-c', directory, 'sleep', '600')
+
+  for (const name of ['bravo', 'charlie', 'keep']) {
+    await ownedTmux('new-session', '-d', '-s', name, '-c', directory, 'sleep', '600')
+  }
 })
 
 afterAll(async () => {
@@ -60,7 +65,38 @@ describe.skipIf(!tmuxAvailable)('reviewed close against an isolated tmux server'
     })
 
     expect(outcome).toEqual({ kind: 'completed', message: "Session 'alpha' closed" })
-    expect((await backend.list()).map(session => session.title)).toEqual(['alpha-2'])
+    expect((await backend.list()).map(session => session.title)).toEqual([
+      'alpha-2',
+      'bravo',
+      'charlie',
+      'keep',
+    ])
+    expect(await readdir(directory)).toEqual(['keep.txt'])
+  })
+
+  test('a batch reports a target that vanished under it and leaves unmarked sessions alone', async () => {
+    const items = (await backend.list()).map(workspaceToItem)
+    const marked = items.filter(item => item.title === 'bravo' || item.title === 'charlie')
+    const review = CleanupBatch.review(marked, items, 1, { kind: 'known', id: undefined })
+
+    if (review.kind === 'refused') throw new Error(review.reason)
+
+    // charlie is closed outside mux-sesh after the review, so its own close finds nothing.
+    await ownedTmux('kill-session', '-t', 'charlie')
+
+    const outcome = await handleCloseBatch(review.batch, backend, {
+      sessionItems: items,
+      revision: 1,
+      reloadSessions: async () => (await backend.list()).map(workspaceToItem),
+    })
+
+    if (outcome.kind !== 'receipt') throw new Error(`Expected a receipt, got ${outcome.kind}`)
+
+    expect(outcome.receipt.results.map(result => [result.plan.ref.title, result.kind])).toEqual([
+      ['bravo', 'closed'],
+      ['charlie', 'disappeared'],
+    ])
+    expect((await backend.list()).map(session => session.title)).toEqual(['alpha-2', 'keep'])
     expect(await readdir(directory)).toEqual(['keep.txt'])
   })
 })

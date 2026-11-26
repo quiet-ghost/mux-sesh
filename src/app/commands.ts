@@ -15,6 +15,9 @@ interface ExecuteCommandContext {
   openSettingsModal: () => void
   openSettingOptions: (field: 'theme') => void
   requestKillSession: (item: Item) => void
+  requestMarkedClose: () => Promise<void>
+  toggleMark: (item: Item) => void
+  markedItems: ReadonlyMap<string, Item>
   togglePinnedSession: (sessionName: string) => Promise<void>
   setAppMode: (mode: AppMode) => void
   setViewMode: (mode: ViewMode) => void
@@ -75,9 +78,19 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
 
       return
     case 'kill-session':
-      if (target.kind === 'session') {
+      if (ctx.markedItems.size > 0) {
+        ctx.closeModal()
+        await ctx.requestMarkedClose()
+      } else if (target.kind === 'session') {
         ctx.closeModal()
         ctx.requestKillSession(target.item)
+      }
+
+      return
+    case 'mark-target':
+      if (target.kind !== 'none' && target.kind !== 'file') {
+        ctx.closeModal()
+        ctx.toggleMark(target.item)
       }
 
       return
