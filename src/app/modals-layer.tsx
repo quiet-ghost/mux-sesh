@@ -4,11 +4,12 @@ import type { SettingsEntry, SettingsOption, SettingsFieldId } from '../settings
 import type { CommandEntry } from '../ui/CommandsModal'
 import type { ModalState } from './modals'
 import { syncTextareaValue } from './textarea'
-import CommandsModal from '../ui/CommandsModal'
+import CommandsModal, { getCommandEntryKey } from '../ui/CommandsModal'
 import RenameModal from '../ui/RenameModal'
 import SettingEditorModal from '../ui/SettingEditorModal'
 import SettingOptionsModal from '../ui/SettingOptionsModal'
 import SettingsModal from '../ui/SettingsModal'
+import { useItemSelection } from '../ui/use-item-selection'
 
 interface Props {
   modalState: ModalState
@@ -46,6 +47,14 @@ interface Props {
   getSettingEditorTitle: (field: SettingsFieldId) => string
 }
 
+function getSettingsEntryKey(entry: SettingsEntry): string {
+  return entry.id
+}
+
+function getSettingOptionKey(option: SettingsOption): string {
+  return option.value
+}
+
 export function AppModalsLayer({
   modalState,
   columns,
@@ -81,6 +90,15 @@ export function AppModalsLayer({
   modalTextareaRef,
   getSettingEditorTitle,
 }: Props) {
+  useItemSelection(filteredCommandEntries, commandsCursor, setCommandsCursor, getCommandEntryKey)
+  useItemSelection(filteredSettingsEntries, settingsCursor, setSettingsCursor, getSettingsEntryKey)
+  useItemSelection(
+    filteredSettingOptions,
+    settingOptionsCursor,
+    setSettingOptionsCursor,
+    getSettingOptionKey
+  )
+
   return (
     <>
       {modalState?.type === 'rename' && (
@@ -96,13 +114,14 @@ export function AppModalsLayer({
       {modalState?.type === 'commands' && (
         <CommandsModal
           columns={columns}
+          rows={rows}
           themeId={themeId}
           entries={filteredCommandEntries}
           cursor={commandsCursor}
           searchQuery={commandsSearchQuery}
           textareaRef={commandsSearchTextareaRef}
           onContentChange={() =>
-            syncTextareaValue(commandsSearchTextareaRef, setCommandsSearchQuery, setCommandsCursor)
+            syncTextareaValue(commandsSearchTextareaRef, setCommandsSearchQuery)
           }
         />
       )}
@@ -113,12 +132,13 @@ export function AppModalsLayer({
           themeName={themeName}
           colorMode={colorMode}
           columns={columns}
+          rows={rows}
           entries={filteredSettingsEntries}
           cursor={settingsCursor}
           searchQuery={settingsSearchQuery}
           textareaRef={settingsSearchTextareaRef}
           onContentChange={() =>
-            syncTextareaValue(settingsSearchTextareaRef, setSettingsSearchQuery, setSettingsCursor)
+            syncTextareaValue(settingsSearchTextareaRef, setSettingsSearchQuery)
           }
         />
       )}
@@ -128,16 +148,13 @@ export function AppModalsLayer({
           title={getSettingEditorTitle(modalState.field)}
           description="Select an option to apply it immediately"
           columns={columns}
+          rows={rows}
           options={filteredSettingOptions}
           cursor={settingOptionsCursor}
           searchQuery={settingOptionsSearchQuery}
           textareaRef={settingOptionsSearchTextareaRef}
           onContentChange={() =>
-            syncTextareaValue(
-              settingOptionsSearchTextareaRef,
-              setSettingOptionsSearchQuery,
-              setSettingOptionsCursor
-            )
+            syncTextareaValue(settingOptionsSearchTextareaRef, setSettingOptionsSearchQuery)
           }
         />
       )}

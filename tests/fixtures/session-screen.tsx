@@ -6,7 +6,7 @@ import { executeCommand as executeAppCommand } from '../../src/app/commands'
 import { createAppControls } from '../../src/app/controls'
 import { useAppCoreState } from '../../src/app/core-state'
 import { loadSessionItems } from '../../src/app/data'
-import { getSessionCommandState } from '../../src/app/derived'
+import { getSessionCommandState, getSettingsState } from '../../src/app/derived'
 import {
   useNormalModeSessionReset,
   useSearchFiltering,
@@ -91,7 +91,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
 
   const { resolvedTheme, refreshSystemTheme } = useResolvedTheme(
     {
-      themeId: config.theme,
+      themeId: modal.themePreviewId ?? config.theme,
       customThemes: config.themes,
       colorScheme: config.colorScheme,
       homeDir,
@@ -125,6 +125,13 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     inventory,
     setMessage: core.setMessage,
   })
+
+  const settings = getSettingsState(
+    config,
+    modal.modalState,
+    modal.settingsSearchQuery,
+    modal.settingOptionsSearchQuery
+  )
 
   const {
     setAppMode,
@@ -206,10 +213,10 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     ...modal,
     ...derived,
     ...controls,
+    ...settings,
     config,
-    filteredSettingsEntries: [],
-    filteredSettingOptions: [],
     isOptionSetting,
+    previewThemeOption: modal.setThemePreviewId,
     handleSelect: item => handleSelectItem(item, config, backend),
     executeCommand: command =>
       executeAppCommand(command, {
@@ -250,13 +257,12 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
       <AppModalsLayer
         {...modal}
         {...derived}
+        {...settings}
         {...dimensions}
         configPath="/fixture/config.json"
         themeId={resolvedTheme.id}
         themeName={resolvedTheme.name}
         colorMode={resolvedTheme.mode}
-        filteredSettingsEntries={[]}
-        filteredSettingOptions={[]}
         getSettingEditorTitle={getSettingEditorTitle}
       />
     </ThemeProvider>

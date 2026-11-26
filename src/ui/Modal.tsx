@@ -1,6 +1,10 @@
 import type { ReactNode } from 'react'
 import { RGBA } from '@opentui/core'
 import { getModalStyle, useTheme } from '../styles/theme'
+import { getDialogContentWidth, getDialogWidth, truncateDialogText } from './dialog-layout'
+
+const CLOSE_HINT = 'esc'
+const DEFAULT_PREFERRED_WIDTH = 76
 
 interface Props {
   title: string
@@ -16,10 +20,12 @@ export default function Modal({
   description,
   footer,
   columns,
-  preferredWidth,
+  preferredWidth = DEFAULT_PREFERRED_WIDTH,
   children,
 }: Props) {
   const theme = useTheme()
+  const width = getDialogWidth(columns, preferredWidth)
+  const contentWidth = getDialogContentWidth(width)
 
   return (
     <box
@@ -34,14 +40,24 @@ export default function Modal({
         backgroundColor: RGBA.fromInts(0, 0, 0, 150),
       }}
     >
-      <box style={getModalStyle(theme, columns, preferredWidth)}>
+      <box style={{ ...getModalStyle(theme, columns, preferredWidth), width }}>
         <box style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <text style={{ fg: theme.text }}>{title}</text>
-          <text style={{ fg: theme.textMuted }}>esc</text>
+          <text style={{ fg: theme.text }}>
+            {truncateDialogText(title, contentWidth - CLOSE_HINT.length - 1)}
+          </text>
+          <text style={{ fg: theme.textMuted }}>{CLOSE_HINT}</text>
         </box>
-        {description && <text style={{ fg: theme.textMuted, marginTop: 1 }}>{description}</text>}
+        {description && (
+          <text style={{ fg: theme.textMuted, marginTop: 1 }}>
+            {truncateDialogText(description, contentWidth)}
+          </text>
+        )}
         <box style={{ flexDirection: 'column', marginTop: 1 }}>{children}</box>
-        {footer && <text style={{ fg: theme.textMuted, marginTop: 1 }}>{footer}</text>}
+        {footer && (
+          <text style={{ fg: theme.textMuted, marginTop: 1 }}>
+            {truncateDialogText(footer, contentWidth)}
+          </text>
+        )}
       </box>
     </box>
   )
