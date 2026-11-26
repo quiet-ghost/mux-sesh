@@ -1,7 +1,8 @@
-import { TextareaRenderable } from '@opentui/core'
+import { TextareaRenderable, type TerminalColors } from '@opentui/core'
 import type { TestRendererOptions, TestRendererSetup } from '@opentui/core/testing'
+import { useRenderer } from '@opentui/react'
 import { testRender } from '@opentui/react/test-utils'
-import { act, useEffect, useRef } from 'react'
+import { act, useEffect, useRef, useState } from 'react'
 import { executeCommand as executeAppCommand } from '../../src/app/commands'
 import { createAppControls } from '../../src/app/controls'
 import { useAppCoreState } from '../../src/app/core-state'
@@ -11,7 +12,6 @@ import {
   useNormalModeSessionReset,
   useSearchFiltering,
   useSelectionMemory,
-  useSystemThemeFollow,
 } from '../../src/app/effects'
 import { FocusOwner } from '../../src/app/focus-owner'
 import { createAppHandlers, handleSelectItem, type LaunchGuard } from '../../src/app/handlers'
@@ -25,7 +25,8 @@ import {
 import { useAppModalState } from '../../src/app/modal-state'
 import { openOutcomeModal } from '../../src/app/modals'
 import { AppModalsLayer } from '../../src/app/modals-layer'
-import { useResolvedTheme } from '../../src/app/resolved-theme'
+import { OptionPicker } from '../../src/app/option-picker'
+import { useLiveResolvedTheme } from '../../src/app/resolved-theme'
 import { createAppRuntime } from '../../src/app/runtime'
 import { AppScreen } from '../../src/app/screen'
 import { useSessionInventory } from '../../src/app/session-inventory'
@@ -54,11 +55,13 @@ interface SessionScreenHarness {
   replaceQuery(text: string): Promise<void>
   settle(): Promise<void>
   resize(width: number, height: number): Promise<void>
+  emitPalette(colors: TerminalColors): Promise<void>
   destroy(): void
 }
 
 interface SessionFixture {
   config: Config
+  saveConfig: (config: Config) => Promise<void>
   backend: MultiplexerBackend
   items: Item[]
   projects: Item[]
@@ -84,6 +87,7 @@ interface SessionScreenData {
   homeDir?: string
   resolveTheme?: ThemeResolver
   themeFollow?: SubscribeThemeFollowOptions
+  saveConfig?: (config: Config) => Promise<void>
 }
 
 // Assigned inside act(), so control-flow narrowing cannot track a local binding.
@@ -97,21 +101,44 @@ function unsupportedFixtureAction(): never {
 
 const passthroughMeasure = async <T,>(_name: string, run: () => Promise<T>): Promise<T> => run()
 
+// The test terminal never answers a palette query; palette changes arrive only as emitted events.
+function useSilentTerminalPalette(): void {
+  const renderer = useRenderer()
+
+  renderer.getPalette = async () => {
+    throw new Error('The fixture terminal does not report its palette')
+  }
+}
+
 function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
+  useSilentTerminalPalette()
   const effects = useEffectRuntime()
   const core = useAppCoreState()
   const modal = useAppModalState()
   const dimensions = useTerminalSize()
-  const { config, backend, items, projects, filterItems, lifecycle, homeDir } = fixture
+  const [config, setConfig] = useState(fixture.config)
+  const { backend, items, projects, filterItems, lifecycle, homeDir } = fixture
 
-  const { resolvedTheme, refreshSystemTheme } = useResolvedTheme(
+  const settings = getSettingsState(
+    config,
+    modal.modalState,
+    modal.settingsSearchQuery,
+    modal.settingOptionsSearchQuery
+  )
+
+  const resolvedTheme = useLiveResolvedTheme(
     {
-      themeId: modal.themePreviewId ?? config.theme,
+      themeId:
+        OptionPicker.previewedThemeId(
+          modal.modalState,
+          settings.filteredSettingOptions,
+          modal.settingOptionsCursor
+        ) ?? config.theme,
       customThemes: config.themes,
       colorScheme: config.colorScheme,
       homeDir,
     },
-    fixture.resolveTheme
+    { resolve: fixture.resolveTheme, follow: fixture.themeFollow }
   )
 
   const theme = resolvedTheme.colors
@@ -150,13 +177,6 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     inventory,
     setMessage: core.setMessage,
   })
-
-  const settings = getSettingsState(
-    config,
-    modal.modalState,
-    modal.settingsSearchQuery,
-    modal.settingOptionsSearchQuery
-  )
 
   const {
     setAppMode,
@@ -205,8 +225,6 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     setSessionItems,
   ])
 
-  useSystemThemeFollow(config.theme, homeDir, refreshSystemTheme, fixture.themeFollow)
-
   useSelectionMemory(
     core.appMode,
     core.viewMode,
@@ -228,12 +246,21 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
 
   useLauncherQuery({ ...core, config, backend }, fixture.launcher)
 
-  const controls = createAppControls({
+  const appControls = createAppControls({
     ...core,
     ...modal,
     config,
     handleKillSession: unsupportedFixtureAction,
   })
+
+  const controls = {
+    ...appControls,
+    openSettingOptions: OptionPicker.openAtSaved(
+      config,
+      appControls.openSettingOptions,
+      modal.setSettingOptionsCursor
+    ),
+  }
 
   const launchGuard = useRef<LaunchGuard>({ active: false })
 
@@ -263,8 +290,8 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     showOutcome: report => openOutcomeModal(report, modal.setModalState),
     refreshItems,
     toggleDetails: details.toggle,
-    saveConfig: unsupportedFixtureAction,
-    setConfig: unsupportedFixtureAction,
+    saveConfig: fixture.saveConfig,
+    setConfig,
     renamedValue: '',
     launchPreview,
     rememberedSessions: () => {},
@@ -280,7 +307,6 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     ...settings,
     config,
     isOptionSetting,
-    previewThemeOption: modal.setThemePreviewId,
     handleSelect: item => handleSelectItem(item, config, backend),
     executeCommand: command =>
       executeAppCommand(command, {
@@ -296,7 +322,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
         showMessage: core.setMessage,
         toggleDetails: details.toggle,
       }),
-    handleSettingOptionSubmit: unsupportedFixtureAction,
+    handleSettingOptionSubmit: handlers.handleSettingOptionSubmit,
     handleSettingsEditorSubmit: unsupportedFixtureAction,
     handleRenameSubmit: unsupportedFixtureAction,
     handleNewSessionSubmit: handlers.handleNewSessionSubmit,
@@ -441,6 +467,7 @@ export async function renderSessionScreen(
         <SessionScreenFixture
           fixture={{
             config,
+            saveConfig: data.saveConfig ?? unsupportedFixtureAction,
             backend,
             items: sessionItems,
             projects,
@@ -510,6 +537,11 @@ export async function renderSessionScreen(
     },
     async resize(width: number, height: number): Promise<void> {
       await act(async () => setup.resize(width, height))
+    },
+    async emitPalette(colors: TerminalColors): Promise<void> {
+      await act(async () => {
+        setup.renderer.emit('palette', colors)
+      })
     },
     destroy,
   }

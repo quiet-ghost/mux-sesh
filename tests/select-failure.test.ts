@@ -39,6 +39,7 @@ function handlersFor(runner: CommandRunner, showMessage: (message: string) => vo
     openRenameModal: mock(() => {}),
     openSettingsModal: mock(() => {}),
     openSettingOptions: mock(() => {}),
+    setModalState: mock(() => {}),
     requestKillSession: mock(() => {}),
     setAppMode: mock(() => {}),
     setViewMode: mock(() => {}),

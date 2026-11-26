@@ -161,7 +161,7 @@ describe('searchable dialog viewports', () => {
   test('filtering keeps the selected theme when it still matches', async () => {
     screen = await renderSessionScreen({ width: 60, height: 18 })
     await openThemes(screen)
-    await pressDown(screen, 15)
+    await pressDown(screen, 9)
     await expectHighlighted(screen, 'gruvbox', 'Gruvbox')
 
     await screen.replaceQuery('o')
@@ -169,7 +169,7 @@ describe('searchable dialog viewports', () => {
     await expectDialogFits(screen, 'Theme', 'o', THEME_HINT)
 
     await screen.replaceQuery('nord')
-    await expectHighlighted(screen, 'gruvbox', 'Nord')
+    await expectHighlighted(screen, 'nord', 'Nord')
 
     await screen.pressKey('ARROW_DOWN')
     await expectHighlighted(screen, 'nord', 'Nord')
@@ -180,10 +180,11 @@ describe('searchable dialog viewports', () => {
     async keybindMode => {
       screen = await renderSessionScreen({ width: 60, height: 18 }, { keybindMode })
       await openThemes(screen)
-      await pressDown(screen, 30)
+      await pressDown(screen, 24)
+      await expectHighlighted(screen, 'palenight', 'Palenight')
 
       await screen.typeText('nord')
-      await expectHighlighted(screen, 'palenight', 'Nord')
+      await expectHighlighted(screen, 'nord', 'Nord')
       await expectDialogFits(screen, 'Theme', 'nord', THEME_HINT)
     }
   )
@@ -204,7 +205,7 @@ describe('searchable dialog viewports', () => {
   test('resizing keeps a low selected theme selected and visible', async () => {
     screen = await renderSessionScreen({ width: 120, height: 36 })
     await openThemes(screen)
-    await pressDown(screen, 33)
+    await pressDown(screen, 27)
     await expectHighlighted(screen, 'synthwave84', "Synthwave '84")
     await expectDialogFits(screen, 'Theme', 'Filter options', THEME_HINT)
 

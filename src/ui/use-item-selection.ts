@@ -27,7 +27,8 @@ export function useItemSelection<T>(
     const keys = items.map(getKey)
     const previous = remembered.current
 
-    if (previous && !sameKeys(previous.keys, keys)) {
+    // A list that had nothing selected (closed or empty) keeps the cursor it was opened with.
+    if (previous?.key !== undefined && !sameKeys(previous.keys, keys)) {
       const next = getSelectionIndex(keys, previous.key)
       remembered.current = { keys, key: keys[next] }
 

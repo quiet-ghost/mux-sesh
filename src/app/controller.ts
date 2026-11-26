@@ -8,12 +8,13 @@ import { useDetailsInspector } from './inspector'
 import { useAppKeyboard } from './keyboard'
 import { useAppModalState } from './modal-state'
 import { openOutcomeModal } from './modals'
+import { OptionPicker } from './option-picker'
 import { createAppRuntime } from './runtime'
 import { createAppHandlers, handleKillSessionWithFeedback, type LaunchGuard } from './handlers'
 import { useSessionInventory } from './session-inventory'
 import { useAppStartup } from './state'
 import { useEffectRuntime } from './use-effect-runtime'
-import { useResolvedTheme } from './resolved-theme'
+import { useLiveResolvedTheme } from './resolved-theme'
 import { getConfigPath, getHomeDir, saveConfig } from '../config'
 import { shouldShowDetailPanel, useTerminalSize } from '../util/terminal'
 import { AppMode } from '../types'
@@ -86,8 +87,6 @@ export function useAppController(invocationCwd: string) {
     settingOptionsCursor,
     setSettingOptionsCursor,
     settingOptionsSearchQuery,
-    themePreviewId,
-    setThemePreviewId,
     setSettingOptionsSearchQuery,
     settingEditorValue,
     setSettingEditorValue,
@@ -104,21 +103,23 @@ export function useAppController(invocationCwd: string) {
   const configPath = getConfigPath()
   const homeDir = getHomeDir()
 
-  const { resolvedTheme, refreshSystemTheme, setTerminalPalette } = useResolvedTheme({
-    themeId: themePreviewId ?? config?.theme,
-    customThemes: config?.themes,
-    colorScheme: config?.colorScheme,
-    homeDir,
-  })
-
-  const theme = resolvedTheme.colors
-
   const { filteredSettingsEntries, filteredSettingOptions } = getSettingsState(
     config,
     modalState,
     settingsSearchQuery,
     settingOptionsSearchQuery
   )
+
+  const resolvedTheme = useLiveResolvedTheme({
+    themeId:
+      OptionPicker.previewedThemeId(modalState, filteredSettingOptions, settingOptionsCursor) ??
+      config?.theme,
+    customThemes: config?.themes,
+    colorScheme: config?.colorScheme,
+    homeDir,
+  })
+
+  const theme = resolvedTheme.colors
 
   const launchGuardRef = useRef<LaunchGuard>({ active: false })
 
@@ -206,7 +207,7 @@ export function useAppController(invocationCwd: string) {
     openRenameModal,
     openCommandsModal,
     openSettingsModal,
-    openSettingOptions,
+    openSettingOptions: openSettingOptionsAtFirst,
     openSettingEditor,
     closeModal,
   } = createAppControls({
@@ -240,6 +241,12 @@ export function useAppController(invocationCwd: string) {
     setSettingOptionsCursor,
     setSettingEditorValue,
   })
+
+  const openSettingOptions = OptionPicker.openAtSaved(
+    config,
+    openSettingOptionsAtFirst,
+    setSettingOptionsCursor
+  )
 
   const {
     handleKillSessionWrapper,
@@ -278,6 +285,7 @@ export function useAppController(invocationCwd: string) {
     openRenameModal,
     openSettingsModal,
     openSettingOptions,
+    setModalState,
     requestKillSession,
     setAppMode,
     setViewMode,
@@ -337,7 +345,6 @@ export function useAppController(invocationCwd: string) {
     onDefect: requestFatalShutdown,
     isOptionSetting,
     openSettingOptions,
-    previewThemeOption: setThemePreviewId,
     openSettingEditor,
     closeModal,
     clearPendingKill,
@@ -396,9 +403,6 @@ export function useAppController(invocationCwd: string) {
     setUpdatedVersion,
     setToastMessage,
     setToastVisible,
-    homeDir,
-    onSystemThemeRefresh: refreshSystemTheme,
-    onTerminalPalette: setTerminalPalette,
   })
 
   return {

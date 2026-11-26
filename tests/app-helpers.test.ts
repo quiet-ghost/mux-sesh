@@ -17,6 +17,7 @@ import {
 import { getSessionCommandState, getSettingsState } from '../src/app/derived'
 import { createAppHandlers, getPinnedSessionsAfterToggle } from '../src/app/handlers'
 import { persistConfigUpdate, runWithErrorMessage } from '../src/app/operations'
+import { OptionPicker } from '../src/app/option-picker'
 import { createAppRuntime } from '../src/app/runtime'
 import { publishInventory, type SessionInventory } from '../src/app/session-inventory'
 import {
@@ -332,7 +333,12 @@ describe('app derived helpers', () => {
     const config = getDefaultConfig('/home/tester')
     const state = getSettingsState(
       config,
-      { type: 'setting-options', field: 'keybindMode' },
+      {
+        type: 'setting-options',
+        field: 'keybindMode',
+        openedFrom: 'settings',
+        picker: OptionPicker.browsing,
+      },
       'theme',
       'stan'
     )
@@ -601,6 +607,7 @@ describe('app handler factory', () => {
       openRenameModal: mock(() => {}),
       openSettingsModal: mock(() => {}),
       openSettingOptions: mock(() => {}),
+      setModalState: mock(() => {}),
       requestKillSession: mock(() => {}),
       setAppMode: mock(() => {}),
       setViewMode: mock(() => {}),
@@ -667,6 +674,7 @@ describe('app handler factory', () => {
       openRenameModal: mock(() => {}),
       openSettingsModal: mock(() => {}),
       openSettingOptions: mock(() => {}),
+      setModalState: mock(() => {}),
       requestKillSession: mock(() => {}),
       setAppMode: mock(() => {}),
       setViewMode: mock(() => {}),

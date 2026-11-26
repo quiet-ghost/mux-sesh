@@ -423,6 +423,15 @@ export function getSettingOptions(config: Config, field: SettingsFieldId): Setti
   return getSettingsField(field).getOptions?.(config) ?? []
 }
 
+export function getSelectedOptionIndex(config: Config, field: SettingsFieldId): number {
+  const current = getSettingsField(field).getValue(config)
+
+  return Math.max(
+    0,
+    getSettingOptions(config, field).findIndex(option => option.value === current)
+  )
+}
+
 export function isOptionSetting(field: SettingsFieldId): boolean {
   return getSettingsField(field).kind === 'options'
 }

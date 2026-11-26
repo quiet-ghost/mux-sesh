@@ -60,7 +60,6 @@ interface UseAppKeyboardOptions {
   onDefect: (cause: unknown) => void
   isOptionSetting: (field: SettingsFieldId) => boolean
   openSettingOptions: (field: SettingsFieldId) => void
-  previewThemeOption?: (value: string | null) => void
   openSettingEditor: (field: SettingsFieldId) => void
   closeModal: () => void
   clearPendingKill: () => void
@@ -167,7 +166,6 @@ function handleKey(
       setSettingOptionsCursor: options.setSettingOptionsCursor,
       closeModal: options.closeModal,
       openSettingOptions: options.openSettingOptions,
-      previewThemeOption: options.previewThemeOption,
       openSettingEditor: options.openSettingEditor,
       isOptionSetting: options.isOptionSetting,
       setModalState: options.setModalState,

@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { OperationReport } from './action-outcome'
+import { OptionPicker } from './option-picker'
 import { getSettingEditorValue, type SettingsFieldId } from '../settings'
 import type { Config, Item } from '../types'
 
@@ -7,7 +8,12 @@ export type ModalState =
   | { type: 'rename'; target: string }
   | { type: 'commands' }
   | { type: 'settings' }
-  | { type: 'setting-options'; field: SettingsFieldId; openedFrom?: 'commands' | 'settings' }
+  | {
+      type: 'setting-options'
+      field: SettingsFieldId
+      openedFrom: 'commands' | 'settings'
+      picker: OptionPicker
+    }
   | { type: 'setting-editor'; field: SettingsFieldId }
   | { type: 'outcome'; report: OperationReport }
   | null
@@ -78,7 +84,13 @@ export function openSettingOptions(
 ) {
   setSettingOptionsSearchQuery('')
   setSettingOptionsCursor(0)
-  setModalState({ type: 'setting-options', field })
+  // Escape returns to Settings when opened there; otherwise to the main screen.
+  setModalState(current => ({
+    type: 'setting-options',
+    field,
+    openedFrom: current?.type === 'settings' ? 'settings' : 'commands',
+    picker: OptionPicker.browsing,
+  }))
 }
 
 export function openSettingEditor(

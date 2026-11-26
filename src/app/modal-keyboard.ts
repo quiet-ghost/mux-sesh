@@ -18,7 +18,6 @@ interface ModalKeyboardContext {
   setSettingOptionsCursor: (cursor: (current: number) => number) => void
   closeModal: () => void
   openSettingOptions: (field: SettingsEntry['id']) => void
-  previewThemeOption?: (value: string | null) => void
   openSettingEditor: (field: SettingsEntry['id']) => void
   isOptionSetting: (field: SettingsEntry['id']) => boolean
   setModalState: (state: ModalState) => void
@@ -136,35 +135,28 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
   }
 
   if (ctx.modalState?.type === 'setting-options') {
-    const { field, openedFrom } = ctx.modalState
+    const { field, openedFrom, picker } = ctx.modalState
 
-    const previewIfTheme = (index: number) => {
-      if (field !== 'theme') return
-      ctx.previewThemeOption?.(ctx.filteredSettingOptions[index]?.value ?? null)
-    }
-
+    // The preview is the highlighted option, so leaving the picker restores the saved theme.
     if (key.name === 'escape') {
-      ctx.previewThemeOption?.(null)
-
       if (openedFrom === 'commands') {
         ctx.closeModal()
       } else {
         ctx.setModalState({ type: 'settings' })
       }
     } else if (key.name === 'down') {
-      const next = clampCursorIndex(ctx.filteredSettingOptions.length, ctx.settingOptionsCursor + 1)
-      ctx.setSettingOptionsCursor(() => next)
-      previewIfTheme(next)
+      ctx.setSettingOptionsCursor(current =>
+        clampCursorIndex(ctx.filteredSettingOptions.length, current + 1)
+      )
     } else if (key.name === 'up') {
-      const next = clampCursorIndex(ctx.filteredSettingOptions.length, ctx.settingOptionsCursor - 1)
-      ctx.setSettingOptionsCursor(() => next)
-      previewIfTheme(next)
+      ctx.setSettingOptionsCursor(current =>
+        clampCursorIndex(ctx.filteredSettingOptions.length, current - 1)
+      )
     } else if (key.name === 'return') {
       const option = ctx.filteredSettingOptions[ctx.settingOptionsCursor]
 
-      if (!option) return true
+      if (!option || picker.kind === 'saving') return true
       ctx.runAction(() => ctx.handleSettingOptionSubmit(field, option.value))
-      ctx.previewThemeOption?.(null)
     } else {
       return false
     }

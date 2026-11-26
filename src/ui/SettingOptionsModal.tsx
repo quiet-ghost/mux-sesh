@@ -1,4 +1,5 @@
 import type { TextareaRenderable } from '@opentui/core'
+import { OptionPicker } from '../app/option-picker'
 import { useTheme } from '../styles/theme'
 import type { SettingsOption } from '../settings'
 import {
@@ -19,6 +20,27 @@ import { useTextareaFocus } from './use-textarea-focus'
 const OPTIONS_FOOTER = '↑/↓ navigate  enter apply  esc back'
 const OPTIONS_PREFERRED_WIDTH = 68
 const OPTIONS_DETAIL_ROWS = 3
+const NOTICE_MARGIN_ROWS = 1
+
+function wrapNotice(text: string, width: number): string[] {
+  const lines: string[] = []
+  let line = ''
+
+  for (const word of text.split(' ')) {
+    const next = line ? `${line} ${word}` : word
+
+    if (next.length <= width || !line) {
+      line = next
+    } else {
+      lines.push(line)
+      line = word
+    }
+  }
+
+  if (line) lines.push(line)
+
+  return lines.map(wrapped => truncateDialogText(wrapped, width))
+}
 
 interface Props {
   title: string
@@ -28,6 +50,7 @@ interface Props {
   options: SettingsOption[]
   cursor: number
   searchQuery: string
+  picker: OptionPicker
   textareaRef: { current: TextareaRenderable | null }
   onContentChange: () => void
 }
@@ -40,6 +63,7 @@ export default function SettingOptionsModal({
   options,
   cursor,
   searchQuery,
+  picker,
   textareaRef,
   onContentChange,
 }: Props) {
@@ -51,8 +75,11 @@ export default function SettingOptionsModal({
   const contentWidth = getDialogContentWidth(width)
   const rowWidth = getDialogRowWidth(width)
 
+  const noticeLines = OptionPicker.notice(picker).flatMap(text => wrapNotice(text, contentWidth))
+  const noticeRows = noticeLines.length > 0 ? NOTICE_MARGIN_ROWS + noticeLines.length : 0
+
   const reservedRows =
-    getDialogChromeRows({ description, footer: OPTIONS_FOOTER }) + DIALOG_FILTER_ROWS
+    getDialogChromeRows({ description, footer: OPTIONS_FOOTER }) + DIALOG_FILTER_ROWS + noticeRows
 
   const hasDetails = options.some(option => option.description)
   const showDetail = hasDetails && fitsOptionalDialogRows(rows, reservedRows, OPTIONS_DETAIL_ROWS)
@@ -89,6 +116,20 @@ export default function SettingOptionsModal({
           ))
         )}
       </box>
+
+      {noticeLines.length > 0 && (
+        <box style={{ flexDirection: 'column', marginTop: NOTICE_MARGIN_ROWS }}>
+          {noticeLines.map((line, index) => (
+            <text
+              key={index}
+              wrapMode="none"
+              style={{ fg: picker.kind === 'save-failed' ? theme.danger : theme.textMuted }}
+            >
+              {line}
+            </text>
+          ))}
+        </box>
+      )}
 
       {showDetail && selected?.description && (
         <box style={{ flexDirection: 'column', marginTop: 1 }}>

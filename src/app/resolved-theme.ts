@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState } from 'react'
+import { useSystemThemeFollow, useTerminalPalette } from './effects'
 import {
   resolveTheme,
   SYSTEM_THEME_ID,
   type ResolvedTheme,
   type ThemeResolver,
 } from '../styles/theme'
+import type { SubscribeThemeFollowOptions } from '../styles/theme-follow'
 import type { TerminalPalette } from '../styles/terminal-palette'
 import type { ThemeColorScheme, ThemeDefinition } from '../types'
 
@@ -48,4 +50,26 @@ export function useResolvedTheme(
   }, [])
 
   return { resolvedTheme, refreshSystemTheme, setTerminalPalette }
+}
+
+export interface LiveThemeOptions {
+  resolve?: ThemeResolver
+  follow?: SubscribeThemeFollowOptions
+}
+
+// Follows desktop and terminal palette changes for the theme on screen, including a System
+// preview whose saved theme is a named one.
+export function useLiveResolvedTheme(
+  source: ThemeSource,
+  options: LiveThemeOptions = {}
+): ResolvedTheme {
+  const { resolvedTheme, refreshSystemTheme, setTerminalPalette } = useResolvedTheme(
+    source,
+    options.resolve
+  )
+
+  useSystemThemeFollow(source.themeId, source.homeDir, refreshSystemTheme, options.follow)
+  useTerminalPalette(source.themeId, setTerminalPalette)
+
+  return resolvedTheme
 }

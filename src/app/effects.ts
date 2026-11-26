@@ -321,14 +321,9 @@ interface UseAppBehaviorsOptions {
   setUpdatedVersion: Dispatch<SetStateAction<string | null>>
   setToastMessage: Dispatch<SetStateAction<string>>
   setToastVisible: Dispatch<SetStateAction<boolean>>
-  homeDir: string
-  onSystemThemeRefresh: () => void
-  onTerminalPalette: (palette: TerminalPalette | null) => void
 }
 
 export function useAppBehaviors(options: UseAppBehaviorsOptions) {
-  useSystemThemeFollow(options.config?.theme, options.homeDir, options.onSystemThemeRefresh)
-  useTerminalPalette(options.config?.theme, options.onTerminalPalette)
   useUpdateEventToasts(options.setUpdatedVersion, options.setToastMessage, options.setToastVisible)
   useNormalModeSessionReset(
     options.appMode,

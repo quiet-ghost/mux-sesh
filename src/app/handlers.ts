@@ -5,7 +5,10 @@ import {
   type OperationReport,
   type OutcomePresenter,
 } from './action-outcome'
+import type { ModalState } from './modals'
 import { persistConfigUpdate, runWithErrorMessage } from './operations'
+import { OptionPicker } from './option-picker'
+import type { Dispatch, SetStateAction } from 'react'
 import { AppMode, type Config, type Item, type ViewMode } from '../types'
 import type { SettingsFieldId } from '../settings'
 import type { MultiplexerBackend } from '../multiplexer'
@@ -351,16 +354,21 @@ export async function handleSettingsEditorSubmitWithFeedback(
   if (outcome.kind === 'completed') options.openSettingsModal()
 }
 
+// The open picker keeps its draft until the save succeeds. A failure is also reported as a
+// message, since the picker may have been closed while the save ran.
 export async function handleSettingOptionSubmitWithFeedback(
   field: SettingsFieldId,
   value: string,
-  options: SettingsHandlerOptions
+  options: SettingsHandlerOptions,
+  trackPicker: (picker: OptionPicker) => void = () => {}
 ): Promise<void> {
   if (!options.config) {
     return
   }
 
   const nextConfig = applyOptionSetting(options.config, field, value)
+  const draft = OptionPicker.draftOf(options.config, field, value)
+  trackPicker(OptionPicker.saving(draft))
 
   const outcome = await persistConfigUpdate(
     nextConfig,
@@ -370,6 +378,11 @@ export async function handleSettingOptionSubmitWithFeedback(
     options.refreshItems
   )
 
+  trackPicker(
+    outcome.kind === 'failed'
+      ? OptionPicker.saveFailed(draft, outcome.message)
+      : OptionPicker.browsing
+  )
   ActionOutcome.present(outcome, options)
 }
 
@@ -427,6 +440,7 @@ interface CreateAppHandlersOptions extends NewSessionHandlerOptions, SharedHandl
   openRenameModal: (item: Item) => void
   openSettingsModal: () => void
   openSettingOptions: (field: 'theme') => void
+  setModalState: Dispatch<SetStateAction<ModalState>>
   requestKillSession: (item: Item) => void
   setAppMode: (mode: AppMode) => void
   setViewMode: (mode: ViewMode) => void
@@ -536,17 +550,22 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
   }
 
   async function handleSettingOptionSubmit(field: SettingsFieldId, value: string) {
-    await handleSettingOptionSubmitWithFeedback(field, value, {
-      config: options.config,
-      saveConfig: options.saveConfig,
-      setConfig: options.setConfig,
-      setSettingEditorError: options.setSettingEditorError,
-      openSettingsModal: options.openSettingsModal,
-      settingEditorValue: options.settingEditorValue,
-      refreshItems: options.refreshItems,
-      showMessage: options.showMessage,
-      showOutcome: options.showOutcome,
-    })
+    await handleSettingOptionSubmitWithFeedback(
+      field,
+      value,
+      {
+        config: options.config,
+        saveConfig: options.saveConfig,
+        setConfig: options.setConfig,
+        setSettingEditorError: options.setSettingEditorError,
+        openSettingsModal: options.openSettingsModal,
+        settingEditorValue: options.settingEditorValue,
+        refreshItems: options.refreshItems,
+        showMessage: options.showMessage,
+        showOutcome: options.showOutcome,
+      },
+      picker => options.setModalState(OptionPicker.within(field, picker))
+    )
   }
 
   async function handleTogglePinnedSessionWrapper(sessionName: string) {
