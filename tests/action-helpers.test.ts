@@ -37,6 +37,7 @@ describe('action helpers', () => {
       isSession: false,
       itemKind: 'configured' as const,
     }
+
     expect(requireConfiguredItem(item)).toBe(item)
     expect(() => requireConfiguredItem(undefined)).toThrow(
       'Select a configured session to edit its target'
@@ -45,9 +46,11 @@ describe('action helpers', () => {
 
   test('uses the parent directory as root-session path for file items', async () => {
     const root = await mkdtemp(join(tmpdir(), 'mux-sesh-root-session-'))
+
     const run = mock(async () => {
       throw new Error('File root resolution must not query the backend')
     })
+
     const backend = createHerdrBackend({ runner: { run }, insideHerdr: true })
 
     try {

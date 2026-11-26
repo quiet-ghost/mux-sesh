@@ -165,6 +165,7 @@ describe('app data helpers', () => {
       unitCount: 1,
       target: { kind: 'agent', tabId: 'agents:t1', paneId: 'agents:p1' },
     })
+
     const second = workspaceToItem({
       backend: 'herdr',
       id: 'agents',
@@ -230,6 +231,7 @@ describe('app derived helpers', () => {
         unitCount: 1,
         agentStatus: 'unknown',
       })
+
       const agent = workspaceToItem({
         backend: 'herdr',
         id: 'agents',
@@ -240,6 +242,7 @@ describe('app derived helpers', () => {
         agentStatus: 'unknown',
         target: { kind: 'agent', tabId: 'agents:t1', paneId: 'agents:p1' },
       })
+
       const state = getSessionCommandState(
         appMode,
         ViewMode.Sessions,
@@ -265,6 +268,7 @@ describe('app derived helpers', () => {
       isActive: false,
       unitCount: 1,
     })
+
     const plain = workspaceToItem({
       backend: 'tmux',
       id: 'plain',
@@ -273,7 +277,9 @@ describe('app derived helpers', () => {
       isActive: false,
       unitCount: 1,
     })
+
     const items = [agent, plain]
+
     const state = getSessionCommandState(
       AppMode.Search,
       ViewMode.Sessions,
@@ -292,6 +298,7 @@ describe('app derived helpers', () => {
 
   test('builds session command state from current app view', () => {
     const config = getDefaultConfig('/home/tester')
+
     const items: Item[] = [
       { title: 'alpha', desc: '', path: '/tmp/alpha', isSession: true },
       { title: 'opencode-alpha', desc: '', path: '/tmp/opencode', isSession: true },
@@ -316,6 +323,7 @@ describe('app derived helpers', () => {
   test('command palette search for theme opens Themes', () => {
     const config = getDefaultConfig('/home/tester')
     const entries = getCommandEntries(actionContext())
+
     const state = getSessionCommandState(
       AppMode.Normal,
       ViewMode.Sessions,
@@ -333,6 +341,7 @@ describe('app derived helpers', () => {
 
   test('builds settings state for setting option filtering', () => {
     const config = getDefaultConfig('/home/tester')
+
     const state = getSettingsState(
       config,
       {
@@ -430,6 +439,7 @@ describe('app state helpers', () => {
   test('publishes a projects inventory to all affected collections', () => {
     const sink = createSink(null, '/tmp/q')
     const refreshedItems = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
+
     const refreshedProjects = [
       { title: 'proj', desc: '', path: '/tmp/p', isSession: false },
       { title: 'other', desc: '', path: '/tmp/q', isSession: false },
@@ -455,6 +465,7 @@ describe('app state helpers', () => {
 
   test('publishes a sessions inventory and remembers the fallback selection', () => {
     const sink = createSink('tmux:gone', null)
+
     const session = (title: string) =>
       workspaceToItem({
         backend: 'tmux',
@@ -464,6 +475,7 @@ describe('app state helpers', () => {
         isActive: false,
         unitCount: 1,
       })
+
     const delta = session('delta')
     const sessions = [session('alpha'), session('beta'), delta]
 
@@ -495,6 +507,7 @@ describe('app controls', () => {
       backend: 'tmux',
       sessionId: 'alpha',
     }
+
     const options = {
       config: getDefaultConfig('/home/tester'),
       sessionItems: [item],
@@ -547,7 +560,9 @@ describe('app controls', () => {
       sessionId: 'w1',
       target: { kind: 'agent', tabId: 'w1:t1', paneId: 'w1:p1' },
     }
+
     const setModalState = mock(() => {})
+
     const controls = createAppControls({
       config: getDefaultConfig('/home/tester'),
       sessionItems: [pane],
@@ -574,6 +589,7 @@ describe('app controls', () => {
 
   test('opening rename seeds modal state', () => {
     const item: Item = { title: 'beta', desc: '', path: '/tmp/beta', isSession: true }
+
     const options = {
       config: getDefaultConfig('/home/tester'),
       sessionItems: [],
@@ -605,6 +621,7 @@ describe('app controls', () => {
 describe('app runtime helpers', () => {
   test('shows messages through shared setter timing helper', () => {
     const setMessage = mock(() => {})
+
     const inventory: SessionInventory = {
       refresh: mock(async () => ({ kind: 'superseded' as const })),
       observe: mock(() => {}),
@@ -613,6 +630,7 @@ describe('app runtime helpers', () => {
       subscribe: () => () => {},
       dispose: mock(() => {}),
     }
+
     const runtime = createAppRuntime({
       config: getDefaultConfig('/home/tester'),
       backend: null,
@@ -693,10 +711,13 @@ describe('app handler factory', () => {
     const closeModal = mock(() => {})
     const refreshItems = mock(async () => {})
     const showMessage = mock(() => {})
+
     const run = mock(async () => {
       throw new Error('An unchanged name must not trigger a backend command')
     })
+
     const backend = createHerdrBackend({ runner: { run }, insideHerdr: true })
+
     const renameTarget = workspaceToItem({
       backend: 'herdr',
       id: 'w1',

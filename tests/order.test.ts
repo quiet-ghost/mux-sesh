@@ -144,6 +144,7 @@ describe('item ordering', () => {
 describe('item icons', () => {
   test('labels the agents section header', () => {
     const theme = resolveTheme('catppuccin', {}, 'dark').colors
+
     const icons = {
       tmux: 'T',
       herdr: 'H',
@@ -151,6 +152,7 @@ describe('item icons', () => {
       project: 'P',
       opencode: 'A',
     }
+
     const presentation = getSessionSectionPresentation(theme, 'agents', icons)
     const header = formatSectionHeader(theme, 'agents', icons)
 
@@ -160,6 +162,7 @@ describe('item icons', () => {
 
   test('uses config icons for linked project rows', () => {
     const legacyTheme = resolveTheme('catppuccin', {}, 'dark').colors
+
     const icon = getItemIconPresentation(
       legacyTheme,
       {
