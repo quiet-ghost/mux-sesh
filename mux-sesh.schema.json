@@ -6,297 +6,321 @@
   "properties": {
     "backend": {
       "type": "string",
-      "enum": ["tmux", "herdr"]
+      "enum": ["tmux", "herdr"],
+      "description": "\"tmux\" or \"herdr\""
     },
     "project_paths": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "description": "a list of non-empty strings",
+      "items": { "type": "string", "minLength": 1, "description": "a non-empty string" }
     },
     "projectPaths": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "description": "a list of non-empty strings",
+      "items": { "type": "string", "minLength": 1, "description": "a non-empty string" }
     },
-    "repos_path": {
-      "type": "string"
-    },
-    "reposPath": {
-      "type": "string"
-    },
-    "editor": {
-      "type": "string"
-    },
-    "editor_cmd": {
-      "type": "string"
-    },
-    "editorCmd": {
-      "type": "string"
-    },
+    "repos_path": { "type": "string", "description": "text" },
+    "reposPath": { "type": "string", "description": "text" },
+    "editor": { "type": "string", "description": "text" },
+    "editor_cmd": { "type": "string", "description": "text" },
+    "editorCmd": { "type": "string", "description": "text" },
     "keybind_mode": {
       "type": "string",
-      "enum": ["vim", "standard"]
+      "enum": ["vim", "standard"],
+      "description": "\"vim\" or \"standard\""
     },
     "keybindMode": {
       "type": "string",
-      "enum": ["vim", "standard"]
+      "enum": ["vim", "standard"],
+      "description": "\"vim\" or \"standard\""
     },
-    "prefix_key": {
-      "type": "string"
+    "prefix_key": { "type": "string", "description": "text" },
+    "prefixKey": { "type": "string", "description": "text" },
+    "zoxide_mode": {
+      "type": "string",
+      "enum": ["off", "rank", "merge"],
+      "description": "\"off\" or \"rank\" or \"merge\""
     },
-    "prefixKey": {
-      "type": "string"
+    "zoxideMode": {
+      "type": "string",
+      "enum": ["off", "rank", "merge"],
+      "description": "\"off\" or \"rank\" or \"merge\""
     },
-    "theme": {
-      "type": "string"
+    "sort_order": {
+      "type": "string",
+      "enum": ["live-first", "configured-first", "zoxide-first", "alphabetical"],
+      "description": "\"live-first\" or \"configured-first\" or \"zoxide-first\" or \"alphabetical\""
     },
+    "sortOrder": {
+      "type": "string",
+      "enum": ["live-first", "configured-first", "zoxide-first", "alphabetical"],
+      "description": "\"live-first\" or \"configured-first\" or \"zoxide-first\" or \"alphabetical\""
+    },
+    "theme": { "type": "string", "description": "text" },
     "color_scheme": {
       "type": "string",
-      "enum": ["light", "dark", "system"]
+      "enum": ["light", "dark", "system"],
+      "description": "\"light\" or \"dark\" or \"system\""
     },
     "colorScheme": {
       "type": "string",
-      "enum": ["light", "dark", "system"]
+      "enum": ["light", "dark", "system"],
+      "description": "\"light\" or \"dark\" or \"system\""
     },
     "themes": {
       "type": "object",
       "additionalProperties": {
-        "$ref": "#/definitions/themeDefinition"
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "text" },
+          "light": {
+            "type": "object",
+            "properties": {
+              "palette": {
+                "type": "object",
+                "properties": {
+                  "neutral": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "ink": { "type": "string", "minLength": 1, "description": "a non-empty string" },
+                  "primary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "success": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "warning": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "error": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "info": { "type": "string", "minLength": 1, "description": "a non-empty string" },
+                  "accent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "interactive": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "diffAdd": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "diffDelete": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  }
+                },
+                "required": ["neutral", "ink", "primary", "success", "warning", "error", "info"],
+                "additionalProperties": true,
+                "description": "a palette object"
+              },
+              "overrides": {
+                "type": "object",
+                "additionalProperties": { "type": "string", "description": "text" }
+              }
+            },
+            "required": ["palette"],
+            "additionalProperties": true,
+            "description": "a theme variant object"
+          },
+          "dark": {
+            "type": "object",
+            "properties": {
+              "palette": {
+                "type": "object",
+                "properties": {
+                  "neutral": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "ink": { "type": "string", "minLength": 1, "description": "a non-empty string" },
+                  "primary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "success": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "warning": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "error": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "info": { "type": "string", "minLength": 1, "description": "a non-empty string" },
+                  "accent": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "interactive": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "diffAdd": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  },
+                  "diffDelete": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "a non-empty string"
+                  }
+                },
+                "required": ["neutral", "ink", "primary", "success", "warning", "error", "info"],
+                "additionalProperties": true,
+                "description": "a palette object"
+              },
+              "overrides": {
+                "type": "object",
+                "additionalProperties": { "type": "string", "description": "text" }
+              }
+            },
+            "required": ["palette"],
+            "additionalProperties": true,
+            "description": "a theme variant object"
+          }
+        },
+        "required": ["light", "dark"],
+        "additionalProperties": true,
+        "description": "a theme object with light and dark variants"
       }
     },
-    "zoxide_mode": {
-      "type": "string",
-      "enum": ["off", "rank", "merge"]
-    },
-    "zoxideMode": {
-      "type": "string",
-      "enum": ["off", "rank", "merge"]
-    },
-    "sort_order": {
-      "type": "string",
-      "enum": ["live-first", "configured-first", "zoxide-first", "alphabetical"]
-    },
-    "sortOrder": {
-      "type": "string",
-      "enum": ["live-first", "configured-first", "zoxide-first", "alphabetical"]
-    },
-    "auto_update": {
-      "type": "boolean"
-    },
-    "autoUpdate": {
-      "type": "boolean"
-    },
+    "auto_update": { "type": "boolean", "description": "true or false" },
+    "autoUpdate": { "type": "boolean", "description": "true or false" },
     "dir_length": {
       "type": "integer",
-      "minimum": 1
+      "maximum": 9007199254740991,
+      "exclusiveMinimum": 0,
+      "description": "a whole number of at least 1"
     },
     "dirLength": {
       "type": "integer",
-      "minimum": 1
+      "maximum": 9007199254740991,
+      "exclusiveMinimum": 0,
+      "description": "a whole number of at least 1"
     },
     "hidden_sessions": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "description": "a list of non-empty strings",
+      "items": { "type": "string", "minLength": 1, "description": "a non-empty string" }
     },
     "hiddenSessions": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "description": "a list of non-empty strings",
+      "items": { "type": "string", "minLength": 1, "description": "a non-empty string" }
     },
     "pinned_sessions": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "description": "a list of non-empty strings",
+      "items": { "type": "string", "minLength": 1, "description": "a non-empty string" }
     },
     "pinnedSessions": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "description": "a list of non-empty strings",
+      "items": { "type": "string", "minLength": 1, "description": "a non-empty string" }
     },
     "icons": {
-      "$ref": "#/definitions/icons"
+      "type": "object",
+      "properties": {
+        "tmux": { "type": "string", "description": "text" },
+        "herdr": { "type": "string", "description": "text" },
+        "configured": { "type": "string", "description": "text" },
+        "config": { "type": "string", "description": "text" },
+        "project": { "type": "string", "description": "text" },
+        "opencode": { "type": "string", "description": "text" }
+      },
+      "additionalProperties": true,
+      "description": "an icons object"
     },
     "default_session": {
-      "$ref": "#/definitions/sessionDefaults"
+      "type": "object",
+      "properties": {
+        "startup_command": { "type": "string", "description": "text" },
+        "startupCommand": { "type": "string", "description": "text" },
+        "preview_command": { "type": "string", "description": "text" },
+        "previewCommand": { "type": "string", "description": "text" }
+      },
+      "additionalProperties": true,
+      "description": "a default session object"
     },
     "defaultSession": {
-      "$ref": "#/definitions/sessionDefaults"
+      "type": "object",
+      "properties": {
+        "startup_command": { "type": "string", "description": "text" },
+        "startupCommand": { "type": "string", "description": "text" },
+        "preview_command": { "type": "string", "description": "text" },
+        "previewCommand": { "type": "string", "description": "text" }
+      },
+      "additionalProperties": true,
+      "description": "a default session object"
     },
     "projects": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/projectProfile"
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "description": "a non-empty string" },
+          "session_name": { "type": "string", "description": "text" },
+          "sessionName": { "type": "string", "description": "text" },
+          "startup_command": { "type": "string", "description": "text" },
+          "startupCommand": { "type": "string", "description": "text" },
+          "preview_command": { "type": "string", "description": "text" },
+          "previewCommand": { "type": "string", "description": "text" },
+          "listed": { "type": "boolean", "description": "true or false" },
+          "icon": { "type": "string", "description": "text" }
+        },
+        "required": ["path"],
+        "additionalProperties": true,
+        "description": "a project object"
       }
     },
     "wildcards": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/projectWildcard"
+        "type": "object",
+        "properties": {
+          "pattern": { "type": "string", "minLength": 1, "description": "a non-empty string" },
+          "session_name": { "type": "string", "description": "text" },
+          "sessionName": { "type": "string", "description": "text" },
+          "startup_command": { "type": "string", "description": "text" },
+          "startupCommand": { "type": "string", "description": "text" },
+          "preview_command": { "type": "string", "description": "text" },
+          "previewCommand": { "type": "string", "description": "text" }
+        },
+        "required": ["pattern"],
+        "additionalProperties": true,
+        "description": "a wildcard object"
       }
     }
   },
-  "additionalProperties": false,
-  "definitions": {
-    "sessionDefaults": {
-      "type": "object",
-      "properties": {
-        "startup_command": {
-          "type": "string"
-        },
-        "startupCommand": {
-          "type": "string"
-        },
-        "preview_command": {
-          "type": "string"
-        },
-        "previewCommand": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "icons": {
-      "type": "object",
-      "properties": {
-        "tmux": {
-          "type": "string"
-        },
-        "herdr": {
-          "type": "string"
-        },
-        "configured": {
-          "type": "string"
-        },
-        "config": {
-          "type": "string"
-        },
-        "project": {
-          "type": "string"
-        },
-        "opencode": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "themeDefinition": {
-      "type": "object",
-      "required": ["light", "dark"],
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "light": {
-          "$ref": "#/definitions/themeVariant"
-        },
-        "dark": {
-          "$ref": "#/definitions/themeVariant"
-        }
-      },
-      "additionalProperties": false
-    },
-    "themeVariant": {
-      "type": "object",
-      "required": ["palette"],
-      "properties": {
-        "palette": {
-          "$ref": "#/definitions/themePalette"
-        },
-        "overrides": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "themePalette": {
-      "type": "object",
-      "required": ["neutral", "ink", "primary", "success", "warning", "error", "info"],
-      "properties": {
-        "neutral": { "type": "string" },
-        "ink": { "type": "string" },
-        "primary": { "type": "string" },
-        "success": { "type": "string" },
-        "warning": { "type": "string" },
-        "error": { "type": "string" },
-        "info": { "type": "string" },
-        "accent": { "type": "string" },
-        "interactive": { "type": "string" },
-        "diffAdd": { "type": "string" },
-        "diffDelete": { "type": "string" }
-      },
-      "additionalProperties": false
-    },
-    "projectProfile": {
-      "type": "object",
-      "required": ["path"],
-      "properties": {
-        "path": {
-          "type": "string"
-        },
-        "session_name": {
-          "type": "string"
-        },
-        "sessionName": {
-          "type": "string"
-        },
-        "startup_command": {
-          "type": "string"
-        },
-        "startupCommand": {
-          "type": "string"
-        },
-        "preview_command": {
-          "type": "string"
-        },
-        "previewCommand": {
-          "type": "string"
-        },
-        "listed": {
-          "type": "boolean"
-        },
-        "icon": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "projectWildcard": {
-      "type": "object",
-      "required": ["pattern"],
-      "properties": {
-        "pattern": {
-          "type": "string"
-        },
-        "session_name": {
-          "type": "string"
-        },
-        "sessionName": {
-          "type": "string"
-        },
-        "startup_command": {
-          "type": "string"
-        },
-        "startupCommand": {
-          "type": "string"
-        },
-        "preview_command": {
-          "type": "string"
-        },
-        "previewCommand": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    }
-  }
+  "additionalProperties": true,
+  "description": "a JSON object"
 }

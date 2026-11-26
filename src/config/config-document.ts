@@ -82,7 +82,7 @@ const SessionDefaults = Schema.Struct({
   ...aliased('preview_command', 'previewCommand', Text),
 }).annotate({ description: 'a default session object' })
 
-const ConfigDocument = Schema.Struct({
+export const ConfigDocument = Schema.Struct({
   backend: Schema.optionalKey(oneOf(['tmux', 'herdr'])),
   ...aliased('project_paths', 'projectPaths', TextList),
   ...aliased('repos_path', 'reposPath', Text),

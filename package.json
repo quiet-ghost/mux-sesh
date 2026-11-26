@@ -24,6 +24,7 @@
     "format:check": "prettier --check .",
     "test": "bun test",
     "bench:picker": "bun tests/perf/run-baseline.ts",
+    "schema": "bun tools/schema/generate.ts",
     "prepublishOnly": "bun run typecheck"
   },
   "keywords": [
