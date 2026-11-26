@@ -11,6 +11,7 @@ interface Props {
   onContentChange: () => void
   focused: boolean
   prefixActive?: boolean
+  placeholder?: string
 }
 
 export default function SearchInput({
@@ -20,13 +21,11 @@ export default function SearchInput({
   onContentChange,
   focused,
   prefixActive = false,
+  placeholder = appMode === AppMode.NewSession
+    ? 'Type a project name, path, or GitHub URL...'
+    : 'Type to search...',
 }: Props) {
   const theme = useTheme()
-
-  const placeholder =
-    appMode === AppMode.NewSession
-      ? 'Type a project name, path, or GitHub URL...'
-      : 'Type to search...'
 
   // A layout effect runs in the same commit, before newer typing can make the query stale.
   useLayoutEffect(() => {

@@ -2,7 +2,7 @@ import { TextareaRenderable, type TerminalColors } from '@opentui/core'
 import type { TestRendererOptions, TestRendererSetup } from '@opentui/core/testing'
 import { useRenderer } from '@opentui/react'
 import { testRender } from '@opentui/react/test-utils'
-import { act, useEffect, useRef, useState } from 'react'
+import { act, useCallback, useEffect, useRef, useState } from 'react'
 import { executeCommand as executeAppCommand } from '../../src/app/commands'
 import { createAppControls } from '../../src/app/controls'
 import { useAppCoreState } from '../../src/app/core-state'
@@ -23,6 +23,7 @@ import {
   type LauncherQueryServices,
 } from '../../src/app/launcher-query'
 import { useAppModalState } from '../../src/app/modal-state'
+import { getNewSessionStepControls, useNewSessionSteps } from '../../src/app/new-session-step'
 import { openOutcomeModal } from '../../src/app/modals'
 import { AppModalsLayer } from '../../src/app/modals-layer'
 import { OptionPicker } from '../../src/app/option-picker'
@@ -34,6 +35,7 @@ import { useEffectRuntime } from '../../src/app/use-effect-runtime'
 import { getDefaultConfig } from '../../src/config'
 import type { LiveWorkspace, MultiplexerBackend } from '../../src/multiplexer'
 import { filterAndSortItems } from '../../src/search'
+import type { FileSearchOutcome } from '../../src/search/fff'
 import { getSettingEditorTitle, isOptionSetting } from '../../src/settings'
 import { resolveTheme, ThemeProvider, type ThemeResolver } from '../../src/styles/theme'
 import type { SubscribeThemeFollowOptions } from '../../src/styles/theme-follow'
@@ -74,6 +76,7 @@ interface SessionFixture {
   resolveTheme: ThemeResolver
   themeFollow?: SubscribeThemeFollowOptions
   launcher: LauncherQueryServices
+  invocationCwd: string
   handle: FixtureHandle
 }
 
@@ -89,6 +92,11 @@ interface SessionScreenData {
   projects?: Item[]
   // Candidate discovery for New; defaults to resolving the fixture projects at once.
   loadCandidates?: () => Promise<Item[]>
+  // Native file search for New; defaults to finding nothing.
+  fileSearch?: (query: string) => Promise<FileSearchOutcome>
+  fileSearchDebounceMs?: number
+  // The directory mux-sesh was started in; defaults to '/fixture'.
+  invocationCwd?: string
   config?: Partial<Config>
   filterItems?: typeof filterAndSortItems
   homeDir?: string
@@ -255,7 +263,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     filterItems
   )
 
-  useLauncherQuery({ ...core, config, backend }, fixture.launcher)
+  const launcherFiles = useLauncherQuery({ ...core, config, backend }, fixture.launcher)
 
   const appControls = createAppControls({
     ...core,
@@ -275,13 +283,29 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
 
   const launchGuard = useRef<LaunchGuard>({ active: false })
 
+  const onDefect = useCallback(
+    (cause: unknown) => {
+      fixture.defects.push(cause)
+    },
+    [fixture.defects]
+  )
+
+  const newSession = useNewSessionSteps({
+    active: core.appMode === AppMode.NewSession,
+    config,
+    searchQuery: core.searchQuery,
+    setSearchQuery: core.setSearchQuery,
+    selected: derived.selectedPrimaryItem,
+    files: launcherFiles,
+    onDefect,
+  })
+
   const launchPreview = useLaunchPreview({
     active: core.appMode === AppMode.NewSession,
-    searchQuery: core.searchQuery,
-    selected: derived.selectedPrimaryItem,
+    request: newSession.request,
     config,
     backend: backend.kind,
-    invocationCwd: '/fixture',
+    invocationCwd: fixture.invocationCwd,
     liveSessions: core.sessionItems,
     onDefect: cause => {
       fixture.defects.push(cause)
@@ -293,7 +317,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     ...modal,
     ...derived,
     ...controls,
-    invocationCwd: '/fixture',
+    invocationCwd: fixture.invocationCwd,
     launchGuard: launchGuard.current,
     backend,
     config,
@@ -337,7 +361,12 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     handleSettingOptionSubmit: handlers.handleSettingOptionSubmit,
     handleSettingsEditorSubmit: unsupportedFixtureAction,
     handleRenameSubmit: unsupportedFixtureAction,
-    handleNewSessionSubmit: handlers.handleNewSessionSubmit,
+    newSession: getNewSessionStepControls(
+      newSession,
+      launchPreview,
+      handlers.handleNewSessionSubmit,
+      showMessage
+    ),
     handleOutcomeRetry: handlers.handleOutcomeRetry,
     confirmCloseReview: handlers.confirmCloseReview,
     onDefect: cause => {
@@ -363,6 +392,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
         backend={backend}
         details={details}
         launchPreview={launchPreview}
+        newSession={newSession}
         projectCount={projects.length}
       />
       <AppModalsLayer
@@ -456,15 +486,19 @@ export async function renderSessionScreen(
   const projects = data.projects ?? []
 
   // Native search, warm-up, and candidate discovery stay offline; candidates are the fixture rows.
+  const fileSearch =
+    data.fileSearch ??
+    (async (): Promise<FileSearchOutcome> => ({ kind: 'found', items: [], nativeMs: 0 }))
+
   const launcher: LauncherQueryServices = {
-    debounceMs: LAUNCHER_QUERY_SERVICES.debounceMs,
+    debounceMs: data.fileSearchDebounceMs ?? LAUNCHER_QUERY_SERVICES.debounceMs,
     onDefect: cause => {
       throw cause
     },
     filterItems: data.filterItems ?? filterAndSortItems,
     openFileSearch: () => ({
       warm: async () => {},
-      search: async () => ({ kind: 'found', items: [], nativeMs: 0 }),
+      search: async query => fileSearch(query),
       dispose: () => {},
     }),
     onDiscardedSearch: () => {},
@@ -493,6 +527,7 @@ export async function renderSessionScreen(
             themeFollow: data.themeFollow,
             launcher,
             handle,
+            invocationCwd: data.invocationCwd ?? '/fixture',
           }}
         />,
         { ...options, consoleMode: 'disabled', exitOnCtrlC: false, kittyKeyboard: true }

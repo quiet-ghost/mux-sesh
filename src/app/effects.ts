@@ -8,7 +8,6 @@ import { useHerdrAgentPolling } from './herdr-refresh'
 import type { SessionInventory } from './session-inventory'
 import { clearMatchIndices, filterAndSortItems } from '../search'
 import { getSessionSelectionIndex } from './data'
-import { useLauncherQuery } from './launcher-query'
 import { SYSTEM_THEME_ID } from '../styles/theme'
 import { subscribeThemeFollow, type SubscribeThemeFollowOptions } from '../styles/theme-follow'
 import { terminalColorsToPalette, type TerminalPalette } from '../styles/terminal-palette'
@@ -364,7 +363,6 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.setItems,
     options.setCursor
   )
-  useLauncherQuery(options)
   useHerdrAgentPolling(
     options.inventory,
     options.appMode,

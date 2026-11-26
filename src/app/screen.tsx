@@ -3,13 +3,17 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import {
   getAppTitle,
   getEmptyStateMessage,
+  getFileStepEmptyMessage,
   getListStyle,
+  getNewSessionPlaceholder,
+  getNewSessionStepTitle,
   getScreenLayout,
   getStatusLabel,
 } from './view'
 import { syncTextareaValue } from './textarea'
 import { getActionFooter, getActionKeyHint, type ActionContext } from './action-catalog'
 import type { FocusOwner } from './focus-owner'
+import { getNewSessionEnterAction, type NewSessionSteps } from './new-session-step'
 import type { DetailsInspectorState } from './inspector'
 import { AppMode, ViewMode, type Config, type Item, type ThemeColors } from '../types'
 import { isGitHubURL } from '../util/github'
@@ -22,7 +26,7 @@ import { truncateDialogText } from '../ui/dialog-layout'
 import { getListRowWidth, getSessionViewport } from '../ui/session-viewport'
 import SessionDetailsPanel from '../ui/SessionDetailsPanel'
 import NewSessionSummary from '../ui/NewSessionSummary'
-import { getNewSessionAction, getSelectedRowAction } from '../ui/launch-preview'
+import { getSelectedRowAction } from '../ui/launch-preview'
 import Toast from '../ui/Toast'
 import VersionBadge, { formatVersionBadge } from '../ui/VersionBadge'
 import { CURRENT_VERSION } from '../update/version'
@@ -46,6 +50,7 @@ interface Props {
   agentCursor: number
   searchQuery: string
   launchPreview: LaunchPreview
+  newSession: NewSessionSteps
   prefixActive: boolean
   pendingKillSessionName: string | null
   projectCount: number
@@ -58,6 +63,15 @@ interface Props {
   toastMessage: string
   toastVisible: boolean
   updatedVersion: string | null
+}
+
+function syncNewSessionField(
+  textareaRef: MutableRefObject<TextareaRenderable | null>,
+  setField: (text: string) => void
+): void {
+  const text = textareaRef.current?.plainText
+
+  if (text !== undefined) setField(text)
 }
 
 export function AppScreen({
@@ -77,6 +91,7 @@ export function AppScreen({
   agentCursor,
   searchQuery,
   launchPreview,
+  newSession,
   prefixActive,
   pendingKillSessionName,
   projectCount,
@@ -90,7 +105,15 @@ export function AppScreen({
   toastVisible,
   updatedVersion,
 }: Props) {
-  const title = getAppTitle(appMode, viewMode, backend?.kind)
+  const newSessionActive = appMode === AppMode.NewSession
+  const step = newSessionActive ? newSession.step.kind : 'browse'
+  const stepTitle = getNewSessionStepTitle(step)
+  const baseTitle = getAppTitle(appMode, viewMode, backend?.kind)
+  const title = stepTitle ? `${baseTitle} · ${stepTitle}` : baseTitle
+  const fileStep = newSession.step.kind === 'file' && newSessionActive ? newSession.step : undefined
+  const listItems = fileStep ? [...newSession.fileItems] : items
+  const listCursor = fileStep ? fileStep.cursor : cursor
+  const listQuery = fileStep ? fileStep.query : searchQuery
   const totalSessions = sessionItems.filter(item => item.isSession).length
   const activeSessions = items.filter(item => item.isSession && item.isAttached).length
 
@@ -100,7 +123,12 @@ export function AppScreen({
     process.env.MUX_SESH_DEV === '1'
   )
 
-  const footerHint = getActionFooter(actionContext, getNewSessionAction(launchPreview))
+  const footerHint = getActionFooter(
+    actionContext,
+    getNewSessionEnterAction(step, launchPreview),
+    newSessionActive ? newSession.keys : []
+  )
+
   const showDetailPanel = shouldShowDetailPanel(columns, appMode === AppMode.NewSession)
 
   const layout = getScreenLayout({
@@ -171,11 +199,16 @@ export function AppScreen({
               <SearchInput
                 key={appMode}
                 appMode={appMode}
-                searchQuery={searchQuery}
+                searchQuery={newSessionActive ? newSession.field : searchQuery}
                 textareaRef={textareaRef}
                 focused={focusOwner.kind === 'search-field'}
                 prefixActive={prefixActive}
-                onContentChange={() => syncTextareaValue(textareaRef, setSearchQuery)}
+                placeholder={newSessionActive ? getNewSessionPlaceholder(step) : undefined}
+                onContentChange={() =>
+                  newSessionActive
+                    ? syncNewSessionField(textareaRef, newSession.setField)
+                    : syncTextareaValue(textareaRef, setSearchQuery)
+                }
               />
             )}
 
@@ -191,9 +224,11 @@ export function AppScreen({
                 overflow: 'hidden',
               }}
             >
-              {items.length === 0 ? (
+              {listItems.length === 0 ? (
                 <text style={{ fg: theme.inactive }}>
-                  {getEmptyStateMessage(appMode, searchQuery, isGitHubURL(searchQuery))}
+                  {fileStep
+                    ? getFileStepEmptyMessage(fileStep.query)
+                    : getEmptyStateMessage(appMode, searchQuery, isGitHubURL(searchQuery))}
                 </text>
               ) : showSections ? (
                 <>
@@ -223,12 +258,12 @@ export function AppScreen({
                 </>
               ) : (
                 <ItemList
-                  items={items}
-                  cursor={cursor}
+                  items={listItems}
+                  cursor={listCursor}
                   appMode={appMode}
                   maxItems={layout.sectionRows}
                   width={rowWidth}
-                  searchQuery={searchQuery}
+                  searchQuery={listQuery}
                   selectedAction={getSelectedRowAction(launchPreview)}
                   icons={config?.icons}
                   pendingKillSessionName={pendingKillSessionName}

@@ -2,6 +2,7 @@ import { isAgentSessionItem } from '../agents/session-name'
 import { getPanelStyle } from '../styles/theme'
 import { getWrappedRowCount } from '../ui/session-viewport'
 import { AppMode, ViewMode, type BackendKind, type ThemeColors } from '../types'
+import type { NewSessionStepKind } from './new-session-step'
 
 export function splitVisibleSessions<T extends { isSession: boolean; title: string }>(
   items: readonly T[]
@@ -137,4 +138,39 @@ export function getEmptyStateMessage(
   }
 
   return 'No items found'
+}
+
+// Names the New step in the header so the shared text field never looks like the project query.
+export function getNewSessionStepTitle(step: NewSessionStepKind): string | undefined {
+  switch (step) {
+    case 'browse':
+      return undefined
+    case 'edit-name':
+      return 'Name'
+    case 'edit-startup':
+      return 'Startup command'
+    case 'named-here':
+      return 'Named here'
+    case 'file':
+      return 'Open file'
+  }
+}
+
+export function getNewSessionPlaceholder(step: NewSessionStepKind): string {
+  switch (step) {
+    case 'browse':
+      return 'Type a project name, path, or GitHub URL...'
+    case 'edit-name':
+      return 'Session name...'
+    case 'edit-startup':
+      return 'Startup command; leave empty to run nothing...'
+    case 'named-here':
+      return 'Name for a new session in the current directory...'
+    case 'file':
+      return 'Type a file name or file path...'
+  }
+}
+
+export function getFileStepEmptyMessage(query: string): string {
+  return query.trim() ? 'No matching files' : 'Type to search files'
 }

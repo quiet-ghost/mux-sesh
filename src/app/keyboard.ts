@@ -4,6 +4,7 @@ import { ActionOwner } from './action-owner'
 import type { OperationReport } from './action-outcome'
 import { FocusOwner } from './focus-owner'
 import { handleModalKeyboard } from './modal-keyboard'
+import type { NewSessionStepControls } from './new-session-step'
 import type { ModalState } from './modals'
 import type { CleanupPlan } from '../sessions/cleanup-plan'
 import {
@@ -55,7 +56,7 @@ interface UseAppKeyboardOptions {
   handleSettingOptionSubmit: (field: SettingsFieldId, value: string) => Promise<void>
   handleSettingsEditorSubmit: (field: SettingsFieldId) => Promise<void>
   handleRenameSubmit: () => Promise<void>
-  handleNewSessionSubmit: () => Promise<void>
+  newSession: NewSessionStepControls
   handleOutcomeRetry: (report: OperationReport) => Promise<void>
   confirmCloseReview: (plan: CleanupPlan) => Promise<void>
   // Crash recovery for defects raised by key handlers; production passes requestFatalShutdown.
@@ -194,12 +195,7 @@ function handleKey(
   } else if (options.appMode === AppMode.Search) {
     consumed = handleSearchMode(key, keyboardContext, keybindMode)
   } else if (options.appMode === AppMode.NewSession) {
-    if (key.name === 'return') {
-      owner.run(options.handleNewSessionSubmit)
-      consumed = true
-    } else {
-      consumed = handleNewSessionMode(key, keyboardContext, keybindMode)
-    }
+    consumed = handleNewSessionMode(key, keyboardContext, keybindMode, options.newSession)
   } else if (options.appMode === AppMode.AgentsManage) {
     handleAgentsManageMode(key, keyboardContext, keybindMode)
   }

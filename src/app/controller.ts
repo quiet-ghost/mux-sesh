@@ -22,6 +22,8 @@ import { mark, measure } from '../util/perf'
 import { requestFatalShutdown } from '../util/shutdown'
 import { getSettingEditorTitle, isOptionSetting } from '../settings'
 import { useLaunchPreview } from '../ui/launch-preview'
+import { useLauncherQuery } from './launcher-query'
+import { getNewSessionStepControls, useNewSessionSteps } from './new-session-step'
 
 export function useAppController(invocationCwd: string) {
   const effects = useEffectRuntime()
@@ -182,10 +184,35 @@ export function useAppController(invocationCwd: string) {
     backend,
   })
 
+  const launcherFiles = useLauncherQuery({
+    appMode,
+    config,
+    backend,
+    searchQuery,
+    allItems,
+    sessionItems,
+    items,
+    cursor,
+    setAllItems,
+    setItems,
+    setCursor,
+    setSessionCandidateItems,
+    setMessage,
+  })
+
+  const newSession = useNewSessionSteps({
+    active: appMode === AppMode.NewSession,
+    config,
+    searchQuery,
+    setSearchQuery,
+    selected: selectedPrimaryItem,
+    files: launcherFiles,
+    onDefect: requestFatalShutdown,
+  })
+
   const launchPreview = useLaunchPreview({
     active: appMode === AppMode.NewSession,
-    searchQuery,
-    selected: selectedPrimaryItem,
+    request: newSession.request,
     config,
     backend: backend?.kind,
     invocationCwd,
@@ -327,7 +354,12 @@ export function useAppController(invocationCwd: string) {
     handleSettingOptionSubmit,
     handleSettingsEditorSubmit,
     handleRenameSubmit,
-    handleNewSessionSubmit,
+    newSession: getNewSessionStepControls(
+      newSession,
+      launchPreview,
+      handleNewSessionSubmit,
+      showMessage
+    ),
     handleOutcomeRetry,
     confirmCloseReview,
     onDefect: requestFatalShutdown,
@@ -418,6 +450,7 @@ export function useAppController(invocationCwd: string) {
       agentCursor,
       searchQuery,
       launchPreview,
+      newSession,
       prefixActive,
       pendingKillSessionName,
       projectCount: projectSourceItems.length,

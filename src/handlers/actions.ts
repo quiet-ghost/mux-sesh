@@ -355,6 +355,31 @@ export async function handleNewSessionSubmit(
         kind: 'failed',
         message: `Nothing to open: no project matches '${preview.query}', and nothing was created. Type a path, or clear the query to pick a project.`,
       }
+    case 'name-required':
+      return {
+        kind: 'failed',
+        message: `Nothing was created: type a name for the new session in ${preview.directory} first, or press esc to go back.`,
+      }
+    case 'file-prompt':
+      return {
+        kind: 'failed',
+        message: 'Nothing to open: type a file name or a file path first, or press esc to go back.',
+      }
+    case 'file-searching':
+      return {
+        kind: 'failed',
+        message: `Nothing was opened: files matching '${preview.query}' are still being searched. Press Enter again once a file is highlighted.`,
+      }
+    case 'file-unavailable':
+      return {
+        kind: 'failed',
+        message: `${preview.reason} Nothing was opened; type a file path, or press esc to pick a project.`,
+      }
+    case 'no-file-match':
+      return {
+        kind: 'failed',
+        message: `Nothing to open: no file matches '${preview.query}', and nothing was created.`,
+      }
     case 'clone':
       return launchClone(preview.url, {
         config: requireConfig(config),

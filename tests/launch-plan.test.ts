@@ -11,13 +11,17 @@ import type {
   MultiplexerBackend,
 } from '../src/multiplexer/types'
 import {
+  editableLaunchTarget,
   executeLaunchPlan,
   launchIntentFor,
+  parseStartupOverride,
   prepareLaunch,
   previewLaunch,
+  previewLaunchRequest,
   settleLaunchPreview,
   type LaunchContext,
   type LaunchPlan,
+  type LaunchRequest,
 } from '../src/sessions/launch-plan'
 import type { Item } from '../src/types'
 
@@ -218,6 +222,80 @@ describe('launch previews', () => {
       subject: 'selected',
       failure: { _tag: 'SessionNameCollision' },
     })
+  })
+})
+
+describe('secondary step requests', () => {
+  async function settledRequest(request: LaunchRequest, launch: LaunchContext) {
+    const preview = previewLaunchRequest(request, launch)
+
+    if (preview.kind !== 'planning')
+      throw new Error(`Expected a planned launch, got ${preview.kind}`)
+
+    return settleLaunchPreview(await preview.prepared)
+  }
+
+  test('only a non-live highlighted row, not a path or clone, can be edited', () => {
+    const api = project(join(root, 'api'))
+    const live = tmuxSession('$1', 'api', join(root, 'api'))
+
+    expect(editableLaunchTarget('', api)).toBe(api)
+    expect(editableLaunchTarget('', live)).toBeUndefined()
+    expect(editableLaunchTarget('./api', api)).toBeUndefined()
+    expect(editableLaunchTarget('https://github.com/acme/widget', api)).toBeUndefined()
+  })
+
+  test('edited name and startup replace the rules for the selected row only', async () => {
+    const preview = await settledRequest(
+      {
+        kind: 'browse',
+        query: '',
+        selected: project(join(root, 'api')),
+        options: { name: ' custom ', startup: parseStartupOverride('make dev') },
+      },
+      context('herdr')
+    )
+
+    expect(preview).toMatchObject({
+      kind: 'ready',
+      plan: { kind: 'create', input: { title: 'custom', startupCommand: 'make dev' } },
+    })
+  })
+
+  test('named-here plans the caller directory, and an empty name is only a prompt', async () => {
+    expect(previewLaunchRequest({ kind: 'named-here', name: ' ' }, context('herdr'))).toEqual({
+      kind: 'name-required',
+      directory: root,
+    })
+
+    expect(
+      await settledRequest({ kind: 'named-here', name: 'scratch' }, context('herdr'))
+    ).toMatchObject({
+      kind: 'ready',
+      subject: 'named-here',
+      plan: { kind: 'create', input: { title: 'scratch', path: root } },
+    })
+  })
+
+  test('the file step never plans a project when search is unavailable or a path is a directory', async () => {
+    expect(
+      previewLaunchRequest(
+        {
+          kind: 'file',
+          query: 'api',
+          search: { kind: 'unavailable', query: 'api', reason: 'File search is turned off.' },
+          selected: undefined,
+        },
+        context('herdr')
+      )
+    ).toEqual({ kind: 'file-unavailable', reason: 'File search is turned off.' })
+
+    expect(
+      await settledRequest(
+        { kind: 'file', query: './api', search: { kind: 'idle' }, selected: undefined },
+        context('herdr')
+      )
+    ).toMatchObject({ kind: 'refused', failure: { _tag: 'LaunchPathNotFile' } })
   })
 })
 

@@ -1,19 +1,49 @@
+import { getActionKeyHint } from '../../app/action-catalog'
+import type { NewSessionStepControls } from '../../app/new-session-step'
 import { AppMode, ViewMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
 import {
   getKeyName,
+  matchesPrefixKey,
   requestKillTarget,
   type KeyboardHandlerContext,
   type KeyboardInput,
 } from './shared'
 
+// A secondary step owns Enter, Esc, and the arrows; Esc returns to the project list unchanged.
+function handleSecondaryStep(keyName: string, steps: NewSessionStepControls): boolean {
+  switch (keyName) {
+    case 'escape':
+      steps.back()
+
+      return true
+    case 'down':
+      steps.move(1)
+
+      return true
+    case 'up':
+      steps.move(-1)
+
+      return true
+  }
+
+  return false
+}
+
 export function handleNewSessionMode(
   key: KeyboardInput,
   ctx: KeyboardHandlerContext,
-  keybindMode: KeybindMode = 'vim'
+  keybindMode: KeybindMode,
+  steps: NewSessionStepControls
 ): boolean {
   const keyName = getKeyName(key)
   const isStandard = keybindMode === 'standard'
+
+  if (keyName === 'return') {
+    ctx.runAction(steps.submit)
+
+    return true
+  }
 
   if (isStandard && key.ctrl) {
     if (keyName === 'i') {
@@ -32,6 +62,19 @@ export function handleNewSessionMode(
 
       return true
     }
+  }
+
+  if (steps.step !== 'browse') return handleSecondaryStep(keyName, steps)
+
+  const opened = steps.keys.find(id =>
+    matchesPrefixKey(key, getActionKeyHint(ctx.actionContext, id))
+  )
+
+  if (opened) {
+    ctx.clearPendingKill()
+    steps.open(opened)
+
+    return true
   }
 
   if (keyName === 'escape') {

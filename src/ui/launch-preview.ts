@@ -3,17 +3,18 @@ import type { NewSessionAction } from '../app/action-catalog'
 import type { BackendKind } from '../multiplexer/types'
 import {
   INACTIVE_LAUNCH,
-  previewLaunch,
+  previewLaunchRequest,
   settleLaunchPreview,
   type LaunchPreview,
+  type LaunchRequest,
 } from '../sessions/launch-plan'
 import type { Config, Item } from '../types'
 import { toHomeRelativePath } from '../util/path-display'
 
 export interface LaunchPreviewInput {
   readonly active: boolean
-  readonly searchQuery: string
-  readonly selected: Item | undefined
+  // Must keep its identity while nothing it names changes: a new request plans again.
+  readonly request: LaunchRequest
   readonly config: Config | null
   readonly backend: BackendKind | undefined
   readonly invocationCwd: string
@@ -27,18 +28,17 @@ interface Settled {
   readonly preview: LaunchPreview
 }
 
-// Plans the highlighted launch once per selection and inventory. The returned value is what the
+// Plans the requested launch once per request and inventory. The returned value is what the
 // screen labels and what Enter executes, so the two cannot disagree.
 export function useLaunchPreview(input: LaunchPreviewInput): LaunchPreview {
-  const { active, searchQuery, selected, config, backend, invocationCwd, liveSessions } = input
-  const query = searchQuery.trim()
+  const { active, request, config, backend, invocationCwd, liveSessions } = input
 
   const planned = useMemo(
     () =>
       active && config && backend
-        ? previewLaunch(query, selected, { config, backend, invocationCwd, liveSessions })
+        ? previewLaunchRequest(request, { config, backend, invocationCwd, liveSessions })
         : INACTIVE_LAUNCH,
-    [active, backend, config, invocationCwd, liveSessions, query, selected]
+    [active, backend, config, invocationCwd, liveSessions, request]
   )
 
   const [settled, setSettled] = useState<Settled | undefined>(undefined)
@@ -74,6 +74,11 @@ export function getNewSessionAction(preview: LaunchPreview): NewSessionAction {
     case 'inactive':
     case 'no-candidates':
     case 'no-match':
+    case 'name-required':
+    case 'file-prompt':
+    case 'file-searching':
+    case 'file-unavailable':
+    case 'no-file-match':
     case 'planning':
     case 'refused':
       return 'none'
@@ -91,6 +96,11 @@ export function getSelectedRowAction(preview: LaunchPreview): string | undefined
     case 'no-candidates':
     case 'no-match':
     case 'clone':
+    case 'name-required':
+    case 'file-prompt':
+    case 'file-searching':
+    case 'file-unavailable':
+    case 'no-file-match':
     case 'planning':
       return undefined
   }
@@ -114,6 +124,25 @@ export function describeLaunchPreview(preview: LaunchPreview): LaunchSummary {
       }
     case 'clone':
       return { kind: 'action', verb: 'Clone', detail: `${preview.url}, then create its session` }
+    case 'name-required':
+      return {
+        kind: 'note',
+        text: `Type a name; Enter creates it in ${toHomeRelativePath(preview.directory)}.`,
+      }
+    case 'file-prompt':
+      return { kind: 'note', text: 'Type a file name to search the project roots, or a file path.' }
+    case 'file-searching':
+      return { kind: 'note', text: `Searching files for '${preview.query}'…` }
+    case 'file-unavailable':
+      return {
+        kind: 'note',
+        text: `${preview.reason} Nothing will open; type a file path, or press esc.`,
+      }
+    case 'no-file-match':
+      return {
+        kind: 'note',
+        text: `No file matches '${preview.query}'. Nothing will open; refine the name, or press esc.`,
+      }
     case 'planning':
       return { kind: 'note', text: 'Checking what Enter will open…' }
     case 'refused':

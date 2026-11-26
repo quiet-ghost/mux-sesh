@@ -117,7 +117,9 @@ describe('project-first New', () => {
 
       const frame = await screen.frame()
       expect(frame).toContain("Create 'api' in /fixture/api, then run: bun dev")
-      expect(footerOf(frame)).toBe('enter create  esc cancel')
+      expect(footerOf(frame)).toBe(
+        'enter create  ctrl+n name  ctrl+t startup  ctrl+g here  ctrl+o file  esc cancel'
+      )
 
       await screen.pressKey('RETURN')
       await screen.settle()
@@ -158,7 +160,9 @@ describe('project-first New', () => {
     const frame = await screen.frame()
     expect(frame).toContain("Focus existing 'alpha' in /fixture/alpha")
     expect(frame).toMatch(/› P alpha\s+focus/)
-    expect(footerOf(frame)).toBe('enter focus  esc cancel')
+    expect(footerOf(frame)).toBe(
+      'enter focus  ctrl+n name  ctrl+t startup  ctrl+g here  ctrl+o file  esc cancel'
+    )
 
     await screen.pressKey('RETURN')
     await screen.settle()
@@ -176,7 +180,7 @@ describe('project-first New', () => {
     const frame = await screen.frame()
     expect(frame).toContain('New Workspace')
     expect(frame).toContain('No projects yet. Type a path to open one.')
-    expect(footerOf(frame)).toBe('esc cancel')
+    expect(footerOf(frame)).toBe('ctrl+g here  ctrl+o file  esc cancel')
 
     await screen.pressKey('RETURN')
     await screen.settle()
@@ -199,7 +203,7 @@ describe('project-first New', () => {
     const frame = await screen.frame()
     expect(frame).not.toContain('Create session: scratch')
     expect(frame).toContain("No project matches 'scratch'")
-    expect(footerOf(frame)).toBe('esc cancel')
+    expect(footerOf(frame)).toBe('ctrl+g here  ctrl+o file  esc cancel')
 
     await screen.pressKey('RETURN')
     await screen.settle()

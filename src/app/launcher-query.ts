@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import type { MultiplexerBackend } from '../multiplexer'
 import { isBackendFailure } from '../multiplexer/failure'
 import { getItemKey } from '../multiplexer/items'
@@ -9,6 +9,7 @@ import {
   createFileSearchScope,
   FileSearchUnavailableError,
   isFileSearchFailure,
+  type FileSearchOutcome,
   type FileSearchScope,
 } from '../search/fff'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
@@ -78,6 +79,12 @@ export interface NewSessionEntry {
   readonly setItems: (items: Item[]) => void
   readonly setCursor: (cursor: number) => void
   readonly setSearchQuery: (query: string) => void
+}
+
+// The New file step searches through the same owned scope, so it never opens a second finder.
+export interface LauncherFiles {
+  readonly debounceMs: number
+  readonly search: (query: string, config: Config) => Promise<FileSearchOutcome>
 }
 
 // Cached candidates show at once; this owner keeps discovering behind them without blocking input.
@@ -258,6 +265,18 @@ function createLauncherQuery(
       }
     },
 
+    async searchFiles(query: string, config: Config): Promise<FileSearchOutcome> {
+      if (disposed) return { kind: 'disposed' }
+
+      try {
+        return await fileSearch().search(query, config)
+      } catch (cause) {
+        if (!isFileSearchFailure(cause)) throw cause
+
+        return { kind: 'failed', failure: cause }
+      }
+    },
+
     async warm(): Promise<void> {
       try {
         await fileSearch().warm()
@@ -312,7 +331,7 @@ function createLauncherQuery(
 export function useLauncherQuery(
   state: LauncherQueryState,
   services: LauncherQueryServices = LAUNCHER_QUERY_SERVICES
-): void {
+): LauncherFiles {
   const latest = useRef(state)
   latest.current = state
 
@@ -366,4 +385,12 @@ export function useLauncherQuery(
   }, [active, backend, config, owner, services])
 
   useEffect(() => () => owner.dispose(), [owner])
+
+  return useMemo(
+    () => ({
+      debounceMs: services.debounceMs,
+      search: (query: string, config: Config) => owner.searchFiles(query, config),
+    }),
+    [owner, services.debounceMs]
+  )
 }

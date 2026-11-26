@@ -20,8 +20,12 @@ export type CommandId =
   | 'toggle-details'
   | 'back'
 
+// Secondary steps of the New screen; which ones are offered depends on the step and selection.
+export type NewSessionStepId =
+  'new-session-name' | 'new-session-startup' | 'new-session-here' | 'new-session-file'
+
 // Footer-only actions: they are keys, not palette commands.
-export type ActionId = CommandId | 'select' | 'open-commands'
+export type ActionId = CommandId | 'select' | 'open-commands' | NewSessionStepId
 
 export type ActionTarget =
   | { kind: 'none' }
@@ -121,6 +125,10 @@ const FOOTER_LABELS: Partial<Record<ActionId, string>> = {
   'open-agents': 'agents',
   'kill-session': 'kill',
   'open-commands': 'commands',
+  'new-session-name': 'name',
+  'new-session-startup': 'startup',
+  'new-session-here': 'here',
+  'new-session-file': 'file',
 }
 
 export function getActionTarget(item: Item | undefined): ActionTarget {
@@ -226,6 +234,12 @@ export function getActionAvailability(context: ActionContext, id: ActionId): Act
     case 'toggle-details':
     case 'back':
       return AVAILABLE
+    // Offered only through the New footer's step list, which the New key handler also reads.
+    case 'new-session-name':
+    case 'new-session-startup':
+    case 'new-session-here':
+    case 'new-session-file':
+      return AVAILABLE
   }
 }
 
@@ -310,6 +324,10 @@ const KEY_HINTS: Record<AppMode, Partial<Record<ActionId, KeyHint>>> = {
     select: fixed('enter'),
     search: standardOnly('ctrl+i'),
     'kill-session': standardOnly('ctrl+d'),
+    'new-session-name': fixed('ctrl+n'),
+    'new-session-startup': fixed('ctrl+t'),
+    'new-session-here': fixed('ctrl+g'),
+    'new-session-file': fixed('ctrl+o'),
   },
 }
 
@@ -409,18 +427,23 @@ function footerAction(context: ActionContext, id: ActionId): string[] {
   return footerPart(context, id, FOOTER_LABELS[id] ?? id)
 }
 
-// What Enter on the New screen does for its current frozen launch plan.
-export type NewSessionAction = 'focus' | 'create' | 'clone' | 'none'
+// What Enter on the New screen does for its current frozen launch plan, or 'apply' for an edit.
+export type NewSessionAction = 'focus' | 'create' | 'clone' | 'apply' | 'none'
 
-function newSessionFooter(context: ActionContext, action: NewSessionAction): string {
+function newSessionFooter(
+  context: ActionContext,
+  action: NewSessionAction,
+  steps: readonly NewSessionStepId[]
+): string {
   const enter = action === 'none' ? [] : [`${getActionKeyHint(context, 'select')} ${action}`]
 
-  return [...enter, 'esc cancel'].join('  ')
+  return [...enter, ...steps.flatMap(id => footerAction(context, id)), 'esc cancel'].join('  ')
 }
 
 export function getActionFooter(
   context: ActionContext,
-  newSession: NewSessionAction = 'none'
+  newSession: NewSessionAction = 'none',
+  newSessionSteps: readonly NewSessionStepId[] = []
 ): string {
   const prefixLabel = context.prefixKey ? `${context.prefixKey} ...` : 'direct keys'
 
@@ -434,7 +457,7 @@ export function getActionFooter(
         prefixLabel,
       ].join('  ')
     case AppMode.NewSession:
-      return newSessionFooter(context, newSession)
+      return newSessionFooter(context, newSession, newSessionSteps)
     case AppMode.Search:
       return [
         ...footerPart(context, 'select', 'select'),
