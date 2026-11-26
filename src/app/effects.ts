@@ -14,7 +14,7 @@ import {
   loadSessionCandidateItems,
 } from './data'
 import { SYSTEM_THEME_ID } from '../styles/theme'
-import { subscribeThemeFollow } from '../styles/theme-follow'
+import { subscribeThemeFollow, type SubscribeThemeFollowOptions } from '../styles/theme-follow'
 import { terminalColorsToPalette, type TerminalPalette } from '../styles/terminal-palette'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
@@ -28,21 +28,28 @@ const FILE_SEARCH_DEBOUNCE_MS = 120
 export function useSystemThemeFollow(
   themeId: string | undefined,
   homeDir: string,
-  onRefresh: () => void
+  onRefresh: () => void,
+  followOptions?: SubscribeThemeFollowOptions
 ) {
   const onRefreshRef = useRef(onRefresh)
   onRefreshRef.current = onRefresh
+  const followOptionsRef = useRef(followOptions)
+  followOptionsRef.current = followOptions
 
   useEffect(() => {
     if (themeId !== SYSTEM_THEME_ID) {
       return
     }
 
-    const subscription = subscribeThemeFollow(homeDir, {
-      onRefresh: () => {
-        onRefreshRef.current()
+    const subscription = subscribeThemeFollow(
+      homeDir,
+      {
+        onRefresh: () => {
+          onRefreshRef.current()
+        },
       },
-    })
+      followOptionsRef.current
+    )
 
     return () => {
       subscription.stop()

@@ -10,11 +10,7 @@ import { getHomeDir } from '../config/paths'
 import { TUI_THEME_COLORS } from './opencode-tui-colors'
 import { THEMES_A } from './opencode-themes-a'
 import { THEMES_B } from './opencode-themes-b'
-import {
-  omarchyPaletteToThemeColors,
-  readOmarchyPalette,
-  type OmarchyPalette,
-} from './omarchy'
+import { omarchyPaletteToThemeColors, readOmarchyPalette, type OmarchyPalette } from './omarchy'
 import {
   colorSchemeFromColorFgbg,
   terminalPaletteToThemeColors,
@@ -208,12 +204,22 @@ function resolveVariantTheme(theme: DesktopTheme, mode: 'light' | 'dark'): Theme
   }
 }
 
+export interface ResolvedTheme {
+  id: string
+  name: string
+  mode: 'light' | 'dark'
+  colors: ThemeColors
+  catalog: Record<string, DesktopTheme>
+}
+
+export type ThemeResolver = typeof resolveTheme
+
 export function resolveTheme(
   themeId?: string,
   customThemes: Record<string, ThemeDefinition> = {},
   colorScheme: ThemeColorScheme = DEFAULT_COLOR_SCHEME,
   options: ResolveThemeOptions = {}
-) {
+): ResolvedTheme {
   const customCatalog = Object.fromEntries(
     Object.entries(customThemes).map(([id, definition]) => [
       id,

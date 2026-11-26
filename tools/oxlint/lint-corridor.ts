@@ -2,10 +2,12 @@
 // `bun run lint` reports the remaining legacy findings across the repository.
 export const LINT_CORRIDOR = [
   'src/app.tsx',
+  'src/app/controller.ts',
   'src/app/derived.ts',
   'src/app/runtime.ts',
   'src/app/effect-runtime.ts',
   'src/app/herdr-refresh.ts',
+  'src/app/resolved-theme.ts',
   'src/app/use-effect-runtime.ts',
   'src/herdr/backend.ts',
   'src/herdr/protocol.ts',
@@ -49,10 +51,12 @@ export const LINT_CORRIDOR = [
   'tests/perf',
   'tests/perf.test.ts',
   'tests/picker-baseline.test.ts',
+  'tests/resolved-theme.test.tsx',
   'tests/select-failure.test.ts',
   'tests/shutdown.test.ts',
   'tests/tmux-backend-server.test.ts',
   'tests/tmux-backend.test.ts',
+  'tests/theme-palette-screen.test.tsx',
   'tools/oxlint/lint-corridor.ts',
 ] as const
 

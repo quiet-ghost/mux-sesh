@@ -7,17 +7,23 @@ import { createAppControls } from '../../src/app/controls'
 import { useAppCoreState } from '../../src/app/core-state'
 import { loadSessionItems } from '../../src/app/data'
 import { getSessionCommandState } from '../../src/app/derived'
-import { useNormalModeSessionReset, useSearchFiltering } from '../../src/app/effects'
+import {
+  useNormalModeSessionReset,
+  useSearchFiltering,
+  useSystemThemeFollow,
+} from '../../src/app/effects'
 import { handleSelectItem } from '../../src/app/handlers'
 import { useAppKeyboard } from '../../src/app/keyboard'
 import { useAppModalState } from '../../src/app/modal-state'
 import { AppModalsLayer } from '../../src/app/modals-layer'
+import { useResolvedTheme } from '../../src/app/resolved-theme'
 import { AppScreen } from '../../src/app/screen'
 import { getDefaultConfig } from '../../src/config'
 import type { LiveWorkspace, MultiplexerBackend } from '../../src/multiplexer'
 import { filterAndSortItems } from '../../src/search'
 import { getSettingEditorTitle, isOptionSetting } from '../../src/settings'
-import { resolveTheme, ThemeProvider } from '../../src/styles/theme'
+import { resolveTheme, ThemeProvider, type ThemeResolver } from '../../src/styles/theme'
+import type { SubscribeThemeFollowOptions } from '../../src/styles/theme-follow'
 import { AppMode, type Config, type Item, type KeybindMode } from '../../src/types'
 import { useTerminalSize } from '../../src/util/terminal'
 
@@ -43,6 +49,9 @@ interface SessionFixture {
   projects: Item[]
   filterItems: typeof filterAndSortItems
   lifecycle: string[]
+  homeDir: string
+  resolveTheme: ThemeResolver
+  themeFollow?: SubscribeThemeFollowOptions
 }
 
 interface SessionScreenData {
@@ -52,6 +61,9 @@ interface SessionScreenData {
   backend?: MultiplexerBackend
   projects?: Item[]
   filterItems?: typeof filterAndSortItems
+  homeDir?: string
+  resolveTheme?: ThemeResolver
+  themeFollow?: SubscribeThemeFollowOptions
 }
 
 // Assigned inside act(), so control-flow narrowing cannot track a local binding.
@@ -67,8 +79,18 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
   const core = useAppCoreState()
   const modal = useAppModalState()
   const dimensions = useTerminalSize()
-  const { config, backend, items, projects, filterItems, lifecycle } = fixture
-  const resolvedTheme = resolveTheme(config.theme, config.themes, config.colorScheme)
+  const { config, backend, items, projects, filterItems, lifecycle, homeDir } = fixture
+
+  const { resolvedTheme, refreshSystemTheme } = useResolvedTheme(
+    {
+      themeId: config.theme,
+      customThemes: config.themes,
+      colorScheme: config.colorScheme,
+      homeDir,
+    },
+    fixture.resolveTheme
+  )
+
   const theme = resolvedTheme.colors
 
   const derived = getSessionCommandState(
@@ -127,6 +149,8 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     setSessionCandidateItems,
     setSessionItems,
   ])
+
+  useSystemThemeFollow(config.theme, homeDir, refreshSystemTheme, fixture.themeFollow)
 
   useSearchFiltering(
     core.appMode,
@@ -286,6 +310,9 @@ export async function renderSessionScreen(
             projects: data.projects ?? [],
             filterItems: data.filterItems ?? filterAndSortItems,
             lifecycle,
+            homeDir: data.homeDir ?? '/fixture',
+            resolveTheme: data.resolveTheme ?? resolveTheme,
+            themeFollow: data.themeFollow,
           }}
         />,
         { ...options, consoleMode: 'disabled', exitOnCtrlC: false, kittyKeyboard: true }
