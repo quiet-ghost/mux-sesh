@@ -94,15 +94,13 @@ interface DrainedStream {
 
 // Keeps reading to EOF after the limit so a chatty child can never block on a full pipe.
 async function drainStream(
-  stream: ReadableStream<Uint8Array>,
+  reader: ReadableStreamDefaultReader<Uint8Array>,
   limitBytes: number,
   onLimit: () => void
 ): Promise<DrainedStream> {
   const chunks: Uint8Array[] = []
   let retained = 0
   let truncated = false
-
-  const reader = stream.getReader()
 
   for (let next = await reader.read(); !next.done; next = await reader.read()) {
     const chunk = next.value
@@ -150,8 +148,17 @@ export function createCommandRunner(overrides: Partial<CommandPolicy> = {}): Com
       }
 
       const child = proc
+      const stdoutReader = child.stdout.getReader()
+      const stderrReader = child.stderr.getReader()
       let stopReason: StopReason | undefined
       let killTimer: ReturnType<typeof setTimeout> | undefined
+      let abandonTimer: ReturnType<typeof setTimeout> | undefined
+
+      // A stopped result is discarded, so its pipes are not waited on forever: another process
+      // (a background grandchild, or a tmux server holding fds its client passed) may keep them open.
+      const abandonStreams = () => {
+        for (const reader of [stdoutReader, stderrReader]) reader.cancel().catch(() => undefined)
+      }
 
       const stop = (reason: StopReason) => {
         if (stopReason || child.exitCode !== null) return
@@ -160,6 +167,7 @@ export function createCommandRunner(overrides: Partial<CommandPolicy> = {}): Com
         killTimer = setTimeout(() => {
           if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL')
         }, policy.killGraceMs)
+        abandonTimer = setTimeout(abandonStreams, policy.killGraceMs * 2)
       }
 
       const deadline = setTimeout(() => stop('timeout'), policy.timeoutMs)
@@ -168,12 +176,12 @@ export function createCommandRunner(overrides: Partial<CommandPolicy> = {}): Com
 
       try {
         const [stdout, stderr, exitCode] = await Promise.all([
-          drainStream(child.stdout, policy.maxStdoutBytes, () => stop('output-limit')).catch(
+          drainStream(stdoutReader, policy.maxStdoutBytes, () => stop('output-limit')).catch(
             cause => {
               throw new CommandTransportError({ executable, phase: 'read', cause })
             }
           ),
-          drainStream(child.stderr, policy.maxStderrBytes, () => {}).catch(cause => {
+          drainStream(stderrReader, policy.maxStderrBytes, () => {}).catch(cause => {
             throw new CommandTransportError({ executable, phase: 'read', cause })
           }),
           child.exited.catch(cause => {
@@ -206,6 +214,7 @@ export function createCommandRunner(overrides: Partial<CommandPolicy> = {}): Com
       } finally {
         clearTimeout(deadline)
         clearTimeout(killTimer)
+        clearTimeout(abandonTimer)
         options.signal?.removeEventListener('abort', onAbort)
       }
     },
