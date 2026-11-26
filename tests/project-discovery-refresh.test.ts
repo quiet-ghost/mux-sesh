@@ -158,6 +158,8 @@ describe('project discovery refresh', () => {
     const discovery = createProjectDiscovery({ runner: recorder.runner, ttlMs: 60_000 })
 
     const oldLoad = discovery.load(configFor([oldRoot]), 'projects')
+    // The obsolete run must be parked inside its scan before the newer revision loads.
+    await waitUntil(() => recorder.findRoots.includes(oldRoot))
     expect(paths(await discovery.load(configFor([newRoot]), 'projects'))).toEqual([newProject])
 
     oldGate.resolve()
