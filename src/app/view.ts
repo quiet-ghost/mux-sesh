@@ -40,6 +40,7 @@ const DETAIL_PANEL_SHARE = 0.4
 const DETAIL_PANEL_GAP_COLUMNS = 1
 const HEADER_ROWS = 2
 const SEARCH_INPUT_ROWS = 4
+const NEW_SESSION_SUMMARY_ROWS = 2
 const FOOTER_HINT_ROWS = 1
 const FOOTER_PADDING_COLUMNS = 1
 const VERSION_BADGE_GAP_COLUMNS = 3
@@ -83,7 +84,11 @@ export function getScreenLayout({
   )
 
   const searchRows =
-    appMode === AppMode.Search || appMode === AppMode.NewSession ? SEARCH_INPUT_ROWS : 0
+    appMode === AppMode.Search
+      ? SEARCH_INPUT_ROWS
+      : appMode === AppMode.NewSession
+        ? SEARCH_INPUT_ROWS + NEW_SESSION_SUMMARY_ROWS
+        : 0
 
   const messageRows = message ? getWrappedRowCount(message, footerWidth) : 0
 
@@ -126,8 +131,9 @@ export function getEmptyStateMessage(
     return 'Clone & create session'
   }
 
-  if (appMode === AppMode.NewSession && searchQuery) {
-    return `Create session: ${searchQuery}`
+  // No match is never an implicit name; the summary row says what Enter can do instead.
+  if (appMode === AppMode.NewSession) {
+    return searchQuery ? 'No matching projects' : 'No projects found'
   }
 
   return 'No items found'

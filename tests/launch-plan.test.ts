@@ -14,6 +14,8 @@ import {
   executeLaunchPlan,
   launchIntentFor,
   prepareLaunch,
+  previewLaunch,
+  settleLaunchPreview,
   type LaunchContext,
   type LaunchPlan,
 } from '../src/sessions/launch-plan'
@@ -69,8 +71,8 @@ describe('launch intents', () => {
     })
   })
 
-  test('plain text without a highlighted row creates a session named here', () => {
-    expect(launchIntentFor('scratch', undefined)).toEqual({ kind: 'named-here', name: 'scratch' })
+  test('plain text without a highlighted row is not a launch', () => {
+    expect(launchIntentFor('scratch', undefined)).toBeUndefined()
   })
 })
 
@@ -103,6 +105,7 @@ describe('launch plans', () => {
           title: 'twin',
           target: { kind: 'agent', tabId: 'w3:t1', paneId: 'w3:p2' },
         },
+        path: root,
       })
     )
   })
@@ -111,7 +114,11 @@ describe('launch plans', () => {
     const live = tmuxSession('$4', 'api', join(root, 'api'))
 
     expect(await plan('', project(join(root, 'api')), context('tmux', [live]))).toEqual(
-      Result.succeed({ kind: 'focus', target: { backend: 'tmux', id: '$4', title: 'api' } })
+      Result.succeed({
+        kind: 'focus',
+        target: { backend: 'tmux', id: '$4', title: 'api' },
+        path: join(root, 'api'),
+      })
     )
   })
 
@@ -161,11 +168,56 @@ describe('launch plans', () => {
       Result.succeed({ kind: 'create', input: { title: 'api', path: join(root, 'api') } })
     )
   })
+})
 
-  test('a plain name creates a session in the invocation directory', async () => {
-    expect(await plan('scratch', undefined, context('herdr'))).toEqual(
-      Result.succeed({ kind: 'create', input: { title: 'scratch', path: root } })
-    )
+describe('launch previews', () => {
+  async function settled(searchTerm: string, selected: Item | undefined, launch: LaunchContext) {
+    const preview = previewLaunch(searchTerm, selected, launch)
+
+    if (preview.kind !== 'planning')
+      throw new Error(`Expected a planned launch, got ${preview.kind}`)
+
+    return settleLaunchPreview(await preview.prepared)
+  }
+
+  test('no rows and no query, or an unmatched name, is never a launch', () => {
+    expect(previewLaunch('', undefined, context('herdr'))).toEqual({ kind: 'no-candidates' })
+    expect(previewLaunch(' scratch ', undefined, context('herdr'))).toEqual({
+      kind: 'no-match',
+      query: 'scratch',
+    })
+  })
+
+  test('a GitHub URL is a clone, not a plan', () => {
+    expect(previewLaunch('https://github.com/acme/widget', undefined, context('herdr'))).toEqual({
+      kind: 'clone',
+      url: 'https://github.com/acme/widget',
+    })
+  })
+
+  test('a highlighted project settles to its exact plan for the selected row', async () => {
+    expect(await settled('', project(join(root, 'api')), context('herdr'))).toMatchObject({
+      kind: 'ready',
+      subject: 'selected',
+      plan: { kind: 'create', input: { title: 'api', path: join(root, 'api') } },
+    })
+  })
+
+  test('an existing typed path is the subject, not the highlighted row', async () => {
+    const preview = await settled('./api', project('/elsewhere/apiary'), context('herdr'))
+
+    expect(preview).toMatchObject({ kind: 'ready', subject: 'typed-path' })
+  })
+
+  test('a collision is refused before Enter, with the reason', async () => {
+    const elsewhere = tmuxSession('$5', 'api', '/somewhere/else')
+    const preview = await settled('', project(join(root, 'api')), context('tmux', [elsewhere]))
+
+    expect(preview).toMatchObject({
+      kind: 'refused',
+      subject: 'selected',
+      failure: { _tag: 'SessionNameCollision' },
+    })
   })
 })
 
@@ -226,7 +278,9 @@ describe('launch execution', () => {
     const { backend, calls } = recordingBackend()
     const target = { backend: 'tmux' as const, id: '$4', title: 'api' }
 
-    expect(await executeLaunchPlan({ kind: 'focus', target }, backend)).toEqual({
+    expect(
+      await executeLaunchPlan({ kind: 'focus', target, path: '/fixture/api' }, backend)
+    ).toEqual({
       kind: 'focused',
       target,
       focus: { kind: 'focused' },

@@ -296,8 +296,6 @@ interface UseAppBehaviorsOptions {
   config: Config | null
   backend: MultiplexerBackend | null
   sessionItems: Item[]
-  projectSourceItems: Item[]
-  sessionCandidateItems: Item[]
   lastSessionSelectionRef: MutableRefObject<string | null>
   lastProjectSelectionRef: MutableRefObject<string | null>
   setAllItems: Dispatch<SetStateAction<Item[]>>

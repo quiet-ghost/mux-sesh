@@ -4,7 +4,8 @@ import { getDefaultConfig } from '../src/config'
 import { createHerdrBackend } from '../src/herdr/backend'
 import type { CommandRunner } from '../src/multiplexer/command'
 import { workspaceToItem } from '../src/multiplexer/items'
-import { AppMode, ViewMode } from '../src/types'
+import { INACTIVE_LAUNCH } from '../src/sessions/launch-plan'
+import { ViewMode } from '../src/types'
 
 const agent = workspaceToItem({
   backend: 'herdr',
@@ -20,7 +21,6 @@ function handlersFor(runner: CommandRunner, showMessage: (message: string) => vo
   return createAppHandlers({
     invocationCwd: '/fixture',
     launchGuard: { active: false },
-    appMode: AppMode.AgentsManage,
     viewMode: ViewMode.Sessions,
     config: getDefaultConfig('/fixture'),
     backend: createHerdrBackend({ runner, insideHerdr: true }),
@@ -30,7 +30,6 @@ function handlersFor(runner: CommandRunner, showMessage: (message: string) => vo
     showMessage,
     showOutcome: mock(() => {}),
     refreshItems: mock(async () => {}),
-    agentCursor: 0,
     regularSessions: [],
     agentSessions: [agent],
     selectedPrimaryItem: agent,
@@ -56,7 +55,7 @@ function handlersFor(runner: CommandRunner, showMessage: (message: string) => vo
     settingEditorPlainText: undefined,
     renameTarget: null,
     renamedValue: '',
-    searchTerm: '',
+    launchPreview: INACTIVE_LAUNCH,
     rememberedSessions: mock(() => {}),
     toggleDetails: mock(() => {}),
   })

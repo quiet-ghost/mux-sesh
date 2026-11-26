@@ -19,16 +19,17 @@ import type {
 } from '../multiplexer/types'
 import { sanitizeTmuxSessionName } from '../tmux/helpers'
 import type { Config, Item } from '../types'
+import { isGitHubURL } from '../util/github'
 
 // What the user asked for on the New screen, before any rules or inventory are consulted.
+// Text that matches no row and is not a path is not a launch: it never names a new session.
 export type LaunchIntent =
   | { readonly kind: 'candidate'; readonly item: Item }
   | { readonly kind: 'path'; readonly input: string; readonly fallback?: Item }
-  | { readonly kind: 'named-here'; readonly name: string }
 
-// The exact operation that will run; the same value should drive any label shown for it.
+// The exact operation that will run; the same value drives every label shown for it.
 export type LaunchPlan =
-  | { readonly kind: 'focus'; readonly target: WorkspaceRef }
+  | { readonly kind: 'focus'; readonly target: WorkspaceRef; readonly path: string }
   | { readonly kind: 'create'; readonly input: OpenWorkspaceInput }
 
 export class LaunchPathNotFound extends Data.TaggedError('LaunchPathNotFound')<{
@@ -69,7 +70,7 @@ export function launchIntentFor(
 
   if (looksLikePathInput(term)) return { kind: 'path', input: term, fallback: selected }
 
-  return selected ? { kind: 'candidate', item: selected } : { kind: 'named-here', name: term }
+  return selected ? { kind: 'candidate', item: selected } : undefined
 }
 
 function sessionTitle(title: string, backend: BackendKind): string {
@@ -94,7 +95,7 @@ function planCreate(
   )
 
   if (exact && isLiveSessionItem(exact))
-    return Result.succeed({ kind: 'focus', target: getWorkspaceRef(exact) })
+    return Result.succeed({ kind: 'focus', target: getWorkspaceRef(exact), path: exact.path })
 
   const elsewhere = sameName[0]
 
@@ -131,41 +132,107 @@ function planFile(path: string, context: LaunchContext) {
 
 async function planCandidate(item: Item, context: LaunchContext) {
   if (isLiveSessionItem(item))
-    return Result.succeed<LaunchPlan>({ kind: 'focus', target: getWorkspaceRef(item) })
+    return Result.succeed<LaunchPlan>({
+      kind: 'focus',
+      target: getWorkspaceRef(item),
+      path: item.path,
+    })
 
   return isFileItem(item) ? planFile(item.path, context) : planDirectory(item.path, context)
+}
+
+export type PlannedLaunch = Result.Result<LaunchPlan, LaunchPlanFailure>
+
+// Whether the plan opens the highlighted row or a typed path, so a row label never claims a plan
+// that belongs to something else.
+export type LaunchSubject = 'selected' | 'typed-path'
+
+export interface PreparedLaunch {
+  readonly subject: LaunchSubject
+  readonly result: PlannedLaunch
+}
+
+async function prepareIntent(
+  intent: LaunchIntent,
+  context: LaunchContext
+): Promise<PreparedLaunch> {
+  if (intent.kind === 'candidate')
+    return { subject: 'selected', result: await planCandidate(intent.item, context) }
+
+  const target = await resolveTypedPathTarget(intent.input, {
+    invocationCwd: context.invocationCwd,
+  })
+
+  if (target) {
+    const result =
+      target.kind === 'file'
+        ? planFile(target.path, context)
+        : await planDirectory(target.path, context)
+
+    return { subject: 'typed-path', result }
+  }
+
+  // The highlighted row is what the screen shows Enter will open; never invent a named session.
+  if (intent.fallback)
+    return { subject: 'selected', result: await planCandidate(intent.fallback, context) }
+
+  return {
+    subject: 'typed-path',
+    result: Result.fail(
+      new LaunchPathNotFound({
+        input: intent.input,
+        path: resolve(context.invocationCwd, expandUserPath(intent.input)),
+      })
+    ),
+  }
 }
 
 export async function prepareLaunch(
   intent: LaunchIntent,
   context: LaunchContext
-): Promise<Result.Result<LaunchPlan, LaunchPlanFailure>> {
-  switch (intent.kind) {
-    case 'candidate':
-      return planCandidate(intent.item, context)
-    case 'named-here':
-      return planCreate({ title: intent.name, path: context.invocationCwd }, context)
-    case 'path': {
-      const target = await resolveTypedPathTarget(intent.input, {
-        invocationCwd: context.invocationCwd,
-      })
+): Promise<PlannedLaunch> {
+  return (await prepareIntent(intent, context)).result
+}
 
-      if (target)
-        return target.kind === 'file'
-          ? planFile(target.path, context)
-          : planDirectory(target.path, context)
-
-      // The highlighted row is what the screen shows Enter will open; never invent a named session.
-      if (intent.fallback) return planCandidate(intent.fallback, context)
-
-      return Result.fail(
-        new LaunchPathNotFound({
-          input: intent.input,
-          path: resolve(context.invocationCwd, expandUserPath(intent.input)),
-        })
-      )
+// What Enter on the New screen does right now. A planned launch is frozen: the screen labels it
+// and Enter executes that same plan, without resolving rules or inventory again.
+export type LaunchPreview =
+  | { readonly kind: 'inactive' }
+  | { readonly kind: 'no-candidates' }
+  | { readonly kind: 'no-match'; readonly query: string }
+  | { readonly kind: 'clone'; readonly url: string }
+  | { readonly kind: 'planning'; readonly prepared: Promise<PreparedLaunch> }
+  | { readonly kind: 'ready'; readonly subject: LaunchSubject; readonly plan: LaunchPlan }
+  | {
+      readonly kind: 'refused'
+      readonly subject: LaunchSubject
+      readonly failure: LaunchPlanFailure
     }
-  }
+
+export const INACTIVE_LAUNCH: LaunchPreview = { kind: 'inactive' }
+
+export function previewLaunch(
+  searchQuery: string,
+  selected: Item | undefined,
+  context: LaunchContext
+): LaunchPreview {
+  const query = searchQuery.trim()
+
+  if (isGitHubURL(query)) return { kind: 'clone', url: query }
+
+  const intent = launchIntentFor(query, selected)
+
+  if (!intent) return query ? { kind: 'no-match', query } : { kind: 'no-candidates' }
+
+  return { kind: 'planning', prepared: prepareIntent(intent, context) }
+}
+
+export function settleLaunchPreview(prepared: PreparedLaunch): LaunchPreview {
+  const { subject, result } = prepared
+
+  return Result.isSuccess(result)
+    ? { kind: 'ready', subject, plan: result.success }
+    : { kind: 'refused', subject, failure: result.failure }
 }
 
 export type LaunchOutcome =

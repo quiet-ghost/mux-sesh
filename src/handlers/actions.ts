@@ -19,13 +19,14 @@ import type { BackendKind, WorkspaceRef } from '../multiplexer/types'
 import {
   executeLaunchPlan,
   LaunchFollowUpFailed,
-  launchIntentFor,
   prepareLaunch,
   type LaunchIntent,
   type LaunchOutcome,
   type LaunchPlan,
+  type LaunchPreview,
+  type PlannedLaunch,
 } from '../sessions/launch-plan'
-import { isGitHubURL, cloneGitHubRepo } from '../util/github'
+import { cloneGitHubRepo } from '../util/github'
 import { requestShutdown } from '../util/shutdown'
 import {
   buildEditorCommand,
@@ -272,15 +273,29 @@ async function launch(intent: LaunchIntent, inputs: LaunchInputs): Promise<Actio
     liveSessions: inputs.sessionItems,
   })
 
+  return runPlannedLaunch(plan, inputs.backend)
+}
+
+async function runPlannedLaunch(
+  plan: PlannedLaunch,
+  backend: MultiplexerBackend
+): Promise<ActionOutcome> {
   // Plan failures are expected and local; nothing was opened or created.
   if (Result.isFailure(plan)) return { kind: 'failed', message: plan.failure.message }
 
+  return runLaunchPlan(plan.success, backend)
+}
+
+async function runLaunchPlan(
+  plan: LaunchPlan,
+  backend: MultiplexerBackend
+): Promise<ActionOutcome> {
   let outcome: LaunchOutcome
 
   try {
-    outcome = await executeLaunchPlan(plan.success, inputs.backend)
+    outcome = await executeLaunchPlan(plan, backend)
   } catch (cause) {
-    return launchFailureOutcome(plan.success, cause, inputs.backend.kind)
+    return launchFailureOutcome(plan, cause, backend.kind)
   }
 
   return requestShutdown(0, handoffOf(outcome.focus))
@@ -309,29 +324,42 @@ async function launchClone(url: string, inputs: LaunchInputs): Promise<ActionOut
   )
 }
 
+// Enter runs the plan the New screen shows; it never re-resolves rules or inventory first.
 export async function handleNewSessionSubmit(
-  searchTerm: string,
+  preview: LaunchPreview,
   config: Config | null,
-  items: Item[],
-  cursor: number,
   backend: MultiplexerBackend,
   invocationCwd: string,
   sessionItems: Item[]
 ): Promise<ActionOutcome> {
-  const inputs = { config: requireConfig(config), backend, invocationCwd, sessionItems }
-
-  if (isGitHubURL(searchTerm)) return launchClone(searchTerm, inputs)
-
-  const intent = launchIntentFor(searchTerm, items[cursor])
-
-  if (!intent) {
-    return {
-      kind: 'failed',
-      message: 'Nothing to open: type a session name or path, or pick a project.',
-    }
+  switch (preview.kind) {
+    case 'inactive':
+      return { kind: 'failed', message: 'New session is still loading; nothing was opened.' }
+    case 'no-candidates':
+      return {
+        kind: 'failed',
+        message:
+          'Nothing to open: no projects are configured or discovered yet. Type a path to open one.',
+      }
+    case 'no-match':
+      return {
+        kind: 'failed',
+        message: `Nothing to open: no project matches '${preview.query}', and nothing was created. Type a path, or clear the query to pick a project.`,
+      }
+    case 'clone':
+      return launchClone(preview.url, {
+        config: requireConfig(config),
+        backend,
+        invocationCwd,
+        sessionItems,
+      })
+    case 'planning':
+      return runPlannedLaunch((await preview.prepared).result, backend)
+    case 'refused':
+      return { kind: 'failed', message: preview.failure.message }
+    case 'ready':
+      return runLaunchPlan(preview.plan, backend)
   }
-
-  return launch(intent, inputs)
 }
 
 export async function handleLastSession(items: Item[], backend: MultiplexerBackend) {

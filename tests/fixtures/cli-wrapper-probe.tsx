@@ -3,10 +3,11 @@ import { join } from 'path'
 import { testRender } from '@opentui/react/test-utils'
 import { act, isValidElement } from 'react'
 import { App } from '@/app'
-import { handleNewSessionSubmitWithSearch } from '@/app/handlers'
+import { handleNewSessionSubmitWithPreview } from '@/app/handlers'
 import { captureInvocationCwd } from '@/cli/invocation-cwd'
 import { getDefaultConfig } from '@/config'
 import type { MultiplexerBackend, OpenWorkspaceInput } from '@/multiplexer'
+import { previewLaunch } from '@/sessions/launch-plan'
 import { initializeShutdown } from '@/util/shutdown'
 
 const invocationCwd = captureInvocationCwd()
@@ -93,15 +94,22 @@ try {
         ]
       : []
 
+    const config = getDefaultConfig()
+
+    const preview = previewLaunch(selected ? '' : input, items[0], {
+      config,
+      backend: backend.kind,
+      invocationCwd,
+      liveSessions: [],
+    })
+
     await act(async () => {
-      await handleNewSessionSubmitWithSearch(selected ? '' : input, {
+      await handleNewSessionSubmitWithPreview(preview, {
         invocationCwd,
         launchGuard: { active: false },
         backend,
-        config: getDefaultConfig(),
-        items,
+        config,
         sessionItems: [],
-        cursor: 0,
         showMessage: message => {
           throw new Error(message)
         },

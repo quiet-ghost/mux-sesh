@@ -1,8 +1,13 @@
 import { expect, test } from 'bun:test'
 import type { OperationReport } from '../src/app/action-outcome'
-import { handleNewSessionSubmitWithSearch, type LaunchGuard } from '../src/app/handlers'
+import { handleNewSessionSubmitWithPreview, type LaunchGuard } from '../src/app/handlers'
 import { getDefaultConfig } from '../src/config'
-import type { CreatedSessionReceipt, MultiplexerBackend } from '../src/multiplexer/types'
+import {
+  MultiplexerError,
+  type CreatedSessionReceipt,
+  type MultiplexerBackend,
+} from '../src/multiplexer/types'
+import type { LaunchPreview } from '../src/sessions/launch-plan'
 
 const receipt: CreatedSessionReceipt = {
   workspace: { backend: 'herdr', id: 'w9', title: 'scratch' },
@@ -11,6 +16,12 @@ const receipt: CreatedSessionReceipt = {
 
 function unsupported(): never {
   throw new Error('The submit test backend only creates')
+}
+
+const scratch: LaunchPreview = {
+  kind: 'ready',
+  subject: 'selected',
+  plan: { kind: 'create', input: { title: 'scratch', path: '/fixture/scratch' } },
 }
 
 test('a second Enter while a launch runs is refused, and a failed launch refreshes inventory', async () => {
@@ -50,9 +61,7 @@ test('a second Enter while a launch runs is refused, and a failed launch refresh
     invocationCwd: '/fixture',
     backend,
     config: getDefaultConfig('/fixture'),
-    items: [],
     sessionItems: [],
-    cursor: 0,
     launchGuard,
     showMessage: (message: string) => {
       messages.push(message)
@@ -65,8 +74,8 @@ test('a second Enter while a launch runs is refused, and a failed launch refresh
     },
   }
 
-  const first = handleNewSessionSubmitWithSearch('scratch', options)
-  await handleNewSessionSubmitWithSearch('scratch', options)
+  const first = handleNewSessionSubmitWithPreview(scratch, options)
+  await handleNewSessionSubmitWithPreview(scratch, options)
 
   expect(messages).toEqual(['A launch is already running; wait for it to finish.'])
 
@@ -82,4 +91,81 @@ test('a second Enter while a launch runs is refused, and a failed launch refresh
   )
   expect(refreshes).toBe(1)
   expect(launchGuard.active).toBe(false)
+})
+
+function recording() {
+  const calls: string[] = []
+  const messages: string[] = []
+
+  const backend: MultiplexerBackend = {
+    kind: 'herdr',
+    capabilities: { previousWorkspace: false },
+    async create(input) {
+      calls.push(`create ${input.title}`)
+
+      return receipt
+    },
+    async start() {},
+    async open(target) {
+      calls.push(`open ${target.id}`)
+
+      throw new MultiplexerError('command-failed', 'fixture client unavailable')
+    },
+    openOrCreate: unsupported,
+    list: unsupported,
+    rename: unsupported,
+    close: unsupported,
+    current: unsupported,
+    directory: unsupported,
+    details: unsupported,
+    openEditor: unsupported,
+  }
+
+  const options = {
+    invocationCwd: '/fixture',
+    backend,
+    config: getDefaultConfig('/fixture'),
+    sessionItems: [],
+    launchGuard: { active: false },
+    showMessage: (message: string) => {
+      messages.push(message)
+    },
+    showOutcome: () => {},
+    refreshItems: async () => {},
+  }
+
+  return { calls, messages, options }
+}
+
+test('Enter executes the shown plan as frozen: a focus plan only opens its exact target', async () => {
+  const { calls, messages, options } = recording()
+
+  await handleNewSessionSubmitWithPreview(
+    {
+      kind: 'ready',
+      subject: 'selected',
+      plan: {
+        kind: 'focus',
+        target: { backend: 'herdr', id: 'w4', title: 'api' },
+        path: '/fixture/api',
+      },
+    },
+    options
+  )
+
+  expect(calls).toEqual(['open w4'])
+  expect(messages[0]).toContain("Could not open workspace 'api'")
+})
+
+test.each<{ preview: LaunchPreview; message: string }>([
+  { preview: { kind: 'no-candidates' }, message: 'Nothing to open: no projects' },
+  { preview: { kind: 'no-match', query: 'scratch' }, message: "no project matches 'scratch'" },
+])('$preview.kind creates nothing and explains why', async ({ preview, message }) => {
+  const { calls, messages, options } = recording()
+
+  await handleNewSessionSubmitWithPreview(preview, options)
+
+  expect(calls).toEqual([])
+  expect(messages).toHaveLength(1)
+  expect(messages[0]).toContain(message)
 })

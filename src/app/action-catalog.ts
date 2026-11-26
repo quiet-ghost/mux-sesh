@@ -409,7 +409,19 @@ function footerAction(context: ActionContext, id: ActionId): string[] {
   return footerPart(context, id, FOOTER_LABELS[id] ?? id)
 }
 
-export function getActionFooter(context: ActionContext): string {
+// What Enter on the New screen does for its current frozen launch plan.
+export type NewSessionAction = 'focus' | 'create' | 'clone' | 'none'
+
+function newSessionFooter(context: ActionContext, action: NewSessionAction): string {
+  const enter = action === 'none' ? [] : [`${getActionKeyHint(context, 'select')} ${action}`]
+
+  return [...enter, 'esc cancel'].join('  ')
+}
+
+export function getActionFooter(
+  context: ActionContext,
+  newSession: NewSessionAction = 'none'
+): string {
   const prefixLabel = context.prefixKey ? `${context.prefixKey} ...` : 'direct keys'
 
   switch (context.appMode) {
@@ -422,7 +434,7 @@ export function getActionFooter(context: ActionContext): string {
         prefixLabel,
       ].join('  ')
     case AppMode.NewSession:
-      return 'enter create  esc cancel'
+      return newSessionFooter(context, newSession)
     case AppMode.Search:
       return [
         ...footerPart(context, 'select', 'select'),

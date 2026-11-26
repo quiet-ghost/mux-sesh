@@ -1,14 +1,11 @@
 import { refreshProjectDiscovery } from '../tmux/projects'
 import { getActionTarget, type CommandId } from './action-catalog'
+import { getNewSessionSeed, openNewSession } from './launcher-query'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../types'
 
 interface ExecuteCommandContext {
   keybindMode: KeybindMode
-  appMode: AppMode
   viewMode: ViewMode
-  cursor: number
-  agentCursor: number
-  regularSessions: Item[]
   agentSessions: Item[]
   selectedPrimaryItem?: Item
   sessionCandidateItems: Item[]
@@ -45,20 +42,11 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
       ctx.setSearchQuery('')
 
       return
-    case 'new-session': {
-      const items =
-        ctx.sessionCandidateItems.length > 0 ? ctx.sessionCandidateItems : ctx.projectSourceItems
-
+    case 'new-session':
       ctx.closeModal()
-      ctx.setAppMode(AppMode.NewSession)
-      ctx.setViewMode(ViewMode.Projects)
-      ctx.setAllItems(items)
-      ctx.setItems(items)
-      ctx.setCursor(Math.max(0, items.length - 1))
-      ctx.setSearchQuery('')
+      openNewSession(ctx, getNewSessionSeed(ctx.sessionCandidateItems, ctx.projectSourceItems))
 
       return
-    }
 
     case 'open-settings':
       ctx.openSettingsModal()

@@ -148,7 +148,6 @@ describe('packaged CLI wrapper', () => {
   test.each([
     { input: './notes/todo.md', title: 'notes_todo_md', directory: 'notes' },
     { input: './notes', title: 'notes', directory: 'notes' },
-    { input: 'scratch', title: 'scratch', directory: '' },
   ])(
     'launches $input against the captured caller directory',
     async ({ input, title, directory }) => {

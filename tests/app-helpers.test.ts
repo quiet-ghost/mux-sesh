@@ -29,6 +29,7 @@ import { AppMode, ViewMode, type Item } from '../src/types'
 import { createHerdrBackend } from '../src/herdr/backend'
 import { getItemKey, workspaceToItem } from '../src/multiplexer/items'
 import { filterHiddenSessions } from '../src/tmux/workflows'
+import { INACTIVE_LAUNCH } from '../src/sessions/launch-plan'
 
 function actionContext(overrides: Partial<ActionContext> = {}): ActionContext {
   return {
@@ -583,7 +584,6 @@ describe('app handler factory', () => {
       invocationCwd: '/home/tester',
       launchGuard: { active: false },
       showOutcome: mock(() => {}),
-      appMode: AppMode.Normal,
       viewMode: ViewMode.Sessions,
       config,
       backend: null,
@@ -592,7 +592,6 @@ describe('app handler factory', () => {
       cursor: 0,
       showMessage,
       refreshItems,
-      agentCursor: 0,
       regularSessions: [],
       agentSessions: [],
       selectedPrimaryItem: undefined,
@@ -618,7 +617,7 @@ describe('app handler factory', () => {
       settingEditorPlainText: undefined,
       renameTarget: null,
       renamedValue: 'alpha-2',
-      searchTerm: '',
+      launchPreview: INACTIVE_LAUNCH,
       rememberedSessions: mock(() => {}),
       toggleDetails: mock(() => {}),
     })
@@ -651,7 +650,6 @@ describe('app handler factory', () => {
       invocationCwd: '/home/tester',
       launchGuard: { active: false },
       showOutcome: mock(() => {}),
-      appMode: AppMode.Normal,
       viewMode: ViewMode.Sessions,
       config: getDefaultConfig('/home/tester'),
       backend,
@@ -660,7 +658,6 @@ describe('app handler factory', () => {
       cursor: 0,
       showMessage,
       refreshItems,
-      agentCursor: 0,
       regularSessions: [],
       agentSessions: [],
       selectedPrimaryItem: undefined,
@@ -686,7 +683,7 @@ describe('app handler factory', () => {
       settingEditorPlainText: undefined,
       renameTarget,
       renamedValue: 'alpha',
-      searchTerm: '',
+      launchPreview: INACTIVE_LAUNCH,
       rememberedSessions: mock(() => {}),
       toggleDetails: mock(() => {}),
     })

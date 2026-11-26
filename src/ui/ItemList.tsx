@@ -14,6 +14,8 @@ interface Props {
   maxItems: number
   width: number
   searchQuery?: string
+  // New only: the frozen plan's action for the selected row; undefined falls back to the row hint.
+  selectedAction?: string
   icons?: IconConfig
   pendingKillSessionName?: string | null
 }
@@ -27,6 +29,7 @@ export default function ItemList({
   maxItems,
   width,
   searchQuery = '',
+  selectedAction,
   icons,
   pendingKillSessionName,
 }: Props) {
@@ -44,22 +47,24 @@ export default function ItemList({
         const hasDescMatch = descMatchIndices && descMatchIndices.length > 0
         const icon = getItemIconPresentation(theme, item, icons)
 
+        const selected = absoluteIndex === cursor
+
         const sessionStatusLabel = item.linkedSessionName
-          ? 'attach'
+          ? 'focus'
           : item.itemKind === 'file'
             ? 'open'
             : 'create'
 
         const linkedSessionLabel = item.linkedSessionName ? ` -> ${item.linkedSessionName}` : ''
+        const rowAction = `${sessionStatusLabel}${linkedSessionLabel}`
         const pendingKill = item.isSession && getItemKey(item) === pendingKillSessionName
-        const selected = absoluteIndex === cursor
 
         const meta = item.isSession
           ? pendingKill
             ? 'press d again to kill'
             : `(${item.windowCount})`
           : appMode === AppMode.NewSession
-            ? `${sessionStatusLabel}${linkedSessionLabel}`
+            ? ((selected ? selectedAction : undefined) ?? rowAction)
             : ''
 
         const prefixWidth = item.isSession ? SESSION_ROW_PREFIX_COLUMNS : 3 + icon.glyph.length

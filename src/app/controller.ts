@@ -20,6 +20,7 @@ import { AppMode } from '../types'
 import { mark, measure } from '../util/perf'
 import { requestFatalShutdown } from '../util/shutdown'
 import { getSettingEditorTitle, isOptionSetting } from '../settings'
+import { useLaunchPreview } from '../ui/launch-preview'
 
 export function useAppController(invocationCwd: string) {
   const effects = useEffectRuntime()
@@ -180,6 +181,17 @@ export function useAppController(invocationCwd: string) {
     backend,
   })
 
+  const launchPreview = useLaunchPreview({
+    active: appMode === AppMode.NewSession,
+    searchQuery,
+    selected: selectedPrimaryItem,
+    config,
+    backend: backend?.kind,
+    invocationCwd,
+    liveSessions: sessionItems,
+    onDefect: requestFatalShutdown,
+  })
+
   const { showMessage, refreshItems } = createAppRuntime({
     config,
     backend,
@@ -246,7 +258,6 @@ export function useAppController(invocationCwd: string) {
     invocationCwd,
     launchGuard: launchGuardRef.current,
     backend,
-    appMode,
     viewMode,
     config,
     items,
@@ -255,7 +266,6 @@ export function useAppController(invocationCwd: string) {
     showMessage,
     showOutcome: report => openOutcomeModal(report, setModalState),
     refreshItems,
-    agentCursor,
     regularSessions,
     rememberedSessions: (key: string | null) => {
       lastSessionSelectionRef.current = key
@@ -284,7 +294,7 @@ export function useAppController(invocationCwd: string) {
     settingEditorPlainText: settingEditorTextareaRef.current?.plainText,
     renameTarget,
     renamedValue: (modalTextareaRef.current?.plainText ?? modalInputValue).trim(),
-    searchTerm: searchQuery.trim(),
+    launchPreview,
     toggleDetails: details.toggle,
   })
 
@@ -361,8 +371,6 @@ export function useAppController(invocationCwd: string) {
     config,
     backend,
     sessionItems,
-    projectSourceItems,
-    sessionCandidateItems,
     lastSessionSelectionRef,
     lastProjectSelectionRef,
     setAllItems,
@@ -416,6 +424,7 @@ export function useAppController(invocationCwd: string) {
       cursor,
       agentCursor,
       searchQuery,
+      launchPreview,
       prefixActive,
       pendingKillSessionName,
       projectCount: projectSourceItems.length,

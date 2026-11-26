@@ -80,9 +80,21 @@ test('a created workspace that cannot be opened shows the outcome screen, retrie
     throw new MultiplexerError('command-failed', 'Herdr has no attached client')
   })
 
-  screen = await renderSessionScreen({ width: 120, height: 36 }, { workspaces: [alpha], backend })
+  const scratch = {
+    title: 'scratch',
+    desc: '',
+    path: '/fixture/scratch',
+    isSession: false,
+    itemKind: 'project' as const,
+  }
+
+  screen = await renderSessionScreen(
+    { width: 120, height: 36 },
+    { workspaces: [alpha], backend, projects: [scratch], config: { defaultSession: {} } }
+  )
   await screen.pressKey('n')
   await screen.typeText('scratch')
+  await screen.settle()
   await screen.pressKey('RETURN')
   await screen.settle()
 

@@ -6,6 +6,7 @@ import {
   type ActionContext,
   type CommandId,
 } from '../../app/action-catalog'
+import { openNewSession } from '../../app/launcher-query'
 import { AppMode, ViewMode, type Config, type Item } from '../../types'
 
 export interface KeyboardInput {
@@ -105,12 +106,7 @@ export function getQuickSelectItem(ctx: KeyboardHandlerContext, index: number): 
 
 export function enterNewSessionMode(ctx: KeyboardHandlerContext) {
   ctx.clearPendingKill()
-  ctx.setAppMode(AppMode.NewSession)
-  ctx.setViewMode(ViewMode.Projects)
-  ctx.setAllItems(ctx.projectItems)
-  ctx.setItems(ctx.projectItems)
-  ctx.setCursor(Math.max(0, ctx.projectItems.length - 1))
-  ctx.setSearchQuery('')
+  openNewSession(ctx, ctx.projectItems)
 }
 
 // Keys run an action only when the catalog allows it, and explain a refusal instead.

@@ -37,6 +37,7 @@ import { getSettingEditorTitle, isOptionSetting } from '../../src/settings'
 import { resolveTheme, ThemeProvider, type ThemeResolver } from '../../src/styles/theme'
 import type { SubscribeThemeFollowOptions } from '../../src/styles/theme-follow'
 import { AppMode, type Config, type Item, type KeybindMode } from '../../src/types'
+import { useLaunchPreview } from '../../src/ui/launch-preview'
 import { shouldShowDetailPanel, useTerminalSize } from '../../src/util/terminal'
 
 type BackendCall = { operation: 'list' } | { operation: 'details' | 'open'; id: string }
@@ -76,6 +77,9 @@ interface SessionScreenData {
   workspaces?: LiveWorkspace[]
   backend?: MultiplexerBackend
   projects?: Item[]
+  // Candidate discovery for New; defaults to resolving the fixture projects at once.
+  loadCandidates?: () => Promise<Item[]>
+  config?: Partial<Config>
   filterItems?: typeof filterAndSortItems
   homeDir?: string
   resolveTheme?: ThemeResolver
@@ -233,6 +237,19 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
 
   const launchGuard = useRef<LaunchGuard>({ active: false })
 
+  const launchPreview = useLaunchPreview({
+    active: core.appMode === AppMode.NewSession,
+    searchQuery: core.searchQuery,
+    selected: derived.selectedPrimaryItem,
+    config,
+    backend: backend.kind,
+    invocationCwd: '/fixture',
+    liveSessions: core.sessionItems,
+    onDefect: cause => {
+      fixture.defects.push(cause)
+    },
+  })
+
   const handlers = createAppHandlers({
     ...core,
     ...modal,
@@ -249,7 +266,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     saveConfig: unsupportedFixtureAction,
     setConfig: unsupportedFixtureAction,
     renamedValue: '',
-    searchTerm: core.searchQuery.trim(),
+    launchPreview,
     rememberedSessions: () => {},
   })
 
@@ -306,6 +323,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
         config={config}
         backend={backend}
         details={details}
+        launchPreview={launchPreview}
         projectCount={projects.length}
       />
       <AppModalsLayer
@@ -335,6 +353,7 @@ export async function renderSessionScreen(
     autoUpdate: false,
     projectPaths: [],
     icons: { tmux: 'T', herdr: 'H', configured: 'C', project: 'P', opencode: 'A' },
+    ...data.config,
   }
 
   const workspaces: LiveWorkspace[] = data.workspaces ?? [
@@ -410,7 +429,7 @@ export async function renderSessionScreen(
       dispose: () => {},
     }),
     onDiscardedSearch: () => {},
-    loadCandidates: async () => projects,
+    loadCandidates: data.loadCandidates ?? (async () => projects),
     linkSessions: async items => items,
   }
 

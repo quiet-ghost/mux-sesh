@@ -249,6 +249,16 @@ describe('action catalog footer', () => {
     }
   })
 
+  test.each(MODES)('%s New footer names the frozen plan action, never a guess', keybindMode => {
+    const ctx = context({ appMode: AppMode.NewSession, keybindMode })
+
+    expect(getActionFooter(ctx, 'create')).toBe('enter create  esc cancel')
+    expect(getActionFooter(ctx, 'focus')).toBe('enter focus  esc cancel')
+    expect(getActionFooter(ctx, 'clone')).toBe('enter clone  esc cancel')
+    expect(getActionFooter(ctx, 'none')).toBe('esc cancel')
+    expect(getActionFooter(ctx)).toBe('esc cancel')
+  })
+
   test('advertises available keys for a live session', () => {
     const ctx = context({ agentCount: 1, target: getActionTarget(session) })
 

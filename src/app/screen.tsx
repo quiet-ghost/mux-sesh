@@ -21,10 +21,13 @@ import ItemList from '../ui/ItemList'
 import { truncateDialogText } from '../ui/dialog-layout'
 import { getListRowWidth, getSessionViewport } from '../ui/session-viewport'
 import SessionDetailsPanel from '../ui/SessionDetailsPanel'
+import NewSessionSummary from '../ui/NewSessionSummary'
+import { getNewSessionAction, getSelectedRowAction } from '../ui/launch-preview'
 import Toast from '../ui/Toast'
 import VersionBadge, { formatVersionBadge } from '../ui/VersionBadge'
 import { CURRENT_VERSION } from '../update/version'
 import type { MultiplexerBackend } from '../multiplexer'
+import type { LaunchPreview } from '../sessions/launch-plan'
 
 interface Props {
   theme: ThemeColors
@@ -42,6 +45,7 @@ interface Props {
   cursor: number
   agentCursor: number
   searchQuery: string
+  launchPreview: LaunchPreview
   prefixActive: boolean
   pendingKillSessionName: string | null
   projectCount: number
@@ -72,6 +76,7 @@ export function AppScreen({
   cursor,
   agentCursor,
   searchQuery,
+  launchPreview,
   prefixActive,
   pendingKillSessionName,
   projectCount,
@@ -95,7 +100,7 @@ export function AppScreen({
     process.env.MUX_SESH_DEV === '1'
   )
 
-  const footerHint = getActionFooter(actionContext)
+  const footerHint = getActionFooter(actionContext, getNewSessionAction(launchPreview))
   const showDetailPanel = shouldShowDetailPanel(columns, appMode === AppMode.NewSession)
 
   const layout = getScreenLayout({
@@ -174,6 +179,10 @@ export function AppScreen({
               />
             )}
 
+            {appMode === AppMode.NewSession && (
+              <NewSessionSummary preview={launchPreview} width={layout.listContentWidth} />
+            )}
+
             <box
               style={{
                 flexDirection: 'column',
@@ -220,6 +229,7 @@ export function AppScreen({
                   maxItems={layout.sectionRows}
                   width={rowWidth}
                   searchQuery={searchQuery}
+                  selectedAction={getSelectedRowAction(launchPreview)}
                   icons={config?.icons}
                   pendingKillSessionName={pendingKillSessionName}
                 />

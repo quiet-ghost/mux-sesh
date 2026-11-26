@@ -11,7 +11,7 @@ import {
   isFileSearchFailure,
   type FileSearchScope,
 } from '../search/fff'
-import { AppMode, type Config, type Item } from '../types'
+import { AppMode, ViewMode, type Config, type Item } from '../types'
 import { isGitHubURL } from '../util/github'
 import { mark, measure } from '../util/perf'
 import { requestFatalShutdown } from '../util/shutdown'
@@ -69,6 +69,30 @@ interface LocalResults {
 interface NativeResults {
   readonly query: string
   readonly items: Item[]
+}
+
+export interface NewSessionEntry {
+  readonly setAppMode: (mode: AppMode) => void
+  readonly setViewMode: (mode: ViewMode) => void
+  readonly setAllItems: (items: Item[]) => void
+  readonly setItems: (items: Item[]) => void
+  readonly setCursor: (cursor: number) => void
+  readonly setSearchQuery: (query: string) => void
+}
+
+// Cached candidates show at once; this owner keeps discovering behind them without blocking input.
+export function getNewSessionSeed(candidates: Item[], projects: Item[]): Item[] {
+  return candidates.length > 0 ? candidates : projects
+}
+
+// Every way into New lands on the same launcher: empty query, first candidate selected.
+export function openNewSession(entry: NewSessionEntry, seed: Item[]): void {
+  entry.setAppMode(AppMode.NewSession)
+  entry.setViewMode(ViewMode.Projects)
+  entry.setAllItems(seed)
+  entry.setItems(seed)
+  entry.setCursor(0)
+  entry.setSearchQuery('')
 }
 
 export function formatFileSearchFailure(failure: Error): string {

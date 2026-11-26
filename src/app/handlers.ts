@@ -11,6 +11,7 @@ import type { SettingsFieldId } from '../settings'
 import type { MultiplexerBackend } from '../multiplexer'
 import { handoffOf } from '../multiplexer/focus-outcome'
 import type { FocusOutcome, WorkspaceRef } from '../multiplexer/types'
+import type { LaunchPreview } from '../sessions/launch-plan'
 import { requestShutdown } from '../util/shutdown'
 import { movePinAfterRename } from '../config/pinned-sessions'
 import { applyEditorSetting, applyOptionSetting, getSettingEditorTitle } from '../settings'
@@ -41,7 +42,10 @@ export interface LaunchGuard {
   active: boolean
 }
 
-interface NewSessionHandlerOptions extends SharedHandlerOptions {
+interface NewSessionHandlerOptions extends Pick<
+  SharedHandlerOptions,
+  'backend' | 'config' | 'sessionItems' | 'showMessage' | 'refreshItems'
+> {
   invocationCwd: string
   launchGuard: LaunchGuard
   showOutcome: (report: OperationReport) => void
@@ -193,8 +197,8 @@ export async function handleRenameSubmitWithFeedback(
   await options.refreshItems()
 }
 
-export async function handleNewSessionSubmitWithSearch(
-  searchTerm: string,
+export async function handleNewSessionSubmitWithPreview(
+  preview: LaunchPreview,
   options: NewSessionHandlerOptions
 ): Promise<void> {
   if (!options.backend) return
@@ -209,10 +213,8 @@ export async function handleNewSessionSubmitWithSearch(
 
   try {
     const outcome = await actionHandleNewSessionSubmit(
-      searchTerm,
+      preview,
       options.config,
-      options.items,
-      options.cursor,
       options.backend,
       options.invocationCwd,
       options.sessionItems
@@ -414,10 +416,8 @@ export async function executeAppCommand(
   await runCommand(commandID, options)
 }
 
-interface CreateAppHandlersOptions extends NewSessionHandlerOptions {
-  appMode: AppMode
+interface CreateAppHandlersOptions extends NewSessionHandlerOptions, SharedHandlerOptions {
   viewMode: ViewMode
-  agentCursor: number
   regularSessions: Item[]
   agentSessions: Item[]
   selectedPrimaryItem?: Item
@@ -443,7 +443,7 @@ interface CreateAppHandlersOptions extends NewSessionHandlerOptions {
   settingEditorPlainText?: string
   renameTarget: Item | null
   renamedValue: string
-  searchTerm: string
+  launchPreview: LaunchPreview
   rememberedSessions: (key: string | null) => void
   toggleDetails: () => void
 }
@@ -501,7 +501,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
   }
 
   async function handleNewSessionSubmit() {
-    await handleNewSessionSubmitWithSearch(options.searchTerm, {
+    await handleNewSessionSubmitWithPreview(options.launchPreview, {
       ...sharedOptions,
       invocationCwd: options.invocationCwd,
       launchGuard: options.launchGuard,
@@ -566,11 +566,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
   async function executeCommand(commandID: Parameters<typeof executeAppCommand>[0]) {
     await executeAppCommand(commandID, {
       keybindMode: options.config?.keybindMode ?? 'vim',
-      appMode: options.appMode,
       viewMode: options.viewMode,
-      cursor: options.cursor,
-      agentCursor: options.agentCursor,
-      regularSessions: options.regularSessions,
       agentSessions: options.agentSessions,
       selectedPrimaryItem: options.selectedPrimaryItem,
       sessionCandidateItems: options.sessionCandidateItems,

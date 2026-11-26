@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import type { OperationReport } from '../src/app/action-outcome'
 import {
-  handleNewSessionSubmitWithSearch,
+  handleNewSessionSubmitWithPreview,
   handleOutcomeRetryWithFeedback,
   handleSettingOptionSubmitWithFeedback,
   handleSettingsEditorSubmitWithFeedback,
@@ -18,7 +18,8 @@ import {
   type CreatedSessionReceipt,
   type MultiplexerBackend,
 } from '../src/multiplexer/types'
-import type { Config } from '../src/types'
+import { previewLaunch, type LaunchPreview } from '../src/sessions/launch-plan'
+import type { Config, Item } from '../src/types'
 
 const receipt: CreatedSessionReceipt = {
   workspace: { backend: 'herdr', id: 'w9', title: 'scratch' },
@@ -27,6 +28,21 @@ const receipt: CreatedSessionReceipt = {
 
 function unsupported(): never {
   throw new Error('The outcome test backend does not implement that operation')
+}
+
+const scratch: LaunchPreview = {
+  kind: 'ready',
+  subject: 'selected',
+  plan: { kind: 'create', input: { title: 'scratch', path: '/fixture/scratch' } },
+}
+
+function highlighted(item: Item, config: Config): LaunchPreview {
+  return previewLaunch('', item, {
+    config,
+    backend: 'herdr',
+    invocationCwd: '/fixture',
+    liveSessions: [],
+  })
 }
 
 interface BackendScript {
@@ -85,9 +101,7 @@ function launchOptions(backend: MultiplexerBackend, config: Config = getDefaultC
       invocationCwd: '/fixture',
       backend,
       config,
-      items: [],
       sessionItems: [],
-      cursor: 0,
       launchGuard,
       showMessage: (message: string) => {
         messages.push(message)
@@ -118,7 +132,7 @@ test('a created workspace that cannot be opened shows a partial outcome that ret
   const { backend, calls } = scriptedBackend({})
   const launch = launchOptions(backend)
 
-  await handleNewSessionSubmitWithSearch('scratch', launch.options)
+  await handleNewSessionSubmitWithPreview(scratch, launch.options)
 
   const report = onlyReport(launch.reports)
   expect(report).toMatchObject({
@@ -158,7 +172,7 @@ test('a failed startup command keeps the workspace and offers opening it, not re
     itemKind: 'project' as const,
   }
 
-  await handleNewSessionSubmitWithSearch('', { ...launch.options, items: [project] })
+  await handleNewSessionSubmitWithPreview(highlighted(project, config), launch.options)
 
   const report = onlyReport(launch.reports)
   expect(report).toMatchObject({
@@ -183,7 +197,7 @@ test('a create that times out is an unknown outcome with no retry', async () => 
 
   const launch = launchOptions(backend)
 
-  await handleNewSessionSubmitWithSearch('scratch', launch.options)
+  await handleNewSessionSubmitWithPreview(scratch, launch.options)
 
   const report = onlyReport(launch.reports)
   expect(report.kind).toBe('unknown')
@@ -202,7 +216,7 @@ test('a definite create failure stays a local message and creates nothing', asyn
 
   const launch = launchOptions(backend)
 
-  await handleNewSessionSubmitWithSearch('scratch', launch.options)
+  await handleNewSessionSubmitWithPreview(scratch, launch.options)
 
   expect(launch.reports).toEqual([])
   expect(launch.messages).toHaveLength(1)
@@ -230,7 +244,10 @@ test('a reused clone whose workspace cannot be opened reports the repository and
     defaultSession: {},
   })
 
-  await handleNewSessionSubmitWithSearch('https://github.com/acme/widget', launch.options)
+  await handleNewSessionSubmitWithPreview(
+    { kind: 'clone', url: 'https://github.com/acme/widget' },
+    launch.options
+  )
 
   const report = onlyReport(launch.reports)
   expect(report).toMatchObject({

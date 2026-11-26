@@ -25,7 +25,7 @@ export default function SearchInput({
 
   const placeholder =
     appMode === AppMode.NewSession
-      ? 'Type project name, GitHub URL, or custom session name...'
+      ? 'Type a project name, path, or GitHub URL...'
       : 'Type to search...'
 
   // A layout effect runs in the same commit, before newer typing can make the query stale.
