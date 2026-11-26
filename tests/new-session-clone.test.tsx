@@ -132,17 +132,23 @@ async function exists(path: string): Promise<boolean> {
   )
 }
 
+const FRAME_WAIT_MS = 10_000
+
 // Dialogs wrap long temp paths, so frames are compared with all whitespace removed.
 function squashed(text: string): string {
   return text.replace(/\s+/g, '')
 }
 
+// Bounded by time, not ticks: a real local git clone can outlast many settles on a slow runner.
 async function waitForFrame(fixture: Screen, text: string): Promise<string> {
-  for (let attempt = 0; attempt < 200; attempt++) {
+  const deadline = Date.now() + FRAME_WAIT_MS
+
+  while (Date.now() < deadline) {
     const frame = await fixture.frame()
 
     if (squashed(frame).includes(squashed(text))) return squashed(frame)
     await fixture.settle()
+    await Bun.sleep(5)
   }
 
   throw new Error(`The screen never showed '${text}':\n${await fixture.frame()}`)

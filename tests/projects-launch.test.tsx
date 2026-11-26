@@ -121,11 +121,14 @@ async function showProjects(fixture: Screen): Promise<void> {
 
 // Discovery and planning hit the real filesystem, so both can outlast one settle.
 async function waitForFrame(fixture: Screen, text: string): Promise<string> {
-  for (let attempt = 0; attempt < 200; attempt++) {
+  const deadline = Date.now() + 10_000
+
+  while (Date.now() < deadline) {
     const frame = await fixture.frame()
 
     if (frame.includes(text)) return frame
     await fixture.settle()
+    await Bun.sleep(5)
   }
 
   throw new Error(`The screen never showed '${text}':\n${await fixture.frame()}`)

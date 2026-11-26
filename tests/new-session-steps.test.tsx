@@ -108,11 +108,14 @@ async function press(fixture: Screen, key: string, ctrl = false): Promise<string
 
 // Path checks hit the real filesystem, so planning can outlast one settle on a slow runner.
 async function plannedFrame(fixture: Screen): Promise<string> {
-  for (let attempt = 0; attempt < 200; attempt++) {
+  const deadline = Date.now() + 10_000
+
+  while (Date.now() < deadline) {
     await fixture.settle()
     const frame = await fixture.frame()
 
     if (!frame.includes('Checking what Enter will open…')) return frame
+    await Bun.sleep(5)
   }
 
   throw new Error('The New launch preview never finished planning')
