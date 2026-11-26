@@ -1,6 +1,8 @@
 import type { CommandOptions, CommandResult, CommandRunner } from './command'
 import {
   MultiplexerError,
+  type CreatedSessionReceipt,
+  type CreateSessionInput,
   type LiveWorkspace,
   type MultiplexerBackend,
   type OpenWorkspaceInput,
@@ -42,6 +44,7 @@ const WINDOW_FORMAT = [
 const DETAILS_CACHE_TTL_MS = 4000
 const SESSION_ID = /^\$\d+$/
 const WINDOW_ID = /^@\d+$/
+const PANE_ID = /^%\d+$/
 const COUNT = /^\d+$/
 
 // The server is absent, not broken: an empty inventory that the next create starts.
@@ -145,11 +148,49 @@ export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBacke
     detailsCache.clear()
   }
 
+  async function create(input: CreateSessionInput): Promise<CreatedSessionReceipt> {
+    const title = sanitizeTmuxSessionName(input.title)
+
+    const output = await tmuxOk(
+      [
+        'new-session',
+        '-d',
+        '-s',
+        title,
+        '-c',
+        input.path,
+        '-P',
+        '-F',
+        `#{session_id}${TMUX_FIELD_SEPARATOR}#{pane_id}`,
+      ],
+      `Failed to create tmux session '${title}'`
+    )
+
+    const [id = '', rootPaneId = ''] = output.trim().split(TMUX_FIELD_SEPARATOR)
+
+    if (!SESSION_ID.test(id) || !PANE_ID.test(rootPaneId)) {
+      invalidReply(`new-session printed '${output.trim()}' instead of a session and pane id`)
+    }
+
+    invalidate()
+
+    return { workspace: { backend: 'tmux', id, title }, rootPaneId }
+  }
+
+  async function start(receipt: CreatedSessionReceipt, command: string): Promise<void> {
+    await tmuxOk(
+      ['send-keys', '-t', receipt.rootPaneId, command, 'Enter'],
+      `Created tmux session '${receipt.workspace.title}', but its startup command could not be sent`
+    )
+  }
+
   return {
     kind: 'tmux',
     capabilities: { previousWorkspace: true },
     list,
     open,
+    create,
+    start,
     async openOrCreate(input: OpenWorkspaceInput): Promise<void> {
       const title = sanitizeTmuxSessionName(input.title)
       const existing = (await list()).find(session => session.title === title)
@@ -160,26 +201,10 @@ export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBacke
         return
       }
 
-      const created = (
-        await tmuxOk(
-          ['new-session', '-d', '-s', title, '-c', input.path, '-P', '-F', '#{session_id}'],
-          `Failed to create tmux session '${title}'`
-        )
-      ).trim()
+      const receipt = await create(input)
 
-      if (!SESSION_ID.test(created))
-        invalidReply(`new-session printed '${created}' instead of a session id`)
-
-      invalidate()
-
-      if (input.startupCommand) {
-        await tmuxOk(
-          ['send-keys', '-t', created, input.startupCommand, 'Enter'],
-          `Created tmux session '${title}', but its startup command could not be sent`
-        )
-      }
-
-      await open({ backend: 'tmux', id: created, title })
+      if (input.startupCommand) await start(receipt, input.startupCommand)
+      await open(receipt.workspace)
     },
     async rename(workspace: WorkspaceRef, title: string): Promise<void> {
       await tmuxOk(

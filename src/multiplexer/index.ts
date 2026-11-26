@@ -9,6 +9,8 @@ export type {
   AgentStatus,
   BackendKind,
   BackendPreference,
+  CreatedSessionReceipt,
+  CreateSessionInput,
   HerdrAgentTarget,
   LiveWorkspace,
   MultiplexerBackend,

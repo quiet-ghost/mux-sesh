@@ -87,6 +87,12 @@ function createFakeBackend(opts: {
     async openOrCreate() {
       throw new Error('not used')
     },
+    async create() {
+      throw new Error('not used')
+    },
+    async start() {
+      throw new Error('not used')
+    },
     async rename() {
       throw new Error('not used')
     },

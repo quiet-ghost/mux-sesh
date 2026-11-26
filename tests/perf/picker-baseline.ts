@@ -76,6 +76,8 @@ async function captureAgentEntry(corpus: ReturnType<typeof createPickerCorpus>):
     },
     open: unexpectedBackendCall,
     openOrCreate: unexpectedBackendCall,
+    create: unexpectedBackendCall,
+    start: unexpectedBackendCall,
     rename: unexpectedBackendCall,
     close: unexpectedBackendCall,
     current: unexpectedBackendCall,

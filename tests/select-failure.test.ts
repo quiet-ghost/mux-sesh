@@ -19,6 +19,7 @@ const agent = workspaceToItem({
 function handlersFor(runner: CommandRunner, showMessage: (message: string) => void) {
   return createAppHandlers({
     invocationCwd: '/fixture',
+    launchGuard: { active: false },
     appMode: AppMode.AgentsManage,
     viewMode: ViewMode.Sessions,
     config: getDefaultConfig('/fixture'),

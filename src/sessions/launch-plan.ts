@@ -11,6 +11,7 @@ import {
 import { getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 import type {
   BackendKind,
+  CreatedSessionReceipt,
   MultiplexerBackend,
   OpenWorkspaceInput,
   WorkspaceRef,
@@ -166,16 +167,51 @@ export async function prepareLaunch(
   }
 }
 
+export type LaunchOutcome =
+  | { readonly kind: 'focused'; readonly target: WorkspaceRef }
+  | { readonly kind: 'created'; readonly receipt: CreatedSessionReceipt }
+
+// The session exists; only a follow-up step failed. Recovery is to open it, never to create again.
+export class LaunchFollowUpFailed extends Data.TaggedError('LaunchFollowUpFailed')<{
+  readonly receipt: CreatedSessionReceipt
+  readonly step: 'start' | 'focus'
+  readonly cause: unknown
+}> {
+  override get message(): string {
+    const failed = this.step === 'start' ? 'its startup command failed' : 'it could not be opened'
+    const reason = this.cause instanceof Error ? this.cause.message : 'unknown error'
+
+    return `Created '${this.receipt.workspace.title}', but ${failed}: ${reason}. The new session was kept; open it from Sessions instead of creating it again.`
+  }
+}
+
+async function followUp(
+  receipt: CreatedSessionReceipt,
+  step: LaunchFollowUpFailed['step'],
+  run: () => Promise<void>
+): Promise<void> {
+  try {
+    await run()
+  } catch (cause) {
+    throw new LaunchFollowUpFailed({ receipt, step, cause })
+  }
+}
+
 export async function executeLaunchPlan(
   plan: LaunchPlan,
   backend: MultiplexerBackend
-): Promise<void> {
-  switch (plan.kind) {
-    case 'focus':
-      await backend.open(plan.target)
+): Promise<LaunchOutcome> {
+  if (plan.kind === 'focus') {
+    await backend.open(plan.target)
 
-      return
-    case 'create':
-      await backend.openOrCreate(plan.input)
+    return { kind: 'focused', target: plan.target }
   }
+
+  const receipt = await backend.create({ title: plan.input.title, path: plan.input.path })
+  const { startupCommand } = plan.input
+
+  if (startupCommand) await followUp(receipt, 'start', () => backend.start(receipt, startupCommand))
+  await followUp(receipt, 'focus', () => backend.open(receipt.workspace))
+
+  return { kind: 'created', receipt }
 }

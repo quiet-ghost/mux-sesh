@@ -190,13 +190,37 @@ describe('tmux backend creation', () => {
     expect(calls.map(call => call.command).slice(1)).toEqual(['tmux switch-client -t $3'])
   })
 
-  test('creates detached, starts the command in the created id, then focuses it', async () => {
+  test('create returns the native session and root pane without focusing', async () => {
+    const { runner, calls } = recordingRunner([
+      ['tmux new-session', { stdout: `$12${SEP}%3\n` }],
+      ['tmux send-keys', {}],
+    ])
+
+    const backend = createTmuxBackend({ runner, insideTmux: false })
+
+    const receipt = await backend.create({ title: 'my.app', path: '/fixture/app' })
+    await backend.start(receipt, 'bun dev')
+
+    expect(receipt).toEqual({
+      workspace: { backend: 'tmux', id: '$12', title: 'my_app' },
+      rootPaneId: '%3',
+    })
+    expect(calls).toEqual([
+      {
+        command: `tmux new-session -d -s my_app -c /fixture/app -P -F #{session_id}${SEP}#{pane_id}`,
+        interactive: false,
+      },
+      { command: 'tmux send-keys -t %3 bun dev Enter', interactive: false },
+    ])
+  })
+
+  test('creates detached, starts the command in the created pane, then focuses it', async () => {
     const { runner, calls } = recordingRunner([
       [
         'tmux list-sessions',
         { exitCode: 1, stderr: 'no server running on /tmp/tmux-1000/default' },
       ],
-      ['tmux new-session', { stdout: '$12\n' }],
+      ['tmux new-session', { stdout: `$12${SEP}%3\n` }],
       ['tmux send-keys', {}],
       ['tmux attach-session', {}],
     ])
@@ -209,15 +233,15 @@ describe('tmux backend creation', () => {
 
     expect(calls.slice(1)).toEqual([
       {
-        command: 'tmux new-session -d -s my_app -c /fixture/my app -P -F #{session_id}',
+        command: `tmux new-session -d -s my_app -c /fixture/my app -P -F #{session_id}${SEP}#{pane_id}`,
         interactive: false,
       },
-      { command: 'tmux send-keys -t $12 nvim . Enter', interactive: false },
+      { command: 'tmux send-keys -t %3 nvim . Enter', interactive: false },
       { command: 'tmux attach-session -t $12', interactive: true },
     ])
   })
 
-  test('a creation reply without a session id is an invalid response', async () => {
+  test('a creation reply without a session and pane id is an invalid response', async () => {
     const { runner } = recordingRunner([
       ['tmux list-sessions', { stdout: '' }],
       ['tmux new-session', { stdout: 'not-an-id\n' }],

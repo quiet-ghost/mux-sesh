@@ -27,8 +27,14 @@ interface SharedHandlerOptions {
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config | null) => Promise<void>
 }
 
+// One per picker: a second Enter while a launch runs must not start an overlapping mutation.
+export interface LaunchGuard {
+  active: boolean
+}
+
 interface NewSessionHandlerOptions extends SharedHandlerOptions {
   invocationCwd: string
+  launchGuard: LaunchGuard
 }
 
 interface KillHandlerOptions extends SharedHandlerOptions {
@@ -132,22 +138,36 @@ export async function handleNewSessionSubmitWithSearch(
   options: NewSessionHandlerOptions
 ): Promise<void> {
   if (!options.backend) return
-  const backend = options.backend
 
-  await runWithErrorMessage(
-    () =>
-      actionHandleNewSessionSubmit(
-        searchTerm,
-        options.config,
-        options.items,
-        options.cursor,
-        backend,
-        options.invocationCwd,
-        options.sessionItems
-      ),
-    'Failed to create session',
-    options.showMessage
-  )
+  if (options.launchGuard.active) {
+    options.showMessage('A launch is already running; wait for it to finish.')
+
+    return
+  }
+
+  options.launchGuard.active = true
+
+  try {
+    await actionHandleNewSessionSubmit(
+      searchTerm,
+      options.config,
+      options.items,
+      options.cursor,
+      options.backend,
+      options.invocationCwd,
+      options.sessionItems
+    )
+  } catch (cause) {
+    options.showMessage(cause instanceof Error ? cause.message : 'Failed to create session', 5000)
+    // A failed launch may still have created a session; plan the next Enter against fresh inventory.
+    await runWithErrorMessage(
+      () => options.refreshItems(),
+      'Failed to refresh sessions after the launch',
+      options.showMessage
+    )
+  } finally {
+    options.launchGuard.active = false
+  }
 }
 
 export async function handleSettingsEditorSubmitWithFeedback(
@@ -327,6 +347,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     await handleNewSessionSubmitWithSearch(options.searchTerm, {
       ...sharedOptions,
       invocationCwd: options.invocationCwd,
+      launchGuard: options.launchGuard,
     })
   }
 

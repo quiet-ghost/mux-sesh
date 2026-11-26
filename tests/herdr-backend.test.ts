@@ -471,6 +471,35 @@ describe('Herdr backend', () => {
     expect(commands).toEqual([['herdr', 'agent', 'focus', 'w3:p2']])
   })
 
+  test('creates without focusing and returns the native workspace and root pane', async () => {
+    const created = JSON.stringify({
+      result: {
+        type: 'workspace_created',
+        workspace: { workspace_id: 'w3', label: 'web' },
+        tab: { tab_id: 'w3:t1' },
+        root_pane: { pane_id: 'w3:p1' },
+      },
+    })
+    const { runner, commands, options } = recordingRunner([
+      { exitCode: 0, stdout: created, stderr: '' },
+      { exitCode: 0, stdout: '', stderr: '' },
+    ])
+    const backend = createHerdrBackend({ runner, insideHerdr: false })
+
+    const receipt = await backend.create({ title: 'web', path: '/repo/web' })
+    await backend.start(receipt, 'bun dev')
+
+    expect(receipt).toEqual({
+      workspace: { backend: 'herdr', id: 'w3', title: 'web' },
+      rootPaneId: 'w3:p1',
+    })
+    expect(commands).toEqual([
+      ['herdr', 'workspace', 'create', '--cwd', '/repo/web', '--label', 'web'],
+      ['herdr', 'pane', 'run', 'w3:p1', 'bun dev'],
+    ])
+    expect(options.every(option => option?.inheritStdio !== true)).toBe(true)
+  })
+
   test('creates a workspace, runs startup command in its root pane, then focuses it', async () => {
     const created = JSON.stringify({
       id: 'cli:workspace:create',

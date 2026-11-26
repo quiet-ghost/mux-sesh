@@ -1,6 +1,8 @@
 import { resolve } from 'path'
 import {
   MultiplexerError,
+  type CreatedSessionReceipt,
+  type CreateSessionInput,
   type LiveWorkspace,
   type MultiplexerBackend,
   type OpenWorkspaceInput,
@@ -240,6 +242,23 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
 
       latestSnapshot = undefined
       await attachIfNeeded()
+    },
+    async create(input: CreateSessionInput): Promise<CreatedSessionReceipt> {
+      const output = await command(
+        ['herdr', 'workspace', 'create', '--cwd', input.path, '--label', input.title],
+        'workspace_created'
+      )
+
+      const created = parseHerdrCreatedWorkspace(output)
+      latestSnapshot = undefined
+
+      return {
+        workspace: { backend: 'herdr', id: created.workspaceId, title: created.workspaceTitle },
+        rootPaneId: created.rootPaneId,
+      }
+    },
+    async start(receipt: CreatedSessionReceipt, startupCommand: string): Promise<void> {
+      await commandWithoutOutput(['herdr', 'pane', 'run', receipt.rootPaneId, startupCommand])
     },
     async rename(workspace: WorkspaceRef, title: string): Promise<void> {
       if (isAgentTarget(workspace)) {

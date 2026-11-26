@@ -22,8 +22,17 @@ const backend: MultiplexerBackend = {
   async openOrCreate(input) {
     created.push(input)
   },
+  async create(input) {
+    created.push(input)
+
+    return {
+      workspace: { backend: 'herdr', id: 'w-probe', title: input.title },
+      rootPaneId: 'w-probe:p1',
+    }
+  },
+  async start() {},
+  async open() {},
   list: unexpectedBackendCall,
-  open: unexpectedBackendCall,
   rename: unexpectedBackendCall,
   close: unexpectedBackendCall,
   current: unexpectedBackendCall,
@@ -83,6 +92,7 @@ try {
     await act(async () => {
       await handleNewSessionSubmitWithSearch(selected ? '' : input, {
         invocationCwd,
+        launchGuard: { active: false },
         backend,
         config: getDefaultConfig(),
         items,

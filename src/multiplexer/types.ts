@@ -33,6 +33,17 @@ export interface OpenWorkspaceInput {
   startupCommand?: string
 }
 
+export interface CreateSessionInput {
+  readonly title: string
+  readonly path: string
+}
+
+// What the backend reported it created: the native session and its root pane, never guessed.
+export interface CreatedSessionReceipt {
+  readonly workspace: WorkspaceRef
+  readonly rootPaneId: string
+}
+
 export interface WorkspaceUnitDetails {
   id: string
   name: string
@@ -66,6 +77,10 @@ export interface MultiplexerBackend {
   list(): Promise<LiveWorkspace[]>
   open(workspace: WorkspaceRef): Promise<void>
   openOrCreate(input: OpenWorkspaceInput): Promise<void>
+  // Non-interactive: creates without focusing or attaching.
+  create(input: CreateSessionInput): Promise<CreatedSessionReceipt>
+  // Runs the command in the receipt's root pane.
+  start(receipt: CreatedSessionReceipt, command: string): Promise<void>
   rename(workspace: WorkspaceRef, title: string): Promise<void>
   close(workspace: WorkspaceRef): Promise<void>
   current(): Promise<WorkspaceRef | undefined>

@@ -5,8 +5,18 @@ import { join } from 'path'
 import { Result } from 'effect'
 import { getDefaultConfig } from '../src/config'
 import { workspaceToItem } from '../src/multiplexer/items'
-import type { BackendKind } from '../src/multiplexer/types'
-import { launchIntentFor, prepareLaunch, type LaunchContext } from '../src/sessions/launch-plan'
+import type {
+  BackendKind,
+  CreatedSessionReceipt,
+  MultiplexerBackend,
+} from '../src/multiplexer/types'
+import {
+  executeLaunchPlan,
+  launchIntentFor,
+  prepareLaunch,
+  type LaunchContext,
+  type LaunchPlan,
+} from '../src/sessions/launch-plan'
 import type { Item } from '../src/types'
 
 let root = ''
@@ -158,3 +168,112 @@ describe('launch plans', () => {
     )
   })
 })
+
+describe('launch execution', () => {
+  const receipt: CreatedSessionReceipt = {
+    workspace: { backend: 'tmux', id: '$12', title: 'api' },
+    rootPaneId: '%3',
+  }
+
+  function recordingBackend(failures: { start?: Error; open?: Error; create?: Error } = {}) {
+    const calls: string[] = []
+
+    function unsupported(): never {
+      throw new Error('Launch execution must only create, start, and open')
+    }
+
+    const backend: MultiplexerBackend = {
+      kind: 'tmux',
+      capabilities: { previousWorkspace: true },
+      async create(input) {
+        calls.push(`create ${input.title} ${input.path}`)
+
+        if (failures.create) throw failures.create
+
+        return receipt
+      },
+      async start(created, command) {
+        calls.push(`start ${created.rootPaneId} ${command}`)
+
+        if (failures.start) throw failures.start
+      },
+      async open(target) {
+        calls.push(`open ${target.id}`)
+
+        if (failures.open) throw failures.open
+      },
+      openOrCreate: unsupported,
+      list: unsupported,
+      rename: unsupported,
+      close: unsupported,
+      current: unsupported,
+      directory: unsupported,
+      details: unsupported,
+      openEditor: unsupported,
+    }
+
+    return { backend, calls }
+  }
+
+  const createPlan: LaunchPlan = {
+    kind: 'create',
+    input: { title: 'api', path: '/fixture/api', startupCommand: 'bun dev' },
+  }
+
+  test('a focus plan opens the exact target and creates nothing', async () => {
+    const { backend, calls } = recordingBackend()
+    const target = { backend: 'tmux' as const, id: '$4', title: 'api' }
+
+    expect(await executeLaunchPlan({ kind: 'focus', target }, backend)).toEqual({
+      kind: 'focused',
+      target,
+    })
+    expect(calls).toEqual(['open $4'])
+  })
+
+  test('a create plan starts in the created pane, then focuses the created session', async () => {
+    const { backend, calls } = recordingBackend()
+
+    expect(await executeLaunchPlan(createPlan, backend)).toEqual({ kind: 'created', receipt })
+    expect(calls).toEqual(['create api /fixture/api', 'start %3 bun dev', 'open $12'])
+  })
+
+  test('a failed startup keeps the created session and does not focus or recreate it', async () => {
+    const { backend, calls } = recordingBackend({ start: new Error('send-keys refused') })
+
+    const failure = await rejectionOf(executeLaunchPlan(createPlan, backend))
+
+    expect(failure).toMatchObject({ _tag: 'LaunchFollowUpFailed', step: 'start', receipt })
+    expect(failure.message).toContain('send-keys refused')
+    expect(failure.message).toContain('kept')
+    expect(calls).toEqual(['create api /fixture/api', 'start %3 bun dev'])
+  })
+
+  test('a failed focus after creation reports the created session', async () => {
+    const { backend } = recordingBackend({ open: new Error('no client') })
+
+    expect(await rejectionOf(executeLaunchPlan(createPlan, backend))).toMatchObject({
+      _tag: 'LaunchFollowUpFailed',
+      step: 'focus',
+      receipt,
+    })
+  })
+
+  test('a failed creation is not reported as a created session', async () => {
+    const creation = new Error('duplicate session')
+    const { backend, calls } = recordingBackend({ create: creation })
+
+    expect(await rejectionOf(executeLaunchPlan(createPlan, backend))).toBe(creation)
+    expect(calls).toEqual(['create api /fixture/api'])
+  })
+})
+
+async function rejectionOf(run: Promise<unknown>): Promise<Error> {
+  try {
+    await run
+  } catch (cause) {
+    if (cause instanceof Error) return cause
+  }
+
+  throw new Error('Expected the launch to fail with an Error')
+}

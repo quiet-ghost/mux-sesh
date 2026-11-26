@@ -493,6 +493,7 @@ describe('app handler factory', () => {
 
     const handlers = createAppHandlers({
       invocationCwd: '/home/tester',
+      launchGuard: { active: false },
       appMode: AppMode.Normal,
       viewMode: ViewMode.Sessions,
       config,
@@ -558,6 +559,7 @@ describe('app handler factory', () => {
 
     const handlers = createAppHandlers({
       invocationCwd: '/home/tester',
+      launchGuard: { active: false },
       appMode: AppMode.Normal,
       viewMode: ViewMode.Sessions,
       config: getDefaultConfig('/home/tester'),

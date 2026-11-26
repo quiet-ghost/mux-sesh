@@ -40,6 +40,8 @@ function createTmuxAgentBackend(detailRequests: string[]): MultiplexerBackend {
     },
     open: unexpectedBackendCall,
     openOrCreate: unexpectedBackendCall,
+    create: unexpectedBackendCall,
+    start: unexpectedBackendCall,
     rename: unexpectedBackendCall,
     close: unexpectedBackendCall,
     current: unexpectedBackendCall,

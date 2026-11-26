@@ -6,7 +6,7 @@ import { getSessionCommandState, getSettingsState } from './derived'
 import { useAppKeyboard } from './keyboard'
 import { useAppModalState } from './modal-state'
 import { createAppRuntime } from './runtime'
-import { createAppHandlers, handleKillSessionWithFeedback } from './handlers'
+import { createAppHandlers, handleKillSessionWithFeedback, type LaunchGuard } from './handlers'
 import { useAppStartup } from './state'
 import { useEffectRuntime } from './use-effect-runtime'
 import { useResolvedTheme } from './resolved-theme'
@@ -114,6 +114,7 @@ export function useAppController(invocationCwd: string) {
   )
 
   const hasScheduledAutoUpdateRef = useRef(false)
+  const launchGuardRef = useRef<LaunchGuard>({ active: false })
 
   useAppStartup(
     effects,
@@ -221,6 +222,7 @@ export function useAppController(invocationCwd: string) {
     executeCommand,
   } = createAppHandlers({
     invocationCwd,
+    launchGuard: launchGuardRef.current,
     backend,
     appMode,
     viewMode,

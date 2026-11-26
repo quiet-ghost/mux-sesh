@@ -47,6 +47,7 @@ export const LINT_CORRIDOR = [
   'tests/fixtures/session-screen.tsx',
   'tests/fixtures/shutdown-react.tsx',
   'tests/launch-plan.test.ts',
+  'tests/launch-submit.test.ts',
   'tests/multiplexer-resolve.test.ts',
   'tests/perf',
   'tests/perf.test.ts',

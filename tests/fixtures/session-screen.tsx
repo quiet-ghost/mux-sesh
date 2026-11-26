@@ -289,6 +289,8 @@ export async function renderSessionScreen(
       calls.push({ operation: 'open', id: workspace.id })
     },
     openOrCreate: unsupportedFixtureAction,
+    create: unsupportedFixtureAction,
+    start: unsupportedFixtureAction,
     rename: unsupportedFixtureAction,
     close: unsupportedFixtureAction,
     current: unsupportedFixtureAction,
