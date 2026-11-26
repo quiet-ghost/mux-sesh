@@ -24,7 +24,7 @@ describe('agent session names', () => {
   })
 })
 
-test('Herdr workspaces use native status for agent grouping', () => {
+test('only Herdr agent targets join Agents; workspace status never moves a workspace', () => {
   expect(
     isAgentSessionItem({
       isSession: true,
@@ -32,7 +32,7 @@ test('Herdr workspaces use native status for agent grouping', () => {
       itemKind: 'herdr',
       agentStatus: 'working',
     })
-  ).toBe(true)
+  ).toBe(false)
   expect(
     isAgentSessionItem({
       isSession: true,

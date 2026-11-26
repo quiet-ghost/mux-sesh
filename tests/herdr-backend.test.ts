@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { createHerdrBackend, type CommandOptions, type CommandRunner } from '../src/herdr/backend'
+import { MultiplexerError } from '../src/multiplexer'
 
 const snapshot = JSON.stringify({
   id: 'cli:api:snapshot',
@@ -219,13 +220,22 @@ function recordingRunner(responses: Array<{ exitCode: number; stdout: string; st
 }
 
 describe('Herdr backend', () => {
-  test('lists detected agents from the Agents workspace as individual targets', async () => {
+  test('lists the Agents workspace and each detected agent as an individual target', async () => {
     const { runner } = recordingRunner([
       { exitCode: 0, stdout: agentsWorkspaceSnapshot, stderr: '' },
     ])
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     expect(await backend.list()).toEqual([
+      {
+        backend: 'herdr',
+        id: 'agents',
+        title: 'Agents',
+        path: '/repo/api',
+        isActive: true,
+        unitCount: 2,
+        agentStatus: 'done',
+      },
       {
         backend: 'herdr',
         id: 'agents',
@@ -267,6 +277,17 @@ describe('Herdr backend', () => {
       },
       {
         backend: 'herdr',
+        id: 'w1',
+        title: 'opencode-api',
+        workspaceTitle: 'api',
+        path: '/repo/api/src',
+        isActive: true,
+        unitCount: 1,
+        agentStatus: 'working',
+        target: { kind: 'agent', tabId: 'w1:t1', paneId: 'w1:p1' },
+      },
+      {
+        backend: 'herdr',
         id: 'w2',
         title: 'api',
         path: '/repo/api-copy',
@@ -276,6 +297,112 @@ describe('Herdr backend', () => {
       },
     ])
     expect(commands).toEqual([['herdr', 'api', 'snapshot']])
+  })
+
+  test('keeps an empty Agents workspace and distinct agents that share one tab', async () => {
+    const shared = JSON.stringify({
+      result: {
+        type: 'session_snapshot',
+        snapshot: {
+          workspaces: [
+            {
+              workspace_id: 'empty',
+              label: 'Agents',
+              focused: false,
+              tab_count: 1,
+              active_tab_id: 'empty:t1',
+            },
+            {
+              workspace_id: 'w3',
+              label: 'pair',
+              focused: false,
+              tab_count: 1,
+              active_tab_id: 'w3:t1',
+            },
+          ],
+          tabs: [{ tab_id: 'w3:t1', workspace_id: 'w3', number: 1, label: 'main' }],
+          panes: [
+            {
+              pane_id: 'w3:p1',
+              workspace_id: 'w3',
+              tab_id: 'w3:t1',
+              focused: false,
+              cwd: '/repo/a',
+            },
+            {
+              pane_id: 'w3:p2',
+              workspace_id: 'w3',
+              tab_id: 'w3:t1',
+              focused: false,
+              cwd: '/repo/b',
+            },
+          ],
+          layouts: [],
+          agents: [
+            { workspace_id: 'w3', tab_id: 'w3:t1', pane_id: 'w3:p1', name: 'twin' },
+            {
+              workspace_id: 'w3',
+              tab_id: 'w3:t1',
+              pane_id: 'w3:p2',
+              name: 'twin',
+              agent_status: 'surprise',
+            },
+          ],
+        },
+      },
+    })
+    const { runner } = recordingRunner([{ exitCode: 0, stdout: shared, stderr: '' }])
+    const listed = await createHerdrBackend({ runner, insideHerdr: true }).list()
+
+    expect(
+      listed.map(row => [
+        row.id,
+        row.title,
+        row.backend === 'herdr' ? row.target?.paneId : undefined,
+      ])
+    ).toEqual([
+      ['empty', 'Agents', undefined],
+      ['w3', 'pair', undefined],
+      ['w3', 'twin', 'w3:p1'],
+      ['w3', 'twin', 'w3:p2'],
+    ])
+    expect(listed[3]?.agentStatus).toBe('unknown')
+  })
+
+  test('rejects an agent whose pane is not in the same snapshot', async () => {
+    const dangling = JSON.stringify({
+      result: {
+        type: 'session_snapshot',
+        snapshot: {
+          workspaces: [
+            {
+              workspace_id: 'w1',
+              label: 'api',
+              focused: false,
+              tab_count: 1,
+              active_tab_id: 'w1:t1',
+            },
+          ],
+          tabs: [],
+          panes: [],
+          layouts: [],
+          agents: [{ workspace_id: 'w1', tab_id: 'w1:t1', pane_id: 'w1:gone', name: 'ghost' }],
+        },
+      },
+    })
+    const { runner } = recordingRunner([{ exitCode: 0, stdout: dangling, stderr: '' }])
+    const backend = createHerdrBackend({ runner, insideHerdr: true })
+
+    expect.assertions(2)
+
+    try {
+      await backend.list()
+    } catch (cause) {
+      expect(cause).toBeInstanceOf(MultiplexerError)
+      expect(cause instanceof Error ? cause.message : '').toContain(
+        "agent pane 'w1:gone' is not a pane of tab 'w1:t1' in workspace 'w1'"
+      )
+    }
   })
 
   test('focuses by workspace id and attaches when launched outside Herdr', async () => {

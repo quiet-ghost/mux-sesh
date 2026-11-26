@@ -7,6 +7,8 @@ export const LINT_CORRIDOR = [
   'src/app/effect-runtime.ts',
   'src/app/herdr-refresh.ts',
   'src/app/use-effect-runtime.ts',
+  'src/herdr/backend.ts',
+  'src/agents/session-name.ts',
   'src/multiplexer/backend.ts',
   'src/multiplexer/command.ts',
   'src/multiplexer/resolve.ts',

@@ -41,6 +41,15 @@ describe('app view helpers', () => {
         isSession: true,
         itemKind: 'herdr',
         agentStatus: 'working',
+        target: { kind: 'agent', tabId: 'w1:t1', paneId: 'w1:p1' },
+      },
+      {
+        title: 'herdr-busy-workspace',
+        desc: '',
+        path: '/tmp/herdr-busy',
+        isSession: true,
+        itemKind: 'herdr',
+        agentStatus: 'working',
       },
       {
         title: 'herdr-plain',
@@ -54,7 +63,11 @@ describe('app view helpers', () => {
 
     const split = splitVisibleSessions(items)
 
-    expect(split.regularSessions.map(item => item.title)).toEqual(['dev', 'herdr-plain'])
+    expect(split.regularSessions.map(item => item.title)).toEqual([
+      'dev',
+      'herdr-busy-workspace',
+      'herdr-plain',
+    ])
     expect(split.agentSessions.map(item => item.title)).toEqual([
       'opencode-dev',
       'pi-main',

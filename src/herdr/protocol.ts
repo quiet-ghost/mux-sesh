@@ -192,10 +192,31 @@ function parseLayout(value: unknown): HerdrLayout {
   }
 }
 
+// Agents become focus targets, so each must name a pane that exists in its own tab and workspace.
+function checkAgentReferences(snapshot: HerdrSnapshot): HerdrSnapshot {
+  const workspaceIds = new Set(snapshot.workspaces.map(workspace => workspace.id))
+
+  for (const agent of snapshot.agents) {
+    if (!workspaceIds.has(agent.workspaceId)) {
+      invalid(`agent pane '${agent.paneId}' names missing workspace '${agent.workspaceId}'`)
+    }
+
+    const pane = snapshot.panes.find(entry => entry.id === agent.paneId)
+
+    if (!pane || pane.tabId !== agent.tabId || pane.workspaceId !== agent.workspaceId) {
+      invalid(
+        `agent pane '${agent.paneId}' is not a pane of tab '${agent.tabId}' in workspace '${agent.workspaceId}'`
+      )
+    }
+  }
+
+  return snapshot
+}
+
 export function parseHerdrSnapshot(output: string): HerdrSnapshot {
   const result = parseHerdrResult(output, 'session_snapshot')
   const snapshot = record(result.snapshot, 'result.snapshot')
-  return {
+  return checkAgentReferences({
     focusedWorkspaceId: optionalString(snapshot.focused_workspace_id),
     focusedTabId: optionalString(snapshot.focused_tab_id),
     focusedPaneId: optionalString(snapshot.focused_pane_id),
@@ -204,7 +225,7 @@ export function parseHerdrSnapshot(output: string): HerdrSnapshot {
     panes: array(snapshot.panes, 'snapshot.panes').map(parsePane),
     layouts: array(snapshot.layouts, 'snapshot.layouts').map(parseLayout),
     agents: array(snapshot.agents, 'snapshot.agents').map(parseAgent),
-  }
+  })
 }
 
 export function parseHerdrResult(output: string, expectedType: string): Record<string, unknown> {

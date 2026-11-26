@@ -169,7 +169,7 @@ In vim mode, view switching is always available on direct `s` and `p`, and also 
 
 ## Manage Agent Sessions
 
-The Agents section includes tmux agent sessions (OpenCode, Pi, Codex, Claude, `tui_chat`, and related side sessions) and Herdr workspaces with detected native agent status. Herdr `unknown` status and age are hidden.
+The Agents section includes tmux agent sessions (OpenCode, Pi, Codex, Claude, `tui_chat`, and related side sessions) and every agent pane Herdr reports, each as its own row, including several agents in one tab. Herdr workspaces always stay in the Sessions list, whatever their label or status, so an empty `Agents` workspace is still listed there. Herdr `unknown` status and age are hidden.
 
 - vim mode: `o`
 - standard mode: `prefix + o`
