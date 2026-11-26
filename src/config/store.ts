@@ -76,12 +76,10 @@ export async function saveConfig(config: Config, homeDir = getHomeDir()): Promis
     )
   }
 
-  const preserved = existing.kind === 'parsed' ? userOwnedFields(existing.document) : {}
+  const preserved: Readonly<Record<string, Schema.Json>> =
+    existing.kind === 'parsed' ? userOwnedFields(existing.document) : {}
 
-  const document = Object.fromEntries([
-    ...Object.entries(preserved),
-    ...Object.entries(serializeConfig(config)),
-  ])
+  const document = { ...preserved, ...serializeConfig(config) }
 
   const temporaryPath = `${configPath}.${process.pid}.tmp`
 

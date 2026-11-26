@@ -1,3 +1,4 @@
+import { Schema } from 'effect'
 import { normalizeConfig, serializeConfig } from './config'
 import { BUILTIN_THEMES, DEFAULT_THEME_ID, SYSTEM_THEME_ID, getBuiltinTheme } from './styles/theme'
 import type { Config, KeybindMode, SortOrder, ThemeColorScheme, ZoxideMode } from './types'
@@ -91,6 +92,8 @@ type JsonSettingValue =
       Config['projectPaths' | 'hiddenSessions' | 'pinnedSessions' | 'projects' | 'wildcards']
     >
   | Partial<NonNullable<Config['icons']>>
+
+const decodeJsonText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Json))
 
 function formatJSON(value: JsonSettingValue): string {
   return JSON.stringify(value, null, 2)
@@ -452,7 +455,12 @@ export function applyEditorSetting(
     return config
   }
 
-  return normalizeConfig({ ...serializeConfig(config), ...applyEditor(config, value) }, homeDir)
+  // Round-trip through JSON text, as a save and reload would, so the merge is a plain JSON document.
+  const document = decodeJsonText(
+    JSON.stringify({ ...serializeConfig(config), ...applyEditor(config, value) })
+  )
+
+  return normalizeConfig(document, homeDir)
 }
 
 export function getSettingEditorTitle(field: SettingsFieldId): string {

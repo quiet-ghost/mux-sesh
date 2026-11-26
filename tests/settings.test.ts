@@ -58,6 +58,30 @@ describe('settings metadata', () => {
     expect(updatedConfig.reposPath).toBe('/home/tester/src/repos')
   })
 
+  test('JSON editor updates keep valid entries and the rest of the config', () => {
+    const updatedConfig = applyEditorSetting(
+      config,
+      'projects',
+      JSON.stringify([{ path: '~/dev/app', listed: false }, { path: '' }, 'stray', 3]),
+      '/home/tester'
+    )
+
+    expect(updatedConfig.projects).toEqual([
+      {
+        path: '/home/tester/dev/app',
+        sessionName: undefined,
+        startupCommand: undefined,
+        previewCommand: undefined,
+        listed: false,
+        icon: undefined,
+      },
+    ])
+
+    expect(updatedConfig.projectPaths).toEqual(config.projectPaths)
+    expect(updatedConfig.icons).toEqual(config.icons)
+    expect(() => applyEditorSetting(config, 'projects', '[{', '/home/tester')).toThrow()
+  })
+
   test('sets and clears backend preference', () => {
     const herdrConfig = applyOptionSetting(config, 'backend', 'herdr')
     expect(herdrConfig.backend).toBe('herdr')

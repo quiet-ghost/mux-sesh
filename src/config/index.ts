@@ -1,4 +1,5 @@
 import { join } from 'path'
+import { Schema } from 'effect'
 import type {
   Config,
   BackendPreference,
@@ -19,8 +20,10 @@ const DEFAULT_EDITOR = 'nvim'
 const DEFAULT_THEME = 'rosepine'
 const DEFAULT_COLOR_SCHEME: ThemeColorScheme = 'system'
 const DEFAULT_PREFIX_KEY = 'ctrl+x'
+
 const DEFAULT_EDITOR_COMMAND =
   "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\""
+
 const DEFAULT_ICONS: IconConfig = {
   tmux: '',
   herdr: '',
@@ -28,28 +31,33 @@ const DEFAULT_ICONS: IconConfig = {
   project: '',
   opencode: '',
 }
+
 const OPTIONAL_THEME_PALETTE_KEYS = ['accent', 'interactive', 'diffAdd', 'diffDelete'] as const
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
+// A field read from a JSON document; absent keys read as undefined.
+type DocumentValue = Schema.Json | undefined
+
+const isRecord = Schema.is(Schema.JsonObject)
+const isJsonArray = Schema.is(Schema.Array(Schema.Json))
+const isNonEmptyText = Schema.is(Schema.String.check(Schema.isMinLength(1)))
+const isFlag = Schema.is(Schema.Boolean)
+const isPositiveInteger = Schema.is(Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0)))
+
+function asString(value: DocumentValue): string | undefined {
+  return isNonEmptyText(value) ? value : undefined
 }
 
-function asString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined
+function asBoolean(value: DocumentValue): boolean | undefined {
+  return isFlag(value) ? value : undefined
 }
 
-function asBoolean(value: unknown): boolean | undefined {
-  return typeof value === 'boolean' ? value : undefined
-}
-
-function asStringArray(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) {
+function asStringArray(value: DocumentValue): string[] | undefined {
+  if (!isJsonArray(value)) {
     return undefined
   }
 
-  const strings = value.filter(
-    (entry): entry is string => typeof entry === 'string' && entry.length > 0
-  )
+  const strings = value.filter(isNonEmptyText)
+
   return strings.length > 0 ? strings : undefined
 }
 
@@ -59,27 +67,29 @@ function uniqueStrings(values?: string[]): string[] | undefined {
   }
 
   const seen = new Set<string>()
+
   const unique = values.filter(value => {
     if (seen.has(value)) {
       return false
     }
 
     seen.add(value)
+
     return true
   })
 
   return unique.length > 0 ? unique : undefined
 }
 
-function asKeybindMode(value: unknown): KeybindMode | undefined {
+function asKeybindMode(value: DocumentValue): KeybindMode | undefined {
   return value === 'vim' || value === 'standard' ? value : undefined
 }
 
-function asZoxideMode(value: unknown): ZoxideMode | undefined {
+function asZoxideMode(value: DocumentValue): ZoxideMode | undefined {
   return value === 'off' || value === 'rank' || value === 'merge' ? value : undefined
 }
 
-function asSortOrder(value: unknown): SortOrder | undefined {
+function asSortOrder(value: DocumentValue): SortOrder | undefined {
   return value === 'live-first' ||
     value === 'configured-first' ||
     value === 'zoxide-first' ||
@@ -88,16 +98,16 @@ function asSortOrder(value: unknown): SortOrder | undefined {
     : undefined
 }
 
-function asBackendPreference(value: unknown): BackendPreference | undefined {
+function asBackendPreference(value: DocumentValue): BackendPreference | undefined {
   return value === 'tmux' || value === 'herdr' ? value : undefined
 }
 
-function asThemeColorScheme(value: unknown): ThemeColorScheme | undefined {
+function asThemeColorScheme(value: DocumentValue): ThemeColorScheme | undefined {
   return value === 'light' || value === 'dark' || value === 'system' ? value : undefined
 }
 
-function asPositiveInteger(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : undefined
+function asPositiveInteger(value: DocumentValue): number | undefined {
+  return isPositiveInteger(value) ? value : undefined
 }
 
 function expandHomePath(value: string, homeDir: string): string {
@@ -108,7 +118,7 @@ function expandHomePath(value: string, homeDir: string): string {
   return join(homeDir, value.slice(1))
 }
 
-function normalizeSessionDefaults(value: unknown): SessionDefaults | undefined {
+function normalizeSessionDefaults(value: DocumentValue): SessionDefaults | undefined {
   if (!isRecord(value)) {
     return undefined
   }
@@ -126,7 +136,7 @@ function normalizeSessionDefaults(value: unknown): SessionDefaults | undefined {
   }
 }
 
-function normalizeIcons(value: unknown): IconConfig | undefined {
+function normalizeIcons(value: DocumentValue): IconConfig | undefined {
   if (!isRecord(value)) {
     return undefined
   }
@@ -140,7 +150,7 @@ function normalizeIcons(value: unknown): IconConfig | undefined {
   }
 }
 
-function normalizeThemePalette(value: unknown): ThemePalette | undefined {
+function normalizeThemePalette(value: DocumentValue): ThemePalette | undefined {
   if (!isRecord(value)) {
     return undefined
   }
@@ -169,6 +179,7 @@ function normalizeThemePalette(value: unknown): ThemePalette | undefined {
 
   for (const key of OPTIONAL_THEME_PALETTE_KEYS) {
     const color = asString(value[key])
+
     if (color) {
       normalized[key] = color
     }
@@ -177,21 +188,24 @@ function normalizeThemePalette(value: unknown): ThemePalette | undefined {
   return normalized
 }
 
-function normalizeThemeVariant(value: unknown): ThemeVariant | undefined {
+function normalizeThemeVariant(value: DocumentValue): ThemeVariant | undefined {
   if (!isRecord(value)) {
     return undefined
   }
 
   const palette = normalizeThemePalette(value.palette)
+
   if (!palette) {
     return undefined
   }
 
   const overrides = isRecord(value.overrides)
     ? Object.fromEntries(
-        Object.entries(value.overrides)
-          .map(([key, override]) => [key, asString(override)])
-          .filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+        Object.entries(value.overrides).flatMap(([key, override]) => {
+          const color = asString(override)
+
+          return color === undefined ? [] : [[key, color] as const]
+        })
       )
     : undefined
 
@@ -201,7 +215,7 @@ function normalizeThemeVariant(value: unknown): ThemeVariant | undefined {
   }
 }
 
-function normalizeThemeDefinition(value: unknown, id: string): ThemeDefinition | undefined {
+function normalizeThemeDefinition(value: DocumentValue, id: string): ThemeDefinition | undefined {
   if (!isRecord(value)) {
     return undefined
   }
@@ -220,13 +234,14 @@ function normalizeThemeDefinition(value: unknown, id: string): ThemeDefinition |
   }
 }
 
-function normalizeThemes(value: unknown): Record<string, ThemeDefinition> | undefined {
+function normalizeThemes(value: DocumentValue): Record<string, ThemeDefinition> | undefined {
   if (!isRecord(value)) {
     return undefined
   }
 
   const entries = Object.entries(value).flatMap(([name, definition]) => {
     const normalizedDefinition = normalizeThemeDefinition(definition, name)
+
     if (!normalizedDefinition) {
       return []
     }
@@ -237,8 +252,11 @@ function normalizeThemes(value: unknown): Record<string, ThemeDefinition> | unde
   return entries.length > 0 ? Object.fromEntries(entries) : undefined
 }
 
-function normalizeProjectProfiles(value: unknown, homeDir: string): ProjectProfile[] | undefined {
-  if (!Array.isArray(value)) {
+function normalizeProjectProfiles(
+  value: DocumentValue,
+  homeDir: string
+): ProjectProfile[] | undefined {
+  if (!isJsonArray(value)) {
     return undefined
   }
 
@@ -248,6 +266,7 @@ function normalizeProjectProfiles(value: unknown, homeDir: string): ProjectProfi
     }
 
     const path = asString(entry.path)
+
     if (!path) {
       return []
     }
@@ -267,8 +286,8 @@ function normalizeProjectProfiles(value: unknown, homeDir: string): ProjectProfi
   return profiles.length > 0 ? profiles : undefined
 }
 
-function normalizeWildcards(value: unknown, homeDir: string): ProjectWildcard[] | undefined {
-  if (!Array.isArray(value)) {
+function normalizeWildcards(value: DocumentValue, homeDir: string): ProjectWildcard[] | undefined {
+  if (!isJsonArray(value)) {
     return undefined
   }
 
@@ -278,6 +297,7 @@ function normalizeWildcards(value: unknown, homeDir: string): ProjectWildcard[] 
     }
 
     const pattern = asString(entry.pattern)
+
     if (!pattern) {
       return []
     }
@@ -295,16 +315,18 @@ function normalizeWildcards(value: unknown, homeDir: string): ProjectWildcard[] 
   return wildcards.length > 0 ? wildcards : undefined
 }
 
-export function normalizeConfig(rawConfig: unknown, homeDir = process.env.HOME || '~'): Config {
+export function normalizeConfig(rawConfig: Schema.Json, homeDir = process.env.HOME || '~'): Config {
   const raw = isRecord(rawConfig) ? rawConfig : {}
   const defaultConfig = getDefaultConfig(homeDir)
   const requestedTheme = asString(raw.theme)
+
   const normalizedTheme =
     requestedTheme === 'rose-pine'
       ? 'rosepine'
       : requestedTheme === 'opencode-dark' || requestedTheme === 'opencode-light'
         ? 'opencode'
         : requestedTheme
+
   const implicitColorScheme =
     requestedTheme === 'opencode-light'
       ? 'light'
@@ -317,41 +339,57 @@ export function normalizeConfig(rawConfig: unknown, homeDir = process.env.HOME |
     asStringArray(raw.projectPaths) ??
     defaultConfig.projectPaths
   ).map(projectPath => expandHomePath(projectPath, homeDir))
+
   const reposPath = expandHomePath(
     asString(raw.repos_path) ?? asString(raw.reposPath) ?? defaultConfig.reposPath,
     homeDir
   )
+
   const editor = asString(raw.editor) ?? defaultConfig.editor
   const backend = asBackendPreference(raw.backend)
   const editorCmd = asString(raw.editor_cmd) ?? asString(raw.editorCmd) ?? defaultConfig.editorCmd
+
   const keybindMode =
     asKeybindMode(raw.keybind_mode) ?? asKeybindMode(raw.keybindMode) ?? defaultConfig.keybindMode
+
   const prefixKey = asString(raw.prefix_key) ?? asString(raw.prefixKey) ?? defaultConfig.prefixKey
+
   const zoxideMode =
     asZoxideMode(raw.zoxide_mode) ?? asZoxideMode(raw.zoxideMode) ?? defaultConfig.zoxideMode
+
   const sortOrder =
     asSortOrder(raw.sort_order) ?? asSortOrder(raw.sortOrder) ?? defaultConfig.sortOrder
+
   const theme = normalizedTheme ?? defaultConfig.theme
+
   const colorScheme =
     asThemeColorScheme(raw.color_scheme) ??
     asThemeColorScheme(raw.colorScheme) ??
     implicitColorScheme ??
     defaultConfig.colorScheme
+
   const themes = normalizeThemes(raw.themes) ?? defaultConfig.themes
+
   const autoUpdate =
     asBoolean(raw.auto_update) ?? asBoolean(raw.autoUpdate) ?? defaultConfig.autoUpdate
+
   const dirLength =
     asPositiveInteger(raw.dir_length) ?? asPositiveInteger(raw.dirLength) ?? defaultConfig.dirLength
+
   const hiddenSessions =
     asStringArray(raw.hidden_sessions) ??
     asStringArray(raw.hiddenSessions) ??
     defaultConfig.hiddenSessions
+
   const pinnedSessions =
     uniqueStrings(asStringArray(raw.pinned_sessions) ?? asStringArray(raw.pinnedSessions)) ??
     defaultConfig.pinnedSessions
+
   const icons = normalizeIcons(raw.icons) ?? defaultConfig.icons
+
   const configuredDefaultSession =
     normalizeSessionDefaults(raw.default_session) ?? normalizeSessionDefaults(raw.defaultSession)
+
   const defaultSession = {
     startupCommand: configuredDefaultSession?.startupCommand ?? editorCmd,
     previewCommand: configuredDefaultSession?.previewCommand,
@@ -418,7 +456,7 @@ function serializeThemeVariant(variant: ThemeVariant) {
       }
 }
 
-export function serializeConfig(config: Config): Record<string, unknown> {
+export function serializeConfig(config: Config) {
   return {
     backend: config.backend,
     project_paths: config.projectPaths,
@@ -472,4 +510,5 @@ export function serializeConfig(config: Config): Record<string, unknown> {
 }
 
 export { getConfigDir, getConfigPath, getHomeDir } from './paths'
+
 export { loadConfig, saveConfig } from './store'
