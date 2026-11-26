@@ -17,6 +17,19 @@ test('missing executables reject instead of fabricating exit 127', async () => {
   }
 })
 
+test('env adds variables over the parent environment without replacing it', async () => {
+  const result = await createCommandRunner().run(
+    [
+      process.execPath,
+      '-e',
+      'console.log(process.env.MUX_SESH_FIXTURE_VAR, Boolean(process.env.PATH))',
+    ],
+    { env: { MUX_SESH_FIXTURE_VAR: 'set-by-caller' } }
+  )
+
+  expect(result.stdout).toBe('set-by-caller true\n')
+})
+
 test('a process that actually exits 127 remains ordinary command data', async () => {
   const result = await createCommandRunner().run([
     process.execPath,

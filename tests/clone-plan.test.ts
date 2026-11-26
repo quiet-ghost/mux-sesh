@@ -152,6 +152,21 @@ function plan(checkout: ClonePlan['checkout']): ClonePlan {
 }
 
 describe('checkout execution', () => {
+  test('a clone never waits on an interactive git credential prompt', async () => {
+    await github.publish('acme', 'widget')
+    let promptSetting: string | undefined
+
+    github.interceptClone((run, options) => {
+      promptSetting = options?.env?.GIT_TERMINAL_PROMPT
+
+      return run()
+    })
+
+    await executeCheckout(plan('clone'), github.services)
+
+    expect(promptSetting).toBe('0')
+  })
+
   test('clones into the frozen destination and records the canonical origin', async () => {
     await github.publish('acme', 'widget')
 

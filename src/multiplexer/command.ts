@@ -59,6 +59,8 @@ export interface CommandResult {
 export interface CommandOptions {
   signal?: AbortSignal
   cwd?: string
+  // Added over the parent environment; the child still inherits everything else.
+  env?: Readonly<Record<string, string>>
 }
 
 export interface CommandRunner {
@@ -136,6 +138,7 @@ export function createCommandRunner(overrides: Partial<CommandPolicy> = {}): Com
       try {
         proc = spawn([...command], {
           cwd: options.cwd,
+          env: options.env ? { ...process.env, ...options.env } : undefined,
           stdin: 'ignore',
           stdout: 'pipe',
           stderr: 'pipe',

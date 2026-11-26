@@ -24,6 +24,10 @@ export interface CloneServices {
   readonly clone: CommandRunner
 }
 
+// The picker owns the terminal, so a credential prompt would hang unseen until the clone deadline.
+// SSH passphrase prompts are left to the user's ssh setup (agent or core.sshCommand).
+const NON_INTERACTIVE_GIT = { GIT_TERMINAL_PROMPT: '0' } as const
+
 export const CLONE_SERVICES: CloneServices = {
   inspect: createCommandRunner({ timeoutMs: 10_000 }),
   clone: createCommandRunner({ timeoutMs: 10 * 60_000 }),
@@ -257,7 +261,9 @@ export async function executeCheckout(
   let result: CommandResult
 
   try {
-    result = await services.clone.run(['git', 'clone', '--', repository.url, destination])
+    result = await services.clone.run(['git', 'clone', '--', repository.url, destination], {
+      env: NON_INTERACTIVE_GIT,
+    })
   } catch (cause) {
     if (!isCommandFailure(cause)) throw cause
 
