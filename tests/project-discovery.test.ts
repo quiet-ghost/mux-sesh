@@ -7,6 +7,7 @@ import {
   getProjectItems,
   getSessionCandidateItems,
   parseZoxideOutput,
+  refreshProjectDiscovery,
 } from '../src/tmux/projects'
 import { filterHiddenSessions, getLastSessionTarget } from '../src/tmux/workflows'
 import { getDefaultConfig } from '../src/config'
@@ -93,6 +94,30 @@ describe('project discovery helpers', () => {
       })
 
       expect(items.map(item => item.path)).toEqual([projectRoot])
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  test('manual refresh shows a project added inside the cache TTL', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'mux-sesh-projects-refresh-'))
+
+    try {
+      const dev = join(root, 'dev')
+      const first = join(dev, 'first')
+      const second = join(dev, 'second')
+      const config = { ...getDefaultConfig(root), projectPaths: [dev], zoxideMode: 'off' as const }
+
+      await mkdir(first, { recursive: true })
+      await writeFile(join(first, 'package.json'), '{}')
+      expect((await getProjectItems(config)).map(item => item.path)).toEqual([first])
+
+      await mkdir(second, { recursive: true })
+      await writeFile(join(second, 'package.json'), '{}')
+      expect((await getProjectItems(config)).map(item => item.path)).toEqual([first])
+
+      refreshProjectDiscovery()
+      expect((await getProjectItems(config)).map(item => item.path)).toEqual([first, second])
     } finally {
       await rm(root, { recursive: true, force: true })
     }
@@ -206,6 +231,7 @@ describe('project discovery helpers', () => {
 
   test('links duplicate Herdr file labels by the file parent directory', async () => {
     const config = getDefaultConfig('/home/tester')
+
     const annotated = await annotateProjectItemsWithSessionLinks(
       [
         {

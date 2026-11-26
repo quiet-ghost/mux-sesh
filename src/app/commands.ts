@@ -1,3 +1,4 @@
+import { refreshProjectDiscovery } from '../tmux/projects'
 import type { CommandId } from '../ui/CommandsModal'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../types'
 
@@ -122,6 +123,7 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
       return
     case 'refresh':
       ctx.closeModal()
+      refreshProjectDiscovery()
       await ctx.refreshItems()
       ctx.showMessage('Refreshed')
       return

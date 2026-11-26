@@ -1,38 +1,31 @@
+import { createCommandRunner } from '../multiplexer/command'
 import type { Config, Item } from '../types'
-import {
-  filterProjectCandidatePaths,
-  filterSessionCandidatePaths,
-  type DiscoveryCacheEntry,
-} from './project-discovery'
-import { loadDiscoveryItems } from './project-loader'
+import { filterProjectCandidatePaths } from './project-discovery'
+import { createProjectDiscovery, type DiscoveryFailureListener } from './project-discovery-service'
 import { applyZoxideMode, parseZoxideOutput } from './project-zoxide'
 
 const DISCOVERY_CACHE_TTL_MS = 15000
-const PROJECT_SCAN_DEPTH = 3
-const SESSION_CANDIDATE_SCAN_DEPTH = 5
-const projectItemsCache = new Map<string, DiscoveryCacheEntry>()
-const sessionCandidateCache = new Map<string, DiscoveryCacheEntry>()
+const DISCOVERY_COMMAND_TIMEOUT_MS = 10_000
+
+const projectDiscovery = createProjectDiscovery({
+  runner: createCommandRunner({ timeoutMs: DISCOVERY_COMMAND_TIMEOUT_MS }),
+  ttlMs: DISCOVERY_CACHE_TTL_MS,
+})
 
 export async function getProjectItems(config: Config): Promise<Item[]> {
-  return loadDiscoveryItems(config, {
-    cache: projectItemsCache,
-    scope: 'projects',
-    ttlMs: DISCOVERY_CACHE_TTL_MS,
-    scanDepth: PROJECT_SCAN_DEPTH,
-    requireProjectMarker: true,
-    selectPaths: filterProjectCandidatePaths,
-  })
+  return (await projectDiscovery.load(config, 'projects')).items
 }
 
 export async function getSessionCandidateItems(config: Config): Promise<Item[]> {
-  return loadDiscoveryItems(config, {
-    cache: sessionCandidateCache,
-    scope: 'session-candidates',
-    ttlMs: DISCOVERY_CACHE_TTL_MS,
-    scanDepth: SESSION_CANDIDATE_SCAN_DEPTH,
-    requireProjectMarker: false,
-    selectPaths: async paths => filterSessionCandidatePaths(paths),
-  })
+  return (await projectDiscovery.load(config, 'session-candidates')).items
+}
+
+export function refreshProjectDiscovery(): void {
+  projectDiscovery.refresh()
+}
+
+export function subscribeProjectDiscoveryFailures(listener: DiscoveryFailureListener): () => void {
+  return projectDiscovery.subscribeFailures(listener)
 }
 
 export { applyZoxideMode, filterProjectCandidatePaths, parseZoxideOutput }

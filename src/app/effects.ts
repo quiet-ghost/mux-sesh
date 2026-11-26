@@ -2,7 +2,7 @@ import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateA
 import { useRenderer } from '@opentui/react'
 import type { TerminalColors } from '@opentui/core'
 import { checkAndUpdate, updateEvents } from '../update'
-import { showTemporaryToast } from './notifications'
+import { showTemporaryMessage, showTemporaryToast } from './notifications'
 import { useHerdrAgentPolling } from './herdr-refresh'
 import type { AppEffectRuntime } from './effect-runtime'
 import { clearMatchIndices, filterAndSortItems } from '../search'
@@ -19,11 +19,14 @@ import { terminalColorsToPalette, type TerminalPalette } from '../styles/termina
 import { AppMode, ViewMode, type Config, type Item } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey } from '../multiplexer/items'
+import { describeDiscoveryFailures } from '../tmux/project-discovery-service'
+import { subscribeProjectDiscoveryFailures } from '../tmux/projects'
 import { clampCursorIndex } from '../ui/list-window'
 import { isGitHubURL } from '../util/github'
 import { measure } from '../util/perf'
 
 const FILE_SEARCH_DEBOUNCE_MS = 120
+const DISCOVERY_FAILURE_MESSAGE_MS = 8000
 
 export function useSystemThemeFollow(
   themeId: string | undefined,
@@ -189,6 +192,20 @@ export function useNewSessionProjectCursor(
     setCursor,
     viewMode,
   ])
+}
+
+export function useProjectDiscoveryFailureMessages(setMessage: Dispatch<SetStateAction<string>>) {
+  useEffect(
+    () =>
+      subscribeProjectDiscoveryFailures(failures => {
+        showTemporaryMessage(
+          setMessage,
+          describeDiscoveryFailures(failures),
+          DISCOVERY_FAILURE_MESSAGE_MS
+        )
+      }),
+    [setMessage]
+  )
 }
 
 export function useSessionCandidateLoader(
@@ -476,6 +493,7 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.lastProjectSelectionRef,
     options.setCursor
   )
+  useProjectDiscoveryFailureMessages(options.setMessage)
   useSessionCandidateLoader(
     options.appMode,
     options.config,

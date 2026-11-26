@@ -1,5 +1,6 @@
 import { AppMode, ViewMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
+import { refreshProjectDiscovery } from '../../tmux/projects'
 import { requestShutdown } from '../../util/shutdown'
 import {
   activatePrefix,
@@ -29,6 +30,7 @@ export function handleNormalMode(
 
     if (key.shift && keyName.toLowerCase() === 'r') {
       ctx.clearPendingKill()
+      refreshProjectDiscovery()
       void ctx.refreshItems()
       setTimedMessage(ctx, 'Refreshed')
       return
@@ -153,6 +155,7 @@ export function handleNormalMode(
 
   if (!ctx.prefixKey && !isStandard && keyName === 'R') {
     ctx.clearPendingKill()
+    refreshProjectDiscovery()
     void ctx.refreshItems()
     setTimedMessage(ctx, 'Refreshed')
     return
