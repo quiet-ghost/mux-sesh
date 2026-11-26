@@ -106,11 +106,22 @@ async function press(fixture: Screen, key: string, ctrl = false): Promise<string
   return fixture.frame()
 }
 
+// Path checks hit the real filesystem, so planning can outlast one settle on a slow runner.
+async function plannedFrame(fixture: Screen): Promise<string> {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    await fixture.settle()
+    const frame = await fixture.frame()
+
+    if (!frame.includes('Checking what Enter will open…')) return frame
+  }
+
+  throw new Error('The New launch preview never finished planning')
+}
+
 async function replaceField(fixture: Screen, text: string): Promise<string> {
   await fixture.replaceQuery(text)
-  await fixture.settle()
 
-  return fixture.frame()
+  return plannedFrame(fixture)
 }
 
 function footerOf(frame: string): string {
