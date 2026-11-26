@@ -33,6 +33,18 @@ export interface OpenWorkspaceInput {
   startupCommand?: string
 }
 
+// An interactive command the entrypoint runs after the picker has released the terminal.
+export interface TerminalHandoff {
+  readonly command: readonly string[]
+  readonly cwd?: string
+  // Completes "mux-sesh could not …", e.g. "attach to tmux session 'api'".
+  readonly description: string
+}
+
+// Focus never takes over the terminal; attaching from outside a multiplexer is a handoff.
+export type FocusOutcome =
+  { readonly kind: 'focused' } | { readonly kind: 'handoff'; readonly handoff: TerminalHandoff }
+
 export interface CreateSessionInput {
   readonly title: string
   readonly path: string
@@ -75,8 +87,8 @@ export interface MultiplexerBackend {
   kind: BackendKind
   capabilities: MultiplexerCapabilities
   list(): Promise<LiveWorkspace[]>
-  open(workspace: WorkspaceRef): Promise<void>
-  openOrCreate(input: OpenWorkspaceInput): Promise<void>
+  open(workspace: WorkspaceRef): Promise<FocusOutcome>
+  openOrCreate(input: OpenWorkspaceInput): Promise<FocusOutcome>
   // Non-interactive: creates without focusing or attaching.
   create(input: CreateSessionInput): Promise<CreatedSessionReceipt>
   // Runs the command in the receipt's root pane.

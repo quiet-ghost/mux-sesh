@@ -287,6 +287,8 @@ export async function renderSessionScreen(
     },
     async open(workspace) {
       calls.push({ operation: 'open', id: workspace.id })
+
+      return { kind: 'focused' }
     },
     openOrCreate: unsupportedFixtureAction,
     create: unsupportedFixtureAction,

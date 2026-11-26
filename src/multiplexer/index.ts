@@ -11,6 +11,8 @@ export type {
   BackendPreference,
   CreatedSessionReceipt,
   CreateSessionInput,
+  FocusOutcome,
+  TerminalHandoff,
   HerdrAgentTarget,
   LiveWorkspace,
   MultiplexerBackend,

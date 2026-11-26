@@ -62,6 +62,8 @@ function createFakeBackend(opts: {
         throw new Error(`Cannot open missing workspace ${workspace.id}`)
       }
       state.focusedId = workspace.id
+
+      return { kind: 'focused' as const }
     },
     async close(workspace: WorkspaceRef) {
       state.commands.push(['close', workspace.id])
@@ -319,7 +321,7 @@ describe('handleKillSession focus stability (DEV-85)', () => {
       if (workspace.id === 'b') {
         throw new Error('focus restore failed')
       }
-      await originalOpen(workspace)
+      return originalOpen(workspace)
     }
 
     const sessions = [liveItem('a', 'alpha'), liveItem('b', 'beta'), liveItem('c', 'gamma')]

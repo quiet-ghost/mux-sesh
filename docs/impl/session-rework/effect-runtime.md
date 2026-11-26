@@ -29,7 +29,7 @@ The command runner drains stdout/stderr concurrently and observes exit in the sa
 
 ## Command lifetime (DEV-313)
 
-Captured commands (not `inheritStdio`) follow `DEFAULT_COMMAND_POLICY`: a 15 s deadline,
+The command runner only runs captured commands, under `DEFAULT_COMMAND_POLICY`: a 15 s deadline,
 8 MiB of stdout, 64 KiB of stderr, and a 1 s grace period between SIGTERM and SIGKILL. Both
 streams are drained to EOF, so noisy stderr cannot block stdout.
 
@@ -39,7 +39,10 @@ streams are drained to EOF, so noisy stderr cannot block stdout.
   passes each fiber's signal, so disposing the application runtime stops in-flight commands. The
   bridge reports the interruption only after the child has exited.
 - Only the spawned child pid is signalled; Herdr/tmux servers and session jobs are never targeted.
-- Interactive clients (`inheritStdio`) own the terminal: no deadline, limit, or cancellation.
+- Interactive clients are not runner commands. Backends return a `TerminalHandoff` (tmux attach,
+  Herdr client, editor) and `requestShutdown(code, handoff)` runs it only after the React tree is
+  unmounted, the renderer destroyed, and terminal modes reset (DEV-322). A failed or missing attach
+  exits nonzero with the retry command; the focused or created session is left running.
 - Nothing is retried. A stopped mutation's effect is unknown; the timeout message asks for a
   refresh before retrying.
 

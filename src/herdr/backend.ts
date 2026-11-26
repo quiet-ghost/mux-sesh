@@ -3,6 +3,7 @@ import {
   MultiplexerError,
   type CreatedSessionReceipt,
   type CreateSessionInput,
+  type FocusOutcome,
   type LiveWorkspace,
   type MultiplexerBackend,
   type OpenWorkspaceInput,
@@ -137,19 +138,11 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
     latestSnapshot = undefined
   }
 
-  async function attachIfNeeded(): Promise<void> {
-    if (options.insideHerdr) {
-      return
-    }
-
-    const result = await options.runner.run(['herdr'], { inheritStdio: true })
-
-    if (result.exitCode !== 0) {
-      throw new MultiplexerError(
-        'command-failed',
-        'Failed to attach the Herdr client. The selected workspace remains focused.'
-      )
-    }
+  // Outside Herdr the focused workspace is shown by attaching a client after the picker exits.
+  function focusOutcome(): FocusOutcome {
+    return options.insideHerdr
+      ? { kind: 'focused' }
+      : { kind: 'handoff', handoff: { command: ['herdr'], description: 'attach the Herdr client' } }
   }
 
   return {
@@ -197,16 +190,16 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
           }),
       ])
     },
-    async open(workspace: WorkspaceRef): Promise<void> {
+    async open(workspace: WorkspaceRef): Promise<FocusOutcome> {
       if (isAgentTarget(workspace)) {
         await focusAgent(workspace.target.paneId)
       } else {
         await focus(workspace.id)
       }
 
-      await attachIfNeeded()
+      return focusOutcome()
     },
-    async openOrCreate(input: OpenWorkspaceInput): Promise<void> {
+    async openOrCreate(input: OpenWorkspaceInput): Promise<FocusOutcome> {
       const state = await snapshot()
       const normalizedPath = resolve(input.path)
 
@@ -218,9 +211,8 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
 
       if (existing) {
         await focus(existing.id)
-        await attachIfNeeded()
 
-        return
+        return focusOutcome()
       }
 
       const output = await command(
@@ -241,7 +233,8 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
       }
 
       latestSnapshot = undefined
-      await attachIfNeeded()
+
+      return focusOutcome()
     },
     async create(input: CreateSessionInput): Promise<CreatedSessionReceipt> {
       const output = await command(

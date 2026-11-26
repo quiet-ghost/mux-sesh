@@ -21,6 +21,8 @@ const backend: MultiplexerBackend = {
   capabilities: { previousWorkspace: false },
   async openOrCreate(input) {
     created.push(input)
+
+    return { kind: 'focused' }
   },
   async create(input) {
     created.push(input)
@@ -31,7 +33,9 @@ const backend: MultiplexerBackend = {
     }
   },
   async start() {},
-  async open() {},
+  async open() {
+    return { kind: 'focused' }
+  },
   list: unexpectedBackendCall,
   rename: unexpectedBackendCall,
   close: unexpectedBackendCall,

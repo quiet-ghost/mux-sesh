@@ -1,5 +1,6 @@
 import type { CliRenderer } from '@opentui/core'
 import { flushSync } from '@opentui/react'
+import type { TerminalHandoff } from '../multiplexer/types'
 import { DiagnosticReport } from './errors'
 
 const TERMINAL_RESET_SEQUENCE = [
@@ -95,14 +96,47 @@ export function requestFatalShutdown(cause: unknown, source: FatalSource = 'fata
   }
 }
 
-export function requestShutdown(code = 0): Promise<never> {
+// The terminal belongs to the handoff only after the UI is unmounted and terminal modes reset.
+async function runHandoff(handoff: TerminalHandoff, code: number): Promise<number> {
+  const manual = `The session is still running; to retry, run: ${handoff.command.join(' ')}`
+
+  try {
+    const proc = Bun.spawn([...handoff.command], {
+      cwd: handoff.cwd,
+      stdin: 'inherit',
+      stdout: 'inherit',
+      stderr: 'inherit',
+    })
+
+    const exitCode = await proc.exited
+
+    if (exitCode === 0) return code
+
+    process.stderr.write(
+      `\nmux-sesh could not ${handoff.description} (exit status ${exitCode}). ${manual}\n`
+    )
+
+    return exitCode
+  } catch (cause) {
+    const reason = cause instanceof Error ? cause.message : 'it could not be started'
+    process.stderr.write(`\nmux-sesh could not ${handoff.description}: ${reason}. ${manual}\n`)
+
+    return 1
+  }
+}
+
+export function requestShutdown(code = 0, handoff?: TerminalHandoff): Promise<never> {
   if (state.exiting) return state.exiting
 
   state.exiting = (async () => {
+    let exitCode = code
+
     try {
       restoreTerminal()
+
+      if (handoff) exitCode = await runHandoff(handoff, code)
     } finally {
-      process.exit(code)
+      process.exit(exitCode)
     }
   })()
 

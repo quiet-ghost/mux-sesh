@@ -1,10 +1,10 @@
-import { spawn } from 'bun'
 import { Result } from 'effect'
 import type { Item, Config } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey, getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 import { getLastSessionTarget } from '../tmux/workflows'
 import { isFileItem } from '../files/target'
+import { handoffOf } from '../multiplexer/focus-outcome'
 import { executeLaunchPlan, launchIntentFor, prepareLaunch } from '../sessions/launch-plan'
 import { isGitHubURL, cloneGitHubRepo } from '../util/github'
 import { requestShutdown } from '../util/shutdown'
@@ -20,8 +20,7 @@ import {
 
 export async function handleSelect(item: Item, config: Config | null, backend: MultiplexerBackend) {
   if (isLiveSessionItem(item)) {
-    await backend.open(getWorkspaceRef(item))
-    await requestShutdown(0)
+    await requestShutdown(0, handoffOf(await backend.open(getWorkspaceRef(item))))
     return
   }
 
@@ -152,8 +151,8 @@ export async function handleNewSessionSubmit(
   // Plan failures are expected and shown by the caller; nothing was opened or created.
   if (Result.isFailure(plan)) throw plan.failure
 
-  await executeLaunchPlan(plan.success, backend)
-  await requestShutdown(0)
+  const outcome = await executeLaunchPlan(plan.success, backend)
+  await requestShutdown(0, handoffOf(outcome.focus))
 }
 
 export async function handleLastSession(items: Item[], backend: MultiplexerBackend) {
@@ -170,8 +169,7 @@ export async function handleLastSession(items: Item[], backend: MultiplexerBacke
   }
 
   if (!isLiveSessionItem(target)) throw new Error('No previous live session is available')
-  await backend.open(getWorkspaceRef(target))
-  await requestShutdown(0)
+  await requestShutdown(0, handoffOf(await backend.open(getWorkspaceRef(target))))
 }
 
 export async function handleRootSession(
@@ -200,11 +198,9 @@ export async function handleEditTarget(
     return
   }
 
-  spawn(['sh', '-lc', command], {
+  await requestShutdown(0, {
+    command: ['sh', '-lc', command],
     cwd: configuredItem.path,
-    stdin: 'inherit',
-    stdout: 'inherit',
-    stderr: 'inherit',
+    description: `open the editor in ${configuredItem.path}`,
   })
-  await requestShutdown(0)
 }

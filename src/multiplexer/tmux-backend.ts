@@ -3,6 +3,7 @@ import {
   MultiplexerError,
   type CreatedSessionReceipt,
   type CreateSessionInput,
+  type FocusOutcome,
   type LiveWorkspace,
   type MultiplexerBackend,
   type OpenWorkspaceInput,
@@ -90,10 +91,12 @@ function lines(output: string): string[] {
 export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBackend {
   const detailsCache = new Map<string, { details: WorkspaceDetails; expiresAt: number }>()
 
-  function tmux(args: readonly string[], commandOptions?: CommandOptions): Promise<CommandResult> {
-    const prefix = options.socketName ? ['tmux', '-L', options.socketName] : ['tmux']
+  function tmuxArgv(args: readonly string[]): string[] {
+    return [...(options.socketName ? ['tmux', '-L', options.socketName] : ['tmux']), ...args]
+  }
 
-    return options.runner.run([...prefix, ...args], commandOptions)
+  function tmux(args: readonly string[], commandOptions?: CommandOptions): Promise<CommandResult> {
+    return options.runner.run(tmuxArgv(args), commandOptions)
   }
 
   async function tmuxOk(
@@ -127,21 +130,29 @@ export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBacke
     return lines(result.stdout).map(parseSessionRow)
   }
 
-  async function open(workspace: WorkspaceRef): Promise<void> {
+  async function open(workspace: WorkspaceRef): Promise<FocusOutcome> {
     if (options.insideTmux) {
       await tmuxOk(
         ['switch-client', '-t', workspace.id],
         `Failed to switch to tmux session '${workspace.title}'`
       )
 
-      return
+      return { kind: 'focused' }
     }
 
+    // Check the target while the picker can still show the error; attaching happens after teardown.
     await tmuxOk(
-      ['attach-session', '-t', workspace.id],
-      `Failed to attach tmux session '${workspace.title}'`,
-      { inheritStdio: true }
+      ['has-session', '-t', workspace.id],
+      `tmux session '${workspace.title}' is no longer available`
     )
+
+    return {
+      kind: 'handoff',
+      handoff: {
+        command: tmuxArgv(['attach-session', '-t', workspace.id]),
+        description: `attach to tmux session '${workspace.title}'`,
+      },
+    }
   }
 
   function invalidate(): void {
@@ -191,20 +202,17 @@ export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBacke
     open,
     create,
     start,
-    async openOrCreate(input: OpenWorkspaceInput): Promise<void> {
+    async openOrCreate(input: OpenWorkspaceInput): Promise<FocusOutcome> {
       const title = sanitizeTmuxSessionName(input.title)
       const existing = (await list()).find(session => session.title === title)
 
-      if (existing) {
-        await open(existing)
-
-        return
-      }
+      if (existing) return open(existing)
 
       const receipt = await create(input)
 
       if (input.startupCommand) await start(receipt, input.startupCommand)
-      await open(receipt.workspace)
+
+      return open(receipt.workspace)
     },
     async rename(workspace: WorkspaceRef, title: string): Promise<void> {
       await tmuxOk(

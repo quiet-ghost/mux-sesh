@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { CommandOptions, CommandResult, CommandRunner } from '../src/multiplexer/command'
+import type { CommandResult, CommandRunner } from '../src/multiplexer/command'
 import { MultiplexerError } from '../src/multiplexer/types'
 import { createTmuxBackend, TMUX_FIELD_SEPARATOR } from '../src/multiplexer/tmux-backend'
 
@@ -7,7 +7,6 @@ const SEP = TMUX_FIELD_SEPARATOR
 
 interface RecordedCall {
   readonly command: string
-  readonly interactive: boolean
 }
 
 type Reply = Partial<CommandResult>
@@ -16,9 +15,9 @@ function recordingRunner(replies: ReadonlyArray<[match: string, reply: Reply]>) 
   const calls: RecordedCall[] = []
 
   const runner: CommandRunner = {
-    async run(command: readonly string[], options?: CommandOptions): Promise<CommandResult> {
+    async run(command: readonly string[]): Promise<CommandResult> {
       const joined = command.join(' ')
-      calls.push({ command: joined, interactive: options?.inheritStdio === true })
+      calls.push({ command: joined })
       const reply = replies.find(([match]) => joined.startsWith(match))?.[1]
 
       if (!reply) throw new Error(`Unexpected tmux command: ${joined}`)
@@ -130,18 +129,39 @@ describe('tmux backend targets', () => {
     await backend.close(ref)
 
     expect(calls).toEqual([
-      { command: 'tmux switch-client -t $7', interactive: false },
-      { command: 'tmux rename-session -t $7 api_renamed_now', interactive: false },
-      { command: 'tmux kill-session -t $7', interactive: false },
+      { command: 'tmux switch-client -t $7' },
+      { command: 'tmux rename-session -t $7 api_renamed_now' },
+      { command: 'tmux kill-session -t $7' },
     ])
   })
 
-  test('outside tmux, opening attaches interactively to the native id', async () => {
-    const { runner, calls } = recordingRunner([['tmux attach-session', {}]])
+  test('outside tmux, opening checks the target and hands attach off to the entrypoint', async () => {
+    const { runner, calls } = recordingRunner([['tmux -L fixture has-session', {}]])
 
-    await createTmuxBackend({ runner, insideTmux: false }).open(ref)
+    const outcome = await createTmuxBackend({
+      runner,
+      insideTmux: false,
+      socketName: 'fixture',
+    }).open(ref)
 
-    expect(calls).toEqual([{ command: 'tmux attach-session -t $7', interactive: true }])
+    expect(calls).toEqual([{ command: 'tmux -L fixture has-session -t $7' }])
+    expect(outcome).toEqual({
+      kind: 'handoff',
+      handoff: {
+        command: ['tmux', '-L', 'fixture', 'attach-session', '-t', '$7'],
+        description: "attach to tmux session 'api'",
+      },
+    })
+  })
+
+  test('outside tmux, a vanished target fails while the picker is still visible', async () => {
+    const { runner } = recordingRunner([
+      ['tmux has-session', { exitCode: 1, stderr: "can't find session: $7" }],
+    ])
+
+    const error = await failure(createTmuxBackend({ runner, insideTmux: false }).open(ref))
+
+    expect(error.message).toContain("tmux session 'api' is no longer available")
   })
 
   test('a failed switch reports the session and the tmux reason', async () => {
@@ -208,9 +228,8 @@ describe('tmux backend creation', () => {
     expect(calls).toEqual([
       {
         command: `tmux new-session -d -s my_app -c /fixture/app -P -F #{session_id}${SEP}#{pane_id}`,
-        interactive: false,
       },
-      { command: 'tmux send-keys -t %3 bun dev Enter', interactive: false },
+      { command: 'tmux send-keys -t %3 bun dev Enter' },
     ])
   })
 
@@ -222,10 +241,10 @@ describe('tmux backend creation', () => {
       ],
       ['tmux new-session', { stdout: `$12${SEP}%3\n` }],
       ['tmux send-keys', {}],
-      ['tmux attach-session', {}],
+      ['tmux has-session', {}],
     ])
 
-    await createTmuxBackend({ runner, insideTmux: false }).openOrCreate({
+    const outcome = await createTmuxBackend({ runner, insideTmux: false }).openOrCreate({
       title: 'my.app',
       path: '/fixture/my app',
       startupCommand: 'nvim .',
@@ -234,11 +253,14 @@ describe('tmux backend creation', () => {
     expect(calls.slice(1)).toEqual([
       {
         command: `tmux new-session -d -s my_app -c /fixture/my app -P -F #{session_id}${SEP}#{pane_id}`,
-        interactive: false,
       },
-      { command: 'tmux send-keys -t %3 nvim . Enter', interactive: false },
-      { command: 'tmux attach-session -t $12', interactive: true },
+      { command: 'tmux send-keys -t %3 nvim . Enter' },
+      { command: 'tmux has-session -t $12' },
     ])
+    expect(outcome).toMatchObject({
+      kind: 'handoff',
+      handoff: { command: ['tmux', 'attach-session', '-t', '$12'] },
+    })
   })
 
   test('a creation reply without a session and pane id is an invalid response', async () => {

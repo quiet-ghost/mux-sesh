@@ -12,6 +12,7 @@ import { getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 import type {
   BackendKind,
   CreatedSessionReceipt,
+  FocusOutcome,
   MultiplexerBackend,
   OpenWorkspaceInput,
   WorkspaceRef,
@@ -168,8 +169,12 @@ export async function prepareLaunch(
 }
 
 export type LaunchOutcome =
-  | { readonly kind: 'focused'; readonly target: WorkspaceRef }
-  | { readonly kind: 'created'; readonly receipt: CreatedSessionReceipt }
+  | { readonly kind: 'focused'; readonly target: WorkspaceRef; readonly focus: FocusOutcome }
+  | {
+      readonly kind: 'created'
+      readonly receipt: CreatedSessionReceipt
+      readonly focus: FocusOutcome
+    }
 
 // The session exists; only a follow-up step failed. Recovery is to open it, never to create again.
 export class LaunchFollowUpFailed extends Data.TaggedError('LaunchFollowUpFailed')<{
@@ -185,13 +190,13 @@ export class LaunchFollowUpFailed extends Data.TaggedError('LaunchFollowUpFailed
   }
 }
 
-async function followUp(
+async function followUp<A>(
   receipt: CreatedSessionReceipt,
   step: LaunchFollowUpFailed['step'],
-  run: () => Promise<void>
-): Promise<void> {
+  run: () => Promise<A>
+): Promise<A> {
   try {
-    await run()
+    return await run()
   } catch (cause) {
     throw new LaunchFollowUpFailed({ receipt, step, cause })
   }
@@ -202,16 +207,14 @@ export async function executeLaunchPlan(
   backend: MultiplexerBackend
 ): Promise<LaunchOutcome> {
   if (plan.kind === 'focus') {
-    await backend.open(plan.target)
-
-    return { kind: 'focused', target: plan.target }
+    return { kind: 'focused', target: plan.target, focus: await backend.open(plan.target) }
   }
 
   const receipt = await backend.create({ title: plan.input.title, path: plan.input.path })
   const { startupCommand } = plan.input
 
   if (startupCommand) await followUp(receipt, 'start', () => backend.start(receipt, startupCommand))
-  await followUp(receipt, 'focus', () => backend.open(receipt.workspace))
+  const focus = await followUp(receipt, 'focus', () => backend.open(receipt.workspace))
 
-  return { kind: 'created', receipt }
+  return { kind: 'created', receipt, focus }
 }

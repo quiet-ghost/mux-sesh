@@ -4,6 +4,7 @@ import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey, getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 import { getGitRoot, resolveProjectSession } from '../config/session-rules'
 import { isFileItem, resolveFileSession } from '../files/target'
+import { handoffOf } from '../multiplexer/focus-outcome'
 import { requestShutdown } from '../util/shutdown'
 import { quoteShellArg } from '../util/shell'
 
@@ -52,12 +53,12 @@ export async function openProjectSession(
   backend: MultiplexerBackend
 ): Promise<void> {
   const resolvedSession = await resolveProjectSession(projectPath, config)
-  await backend.openOrCreate({
+  const focus = await backend.openOrCreate({
     title: resolvedSession.sessionName,
     path: projectPath,
     startupCommand: resolvedSession.startupCommand,
   })
-  await requestShutdown(0)
+  await requestShutdown(0, handoffOf(focus))
 }
 
 export async function openFileSession(
@@ -66,12 +67,12 @@ export async function openFileSession(
   backend: MultiplexerBackend
 ): Promise<void> {
   const resolvedSession = resolveFileSession(filePath, config)
-  await backend.openOrCreate({
+  const focus = await backend.openOrCreate({
     title: resolvedSession.sessionName,
     path: resolvedSession.cwd,
     startupCommand: resolvedSession.startupCommand,
   })
-  await requestShutdown(0)
+  await requestShutdown(0, handoffOf(focus))
 }
 
 export async function getRootSessionPath(item: Item, backend: MultiplexerBackend): Promise<string> {

@@ -55,9 +55,8 @@ export interface CommandResult {
   stderr: string
 }
 
+// Runs captured commands only. Interactive clients are terminal handoffs run after the picker exits.
 export interface CommandOptions {
-  // Interactive clients own the terminal: no deadline, output limit, or cancellation applies.
-  inheritStdio?: boolean
   signal?: AbortSignal
 }
 
@@ -122,24 +121,12 @@ async function drainStream(
   return { text: new TextDecoder().decode(Buffer.concat(chunks)), truncated }
 }
 
-async function runInteractive(command: readonly string[], executable: string) {
-  try {
-    const proc = spawn([...command], { stdin: 'inherit', stdout: 'inherit', stderr: 'inherit' })
-
-    return { exitCode: await proc.exited, stdout: '', stderr: '' }
-  } catch (cause) {
-    throw new CommandTransportError({ executable, phase: 'spawn', cause })
-  }
-}
-
 export function createCommandRunner(overrides: Partial<CommandPolicy> = {}): CommandRunner {
   const policy: CommandPolicy = { ...DEFAULT_COMMAND_POLICY, ...overrides }
 
   return {
     async run(command, options = {}): Promise<CommandResult> {
       const executable = command[0] ?? '(empty command)'
-
-      if (options.inheritStdio) return runInteractive(command, executable)
 
       if (options.signal?.aborted) throw new CommandInterrupted({ executable })
 

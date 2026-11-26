@@ -183,3 +183,49 @@ describe('shutdown', () => {
     expect(stderr).not.toContain('second fatal')
   })
 })
+
+describe('terminal handoff', () => {
+  async function runHandoff(mode: 'ok' | 'fail' | 'missing') {
+    const proc = Bun.spawn(
+      [process.execPath, join(import.meta.dir, 'fixtures/shutdown-handoff.tsx'), mode],
+      {
+        cwd: join(import.meta.dir, '..'),
+        stdin: 'ignore',
+        stdout: 'pipe',
+        stderr: 'pipe',
+        timeout: 5000,
+      }
+    )
+
+    const [exitCode, stdout, stderr] = await Promise.all([
+      proc.exited,
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+    ])
+
+    return { exitCode, lines: stdout.trim().split('\n'), stderr }
+  }
+
+  test('runs the attach command only after the UI is unmounted and the renderer destroyed', async () => {
+    const { exitCode, lines } = await runHandoff('ok')
+
+    expect(lines).toEqual(['unmounted listeners=0', 'handoff', 'exit code=0 destroyed=true'])
+    expect(exitCode).toBe(0)
+  })
+
+  test('a failed attach exits nonzero and says the session was kept', async () => {
+    const { exitCode, stderr } = await runHandoff('fail')
+
+    expect(exitCode).toBe(3)
+    expect(stderr).toContain("attach to tmux session 'fixture'")
+    expect(stderr).toContain('still running')
+  })
+
+  test('an attach command that cannot start reports how to attach manually', async () => {
+    const { exitCode, stderr } = await runHandoff('missing')
+
+    expect(exitCode).toBe(1)
+    expect(stderr).toContain('/mux-sesh-fixture/missing-attach')
+    expect(stderr).toContain('still running')
+  })
+})

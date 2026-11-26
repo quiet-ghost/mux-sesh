@@ -416,10 +416,14 @@ describe('Herdr backend', () => {
     ])
     const backend = createHerdrBackend({ runner, insideHerdr: false })
 
-    await backend.open({ backend: 'herdr', id: 'w7', title: 'duplicate label' })
+    const outcome = await backend.open({ backend: 'herdr', id: 'w7', title: 'duplicate label' })
 
-    expect(commands).toEqual([['herdr', 'workspace', 'focus', 'w7'], ['herdr']])
-    expect(options).toEqual([undefined, { inheritStdio: true }])
+    expect(commands).toEqual([['herdr', 'workspace', 'focus', 'w7']])
+    expect(options).toEqual([undefined])
+    expect(outcome).toEqual({
+      kind: 'handoff',
+      handoff: { command: ['herdr'], description: 'attach the Herdr client' },
+    })
   })
 
   test('focuses the exact agent pane, not its tab, for agents sharing one tab', async () => {
@@ -443,7 +447,7 @@ describe('Herdr backend', () => {
       ['herdr', 'agent', 'focus', 'w3:p1'],
       ['herdr', 'agent', 'focus', 'w3:p2'],
     ])
-    expect(options.every(option => option?.inheritStdio !== true)).toBe(true)
+    expect(options.every(option => option === undefined)).toBe(true)
   })
 
   test('a failed agent focus explains recovery without focusing another pane or attaching', async () => {
@@ -497,7 +501,7 @@ describe('Herdr backend', () => {
       ['herdr', 'workspace', 'create', '--cwd', '/repo/web', '--label', 'web'],
       ['herdr', 'pane', 'run', 'w3:p1', 'bun dev'],
     ])
-    expect(options.every(option => option?.inheritStdio !== true)).toBe(true)
+    expect(options.every(option => option === undefined)).toBe(true)
   })
 
   test('creates a workspace, runs startup command in its root pane, then focuses it', async () => {

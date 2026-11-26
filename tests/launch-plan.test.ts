@@ -201,6 +201,8 @@ describe('launch execution', () => {
         calls.push(`open ${target.id}`)
 
         if (failures.open) throw failures.open
+
+        return { kind: 'focused' }
       },
       openOrCreate: unsupported,
       list: unsupported,
@@ -227,6 +229,7 @@ describe('launch execution', () => {
     expect(await executeLaunchPlan({ kind: 'focus', target }, backend)).toEqual({
       kind: 'focused',
       target,
+      focus: { kind: 'focused' },
     })
     expect(calls).toEqual(['open $4'])
   })
@@ -234,7 +237,11 @@ describe('launch execution', () => {
   test('a create plan starts in the created pane, then focuses the created session', async () => {
     const { backend, calls } = recordingBackend()
 
-    expect(await executeLaunchPlan(createPlan, backend)).toEqual({ kind: 'created', receipt })
+    expect(await executeLaunchPlan(createPlan, backend)).toEqual({
+      kind: 'created',
+      receipt,
+      focus: { kind: 'focused' },
+    })
     expect(calls).toEqual(['create api /fixture/api', 'start %3 bun dev', 'open $12'])
   })
 
