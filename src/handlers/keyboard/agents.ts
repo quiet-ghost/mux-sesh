@@ -1,6 +1,5 @@
 import { AppMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
-import { requestFatalShutdown } from '../../util/shutdown'
 import {
   activatePrefix,
   clearPrefix,
@@ -72,8 +71,7 @@ export function handleAgentsManageMode(
     const selectedAgent = ctx.agentSessions[ctx.agentCursor]
 
     if (selectedAgent) {
-      // Expected selection failures are shown by the handler; only defects reach here.
-      ctx.handleSelect(selectedAgent).catch(requestFatalShutdown)
+      ctx.runAction(() => ctx.handleSelect(selectedAgent))
     }
 
     return

@@ -1,5 +1,7 @@
 import { useKeyboard } from '@opentui/react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import { ActionOwner } from './action-owner'
+import type { OperationReport } from './action-outcome'
 import { FocusOwner } from './focus-owner'
 import { handleModalKeyboard } from './modal-keyboard'
 import type { ModalState } from './modals'
@@ -15,6 +17,7 @@ import type { Config, Item } from '../types'
 import type { CommandEntry } from '../ui/CommandsModal'
 import type { ActionContext } from './action-catalog'
 import { setTimedMessage } from '../handlers/keyboard/shared'
+import { showTemporaryMessage as showTimedMessage } from './notifications'
 import { AppMode, ViewMode } from '../types'
 
 interface UseAppKeyboardOptions {
@@ -52,6 +55,9 @@ interface UseAppKeyboardOptions {
   handleSettingsEditorSubmit: (field: SettingsFieldId) => Promise<void>
   handleRenameSubmit: () => Promise<void>
   handleNewSessionSubmit: () => Promise<void>
+  handleOutcomeRetry: (report: OperationReport) => Promise<void>
+  // Crash recovery for defects raised by key handlers; production passes requestFatalShutdown.
+  onDefect: (cause: unknown) => void
   isOptionSetting: (field: SettingsFieldId) => boolean
   openSettingOptions: (field: SettingsFieldId) => void
   previewThemeOption?: (value: string | null) => void
@@ -82,7 +88,13 @@ interface UseAppKeyboardOptions {
 }
 
 export function useAppKeyboard(options: UseAppKeyboardOptions) {
+  const owner = ActionOwner.create({
+    report: message => showTimedMessage(options.setMessage, message, 5000),
+    onDefect: options.onDefect,
+  })
+
   const keyboardContext: KeyboardHandlerContext = {
+    runAction: owner.run,
     appMode: options.appMode,
     viewMode: options.viewMode,
     items: options.items,
@@ -124,61 +136,73 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     setMessage: options.setMessage,
   }
 
-  useKeyboard(key => {
-    if (!options.active) return
+  // The renderer only logs errors thrown from key callbacks, so the owner routes them instead.
+  useKeyboard(key => owner.run(() => handleKey(key, options, keyboardContext, owner)))
+}
 
-    const keybindMode = options.config?.keybindMode || 'vim'
-    const owner = FocusOwner.of(options)
+type AppKey = Parameters<Parameters<typeof useKeyboard>[0]>[0]
 
-    if (owner.kind === 'modal') {
-      const consumed = handleModalKeyboard(key, {
-        modalState: options.modalState,
-        filteredCommandEntries: options.filteredCommandEntries,
-        commandsCursor: options.commandsCursor,
-        setCommandsCursor: options.setCommandsCursor,
-        filteredSettingsEntries: options.filteredSettingsEntries,
-        settingsCursor: options.settingsCursor,
-        setSettingsCursor: options.setSettingsCursor,
-        filteredSettingOptions: options.filteredSettingOptions,
-        settingOptionsCursor: options.settingOptionsCursor,
-        setSettingOptionsCursor: options.setSettingOptionsCursor,
-        closeModal: options.closeModal,
-        openSettingOptions: options.openSettingOptions,
-        previewThemeOption: options.previewThemeOption,
-        openSettingEditor: options.openSettingEditor,
-        isOptionSetting: options.isOptionSetting,
-        setModalState: options.setModalState,
-        setSettingEditorError: options.setSettingEditorError,
-        executeCommand: options.executeCommand,
-        showMessage: message => setTimedMessage(keyboardContext, message),
-        handleSettingOptionSubmit: options.handleSettingOptionSubmit,
-        handleSettingsEditorSubmit: options.handleSettingsEditorSubmit,
-        handleRenameSubmit: options.handleRenameSubmit,
-      })
+function handleKey(
+  key: AppKey,
+  options: UseAppKeyboardOptions,
+  keyboardContext: KeyboardHandlerContext,
+  owner: ActionOwner
+): void {
+  if (!options.active) return
 
-      if (consumed) key.preventDefault()
+  const keybindMode = options.config?.keybindMode || 'vim'
+  const focus = FocusOwner.of(options)
 
-      return
+  if (focus.kind === 'modal') {
+    const consumed = handleModalKeyboard(key, {
+      modalState: options.modalState,
+      filteredCommandEntries: options.filteredCommandEntries,
+      commandsCursor: options.commandsCursor,
+      setCommandsCursor: options.setCommandsCursor,
+      filteredSettingsEntries: options.filteredSettingsEntries,
+      settingsCursor: options.settingsCursor,
+      setSettingsCursor: options.setSettingsCursor,
+      filteredSettingOptions: options.filteredSettingOptions,
+      settingOptionsCursor: options.settingOptionsCursor,
+      setSettingOptionsCursor: options.setSettingOptionsCursor,
+      closeModal: options.closeModal,
+      openSettingOptions: options.openSettingOptions,
+      previewThemeOption: options.previewThemeOption,
+      openSettingEditor: options.openSettingEditor,
+      isOptionSetting: options.isOptionSetting,
+      setModalState: options.setModalState,
+      setSettingEditorError: options.setSettingEditorError,
+      runAction: owner.run,
+      executeCommand: options.executeCommand,
+      showMessage: message => setTimedMessage(keyboardContext, message),
+      handleSettingOptionSubmit: options.handleSettingOptionSubmit,
+      handleSettingsEditorSubmit: options.handleSettingsEditorSubmit,
+      handleRenameSubmit: options.handleRenameSubmit,
+      handleOutcomeRetry: options.handleOutcomeRetry,
+    })
+
+    if (consumed) key.preventDefault()
+
+    return
+  }
+
+  let consumed = false
+
+  if (options.appMode === AppMode.Normal) {
+    handleNormalMode(key, keyboardContext, keybindMode)
+  } else if (options.appMode === AppMode.Search) {
+    consumed = handleSearchMode(key, keyboardContext, keybindMode)
+  } else if (options.appMode === AppMode.NewSession) {
+    if (key.name === 'return') {
+      owner.run(options.handleNewSessionSubmit)
+      consumed = true
+    } else {
+      consumed = handleNewSessionMode(key, keyboardContext, keybindMode)
     }
+  } else if (options.appMode === AppMode.AgentsManage) {
+    handleAgentsManageMode(key, keyboardContext, keybindMode)
+  }
 
-    let consumed = false
-
-    if (options.appMode === AppMode.Normal) {
-      handleNormalMode(key, keyboardContext, keybindMode)
-    } else if (options.appMode === AppMode.Search) {
-      consumed = handleSearchMode(key, keyboardContext, keybindMode)
-    } else if (options.appMode === AppMode.NewSession) {
-      if (key.name === 'return') {
-        void options.handleNewSessionSubmit()
-        consumed = true
-      } else {
-        consumed = handleNewSessionMode(key, keyboardContext, keybindMode)
-      }
-    } else if (options.appMode === AppMode.AgentsManage) {
-      handleAgentsManageMode(key, keyboardContext, keybindMode)
-    }
-
-    // A consumed key must not also edit the search text.
-    if (consumed && owner.kind === 'search-field') key.preventDefault()
-  })
+  // A consumed key must not also edit the search text.
+  if (consumed && focus.kind === 'search-field') key.preventDefault()
 }

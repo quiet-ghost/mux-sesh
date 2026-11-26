@@ -105,6 +105,9 @@ try {
         showMessage: message => {
           throw new Error(message)
         },
+        showOutcome: report => {
+          throw new Error(report.title)
+        },
         refreshItems: unexpectedBackendCall,
       })
     })

@@ -7,6 +7,7 @@ import { FocusOwner } from './focus-owner'
 import { useDetailsInspector } from './inspector'
 import { useAppKeyboard } from './keyboard'
 import { useAppModalState } from './modal-state'
+import { openOutcomeModal } from './modals'
 import { createAppRuntime } from './runtime'
 import { createAppHandlers, handleKillSessionWithFeedback, type LaunchGuard } from './handlers'
 import { useSessionInventory } from './session-inventory'
@@ -17,6 +18,7 @@ import { getConfigPath, getHomeDir, saveConfig } from '../config'
 import { shouldShowDetailPanel, useTerminalSize } from '../util/terminal'
 import { AppMode } from '../types'
 import { mark, measure } from '../util/perf'
+import { requestFatalShutdown } from '../util/shutdown'
 import { getSettingEditorTitle, isOptionSetting } from '../settings'
 
 export function useAppController(invocationCwd: string) {
@@ -235,6 +237,7 @@ export function useAppController(invocationCwd: string) {
     handleEditTargetWrapper,
     handleRenameSubmit,
     handleNewSessionSubmit,
+    handleOutcomeRetry,
     handleSettingsEditorSubmit,
     handleSettingOptionSubmit,
     handleTogglePinnedSessionWrapper,
@@ -250,6 +253,7 @@ export function useAppController(invocationCwd: string) {
     sessionItems,
     cursor,
     showMessage,
+    showOutcome: report => openOutcomeModal(report, setModalState),
     refreshItems,
     agentCursor,
     regularSessions,
@@ -319,6 +323,8 @@ export function useAppController(invocationCwd: string) {
     handleSettingsEditorSubmit,
     handleRenameSubmit,
     handleNewSessionSubmit,
+    handleOutcomeRetry,
+    onDefect: requestFatalShutdown,
     isOptionSetting,
     openSettingOptions,
     previewThemeOption: setThemePreviewId,

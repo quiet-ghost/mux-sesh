@@ -5,6 +5,7 @@ import type { CommandEntry } from '../ui/CommandsModal'
 import type { ModalState } from './modals'
 import { syncTextareaValue } from './textarea'
 import CommandsModal, { getCommandEntryKey } from '../ui/CommandsModal'
+import OperationOutcomeModal from '../ui/OperationOutcomeModal'
 import RenameModal from '../ui/RenameModal'
 import SettingEditorModal from '../ui/SettingEditorModal'
 import SettingOptionsModal from '../ui/SettingOptionsModal'
@@ -101,6 +102,10 @@ export function AppModalsLayer({
 
   return (
     <>
+      {modalState?.type === 'outcome' && (
+        <OperationOutcomeModal report={modalState.report} columns={columns} />
+      )}
+
       {modalState?.type === 'rename' && (
         <RenameModal
           target={modalState.target}

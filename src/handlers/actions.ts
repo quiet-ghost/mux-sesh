@@ -1,3 +1,4 @@
+import { resolve } from 'path'
 import { Result } from 'effect'
 import type { Item, Config } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
@@ -6,9 +7,24 @@ import { getLastSessionTarget } from '../tmux/workflows'
 import { isFileItem } from '../files/target'
 import { CommandInterrupted, CommandTimeoutError } from '../multiplexer/command'
 import { isBackendFailure } from '../multiplexer/failure'
+import {
+  ActionOutcome,
+  ActionRefused,
+  isExpectedActionFailure,
+  isUncertainMutationFailure,
+  reasonOf,
+} from '../app/action-outcome'
 import { handoffOf } from '../multiplexer/focus-outcome'
-import type { WorkspaceRef } from '../multiplexer/types'
-import { executeLaunchPlan, launchIntentFor, prepareLaunch } from '../sessions/launch-plan'
+import type { BackendKind, WorkspaceRef } from '../multiplexer/types'
+import {
+  executeLaunchPlan,
+  LaunchFollowUpFailed,
+  launchIntentFor,
+  prepareLaunch,
+  type LaunchIntent,
+  type LaunchOutcome,
+  type LaunchPlan,
+} from '../sessions/launch-plan'
 import { isGitHubURL, cloneGitHubRepo } from '../util/github'
 import { requestShutdown } from '../util/shutdown'
 import {
@@ -49,10 +65,6 @@ function getKillNeighbor(item: Item, regularSessions: Item[]): Item | undefined 
 interface FocusRestoreFailure {
   readonly title: string
   readonly reason: string
-}
-
-function reasonOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : 'unknown error'
 }
 
 // Restoring focus after a close is a follow-up: it never attaches, and its failure does not undo the close.
@@ -173,6 +185,130 @@ export async function handleRenameSubmit(
   }
 }
 
+function nounOf(backend: BackendKind): 'workspace' | 'session' {
+  return backend === 'herdr' ? 'workspace' : 'session'
+}
+
+function capitalized(noun: string): string {
+  return `${noun.charAt(0).toUpperCase()}${noun.slice(1)}`
+}
+
+// The created session is confirmed, so recovery opens it; startup is never re-run blindly.
+function followUpOutcome(failure: LaunchFollowUpFailed, backend: BackendKind): ActionOutcome {
+  const noun = nounOf(backend)
+  const { workspace } = failure.receipt
+  const reason = reasonOf(failure.cause)
+
+  if (failure.step === 'start') {
+    return {
+      kind: 'partial',
+      title: `${capitalized(noun)} created, but its startup command failed`,
+      completed: [`Created ${noun} '${workspace.title}'`],
+      failed: `Running its startup command: ${reason}`,
+      next: `It was kept and will not be created again. The command may not have run. Press Enter to open it without re-running the startup command, or Esc to stay here.`,
+      retry: { kind: 'open', target: workspace },
+    }
+  }
+
+  return {
+    kind: 'partial',
+    title: `${capitalized(noun)} created, but not opened`,
+    completed: [`Created ${noun} '${workspace.title}'`],
+    failed: `Opening it: ${reason}`,
+    next: `It was kept and will not be created again. Press Enter to try opening it again, or Esc and open it from Sessions.`,
+    retry: { kind: 'open', target: workspace },
+  }
+}
+
+function launchFailureOutcome(
+  plan: LaunchPlan,
+  cause: unknown,
+  backend: BackendKind
+): ActionOutcome {
+  if (cause instanceof LaunchFollowUpFailed) return followUpOutcome(cause, backend)
+
+  if (!isExpectedActionFailure(cause)) throw cause
+
+  const noun = nounOf(backend)
+
+  if (plan.kind === 'focus') {
+    return {
+      kind: 'failed',
+      message: `Could not open ${noun} '${plan.target.title}': ${cause.message} Nothing was created.`,
+    }
+  }
+
+  const { title, path } = plan.input
+
+  if (isUncertainMutationFailure(cause)) {
+    return {
+      kind: 'unknown',
+      title: `Creating ${noun} '${title}' did not finish`,
+      completed: [],
+      attempted: `Create ${noun} '${title}' in ${path}`,
+      reason: cause.message,
+      next: `It may already exist. The list was refreshed; check Sessions before creating it again.`,
+    }
+  }
+
+  return {
+    kind: 'failed',
+    message: `Could not create ${noun} '${title}': ${cause.message} Nothing was created.`,
+  }
+}
+
+interface LaunchInputs {
+  readonly config: Config
+  readonly backend: MultiplexerBackend
+  readonly invocationCwd: string
+  readonly sessionItems: Item[]
+}
+
+async function launch(intent: LaunchIntent, inputs: LaunchInputs): Promise<ActionOutcome> {
+  const plan = await prepareLaunch(intent, {
+    config: inputs.config,
+    backend: inputs.backend.kind,
+    invocationCwd: inputs.invocationCwd,
+    liveSessions: inputs.sessionItems,
+  })
+
+  // Plan failures are expected and local; nothing was opened or created.
+  if (Result.isFailure(plan)) return { kind: 'failed', message: plan.failure.message }
+
+  let outcome: LaunchOutcome
+
+  try {
+    outcome = await executeLaunchPlan(plan.success, inputs.backend)
+  } catch (cause) {
+    return launchFailureOutcome(plan.success, cause, inputs.backend.kind)
+  }
+
+  return requestShutdown(0, handoffOf(outcome.focus))
+}
+
+// A clone (or an existing checkout it reused) is kept whatever happens to the launch after it.
+async function launchClone(url: string, inputs: LaunchInputs): Promise<ActionOutcome> {
+  let clonedPath: string
+
+  try {
+    clonedPath = await cloneGitHubRepo(url, inputs.config)
+  } catch (cause) {
+    return {
+      kind: 'failed',
+      message: `Could not clone the repository: ${reasonOf(cause)}. Nothing was opened.`,
+    }
+  }
+
+  const outcome = await launch({ kind: 'path', input: resolve(clonedPath) }, inputs)
+
+  return ActionOutcome.after(
+    `The repository is at ${clonedPath}`,
+    outcome,
+    'Repository ready, but its session was not opened',
+    'The repository was kept and will not be cloned again. Enter the same URL, or pick it on the New screen, to open it.'
+  )
+}
+
 export async function handleNewSessionSubmit(
   searchTerm: string,
   config: Config | null,
@@ -181,52 +317,40 @@ export async function handleNewSessionSubmit(
   backend: MultiplexerBackend,
   invocationCwd: string,
   sessionItems: Item[]
-): Promise<void> {
-  if (isGitHubURL(searchTerm)) {
-    try {
-      if (!config) return
-      const clonedPath = await cloneGitHubRepo(searchTerm, config)
-      await openProjectSession(clonedPath, config, backend)
-    } catch (error) {
-      throw new Error(`Could not clone the repository: ${reasonOf(error)}`, { cause: error })
-    }
+): Promise<ActionOutcome> {
+  const inputs = { config: requireConfig(config), backend, invocationCwd, sessionItems }
 
-    return
-  }
+  if (isGitHubURL(searchTerm)) return launchClone(searchTerm, inputs)
 
   const intent = launchIntentFor(searchTerm, items[cursor])
 
-  if (!intent) return
+  if (!intent) {
+    return {
+      kind: 'failed',
+      message: 'Nothing to open: type a session name or path, or pick a project.',
+    }
+  }
 
-  const plan = await prepareLaunch(intent, {
-    config: requireConfig(config),
-    backend: backend.kind,
-    invocationCwd,
-    liveSessions: sessionItems,
-  })
-
-  // Plan failures are expected and shown by the caller; nothing was opened or created.
-  if (Result.isFailure(plan)) throw plan.failure
-
-  const outcome = await executeLaunchPlan(plan.success, backend)
-  await requestShutdown(0, handoffOf(outcome.focus))
+  return launch(intent, inputs)
 }
 
 export async function handleLastSession(items: Item[], backend: MultiplexerBackend) {
   if (!backend.capabilities.previousWorkspace) {
-    throw new Error(
-      'Previous workspace is unavailable because Herdr does not expose workspace activity history'
-    )
+    throw new ActionRefused({
+      reason:
+        'Previous workspace is unavailable because Herdr does not expose workspace activity history',
+    })
   }
 
   const currentSessionName = (await backend.current().catch(() => undefined))?.title
   const target = getLastSessionTarget(items, currentSessionName)
 
   if (!target) {
-    throw new Error('No previous tmux session is available')
+    throw new ActionRefused({ reason: 'No previous tmux session is available' })
   }
 
-  if (!isLiveSessionItem(target)) throw new Error('No previous live session is available')
+  if (!isLiveSessionItem(target))
+    throw new ActionRefused({ reason: 'No previous live session is available' })
   await requestShutdown(0, handoffOf(await backend.open(getWorkspaceRef(target))))
 }
 
@@ -236,7 +360,7 @@ export async function handleRootSession(
   backend: MultiplexerBackend
 ) {
   if (!item) {
-    throw new Error('No session or project is selected')
+    throw new ActionRefused({ reason: 'No session or project is selected' })
   }
 
   await openProjectSession(await getRootSessionPath(item, backend), requireConfig(config), backend)

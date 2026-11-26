@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
+import type { OperationReport } from './action-outcome'
 import { getSettingEditorValue, type SettingsFieldId } from '../settings'
 import type { Config, Item } from '../types'
 
@@ -8,6 +9,7 @@ export type ModalState =
   | { type: 'settings' }
   | { type: 'setting-options'; field: SettingsFieldId; openedFrom?: 'commands' | 'settings' }
   | { type: 'setting-editor'; field: SettingsFieldId }
+  | { type: 'outcome'; report: OperationReport }
   | null
 
 interface ModalSetters {
@@ -93,6 +95,14 @@ export function openSettingEditor(
   setSettingEditorError('')
   setSettingEditorValue(getSettingEditorValue(config, field))
   setModalState({ type: 'setting-editor', field })
+}
+
+// Replaces whatever dialog started the action, so completed work is the one thing on screen.
+export function openOutcomeModal(
+  report: OperationReport,
+  setModalState: Dispatch<SetStateAction<ModalState>>
+) {
+  setModalState({ type: 'outcome', report })
 }
 
 export function closeModal(setters: ModalSetters) {

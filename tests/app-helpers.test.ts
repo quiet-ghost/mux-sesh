@@ -5,6 +5,7 @@ import {
   getCommandEntries,
   type ActionContext,
 } from '../src/app/action-catalog'
+import { ActionRefused } from '../src/app/action-outcome'
 import { createAppControls } from '../src/app/controls'
 import { getDefaultConfig } from '../src/config'
 import {
@@ -357,18 +358,28 @@ describe('app operation helpers', () => {
     expect(getPinnedSessionsAfterToggle(config, 'main')).toEqual([])
   })
 
-  test('reports fallback errors through the shared message helper', async () => {
+  test('reports expected failures through the shared message helper', async () => {
     const showMessage = mock(() => {})
 
-    await runWithErrorMessage(
-      async () => {
-        throw 'boom'
-      },
-      'fallback message',
-      showMessage
+    await runWithErrorMessage(async () => {
+      throw new ActionRefused({ reason: 'No session or project is selected' })
+    }, showMessage)
+
+    expect(showMessage).toHaveBeenCalledWith('No session or project is selected', 3000)
+  })
+
+  test('lets defects through the shared message helper to crash recovery', async () => {
+    const showMessage = mock(() => {})
+
+    const failure = await runWithErrorMessage(async () => {
+      throw 'boom'
+    }, showMessage).then(
+      () => undefined,
+      (cause: unknown) => cause
     )
 
-    expect(showMessage).toHaveBeenCalledWith('fallback message', 3000)
+    expect(failure).toBe('boom')
+    expect(showMessage).not.toHaveBeenCalled()
   })
 
   test('persists config updates before refresh and success message', async () => {
@@ -377,21 +388,19 @@ describe('app operation helpers', () => {
     const saveConfig = mock(async () => {})
     const setConfig = mock(() => {})
     const refreshItems = mock(async () => {})
-    const showMessage = mock(() => {})
 
-    await persistConfigUpdate(
+    const outcome = await persistConfigUpdate(
       nextConfig,
       'updated',
       saveConfig,
       setConfig,
-      refreshItems,
-      showMessage
+      refreshItems
     )
 
     expect(saveConfig).toHaveBeenCalledWith(nextConfig)
     expect(setConfig).toHaveBeenCalledWith(nextConfig)
     expect(refreshItems).toHaveBeenCalledWith(undefined, nextConfig)
-    expect(showMessage).toHaveBeenCalledWith('updated')
+    expect(outcome).toEqual({ kind: 'completed', message: 'updated' })
   })
 })
 
@@ -573,6 +582,7 @@ describe('app handler factory', () => {
     const handlers = createAppHandlers({
       invocationCwd: '/home/tester',
       launchGuard: { active: false },
+      showOutcome: mock(() => {}),
       appMode: AppMode.Normal,
       viewMode: ViewMode.Sessions,
       config,
@@ -640,6 +650,7 @@ describe('app handler factory', () => {
     const handlers = createAppHandlers({
       invocationCwd: '/home/tester',
       launchGuard: { active: false },
+      showOutcome: mock(() => {}),
       appMode: AppMode.Normal,
       viewMode: ViewMode.Sessions,
       config: getDefaultConfig('/home/tester'),

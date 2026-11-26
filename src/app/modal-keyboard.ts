@@ -1,4 +1,5 @@
 import { describeUnavailableAction } from './action-catalog'
+import type { OperationReport } from './action-outcome'
 import type { ModalState } from './modals'
 import type { SettingsEntry, SettingsOption } from '../settings'
 import type { CommandEntry } from '../ui/CommandsModal'
@@ -22,11 +23,13 @@ interface ModalKeyboardContext {
   isOptionSetting: (field: SettingsEntry['id']) => boolean
   setModalState: (state: ModalState) => void
   setSettingEditorError: (message: string) => void
+  runAction: (task: () => Promise<void>) => void
   executeCommand: (id: CommandEntry['id']) => Promise<void>
   showMessage: (message: string) => void
   handleSettingOptionSubmit: (field: SettingsEntry['id'], value: string) => Promise<void>
   handleSettingsEditorSubmit: (field: SettingsEntry['id']) => Promise<void>
   handleRenameSubmit: () => Promise<void>
+  handleOutcomeRetry: (report: OperationReport) => Promise<void>
 }
 
 interface KeyboardInput {
@@ -35,12 +38,14 @@ interface KeyboardInput {
 
 function openSelectedSetting(ctx: ModalKeyboardContext) {
   const entry = ctx.filteredSettingsEntries[ctx.settingsCursor]
+
   if (!entry) {
     return
   }
 
   if (ctx.isOptionSetting(entry.id)) {
     ctx.openSettingOptions(entry.id)
+
     return
   }
 
@@ -50,14 +55,29 @@ function openSelectedSetting(ctx: ModalKeyboardContext) {
 // Every modal is a focused text field, so only non-text keys act; letters stay in the field.
 // Returns whether the modal consumed the key, so the field must not also handle it.
 export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContext): boolean {
-  if (ctx.modalState?.type === 'rename') {
+  if (ctx.modalState?.type === 'outcome') {
+    const { report } = ctx.modalState
+
     if (key.name === 'return') {
-      void ctx.handleRenameSubmit()
+      ctx.runAction(() => ctx.handleOutcomeRetry(report))
     } else if (key.name === 'escape') {
       ctx.closeModal()
     } else {
       return false
     }
+
+    return true
+  }
+
+  if (ctx.modalState?.type === 'rename') {
+    if (key.name === 'return') {
+      ctx.runAction(ctx.handleRenameSubmit)
+    } else if (key.name === 'escape') {
+      ctx.closeModal()
+    } else {
+      return false
+    }
+
     return true
   }
 
@@ -74,18 +94,24 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
       )
     } else if (key.name === 'return') {
       const command = ctx.filteredCommandEntries[ctx.commandsCursor]
+
       if (!command) {
         return true
       }
+
       const refusal = describeUnavailableAction(command)
+
       if (refusal) {
         ctx.showMessage(refusal)
+
         return true
       }
-      void ctx.executeCommand(command.id)
+
+      ctx.runAction(() => ctx.executeCommand(command.id))
     } else {
       return false
     }
+
     return true
   }
 
@@ -105,18 +131,22 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
     } else {
       return false
     }
+
     return true
   }
 
   if (ctx.modalState?.type === 'setting-options') {
+    const { field, openedFrom } = ctx.modalState
+
     const previewIfTheme = (index: number) => {
-      if (ctx.modalState?.type !== 'setting-options' || ctx.modalState.field !== 'theme') return
+      if (field !== 'theme') return
       ctx.previewThemeOption?.(ctx.filteredSettingOptions[index]?.value ?? null)
     }
 
     if (key.name === 'escape') {
       ctx.previewThemeOption?.(null)
-      if (ctx.modalState.openedFrom === 'commands') {
+
+      if (openedFrom === 'commands') {
         ctx.closeModal()
       } else {
         ctx.setModalState({ type: 'settings' })
@@ -131,24 +161,29 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
       previewIfTheme(next)
     } else if (key.name === 'return') {
       const option = ctx.filteredSettingOptions[ctx.settingOptionsCursor]
+
       if (!option) return true
-      void ctx.handleSettingOptionSubmit(ctx.modalState.field, option.value)
+      ctx.runAction(() => ctx.handleSettingOptionSubmit(field, option.value))
       ctx.previewThemeOption?.(null)
     } else {
       return false
     }
+
     return true
   }
 
   if (ctx.modalState?.type === 'setting-editor') {
+    const { field } = ctx.modalState
+
     if (key.name === 'escape') {
       ctx.setModalState({ type: 'settings' })
       ctx.setSettingEditorError('')
     } else if (key.name === 'return') {
-      void ctx.handleSettingsEditorSubmit(ctx.modalState.field)
+      ctx.runAction(() => ctx.handleSettingsEditorSubmit(field))
     } else {
       return false
     }
+
     return true
   }
 

@@ -1,9 +1,17 @@
 import { executeCommand as runCommand } from './commands'
+import {
+  ActionOutcome,
+  isExpectedActionFailure,
+  type OperationReport,
+  type OutcomePresenter,
+} from './action-outcome'
 import { persistConfigUpdate, runWithErrorMessage } from './operations'
 import { AppMode, type Config, type Item, type ViewMode } from '../types'
 import type { SettingsFieldId } from '../settings'
 import type { MultiplexerBackend } from '../multiplexer'
-import { isBackendFailure } from '../multiplexer/failure'
+import { handoffOf } from '../multiplexer/focus-outcome'
+import type { FocusOutcome, WorkspaceRef } from '../multiplexer/types'
+import { requestShutdown } from '../util/shutdown'
 import { movePinAfterRename } from '../config/pinned-sessions'
 import { applyEditorSetting, applyOptionSetting, getSettingEditorTitle } from '../settings'
 import {
@@ -36,6 +44,7 @@ export interface LaunchGuard {
 interface NewSessionHandlerOptions extends SharedHandlerOptions {
   invocationCwd: string
   launchGuard: LaunchGuard
+  showOutcome: (report: OperationReport) => void
 }
 
 interface KillHandlerOptions extends SharedHandlerOptions {
@@ -54,6 +63,7 @@ interface SettingsHandlerOptions {
   settingEditorPlainText?: string
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config | null) => Promise<void>
   showMessage: ShowMessage
+  showOutcome: (report: OperationReport) => void
 }
 
 export async function handleKillSessionWithFeedback(
@@ -86,7 +96,6 @@ export async function handleLastSessionWithFeedback(options: SharedHandlerOption
   const backend = options.backend
   await runWithErrorMessage(
     () => actionHandleLastSession(options.sessionItems, backend),
-    'Failed to switch to the previous session',
     options.showMessage
   )
 }
@@ -99,7 +108,6 @@ export async function handleRootSessionWithFeedback(
   const backend = options.backend
   await runWithErrorMessage(
     () => actionHandleRootSession(item, options.config, backend),
-    'Failed to open the root session',
     options.showMessage
   )
 }
@@ -112,7 +120,6 @@ export async function handleEditTargetWithFeedback(
   const backend = options.backend
   await runWithErrorMessage(
     () => actionHandleEditTarget(item, options.config, backend),
-    'Failed to edit target',
     options.showMessage
   )
 }
@@ -201,7 +208,7 @@ export async function handleNewSessionSubmitWithSearch(
   options.launchGuard.active = true
 
   try {
-    await actionHandleNewSessionSubmit(
+    const outcome = await actionHandleNewSessionSubmit(
       searchTerm,
       options.config,
       options.items,
@@ -210,16 +217,94 @@ export async function handleNewSessionSubmitWithSearch(
       options.invocationCwd,
       options.sessionItems
     )
-  } catch (cause) {
-    options.showMessage(cause instanceof Error ? cause.message : 'Failed to create session', 5000)
+
+    ActionOutcome.present(outcome, options)
+
     // A failed launch may still have created a session; plan the next Enter against fresh inventory.
-    await runWithErrorMessage(
-      () => options.refreshItems(),
-      'Failed to refresh sessions after the launch',
-      options.showMessage
-    )
+    await runWithErrorMessage(() => options.refreshItems(), options.showMessage)
   } finally {
     options.launchGuard.active = false
+  }
+}
+
+interface OutcomeRetryOptions extends OutcomePresenter {
+  backend: MultiplexerBackend | null
+  launchGuard: LaunchGuard
+  refreshItems: () => Promise<void>
+  closeModal: () => void
+}
+
+type PartialReport = Extract<OperationReport, { kind: 'partial' }>
+
+async function retryOpen(
+  report: PartialReport,
+  target: WorkspaceRef,
+  options: OutcomeRetryOptions
+): Promise<void> {
+  if (!options.backend) return
+
+  if (options.launchGuard.active) {
+    options.showMessage('A launch is already running; wait for it to finish.')
+
+    return
+  }
+
+  options.launchGuard.active = true
+  let focus: FocusOutcome
+
+  try {
+    focus = await options.backend.open(target)
+  } catch (cause) {
+    if (!isExpectedActionFailure(cause)) throw cause
+
+    options.showOutcome({ ...report, failed: `Opening it again: ${cause.message}` })
+
+    return
+  } finally {
+    options.launchGuard.active = false
+  }
+
+  options.closeModal()
+  await requestShutdown(0, handoffOf(focus))
+}
+
+async function retryRefresh(report: PartialReport, options: OutcomeRetryOptions): Promise<void> {
+  try {
+    await options.refreshItems()
+  } catch (cause) {
+    if (!isExpectedActionFailure(cause)) throw cause
+
+    options.showOutcome({ ...report, failed: `Refreshing the list again: ${cause.message}` })
+
+    return
+  }
+
+  options.closeModal()
+  options.showMessage('Refreshed')
+}
+
+// Enter on the outcome screen repeats only its safe follow-up; with none, it just closes.
+export async function handleOutcomeRetryWithFeedback(
+  report: OperationReport,
+  options: OutcomeRetryOptions
+): Promise<void> {
+  if (report.kind === 'unknown') {
+    options.closeModal()
+
+    return
+  }
+
+  switch (report.retry.kind) {
+    case 'none':
+      options.closeModal()
+
+      return
+    case 'open':
+      await retryOpen(report, report.retry.target, options)
+
+      return
+    case 'refresh':
+      await retryRefresh(report, options)
   }
 }
 
@@ -231,24 +316,37 @@ export async function handleSettingsEditorSubmitWithFeedback(
     return
   }
 
+  let nextConfig: Config
+
+  // An invalid value stays in the editor with its draft; nothing is saved.
   try {
     const rawText = options.settingEditorPlainText ?? options.settingEditorValue
-    const nextConfig = applyEditorSetting(options.config, field, rawText, process.env.HOME || '~')
-
-    options.setSettingEditorError('')
-    await persistConfigUpdate(
-      nextConfig,
-      `${getSettingEditorTitle(field)} updated`,
-      options.saveConfig,
-      options.setConfig,
-      options.refreshItems,
-      options.showMessage
-    )
-    options.openSettingsModal()
+    nextConfig = applyEditorSetting(options.config, field, rawText, process.env.HOME || '~')
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Failed to save settings'
-    options.setSettingEditorError(errorMessage)
+    options.setSettingEditorError(error instanceof Error ? error.message : 'The value is not valid')
+
+    return
   }
+
+  options.setSettingEditorError('')
+
+  const outcome = await persistConfigUpdate(
+    nextConfig,
+    `${getSettingEditorTitle(field)} updated`,
+    options.saveConfig,
+    options.setConfig,
+    options.refreshItems
+  )
+
+  if (outcome.kind === 'failed') {
+    options.setSettingEditorError(outcome.message)
+
+    return
+  }
+
+  ActionOutcome.present(outcome, options)
+
+  if (outcome.kind === 'completed') options.openSettingsModal()
 }
 
 export async function handleSettingOptionSubmitWithFeedback(
@@ -261,14 +359,16 @@ export async function handleSettingOptionSubmitWithFeedback(
   }
 
   const nextConfig = applyOptionSetting(options.config, field, value)
-  await persistConfigUpdate(
+
+  const outcome = await persistConfigUpdate(
     nextConfig,
     `${getSettingEditorTitle(field)} updated`,
     options.saveConfig,
     options.setConfig,
-    options.refreshItems,
-    options.showMessage
+    options.refreshItems
   )
+
+  ActionOutcome.present(outcome, options)
 }
 
 export function getPinnedSessionsAfterToggle(config: Config, sessionName: string): string[] {
@@ -296,14 +396,15 @@ export async function handleTogglePinnedSessionWithFeedback(
 
   const isPinned = pinnedSessions.includes(sessionName)
 
-  await persistConfigUpdate(
+  const outcome = await persistConfigUpdate(
     nextConfig,
     `Session '${sessionName}' ${isPinned ? 'pinned' : 'unpinned'}`,
     options.saveConfig,
     options.setConfig,
-    options.refreshItems,
-    options.showMessage
+    options.refreshItems
   )
+
+  ActionOutcome.present(outcome, options)
 }
 
 export async function executeAppCommand(
@@ -372,7 +473,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       await handleSelectItem(item, options.config, options.backend)
     } catch (cause) {
       // Expected failures leave the picker and its inventory usable; defects still crash.
-      if (!isBackendFailure(cause)) throw cause
+      if (!isExpectedActionFailure(cause)) throw cause
 
       options.showMessage(cause.message, 5000)
     }
@@ -404,6 +505,18 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       ...sharedOptions,
       invocationCwd: options.invocationCwd,
       launchGuard: options.launchGuard,
+      showOutcome: options.showOutcome,
+    })
+  }
+
+  async function handleOutcomeRetry(report: OperationReport) {
+    await handleOutcomeRetryWithFeedback(report, {
+      backend: options.backend,
+      launchGuard: options.launchGuard,
+      refreshItems: () => options.refreshItems(),
+      closeModal: options.closeModal,
+      showMessage: options.showMessage,
+      showOutcome: options.showOutcome,
     })
   }
 
@@ -418,6 +531,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       settingEditorPlainText: options.settingEditorPlainText,
       refreshItems: options.refreshItems,
       showMessage: options.showMessage,
+      showOutcome: options.showOutcome,
     })
   }
 
@@ -431,6 +545,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       settingEditorValue: options.settingEditorValue,
       refreshItems: options.refreshItems,
       showMessage: options.showMessage,
+      showOutcome: options.showOutcome,
     })
   }
 
@@ -444,6 +559,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       settingEditorValue: options.settingEditorValue,
       refreshItems: options.refreshItems,
       showMessage: options.showMessage,
+      showOutcome: options.showOutcome,
     })
   }
 
@@ -489,6 +605,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     handleEditTargetWrapper,
     handleRenameSubmit,
     handleNewSessionSubmit,
+    handleOutcomeRetry,
     handleSettingsEditorSubmit,
     handleSettingOptionSubmit,
     handleTogglePinnedSessionWrapper,

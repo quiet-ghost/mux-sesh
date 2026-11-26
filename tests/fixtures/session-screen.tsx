@@ -1,7 +1,7 @@
 import { TextareaRenderable } from '@opentui/core'
 import type { TestRendererOptions, TestRendererSetup } from '@opentui/core/testing'
 import { testRender } from '@opentui/react/test-utils'
-import { act, useEffect } from 'react'
+import { act, useEffect, useRef } from 'react'
 import { executeCommand as executeAppCommand } from '../../src/app/commands'
 import { createAppControls } from '../../src/app/controls'
 import { useAppCoreState } from '../../src/app/core-state'
@@ -14,7 +14,7 @@ import {
   useSystemThemeFollow,
 } from '../../src/app/effects'
 import { FocusOwner } from '../../src/app/focus-owner'
-import { handleSelectItem } from '../../src/app/handlers'
+import { createAppHandlers, handleSelectItem, type LaunchGuard } from '../../src/app/handlers'
 import { useDetailsInspector } from '../../src/app/inspector'
 import { useAppKeyboard } from '../../src/app/keyboard'
 import {
@@ -23,6 +23,7 @@ import {
   type LauncherQueryServices,
 } from '../../src/app/launcher-query'
 import { useAppModalState } from '../../src/app/modal-state'
+import { openOutcomeModal } from '../../src/app/modals'
 import { AppModalsLayer } from '../../src/app/modals-layer'
 import { useResolvedTheme } from '../../src/app/resolved-theme'
 import { createAppRuntime } from '../../src/app/runtime'
@@ -44,6 +45,7 @@ interface SessionScreenHarness {
   renderer: TestRendererSetup['renderer']
   calls: BackendCall[]
   lifecycle: string[]
+  defects: unknown[]
   frame(): Promise<string>
   captureSpans: TestRendererSetup['captureSpans']
   pressKey(...args: Parameters<TestRendererSetup['mockInput']['pressKey']>): Promise<void>
@@ -61,6 +63,7 @@ interface SessionFixture {
   projects: Item[]
   filterItems: typeof filterAndSortItems
   lifecycle: string[]
+  defects: unknown[]
   homeDir: string
   resolveTheme: ThemeResolver
   themeFollow?: SubscribeThemeFollowOptions
@@ -136,7 +139,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     backend,
   })
 
-  const { refreshItems } = createAppRuntime({
+  const { refreshItems, showMessage } = createAppRuntime({
     config,
     backend,
     viewMode: core.viewMode,
@@ -228,6 +231,28 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     handleKillSession: unsupportedFixtureAction,
   })
 
+  const launchGuard = useRef<LaunchGuard>({ active: false })
+
+  const handlers = createAppHandlers({
+    ...core,
+    ...modal,
+    ...derived,
+    ...controls,
+    invocationCwd: '/fixture',
+    launchGuard: launchGuard.current,
+    backend,
+    config,
+    showMessage,
+    showOutcome: report => openOutcomeModal(report, modal.setModalState),
+    refreshItems,
+    toggleDetails: details.toggle,
+    saveConfig: unsupportedFixtureAction,
+    setConfig: unsupportedFixtureAction,
+    renamedValue: '',
+    searchTerm: core.searchQuery.trim(),
+    rememberedSessions: () => {},
+  })
+
   useAppKeyboard({
     active: true,
     toggleDetails: details.toggle,
@@ -257,7 +282,11 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     handleSettingOptionSubmit: unsupportedFixtureAction,
     handleSettingsEditorSubmit: unsupportedFixtureAction,
     handleRenameSubmit: unsupportedFixtureAction,
-    handleNewSessionSubmit: unsupportedFixtureAction,
+    handleNewSessionSubmit: handlers.handleNewSessionSubmit,
+    handleOutcomeRetry: handlers.handleOutcomeRetry,
+    onDefect: cause => {
+      fixture.defects.push(cause)
+    },
     togglePinnedSession: unsupportedFixtureAction,
     refreshItems,
     handleKillSession: unsupportedFixtureAction,
@@ -329,6 +358,7 @@ export async function renderSessionScreen(
 
   const calls: BackendCall[] = []
   const lifecycle: string[] = []
+  const defects: unknown[] = []
 
   const backend: MultiplexerBackend = data.backend ?? {
     kind: 'herdr',
@@ -397,6 +427,7 @@ export async function renderSessionScreen(
             projects,
             filterItems: data.filterItems ?? filterAndSortItems,
             lifecycle,
+            defects,
             homeDir: data.homeDir ?? '/fixture',
             resolveTheme: data.resolveTheme ?? resolveTheme,
             themeFollow: data.themeFollow,
@@ -435,6 +466,7 @@ export async function renderSessionScreen(
     renderer: setup.renderer,
     calls,
     lifecycle,
+    defects,
     frame,
     captureSpans: setup.captureSpans,
     async pressKey(...args: Parameters<typeof setup.mockInput.pressKey>): Promise<void> {

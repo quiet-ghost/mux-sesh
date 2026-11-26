@@ -7,7 +7,6 @@ import {
   type CommandId,
 } from '../../app/action-catalog'
 import { AppMode, ViewMode, type Config, type Item } from '../../types'
-import { requestFatalShutdown } from '../../util/shutdown'
 
 export interface KeyboardInput {
   name?: string
@@ -16,6 +15,8 @@ export interface KeyboardInput {
 }
 
 export interface KeyboardHandlerContext {
+  // Owns every promise a key starts: expected failures are shown, defects go to crash recovery.
+  runAction: (task: () => Promise<void>) => void
   appMode: AppMode
   viewMode: ViewMode
   items: Item[]
@@ -161,21 +162,21 @@ export function toggleDetailsPanel(ctx: KeyboardHandlerContext) {
 export function openLastSession(ctx: KeyboardHandlerContext) {
   runAvailableAction(ctx, 'last-session', () => {
     ctx.clearPendingKill()
-    ctx.handleLastSession().catch(requestFatalShutdown)
+    ctx.runAction(ctx.handleLastSession)
   })
 }
 
 export function openSelectedRootSession(ctx: KeyboardHandlerContext) {
   runAvailableAction(ctx, 'root-session', item => {
     ctx.clearPendingKill()
-    ctx.handleRootSession(item).catch(requestFatalShutdown)
+    ctx.runAction(() => ctx.handleRootSession(item))
   })
 }
 
 export function openSelectedEditTarget(ctx: KeyboardHandlerContext) {
   runAvailableAction(ctx, 'edit-target', item => {
     ctx.clearPendingKill()
-    ctx.handleEditTarget(item).catch(requestFatalShutdown)
+    ctx.runAction(() => ctx.handleEditTarget(item))
   })
 }
 
@@ -183,6 +184,6 @@ export function togglePinnedTarget(ctx: KeyboardHandlerContext) {
   runAvailableAction(ctx, 'toggle-pin-session', item => {
     if (!item) return
     ctx.clearPendingKill()
-    ctx.togglePinnedSession(item.title).catch(requestFatalShutdown)
+    ctx.runAction(() => ctx.togglePinnedSession(item.title))
   })
 }

@@ -67,6 +67,12 @@ function createBaseContext(overrides: Partial<KeyboardHandlerContext>): BaseCont
     sessionItems: items,
     prefixActive: true,
     prefixTimeoutRef: { current: null },
+    // Runs the task as the production owner would; these handler mocks never reject.
+    runAction: mock((task: () => Promise<void>) => {
+      task().catch(cause => {
+        throw cause
+      })
+    }),
     setAppMode: mock(() => {}),
     setViewMode: mock(() => {}),
     setCursor: mock(() => 0),

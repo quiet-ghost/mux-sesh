@@ -42,7 +42,7 @@ export function handleNewSessionMode(
       ctx.setViewMode(ViewMode.Sessions)
       ctx.setSearchQuery('')
       ctx.setCursor(0)
-      void ctx.refreshItems(ViewMode.Sessions)
+      ctx.runAction(() => ctx.refreshItems(ViewMode.Sessions))
 
       return true
     }

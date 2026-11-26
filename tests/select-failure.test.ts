@@ -28,6 +28,7 @@ function handlersFor(runner: CommandRunner, showMessage: (message: string) => vo
     sessionItems: [agent],
     cursor: 0,
     showMessage,
+    showOutcome: mock(() => {}),
     refreshItems: mock(async () => {}),
     agentCursor: 0,
     regularSessions: [],

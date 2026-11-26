@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test'
+import type { OperationReport } from '../src/app/action-outcome'
 import { handleNewSessionSubmitWithSearch, type LaunchGuard } from '../src/app/handlers'
 import { getDefaultConfig } from '../src/config'
 import type { CreatedSessionReceipt, MultiplexerBackend } from '../src/multiplexer/types'
@@ -16,6 +17,7 @@ test('a second Enter while a launch runs is refused, and a failed launch refresh
   const creation = Promise.withResolvers<CreatedSessionReceipt>()
   const calls: string[] = []
   const messages: string[] = []
+  const reports: OperationReport[] = []
   let refreshes = 0
 
   const backend: MultiplexerBackend = {
@@ -55,6 +57,9 @@ test('a second Enter while a launch runs is refused, and a failed launch refresh
     showMessage: (message: string) => {
       messages.push(message)
     },
+    showOutcome: (report: OperationReport) => {
+      reports.push(report)
+    },
     refreshItems: async () => {
       refreshes++
     },
@@ -69,7 +74,12 @@ test('a second Enter while a launch runs is refused, and a failed launch refresh
   await first
 
   expect(calls).toEqual(['create scratch', 'open'])
-  expect(messages[1]).toContain("Created 'scratch', but it could not be opened")
+  expect(messages).toHaveLength(1)
+  expect(reports).toHaveLength(1)
+  expect(reports[0]).toMatchObject({ kind: 'partial', completed: ["Created workspace 'scratch'"] })
+  expect(reports[0]?.kind === 'partial' && reports[0].failed).toContain(
+    'fixture client unavailable'
+  )
   expect(refreshes).toBe(1)
   expect(launchGuard.active).toBe(false)
 })
