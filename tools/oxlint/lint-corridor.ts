@@ -191,6 +191,7 @@ export const LINT_CORRIDOR = [
   'tests/theme.test.ts',
   'tests/update.test.ts',
   'tests/version.test.ts',
+  'tests/work-budgets.test.tsx',
   'tools/oxlint/lint-corridor.ts',
 ] as const
 
