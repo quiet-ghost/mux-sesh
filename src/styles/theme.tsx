@@ -294,9 +294,9 @@ export function getDetailPanelStyle(theme: ThemeColors) {
   }
 }
 
-export function getModalStyle(theme: ThemeColors, columns: number, preferredWidth = 76) {
+// Width comes from the dialog layout budget, which clamps it to the terminal.
+export function getModalStyle(theme: ThemeColors) {
   return {
-    width: Math.max(48, Math.min(columns - 8, preferredWidth)),
     backgroundColor: theme.surfaceModal,
     paddingTop: 1,
     paddingBottom: 1,

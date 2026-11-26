@@ -267,12 +267,6 @@ export function useBoundedCursor(length: number, setCursor: Dispatch<SetStateAct
   }, [length, setCursor])
 }
 
-export function useResetCursorOnValue(value: string, setCursor: Dispatch<SetStateAction<number>>) {
-  useEffect(() => {
-    setCursor(0)
-  }, [setCursor, value])
-}
-
 export function useSelectionMemory(
   appMode: AppMode,
   viewMode: ViewMode,
@@ -446,7 +440,6 @@ interface UseAppBehaviorsOptions {
   setSessionCandidateItems: Dispatch<SetStateAction<Item[]>>
   filteredCommandEntriesLength: number
   setCommandsCursor: Dispatch<SetStateAction<number>>
-  commandsSearchQuery: string
   filteredSettingsEntriesLength: number
   setSettingsCursor: Dispatch<SetStateAction<number>>
   filteredSettingOptionsLength: number
@@ -502,7 +495,6 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.setCursor
   )
   useBoundedCursor(options.filteredCommandEntriesLength, options.setCommandsCursor)
-  useResetCursorOnValue(options.commandsSearchQuery, options.setCommandsCursor)
   useBoundedCursor(options.filteredSettingsEntriesLength, options.setSettingsCursor)
   useBoundedCursor(options.filteredSettingOptionsLength, options.setSettingOptionsCursor)
   useSelectionMemory(

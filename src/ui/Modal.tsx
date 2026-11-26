@@ -40,7 +40,7 @@ export default function Modal({
         backgroundColor: RGBA.fromInts(0, 0, 0, 150),
       }}
     >
-      <box style={{ ...getModalStyle(theme, columns, preferredWidth), width }}>
+      <box style={{ ...getModalStyle(theme), width }}>
         <box style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <text style={{ fg: theme.text }}>
             {truncateDialogText(title, contentWidth - CLOSE_HINT.length - 1)}

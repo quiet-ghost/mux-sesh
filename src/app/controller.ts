@@ -349,7 +349,6 @@ export function useAppController(invocationCwd: string) {
     setSessionCandidateItems,
     filteredCommandEntriesLength: filteredCommandEntries.length,
     setCommandsCursor,
-    commandsSearchQuery,
     filteredSettingsEntriesLength: filteredSettingsEntries.length,
     setSettingsCursor,
     filteredSettingOptionsLength: filteredSettingOptions.length,
