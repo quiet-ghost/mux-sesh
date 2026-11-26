@@ -1,4 +1,4 @@
-import { filterCommandEntries, getCommandEntries, type CommandEntry } from '../ui/CommandsModal'
+import { filterCommandEntries } from '../ui/CommandsModal'
 import {
   filterSettingsEntries,
   filterSettingsOptions,
@@ -8,6 +8,13 @@ import {
   type SettingsOption,
 } from '../settings'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
+import {
+  getActionTarget,
+  getCommandEntries,
+  type ActionBackend,
+  type ActionContext,
+  type CommandEntry,
+} from './action-catalog'
 import type { ModalState } from './modals'
 import { splitVisibleSessions } from './view'
 
@@ -16,6 +23,7 @@ interface SessionCommandState {
   agentSessions: Item[]
   selectedAgentSession: Item | undefined
   selectedPrimaryItem: Item | undefined
+  actionContext: ActionContext
   filteredCommandEntries: CommandEntry[]
 }
 
@@ -31,7 +39,8 @@ export function getSessionCommandState(
   cursor: number,
   agentCursor: number,
   config: Config | null,
-  commandsSearchQuery: string
+  commandsSearchQuery: string,
+  backend: ActionBackend | null = null
 ): SessionCommandState {
   const sessionSplit =
     viewMode === ViewMode.Sessions
@@ -45,6 +54,16 @@ export function getSessionCommandState(
         ? sessionSplit.agentSessions[agentCursor]
         : items[cursor]
 
+  const actionContext: ActionContext = {
+    appMode,
+    viewMode,
+    keybindMode: config?.keybindMode ?? 'vim',
+    prefixKey: config?.prefixKey,
+    backend,
+    agentCount: sessionSplit.agentSessions.length,
+    target: getActionTarget(selectedPrimaryItem),
+  }
+
   return {
     // Search keeps a flat cursor shared by the visible list and command targets.
     regularSessions:
@@ -55,8 +74,9 @@ export function getSessionCommandState(
     selectedAgentSession:
       appMode === AppMode.AgentsManage ? sessionSplit.agentSessions[agentCursor] : undefined,
     selectedPrimaryItem,
+    actionContext,
     filteredCommandEntries: filterCommandEntries(
-      getCommandEntries(appMode, config?.keybindMode, config?.prefixKey, selectedPrimaryItem),
+      getCommandEntries(actionContext),
       commandsSearchQuery
     ),
   }

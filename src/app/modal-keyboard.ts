@@ -1,3 +1,4 @@
+import { describeUnavailableAction } from './action-catalog'
 import type { ModalState } from './modals'
 import type { SettingsEntry, SettingsOption } from '../settings'
 import type { CommandEntry } from '../ui/CommandsModal'
@@ -22,6 +23,7 @@ interface ModalKeyboardContext {
   setModalState: (state: ModalState) => void
   setSettingEditorError: (message: string) => void
   executeCommand: (id: CommandEntry['id']) => Promise<void>
+  showMessage: (message: string) => void
   handleSettingOptionSubmit: (field: SettingsEntry['id'], value: string) => Promise<void>
   handleSettingsEditorSubmit: (field: SettingsEntry['id']) => Promise<void>
   handleRenameSubmit: () => Promise<void>
@@ -69,6 +71,11 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
     } else if (key.name === 'return') {
       const command = ctx.filteredCommandEntries[ctx.commandsCursor]
       if (!command) {
+        return true
+      }
+      const refusal = describeUnavailableAction(command)
+      if (refusal) {
+        ctx.showMessage(refusal)
         return true
       }
       void ctx.executeCommand(command.id)

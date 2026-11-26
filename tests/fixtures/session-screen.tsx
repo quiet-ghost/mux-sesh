@@ -108,7 +108,8 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     core.cursor,
     core.agentCursor,
     config,
-    modal.commandsSearchQuery
+    modal.commandsSearchQuery,
+    backend
   )
 
   const inventory = useSessionInventory(effects, passthroughMeasure, {

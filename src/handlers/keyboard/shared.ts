@@ -1,5 +1,13 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import {
+  describeUnavailableAction,
+  getActionTargetItem,
+  getCommandEntry,
+  type ActionContext,
+  type CommandId,
+} from '../../app/action-catalog'
 import { AppMode, ViewMode, type Config, type Item } from '../../types'
+import { requestFatalShutdown } from '../../util/shutdown'
 
 export interface KeyboardInput {
   name?: string
@@ -16,6 +24,7 @@ export interface KeyboardHandlerContext {
   cursor: number
   agentCursor: number
   searchQuery: string
+  actionContext: ActionContext
   prefixKey?: string
   projectItems: Item[]
   sessionItems: Item[]
@@ -102,15 +111,70 @@ export function enterNewSessionMode(ctx: KeyboardHandlerContext) {
   ctx.setSearchQuery('')
 }
 
-export function openSelectedRootSession(ctx: KeyboardHandlerContext) {
+// Keys run an action only when the catalog allows it, and explain a refusal instead.
+export function runAvailableAction(
+  ctx: KeyboardHandlerContext,
+  id: CommandId,
+  run: (target: Item | undefined) => void
+) {
+  const refusal = describeUnavailableAction(getCommandEntry(ctx.actionContext, id))
+
+  if (refusal) {
+    setTimedMessage(ctx, refusal)
+
+    return
+  }
+
+  run(getActionTargetItem(ctx.actionContext.target))
+}
+
+export function requestKillTarget(ctx: KeyboardHandlerContext) {
+  runAvailableAction(ctx, 'kill-session', item => {
+    if (item) ctx.requestKillSession(item)
+  })
+}
+
+export function openRenameTarget(ctx: KeyboardHandlerContext) {
+  runAvailableAction(ctx, 'rename-session', item => {
+    if (!item) return
+    ctx.clearPendingKill()
+    ctx.openRenameModal(item)
+  })
+}
+
+export function openAgentsTarget(ctx: KeyboardHandlerContext) {
   ctx.clearPendingKill()
-  void ctx.handleRootSession(getSelectedItem(ctx))
+  runAvailableAction(ctx, 'open-agents', () => {
+    ctx.setAppMode(AppMode.AgentsManage)
+    ctx.setAgentCursor(0)
+  })
+}
+
+export function openLastSession(ctx: KeyboardHandlerContext) {
+  runAvailableAction(ctx, 'last-session', () => {
+    ctx.clearPendingKill()
+    ctx.handleLastSession().catch(requestFatalShutdown)
+  })
+}
+
+export function openSelectedRootSession(ctx: KeyboardHandlerContext) {
+  runAvailableAction(ctx, 'root-session', item => {
+    ctx.clearPendingKill()
+    ctx.handleRootSession(item).catch(requestFatalShutdown)
+  })
 }
 
 export function openSelectedEditTarget(ctx: KeyboardHandlerContext) {
-  ctx.clearPendingKill()
-  const item = getSelectedItem(ctx)
-  if (item?.itemKind === 'configured') {
-    void ctx.handleEditTarget(item)
-  }
+  runAvailableAction(ctx, 'edit-target', item => {
+    ctx.clearPendingKill()
+    ctx.handleEditTarget(item).catch(requestFatalShutdown)
+  })
+}
+
+export function togglePinnedTarget(ctx: KeyboardHandlerContext) {
+  runAvailableAction(ctx, 'toggle-pin-session', item => {
+    if (!item) return
+    ctx.clearPendingKill()
+    ctx.togglePinnedSession(item.title).catch(requestFatalShutdown)
+  })
 }

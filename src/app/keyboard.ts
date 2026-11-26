@@ -12,6 +12,8 @@ import {
 import type { SettingsEntry, SettingsFieldId, SettingsOption } from '../settings'
 import type { Config, Item } from '../types'
 import type { CommandEntry } from '../ui/CommandsModal'
+import type { ActionContext } from './action-catalog'
+import { setTimedMessage } from '../handlers/keyboard/shared'
 import { AppMode, ViewMode } from '../types'
 
 interface UseAppKeyboardOptions {
@@ -29,6 +31,7 @@ interface UseAppKeyboardOptions {
   cursor: number
   agentCursor: number
   searchQuery: string
+  actionContext: ActionContext
   prefixActive: boolean
   prefixTimeoutRef: MutableRefObject<NodeJS.Timeout | null>
   modalState: ModalState
@@ -86,6 +89,7 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     cursor: options.cursor,
     agentCursor: options.agentCursor,
     searchQuery: options.searchQuery,
+    actionContext: options.actionContext,
     prefixKey: options.config?.prefixKey,
     projectItems:
       options.sessionCandidateItems.length > 0
@@ -142,6 +146,7 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
         setModalState: options.setModalState,
         setSettingEditorError: options.setSettingEditorError,
         executeCommand: options.executeCommand,
+        showMessage: message => setTimedMessage(keyboardContext, message),
         handleSettingOptionSubmit: options.handleSettingOptionSubmit,
         handleSettingsEditorSubmit: options.handleSettingsEditorSubmit,
         handleRenameSubmit: options.handleRenameSubmit,

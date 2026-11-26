@@ -2,6 +2,8 @@
 // `bun run lint` reports the remaining legacy findings across the repository.
 export const LINT_CORRIDOR = [
   'src/app.tsx',
+  'src/app/action-catalog.ts',
+  'src/app/commands.ts',
   'src/app/controller.ts',
   'src/app/controls.ts',
   'src/app/derived.ts',
@@ -38,6 +40,7 @@ export const LINT_CORRIDOR = [
   'src/preview/project.ts',
   'src/handlers/actions.ts',
   'src/handlers/keyboard/agents.ts',
+  'src/handlers/keyboard/shared.ts',
   'src/index.tsx',
   'src/ui/CommandsModal.tsx',
   'src/ui/DialogList.tsx',
@@ -66,6 +69,8 @@ export const LINT_CORRIDOR = [
   'src/util/github.ts',
   'src/util/perf.ts',
   'src/util/shutdown.ts',
+  'tests/action-catalog.test.ts',
+  'tests/action-catalog-screen.test.tsx',
   'tests/agents-navigation.test.tsx',
   'tests/app-screen.test.tsx',
   'tests/browser.test.ts',

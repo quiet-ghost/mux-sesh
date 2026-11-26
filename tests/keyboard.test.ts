@@ -6,6 +6,7 @@ import {
   type KeyboardHandlerContext,
   type KeyboardInput,
 } from '../src/handlers/keyboard'
+import { getActionTarget, type ActionContext } from '../src/app/action-catalog'
 import { AppMode, ViewMode, type Item } from '../src/types'
 
 function createItem(overrides: Partial<Item> = {}): Item {
@@ -14,11 +15,43 @@ function createItem(overrides: Partial<Item> = {}): Item {
     desc: '',
     path: '/tmp/session-1',
     isSession: true,
+    itemKind: 'tmux',
+    backend: 'tmux',
+    sessionId: overrides.title ?? 'session-1',
     ...overrides,
   }
 }
 
+function selectedItem(ctx: BaseContext): Item | undefined {
+  if (ctx.appMode === AppMode.AgentsManage) return ctx.agentSessions[ctx.agentCursor]
+  if (ctx.appMode === AppMode.Normal && ctx.viewMode === ViewMode.Sessions) {
+    return ctx.regularSessions[ctx.cursor]
+  }
+
+  return ctx.items[ctx.cursor]
+}
+
+type BaseContext = Omit<KeyboardHandlerContext, 'actionContext'>
+
+function actionContextOf(ctx: BaseContext): ActionContext {
+  return {
+    appMode: ctx.appMode,
+    viewMode: ctx.viewMode,
+    keybindMode: 'vim',
+    prefixKey: ctx.prefixKey,
+    backend: { kind: 'tmux', capabilities: { previousWorkspace: true } },
+    agentCount: ctx.agentSessions.length,
+    target: getActionTarget(selectedItem(ctx)),
+  }
+}
+
 function createContext(overrides: Partial<KeyboardHandlerContext> = {}): KeyboardHandlerContext {
+  const ctx = createBaseContext(overrides)
+
+  return { ...ctx, actionContext: overrides.actionContext ?? actionContextOf(ctx) }
+}
+
+function createBaseContext(overrides: Partial<KeyboardHandlerContext>): BaseContext {
   const items = [createItem()]
 
   return {
@@ -184,6 +217,10 @@ describe('keyboard shortcuts', () => {
     expect(directCtx.openRenameModal).not.toHaveBeenCalled()
     expect(prefixCtx.requestKillSession).not.toHaveBeenCalled()
     expect(prefixCtx.openRenameModal).not.toHaveBeenCalled()
+    for (const ctx of [directCtx, prefixCtx]) {
+      expect(ctx.setMessage).toHaveBeenCalledWith('Kill session unavailable: Close it in Herdr')
+      expect(ctx.setMessage).toHaveBeenCalledWith('Rename session unavailable: Rename it in Herdr')
+    }
   })
 
   test('selects highlighted search result with Enter', () => {

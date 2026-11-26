@@ -1,4 +1,3 @@
-import { isHerdrAgentItem } from '../../multiplexer/items'
 import { AppMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
 import { requestFatalShutdown } from '../../util/shutdown'
@@ -7,6 +6,8 @@ import {
   clearPrefix,
   getKeyName,
   matchesPrefixKey,
+  openRenameTarget,
+  requestKillTarget,
   type KeyboardHandlerContext,
   type KeyboardInput,
 } from './shared'
@@ -37,22 +38,11 @@ export function handleAgentsManageMode(
 
         return
       case 'd':
-        if (
-          ctx.agentSessions[ctx.agentCursor] &&
-          !isHerdrAgentItem(ctx.agentSessions[ctx.agentCursor])
-        ) {
-          ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor])
-        }
+        requestKillTarget(ctx)
 
         return
       case 'r':
-        if (
-          ctx.agentSessions[ctx.agentCursor] &&
-          !isHerdrAgentItem(ctx.agentSessions[ctx.agentCursor])
-        ) {
-          ctx.clearPendingKill()
-          ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor])
-        }
+        openRenameTarget(ctx)
 
         return
     }
@@ -99,24 +89,13 @@ export function handleAgentsManageMode(
   }
 
   if (!isStandard && keyName === 'd') {
-    if (
-      ctx.agentSessions[ctx.agentCursor] &&
-      !isHerdrAgentItem(ctx.agentSessions[ctx.agentCursor])
-    ) {
-      ctx.requestKillSession(ctx.agentSessions[ctx.agentCursor])
-    }
+    requestKillTarget(ctx)
 
     return
   }
 
   if (!ctx.prefixKey && !isStandard && keyName === 'r') {
-    if (
-      ctx.agentSessions[ctx.agentCursor] &&
-      !isHerdrAgentItem(ctx.agentSessions[ctx.agentCursor])
-    ) {
-      ctx.clearPendingKill()
-      ctx.openRenameModal(ctx.agentSessions[ctx.agentCursor])
-    }
+    openRenameTarget(ctx)
 
     return
   }

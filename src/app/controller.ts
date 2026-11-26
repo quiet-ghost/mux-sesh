@@ -122,6 +122,7 @@ export function useAppController(invocationCwd: string) {
     agentSessions,
     selectedAgentSession,
     selectedPrimaryItem,
+    actionContext,
     filteredCommandEntries,
   } = getSessionCommandState(
     appMode,
@@ -130,7 +131,8 @@ export function useAppController(invocationCwd: string) {
     cursor,
     agentCursor,
     config,
-    commandsSearchQuery
+    commandsSearchQuery,
+    backend
   )
 
   const inventory = useSessionInventory(effects, measure, {
@@ -284,6 +286,7 @@ export function useAppController(invocationCwd: string) {
     cursor,
     agentCursor,
     searchQuery,
+    actionContext,
     prefixActive,
     prefixTimeoutRef,
     modalState,

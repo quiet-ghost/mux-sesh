@@ -14,6 +14,7 @@ interface DialogRowProps {
   value: string
   selected: boolean
   width: number
+  disabled?: boolean
 }
 
 export function DialogFilter({
@@ -46,7 +47,7 @@ export function DialogFilter({
   )
 }
 
-export function DialogRow({ label, value, selected, width }: DialogRowProps) {
+export function DialogRow({ label, value, selected, width, disabled = false }: DialogRowProps) {
   const theme = useTheme()
   const text = fitDialogRow(label, value, width)
 
@@ -60,7 +61,11 @@ export function DialogRow({ label, value, selected, width }: DialogRowProps) {
         paddingRight: 1,
       }}
     >
-      <text style={{ fg: selected ? theme.selectionText : theme.text }}>{text.label}</text>
+      <text
+        style={{ fg: selected ? theme.selectionText : disabled ? theme.textMuted : theme.text }}
+      >
+        {text.label}
+      </text>
       <text style={{ fg: selected ? theme.selectionText : theme.textMuted }}>{text.value}</text>
     </box>
   )

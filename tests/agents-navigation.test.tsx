@@ -117,8 +117,8 @@ describe('Agents navigation through production keyboard wiring', () => {
       await screen.pressKey('p', { ctrl: true })
       const commands = await screen.frame()
       expect(commands).toContain('Commands')
-      expect(commands).not.toContain('Kill session')
-      expect(commands).not.toContain('Rename session')
+      expect(commands).toMatch(/Kill session\s+Close it in Herdr/)
+      expect(commands).toMatch(/Rename session\s+Rename it in Herdr/)
 
       await screen.replaceQuery('Back')
       await screen.pressKey('RETURN')
@@ -146,10 +146,16 @@ describe('Agents navigation through production keyboard wiring', () => {
       expect(agents).toMatch(/› .*agent-one/)
       expect(agents).not.toContain('opencode-native-unknown')
 
-      for (const key of ['d', 'r']) {
+      for (const [key, refusal] of [
+        ['d', 'Kill session unavailable: Close it in Herdr'],
+        ['r', 'Rename session unavailable: Rename it in Herdr'],
+      ] as const) {
         await screen.pressKey('x', { ctrl: true })
         await screen.pressKey(key)
-        expect(await screen.frame()).toBe(agents)
+        const refused = await screen.frame()
+        expect(refused).toContain(refusal)
+        expect(refused).toMatch(/› .*agent-one/)
+        expect(refused).not.toContain('Rename Session')
       }
 
       if (exit === 'prefix') await screen.pressKey('x', { ctrl: true })

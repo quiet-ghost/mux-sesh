@@ -1,4 +1,10 @@
 import { describe, expect, mock, test } from 'bun:test'
+import {
+  getActionFooter,
+  getActionTarget,
+  getCommandEntries,
+  type ActionContext,
+} from '../src/app/action-catalog'
 import { createAppControls } from '../src/app/controls'
 import { getDefaultConfig } from '../src/config'
 import {
@@ -20,10 +26,22 @@ import {
   splitVisibleSessions,
 } from '../src/app/view'
 import { AppMode, ViewMode, type Item } from '../src/types'
-import { getCommandEntries } from '../src/ui/CommandsModal'
 import { createHerdrBackend } from '../src/herdr/backend'
 import { getItemKey, workspaceToItem } from '../src/multiplexer/items'
 import { filterHiddenSessions } from '../src/tmux/workflows'
+
+function actionContext(overrides: Partial<ActionContext> = {}): ActionContext {
+  return {
+    appMode: AppMode.Normal,
+    viewMode: ViewMode.Sessions,
+    keybindMode: 'vim',
+    prefixKey: 'ctrl+x',
+    backend: { kind: 'tmux', capabilities: { previousWorkspace: true } },
+    agentCount: 0,
+    target: { kind: 'none' },
+    ...overrides,
+  }
+}
 
 describe('app view helpers', () => {
   test('splits regular and agent sessions without losing item shape', () => {
@@ -82,7 +100,8 @@ describe('app view helpers', () => {
     expect(getAppTitle(AppMode.NewSession, ViewMode.Projects)).toBe('New Session')
     expect(getAppTitle(AppMode.AgentsManage, ViewMode.Sessions)).toBe('Agent Sessions')
     expect(getFooterHint(AppMode.AgentsManage, 'ctrl+x')).toContain('ctrl+x')
-    expect(getFooterHint(AppMode.Normal)).toContain('o agents')
+    expect(getActionFooter(actionContext({ agentCount: 1 }))).toContain('o agents')
+    expect(getFooterHint(AppMode.Normal)).not.toContain('o agents')
     expect(getStatusLabel(ViewMode.Sessions, 2, 5, 9)).toBe('2/5 active')
     expect(getEmptyStateMessage(AppMode.NewSession, 'https://github.com/acme/repo', true)).toBe(
       'Clone & create session'
@@ -101,10 +120,23 @@ describe('app view helpers', () => {
       target: { kind: 'agent' as const, tabId: 'agents:t1', paneId: 'agents:p1' },
     }
 
-    const entries = getCommandEntries(AppMode.AgentsManage, 'vim', undefined, agent)
+    const entries = getCommandEntries(
+      actionContext({
+        appMode: AppMode.AgentsManage,
+        prefixKey: undefined,
+        agentCount: 1,
+        target: getActionTarget(agent),
+      })
+    )
 
-    expect(entries.some(entry => entry.id === 'kill-session')).toBe(false)
-    expect(entries.some(entry => entry.id === 'rename-session')).toBe(false)
+    expect(entries.find(entry => entry.id === 'kill-session')?.availability).toEqual({
+      kind: 'unavailable',
+      reason: 'Close it in Herdr',
+    })
+    expect(entries.find(entry => entry.id === 'rename-session')?.availability).toEqual({
+      kind: 'unavailable',
+      reason: 'Rename it in Herdr',
+    })
     expect(getFooterHint(AppMode.AgentsManage, undefined, agent)).not.toContain('d kill')
   })
 })
@@ -270,7 +302,7 @@ describe('app derived helpers', () => {
 
   test('command palette search for theme opens Themes', () => {
     const config = getDefaultConfig('/home/tester')
-    const entries = getCommandEntries(AppMode.Normal, 'vim', 'ctrl+x')
+    const entries = getCommandEntries(actionContext())
     const state = getSessionCommandState(
       AppMode.Normal,
       ViewMode.Sessions,

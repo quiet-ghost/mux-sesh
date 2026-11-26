@@ -1,5 +1,5 @@
 import { refreshProjectDiscovery } from '../tmux/projects'
-import type { CommandId } from '../ui/CommandsModal'
+import { getActionTarget, type CommandId } from './action-catalog'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../types'
 
 interface ExecuteCommandContext {
@@ -33,16 +33,21 @@ interface ExecuteCommandContext {
   showMessage: (message: string, timeout?: number) => void
 }
 
+// The palette refuses unavailable commands first; these guards only keep the target exact.
 export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandContext) {
+  const target = getActionTarget(ctx.selectedPrimaryItem)
+
   switch (commandID) {
     case 'search':
       ctx.closeModal()
       ctx.setAppMode(AppMode.Search)
       ctx.setSearchQuery('')
+
       return
     case 'new-session': {
       const items =
         ctx.sessionCandidateItems.length > 0 ? ctx.sessionCandidateItems : ctx.projectSourceItems
+
       ctx.closeModal()
       ctx.setAppMode(AppMode.NewSession)
       ctx.setViewMode(ViewMode.Projects)
@@ -50,86 +55,88 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
       ctx.setItems(items)
       ctx.setCursor(Math.max(0, items.length - 1))
       ctx.setSearchQuery('')
+
       return
     }
+
     case 'open-settings':
       ctx.openSettingsModal()
+
       return
     case 'open-themes':
       ctx.openSettingOptions('theme')
+
       return
     case 'view-projects':
       ctx.closeModal()
       ctx.setViewMode(ViewMode.Projects)
       await ctx.refreshItems(ViewMode.Projects)
+
       return
     case 'view-sessions':
       ctx.closeModal()
       ctx.setViewMode(ViewMode.Sessions)
       await ctx.refreshItems(ViewMode.Sessions)
+
       return
-    case 'rename-session': {
-      const target =
-        ctx.appMode === AppMode.AgentsManage
-          ? ctx.agentSessions[ctx.agentCursor]
-          : ctx.viewMode === ViewMode.Sessions
-            ? ctx.regularSessions[ctx.cursor]
-            : undefined
-      if (target?.isSession) {
-        ctx.openRenameModal(target)
+    case 'rename-session':
+      if (target.kind === 'session') {
+        ctx.openRenameModal(target.item)
       }
+
       return
-    }
-    case 'kill-session': {
-      const target =
-        ctx.appMode === AppMode.AgentsManage
-          ? ctx.agentSessions[ctx.agentCursor]
-          : ctx.viewMode === ViewMode.Sessions
-            ? ctx.regularSessions[ctx.cursor]
-            : undefined
-      if (target?.isSession) {
+    case 'kill-session':
+      if (target.kind === 'session') {
         ctx.closeModal()
-        ctx.requestKillSession(target)
+        ctx.requestKillSession(target.item)
       }
+
       return
-    }
-    case 'toggle-pin-session': {
-      const target =
-        ctx.viewMode === ViewMode.Sessions ? ctx.regularSessions[ctx.cursor] : undefined
-      if (target) {
+    case 'toggle-pin-session':
+      if (
+        ctx.viewMode === ViewMode.Sessions &&
+        (target.kind === 'session' || target.kind === 'configured')
+      ) {
         ctx.closeModal()
-        await ctx.togglePinnedSession(target.title)
+        await ctx.togglePinnedSession(target.item.title)
       }
+
       return
-    }
     case 'last-session':
       ctx.closeModal()
       await ctx.handleLastSession()
+
       return
     case 'root-session':
       ctx.closeModal()
       await ctx.handleRootSession(ctx.selectedPrimaryItem)
+
       return
     case 'edit-target':
       ctx.closeModal()
       await ctx.handleEditTarget(ctx.selectedPrimaryItem)
+
       return
     case 'open-agents':
       ctx.closeModal()
+
       if (ctx.viewMode === ViewMode.Sessions && ctx.agentSessions.length > 0) {
         ctx.setAppMode(AppMode.AgentsManage)
         ctx.setAgentCursor(0)
       }
+
       return
     case 'refresh':
       ctx.closeModal()
       refreshProjectDiscovery()
       await ctx.refreshItems()
       ctx.showMessage('Refreshed')
+
       return
     case 'back':
       ctx.closeModal()
       ctx.setAppMode(ctx.keybindMode === 'standard' ? AppMode.Search : AppMode.Normal)
+
       return
   }
 }

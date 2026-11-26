@@ -1,7 +1,7 @@
 import { isAgentSessionItem } from '../agents/session-name'
-import { isHerdrAgentItem } from '../multiplexer/items'
 import { getPanelStyle } from '../styles/theme'
 import { AppMode, ViewMode, type BackendKind, type Item, type ThemeColors } from '../types'
+import { getActionFooter, getActionTarget } from './action-catalog'
 
 export function splitVisibleSessions<T extends { isSession: boolean; title: string }>(
   items: readonly T[]
@@ -64,24 +64,21 @@ export function getStatusLabel(
     : `${projectCount} projects`
 }
 
+// Callers with the full context should use getActionFooter. Without it this assumes vim keys,
+// an unresolved backend, and no agents, so it never advertises a key it cannot confirm.
 export function getFooterHint(appMode: AppMode, prefixKey?: string, selectedItem?: Item): string {
-  const prefixLabel = prefixKey ? `${prefixKey} ...` : 'direct keys'
+  const target = getActionTarget(selectedItem)
 
-  if (appMode === AppMode.AgentsManage) {
-    return isHerdrAgentItem(selectedItem)
-      ? `o back  enter focus  ctrl+p commands  ${prefixLabel}`
-      : `o back  d kill  ctrl+p commands  ${prefixLabel}`
-  }
-
-  if (appMode === AppMode.NewSession) {
-    return 'enter create  esc cancel'
-  }
-
-  if (appMode === AppMode.Search) {
-    return 'enter select  esc cancel'
-  }
-
-  return `enter select  i search  n new  o agents  d kill  ctrl+p commands  ${prefixLabel}`
+  return getActionFooter({
+    appMode,
+    viewMode:
+      target.kind === 'project' || target.kind === 'file' ? ViewMode.Projects : ViewMode.Sessions,
+    keybindMode: 'vim',
+    prefixKey,
+    backend: null,
+    agentCount: 0,
+    target,
+  })
 }
 
 export function getEmptyStateMessage(

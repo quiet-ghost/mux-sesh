@@ -1,8 +1,7 @@
 import type { TextareaRenderable } from '@opentui/core'
-import { isHerdrAgentItem } from '../multiplexer/items'
+import type { CommandEntry } from '../app/action-catalog'
 import { useTheme } from '../styles/theme'
 import { useTextareaFocus } from './use-textarea-focus'
-import { AppMode, type Item, type KeybindMode } from '../types'
 import {
   DIALOG_FILTER_ROWS,
   getDialogChromeRows,
@@ -19,30 +18,7 @@ import Modal from './Modal'
 const COMMANDS_FOOTER = '↑/↓ navigate  enter run  esc close'
 const COMMANDS_PREFERRED_WIDTH = 68
 
-export type CommandId =
-  | 'search'
-  | 'new-session'
-  | 'open-settings'
-  | 'open-themes'
-  | 'view-projects'
-  | 'view-sessions'
-  | 'rename-session'
-  | 'kill-session'
-  | 'toggle-pin-session'
-  | 'last-session'
-  | 'root-session'
-  | 'edit-target'
-  | 'open-agents'
-  | 'refresh'
-  | 'back'
-
-export interface CommandEntry {
-  id: CommandId
-  category: string
-  title: string
-  keybind: string
-  keywords?: string
-}
+export type { CommandEntry, CommandId } from '../app/action-catalog'
 
 type CommandRow =
   | { kind: 'gap'; key: string }
@@ -58,122 +34,6 @@ interface Props {
   searchQuery: string
   textareaRef: { current: TextareaRenderable | null }
   onContentChange: () => void
-}
-
-function prefixed(prefixKey: string | undefined, suffix: string): string {
-  return `${prefixKey ?? 'ctrl+x'} ${suffix}`
-}
-
-export function getCommandEntries(
-  appMode: AppMode,
-  keybindMode: KeybindMode = 'vim',
-  prefixKey: string | undefined,
-  selectedItem?: Item
-): CommandEntry[] {
-  const commandKey = (suffix: string, fallback: string) =>
-    prefixKey ? prefixed(prefixKey, suffix) : fallback
-
-  const prefixCategory = prefixKey ? `Prefix ${prefixKey}` : 'Prefix'
-
-  if (appMode === AppMode.AgentsManage) {
-    const canManageSession = !isHerdrAgentItem(selectedItem)
-
-    return [
-      { id: 'back', category: 'Direct', title: 'Back', keybind: 'esc' },
-      ...(canManageSession
-        ? [{ id: 'kill-session' as const, category: 'Direct', title: 'Kill session', keybind: 'd' }]
-        : []),
-      { id: 'open-settings', category: 'Direct', title: 'Settings', keybind: 'ctrl+p' },
-      {
-        id: 'open-themes',
-        category: 'Direct',
-        title: 'Themes',
-        keybind: 'ctrl+p',
-        keywords: 'theme color scheme appearance',
-      },
-      ...(canManageSession
-        ? [
-            {
-              id: 'rename-session' as const,
-              category: prefixCategory,
-              title: 'Rename session',
-              keybind: commandKey('r', 'r'),
-            },
-          ]
-        : []),
-    ]
-  }
-
-  return [
-    { id: 'search', category: 'Direct', title: 'Search', keybind: 'i' },
-    { id: 'new-session', category: 'Direct', title: 'New session', keybind: 'n' },
-    { id: 'open-agents', category: 'Direct', title: 'Open agent sessions', keybind: 'o' },
-    { id: 'kill-session', category: 'Direct', title: 'Kill session', keybind: 'd' },
-    ...(selectedItem && (selectedItem.isSession || selectedItem.itemKind === 'configured')
-      ? [
-          {
-            id: 'toggle-pin-session' as const,
-            category: 'Direct',
-            title: selectedItem.isPinned ? 'Unpin session' : 'Pin session',
-            keybind: 'ctrl+f',
-          },
-        ]
-      : []),
-    { id: 'open-settings', category: 'Direct', title: 'Open settings', keybind: 'ctrl+p' },
-    {
-      id: 'open-themes',
-      category: 'Direct',
-      title: 'Themes',
-      keybind: 'ctrl+p',
-      keywords: 'theme color scheme appearance',
-    },
-    {
-      id: 'view-projects',
-      category: prefixCategory,
-      title: 'Show projects',
-      keybind: commandKey('p', 'p'),
-    },
-    {
-      id: 'view-sessions',
-      category: prefixCategory,
-      title: 'Show sessions',
-      keybind: commandKey('s', 's'),
-    },
-    {
-      id: 'rename-session',
-      category: prefixCategory,
-      title: 'Rename session',
-      keybind: commandKey('r', 'r'),
-    },
-    {
-      id: 'last-session',
-      category: prefixCategory,
-      title: 'Last session',
-      keybind: commandKey('l', 'l'),
-    },
-    {
-      id: 'root-session',
-      category: prefixCategory,
-      title: 'Root session',
-      keybind: commandKey('g', 'g'),
-    },
-    ...(selectedItem?.itemKind === 'configured'
-      ? [
-          {
-            id: 'edit-target' as const,
-            category: prefixCategory,
-            title: 'Edit target',
-            keybind: commandKey('e', 'e'),
-          },
-        ]
-      : []),
-    {
-      id: 'refresh',
-      category: prefixCategory,
-      title: 'Refresh',
-      keybind: commandKey('shift+r', 'R'),
-    },
-  ]
 }
 
 export function filterCommandEntries(entries: CommandEntry[], query: string): CommandEntry[] {
@@ -271,8 +131,13 @@ export default function CommandsModal({
               <DialogRow
                 key={row.key}
                 label={row.entry.title}
-                value={row.entry.keybind}
+                value={
+                  row.entry.availability.kind === 'unavailable'
+                    ? row.entry.availability.reason
+                    : row.entry.keybind
+                }
                 selected={row.index === cursor}
+                disabled={row.entry.availability.kind === 'unavailable'}
                 width={rowWidth}
               />
             )

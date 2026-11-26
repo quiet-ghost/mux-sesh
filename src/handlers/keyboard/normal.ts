@@ -10,9 +10,14 @@ import {
   getQuickSelectItem,
   getSelectedItem,
   matchesPrefixKey,
+  openAgentsTarget,
+  openLastSession,
+  openRenameTarget,
   openSelectedEditTarget,
   openSelectedRootSession,
+  requestKillTarget,
   setTimedMessage,
+  togglePinnedTarget,
   type KeyboardHandlerContext,
   type KeyboardInput,
 } from './shared'
@@ -38,8 +43,7 @@ export function handleNormalMode(
 
     switch (keyName) {
       case 'l':
-        ctx.clearPendingKill()
-        void ctx.handleLastSession()
+        openLastSession(ctx)
         return
       case 'g':
         openSelectedRootSession(ctx)
@@ -48,15 +52,10 @@ export function handleNormalMode(
         openSelectedEditTarget(ctx)
         return
       case 'd':
-        if (ctx.viewMode === ViewMode.Sessions && ctx.regularSessions[ctx.cursor]?.isSession) {
-          ctx.requestKillSession(ctx.regularSessions[ctx.cursor])
-        }
+        requestKillTarget(ctx)
         return
       case 'r':
-        if (ctx.viewMode === ViewMode.Sessions && ctx.regularSessions[ctx.cursor]?.isSession) {
-          ctx.clearPendingKill()
-          ctx.openRenameModal(ctx.regularSessions[ctx.cursor])
-        }
+        openRenameTarget(ctx)
         return
       case 's':
         ctx.clearPendingKill()
@@ -99,11 +98,7 @@ export function handleNormalMode(
   }
 
   if (!isStandard && keyName === 'o') {
-    ctx.clearPendingKill()
-    if (ctx.viewMode === ViewMode.Sessions && ctx.agentSessions.length > 0) {
-      ctx.setAppMode(AppMode.AgentsManage)
-      ctx.setAgentCursor(0)
-    }
+    openAgentsTarget(ctx)
     return
   }
 
@@ -114,17 +109,12 @@ export function handleNormalMode(
   }
 
   if (key.ctrl && keyName === 'f') {
-    const item = ctx.viewMode === ViewMode.Sessions ? ctx.regularSessions[ctx.cursor] : undefined
-    if (item) {
-      ctx.clearPendingKill()
-      void ctx.togglePinnedSession(item.title)
-    }
+    togglePinnedTarget(ctx)
     return
   }
 
   if (!ctx.prefixKey && !isStandard && keyName === 'l') {
-    ctx.clearPendingKill()
-    void ctx.handleLastSession()
+    openLastSession(ctx)
     return
   }
 
@@ -139,17 +129,12 @@ export function handleNormalMode(
   }
 
   if (!isStandard && keyName === 'd') {
-    if (ctx.viewMode === ViewMode.Sessions && ctx.regularSessions[ctx.cursor]?.isSession) {
-      ctx.requestKillSession(ctx.regularSessions[ctx.cursor])
-    }
+    requestKillTarget(ctx)
     return
   }
 
   if (!ctx.prefixKey && !isStandard && keyName === 'r') {
-    if (ctx.viewMode === ViewMode.Sessions && ctx.regularSessions[ctx.cursor]?.isSession) {
-      ctx.clearPendingKill()
-      ctx.openRenameModal(ctx.regularSessions[ctx.cursor])
-    }
+    openRenameTarget(ctx)
     return
   }
 

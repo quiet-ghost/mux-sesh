@@ -1,4 +1,4 @@
-import { AppMode, ViewMode, type KeybindMode } from '../../types'
+import { AppMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
 import { refreshProjectDiscovery } from '../../tmux/projects'
 import { requestShutdown } from '../../util/shutdown'
@@ -8,6 +8,11 @@ import {
   enterNewSessionMode,
   getKeyName,
   matchesPrefixKey,
+  openAgentsTarget,
+  openLastSession,
+  openRenameTarget,
+  openSelectedRootSession,
+  requestKillTarget,
   setTimedMessage,
   type KeyboardHandlerContext,
   type KeyboardInput,
@@ -27,31 +32,23 @@ export function handleSearchMode(
 
       switch (keyName) {
         case 'd':
-          if (ctx.viewMode === ViewMode.Sessions && ctx.items[ctx.cursor]?.isSession) {
-            ctx.requestKillSession(ctx.items[ctx.cursor])
-          }
+          requestKillTarget(ctx)
           return
         case 'n':
           enterNewSessionMode(ctx)
           return
         case 'o':
-          ctx.clearPendingKill()
-          if (ctx.viewMode === ViewMode.Sessions && ctx.agentSessions.length > 0) {
-            ctx.setAppMode(AppMode.AgentsManage)
-            ctx.setAgentCursor(0)
-          }
+          openAgentsTarget(ctx)
           return
         case 's':
           ctx.clearPendingKill()
           ctx.openSettingsModal()
           return
         case 'l':
-          ctx.clearPendingKill()
-          void ctx.handleLastSession()
+          openLastSession(ctx)
           return
         case 'g':
-          ctx.clearPendingKill()
-          void ctx.handleRootSession(ctx.items[ctx.cursor])
+          openSelectedRootSession(ctx)
           return
         case 'r':
           if (key.shift) {
@@ -61,10 +58,7 @@ export function handleSearchMode(
             return
           }
 
-          if (ctx.viewMode === ViewMode.Sessions && ctx.items[ctx.cursor]?.isSession) {
-            ctx.clearPendingKill()
-            ctx.openRenameModal(ctx.items[ctx.cursor])
-          }
+          openRenameTarget(ctx)
           return
         default:
           return
