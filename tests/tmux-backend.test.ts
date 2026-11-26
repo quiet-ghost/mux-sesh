@@ -80,6 +80,14 @@ describe('tmux backend inventory', () => {
     expect(await createTmuxBackend({ runner, insideTmux: false }).list()).toEqual([])
   })
 
+  test('a server shutting down after its last session closed is an empty inventory', async () => {
+    const { runner } = recordingRunner([
+      ['tmux list-sessions', { exitCode: 1, stderr: 'server exited unexpectedly' }],
+    ])
+
+    expect(await createTmuxBackend({ runner, insideTmux: false }).list()).toEqual([])
+  })
+
   test('other list failures are reported instead of looking empty', async () => {
     const { runner } = recordingRunner([
       [

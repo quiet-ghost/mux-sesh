@@ -21,8 +21,9 @@ beforeAll(async () => {
   if (!tmuxAvailable) return
 
   directory = await realpath(await mkdtemp(join(tmpdir(), 'mux-sesh-tmux-')))
-  await ownedTmux('new-session', '-d', '-s', 'alpha', '-c', directory)
-  await ownedTmux('new-session', '-d', '-s', 'alpha-2', '-c', directory)
+  // Run the pane command directly (no shell), so the fixture does not depend on the runner's $SHELL.
+  await ownedTmux('new-session', '-d', '-s', 'alpha', '-c', directory, 'sleep', '600')
+  await ownedTmux('new-session', '-d', '-s', 'alpha-2', '-c', directory, 'sleep', '600')
 })
 
 afterAll(async () => {

@@ -48,8 +48,10 @@ const WINDOW_ID = /^@\d+$/
 const PANE_ID = /^%\d+$/
 const COUNT = /^\d+$/
 
-// The server is absent, not broken: an empty inventory that the next create starts.
-const NO_SERVER = /no server running|error connecting to .*\(No such file or directory\)/
+// The server is absent or shutting down after its last session closed, not broken: an empty
+// inventory that the next create starts.
+const NO_SERVER =
+  /no server running|server exited unexpectedly|error connecting to .*\(No such file or directory\)/
 
 function invalidReply(detail: string): never {
   throw new MultiplexerError(
