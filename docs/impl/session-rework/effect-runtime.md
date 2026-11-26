@@ -10,9 +10,10 @@ DEV-312 pins Effect 4.0.5, checked against the installed types and the
 - `effects.runner` is the local Promise compatibility bridge passed to backend resolution.
   It runs commands through the shared layer and preserves typed failures, rather than rejecting
   with an opaque Effect fiber failure.
-- `refreshHerdrInventory` runs the existing Herdr backend, protocol parser, inventory derivation,
-  and recording-runner seam through that runtime. Only Agents polling migrates in this slice;
-  manual refresh, startup recovery, and mutation outcomes are not rewritten.
+- Agents polling is an `agents-poll` request to the single-flight `SessionInventory` owner
+  (`src/app/session-inventory.ts`), which runs the Herdr backend, protocol parser and inventory
+  derivation through that runtime, as startup and refresh loads do. A poll never changes the
+  view and does not advance the inventory revision.
 - The UI bridge returns success, expected failure, defect, or interruption. Expected transport
   and multiplexer/protocol errors leave inventory and selection intact and show a retry notice.
   Defects go to the existing sanitized fatal handler. Interruption publishes nothing.
