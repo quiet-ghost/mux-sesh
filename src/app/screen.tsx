@@ -8,8 +8,9 @@ import {
   getStatusLabel,
 } from './view'
 import { syncTextareaValue } from './textarea'
-import { getActionFooter, type ActionContext } from './action-catalog'
+import { getActionFooter, getActionKeyHint, type ActionContext } from './action-catalog'
 import type { FocusOwner } from './focus-owner'
+import type { DetailsInspectorState } from './inspector'
 import { AppMode, ViewMode, type Config, type Item, type ThemeColors } from '../types'
 import { isGitHubURL } from '../util/github'
 import { shouldShowDetailPanel } from '../util/terminal'
@@ -37,6 +38,7 @@ interface Props {
   regularSessions: Item[]
   agentSessions: Item[]
   selectedPrimaryItem?: Item
+  details: DetailsInspectorState
   cursor: number
   agentCursor: number
   searchQuery: string
@@ -66,6 +68,7 @@ export function AppScreen({
   regularSessions,
   agentSessions,
   selectedPrimaryItem,
+  details,
   cursor,
   agentCursor,
   searchQuery,
@@ -228,8 +231,9 @@ export function AppScreen({
             <SessionDetailsPanel
               width={layout.detailPanelWidth}
               selectedItem={selectedPrimaryItem}
-              config={config}
-              backend={backend}
+              mode={details.mode}
+              view={details.view}
+              inspectHint={getActionKeyHint(actionContext, 'toggle-details')}
             />
           )}
         </box>

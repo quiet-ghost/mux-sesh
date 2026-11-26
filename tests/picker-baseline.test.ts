@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { runPickerBaseline } from './perf/picker-baseline'
 
 describe('picker performance work counts', () => {
-  test('counts inventory, navigation previews, project filtering, and agent entry', async () => {
+  test('counts inventory, preview-free navigation, project filtering, and agent entry', async () => {
     const baseline = await runPickerBaseline({ iterations: 3, warmup: 0 })
 
     expect(baseline.corpus).toEqual({ sessions: 200, projects: 5000 })
@@ -10,15 +10,15 @@ describe('picker performance work counts', () => {
       navigation: 0,
       inventory: 1,
       search: 0,
-      preview: 1,
-      subprocess: 2,
+      preview: 0,
+      subprocess: 1,
     })
     expect(baseline.work.navigation).toEqual({
       navigation: 3,
       inventory: 0,
       search: 0,
-      preview: 3,
-      subprocess: 3,
+      preview: 0,
+      subprocess: 0,
     })
     expect(baseline.work.queries).toEqual({
       navigation: 0,

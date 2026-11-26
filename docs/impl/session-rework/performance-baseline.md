@@ -105,3 +105,32 @@ recording above, both versions ran twice on **2026-10-17**, back to back: same h
 Work counts were identical in all four runs, and every run released its renderer and finder
 resources. Local filtering does not render, so its p95 difference is not attributed to OpenTUI.
 These are single-host fixture observations, not budgets.
+
+## On-demand details (DEV-330)
+
+The details panel (120+ columns) shows compact inventory context by default: title, path,
+status, unit count, agent status, or project kind and linked session. It reads no backend, git,
+file, or preview command. **Inspection is requested** only with the `toggle-details` action
+("Toggle details" in the palette; `v` in vim, `<prefix> v` in standard). While the inspector is
+open and the panel is on screen, the inspector owner (`src/app/inspector.ts`) reads details for
+the selection:
+
+- One read at a time: a newer selection, closing the inspector, a narrow terminal, or unmount
+  aborts the older read through its signal, and only the current read may publish.
+- Session reads pass the signal to `MultiplexerBackend.details`; project and file previews run git
+  and configured preview commands through an owned runner with a 1.5 s deadline and a 256 KiB
+  output limit (`PREVIEW_COMMAND_POLICY`).
+- Nothing is cached by TTL. A changed config object (startup or preview rules), a backend change,
+  or a settled startup/refresh inventory load (manual refresh, mutations, view changes; not
+  Agents polls) re-reads the inspected target.
+- A failed read stays in the panel. A failed re-read of the same target keeps the earlier content,
+  labeled stale with the failure.
+
+Back-to-back runs on **2026-11-26**, same host, `ac408c0` against this change:
+
+| Measurement                   |        Before |         After |
+| ----------------------------- | ------------: | ------------: |
+| First usable frame (ms)       |          61.1 |          61.1 |
+| Navigation to frame p50 / p95 | 2.486 / 3.025 | 1.786 / 2.240 |
+| First frame preview / CLI     |         1 / 2 |         0 / 1 |
+| Navigation preview / CLI      |       30 / 30 |         0 / 0 |

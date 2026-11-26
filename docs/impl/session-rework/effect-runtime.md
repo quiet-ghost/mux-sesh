@@ -47,8 +47,9 @@ streams are drained to EOF, so noisy stderr cannot block stdout.
   refresh before retrying.
 
 A Herdr refresh still cannot stop its own subprocess when only that refresh is aborted, because
-`MultiplexerBackend` methods take no signal; its result is discarded and the deadline bounds the
-child. Threading signals through backend methods belongs with the backend contract work.
+`list` takes no signal; its result is discarded and the deadline bounds the child.
+`MultiplexerBackend.details` accepts a signal (DEV-330), so closing the details inspector or
+moving the selection stops its reads.
 
 ## Verification
 

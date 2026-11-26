@@ -15,6 +15,7 @@ import {
 } from '../../src/app/effects'
 import { FocusOwner } from '../../src/app/focus-owner'
 import { handleSelectItem } from '../../src/app/handlers'
+import { useDetailsInspector } from '../../src/app/inspector'
 import { useAppKeyboard } from '../../src/app/keyboard'
 import {
   LAUNCHER_QUERY_SERVICES,
@@ -35,7 +36,7 @@ import { getSettingEditorTitle, isOptionSetting } from '../../src/settings'
 import { resolveTheme, ThemeProvider, type ThemeResolver } from '../../src/styles/theme'
 import type { SubscribeThemeFollowOptions } from '../../src/styles/theme-follow'
 import { AppMode, type Config, type Item, type KeybindMode } from '../../src/types'
-import { useTerminalSize } from '../../src/util/terminal'
+import { shouldShowDetailPanel, useTerminalSize } from '../../src/util/terminal'
 
 type BackendCall = { operation: 'list' } | { operation: 'details' | 'open'; id: string }
 
@@ -122,6 +123,15 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
   const inventory = useSessionInventory(effects, passthroughMeasure, {
     ...core,
     ...derived,
+    config,
+    backend,
+  })
+
+  const details = useDetailsInspector({
+    effects,
+    inventory,
+    visible: shouldShowDetailPanel(dimensions.columns, core.appMode === AppMode.NewSession),
+    item: derived.selectedPrimaryItem,
     config,
     backend,
   })
@@ -241,6 +251,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
         handleRootSession: unsupportedFixtureAction,
         handleEditTarget: unsupportedFixtureAction,
         showMessage: core.setMessage,
+        toggleDetails: details.toggle,
       }),
     handleSettingOptionSubmit: unsupportedFixtureAction,
     handleSettingsEditorSubmit: unsupportedFixtureAction,
@@ -264,6 +275,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
         focusOwner={FocusOwner.of({ ...core, modalState: modal.modalState })}
         config={config}
         backend={backend}
+        details={details}
         projectCount={projects.length}
       />
       <AppModalsLayer

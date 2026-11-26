@@ -10,7 +10,7 @@ import {
   type WorkspaceDetails,
   type WorkspaceRef,
 } from '../multiplexer'
-import type { CommandRunner } from '../multiplexer/command'
+import type { CommandOptions, CommandRunner } from '../multiplexer/command'
 import {
   parseHerdrCreatedWorkspace,
   parseHerdrCreatedTab,
@@ -67,8 +67,8 @@ function focusedPaneForTab(snapshot: HerdrSnapshot, tabId: string) {
 export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBackend {
   let latestSnapshot: HerdrSnapshot | undefined
 
-  async function snapshot(): Promise<HerdrSnapshot> {
-    const result = await options.runner.run(['herdr', 'api', 'snapshot'])
+  async function snapshot(readOptions?: CommandOptions): Promise<HerdrSnapshot> {
+    const result = await options.runner.run(['herdr', 'api', 'snapshot'], readOptions)
 
     if (result.exitCode !== 0) {
       const reason = result.stderr.trim()
@@ -296,8 +296,11 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
 
       return target ? workspacePath(state, target) || undefined : undefined
     },
-    async details(workspace: WorkspaceRef): Promise<WorkspaceDetails> {
-      const state = latestSnapshot ?? (await snapshot())
+    async details(
+      workspace: WorkspaceRef,
+      readOptions?: CommandOptions
+    ): Promise<WorkspaceDetails> {
+      const state = latestSnapshot ?? (await snapshot(readOptions))
       const target = state.workspaces.find(entry => entry.id === workspace.id)
 
       if (!target) {
@@ -322,16 +325,19 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
       let previewLines: string[] | undefined
 
       if (previewPane) {
-        const preview = await options.runner.run([
-          'herdr',
-          'pane',
-          'read',
-          previewPane.id,
-          '--source',
-          'recent-unwrapped',
-          '--lines',
-          '16',
-        ])
+        const preview = await options.runner.run(
+          [
+            'herdr',
+            'pane',
+            'read',
+            previewPane.id,
+            '--source',
+            'recent-unwrapped',
+            '--lines',
+            '16',
+          ],
+          readOptions
+        )
 
         if (preview.exitCode === 0) {
           const lines = preview.stdout

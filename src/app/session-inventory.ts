@@ -79,6 +79,9 @@ export interface SessionInventory {
   refresh(request: InventoryRequest, context: InventoryContext): Promise<InventoryOutcome>
   observe(scope: InventoryScope): void
   status(): InventoryStatus
+  // Counts settled startup and refresh loads (manual, mutation, view); polls do not count.
+  revision(): number
+  subscribe(listener: () => void): () => void
   dispose(): void
 }
 
@@ -156,6 +159,15 @@ export function createSessionInventory(options: SessionInventoryOptions): Sessio
   let current: InventoryStatus = { kind: 'fresh' }
   let running: InventoryLoad | undefined
   let queued: InventoryLoad | undefined
+  let revision = 0
+  const listeners = new Set<() => void>()
+
+  function revise(request: InventoryRequest): void {
+    if (request.kind === 'agents-poll') return
+    revision++
+
+    for (const listener of listeners) listener()
+  }
 
   function observe(next: InventoryScope): void {
     if (sameScope(scope, next)) return
@@ -194,6 +206,7 @@ export function createSessionInventory(options: SessionInventoryOptions): Sessio
 
     if (outcome.kind === 'failure') {
       setStatus({ kind: 'stale', failure: outcome.error })
+      revise(load.request)
 
       return { kind: 'failed', failure: outcome.error }
     }
@@ -204,6 +217,7 @@ export function createSessionInventory(options: SessionInventoryOptions): Sessio
     scope = { ...scope, viewMode: snapshot.viewMode }
     options.publish(snapshot, load.request)
     setStatus({ kind: 'fresh' })
+    revise(load.request)
 
     return { kind: 'published', generation: loadGeneration, snapshot }
   }
@@ -280,7 +294,15 @@ export function createSessionInventory(options: SessionInventoryOptions): Sessio
     }
   }
 
-  return { refresh, observe, status: () => current, dispose }
+  function subscribe(listener: () => void): () => void {
+    listeners.add(listener)
+
+    return () => {
+      listeners.delete(listener)
+    }
+  }
+
+  return { refresh, observe, status: () => current, revision: () => revision, subscribe, dispose }
 }
 
 export interface InventorySelection {

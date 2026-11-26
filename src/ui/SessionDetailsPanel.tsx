@@ -1,24 +1,19 @@
-import { useEffect, useState } from 'react'
-import { getFilePreview, getProjectPreview, type ProjectPreview } from '../preview/project'
-import { isFileItem } from '../files/target'
+import type { DetailsContent, DetailsView, InspectorMode } from '../app/inspector'
+import { getDetailsContent, getInspectionKey } from '../app/inspector'
+import type { ProjectPreview } from '../preview/project'
 import { getDetailPanelStyle, useTheme } from '../styles/theme'
-import type { Config, Item } from '../types'
-import type { MultiplexerBackend, WorkspaceDetails, WorkspaceRef } from '../multiplexer'
-import { getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
+import type { Item } from '../types'
+import type { WorkspaceDetails } from '../multiplexer'
+import { getCompactDetails } from './session-meta'
 
 interface Props {
   width: number
   selectedItem?: Item
-  config: Config | null
-  backend: MultiplexerBackend | null
+  mode: InspectorMode
+  view: DetailsView
+  // How to ask for details, e.g. "v" or "ctrl+x v"; empty when only the palette offers it.
+  inspectHint: string
 }
-
-type DetailState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'session'; details: WorkspaceDetails }
-  | { status: 'project'; details: ProjectPreview }
-  | { status: 'error'; message: string }
 
 function formatSourceLabel(source: ProjectPreview['source']): string {
   switch (source) {
@@ -46,6 +41,7 @@ function MetaRow(props: { label: string; value: string; color?: string }) {
 
 function SectionLabel(props: { children: string }) {
   const theme = useTheme()
+
   return <text style={{ fg: theme.textSubtle, marginTop: 1 }}>{props.children}</text>
 }
 
@@ -171,72 +167,79 @@ function SessionDetailsView({ details }: { details: WorkspaceDetails }) {
   )
 }
 
-export default function SessionDetailsPanel({ width, selectedItem, config, backend }: Props) {
+function CompactDetailsView(props: { item: Item; inspectHint: string }) {
   const theme = useTheme()
-  const [detailState, setDetailState] = useState<DetailState>({ status: 'idle' })
+  const compact = getCompactDetails(props.item)
 
-  useEffect(() => {
-    let cancelled = false
+  return (
+    <box style={{ flexDirection: 'column' }}>
+      <text style={{ fg: theme.secondary }}>{props.item.title}</text>
+      {compact.path && <text style={{ fg: theme.fileTree, marginTop: 1 }}>{compact.path}</text>}
 
-    async function loadDetails() {
-      if (!selectedItem) {
-        setDetailState({ status: 'idle' })
-        return
-      }
+      <box style={{ flexDirection: 'column', marginTop: 1 }}>
+        {compact.rows.map(row => (
+          <MetaRow key={row.label} label={row.label} value={row.value} />
+        ))}
+      </box>
 
-      setDetailState({ status: 'loading' })
+      <text style={{ fg: theme.textSubtle, marginTop: 1 }}>
+        {`${props.inspectHint || 'ctrl+p'} · Toggle details`}
+      </text>
+    </box>
+  )
+}
 
-      try {
-        if (isLiveSessionItem(selectedItem)) {
-          if (!backend) throw new Error('Multiplexer backend is not loaded yet')
-          const details = await backend.details(getWorkspaceRef(selectedItem))
-          if (!cancelled) {
-            setDetailState({ status: 'session', details })
-          }
-          return
-        }
+function ContentView({ content }: { content: DetailsContent }) {
+  return content.kind === 'session' ? (
+    <SessionDetailsView details={content.details} />
+  ) : (
+    <ProjectPreviewView preview={content.preview} />
+  )
+}
 
-        if (!config) {
-          if (!cancelled) {
-            setDetailState({ status: 'error', message: 'Config is not loaded yet' })
-          }
-          return
-        }
+function InspectedDetails(props: { item: Item; view: DetailsView }) {
+  const theme = useTheme()
+  const { item, view } = props
+  const key = getInspectionKey(item)
+  const content = getDetailsContent(view, key)
 
-        const linkedWorkspace: WorkspaceRef | undefined =
-          selectedItem.linkedSessionId && selectedItem.linkedSessionBackend
-            ? {
-                backend: selectedItem.linkedSessionBackend,
-                id: selectedItem.linkedSessionId,
-                title: selectedItem.linkedSessionName ?? selectedItem.linkedSessionId,
-              }
-            : undefined
-        const details = isFileItem(selectedItem)
-          ? await getFilePreview(selectedItem.path, config, linkedWorkspace, workspace => {
-              if (!backend) throw new Error('Multiplexer backend is not loaded yet')
-              return backend.details(workspace)
-            })
-          : await getProjectPreview(selectedItem.path, config, linkedWorkspace, workspace => {
-              if (!backend) throw new Error('Multiplexer backend is not loaded yet')
-              return backend.details(workspace)
-            })
-        if (!cancelled) {
-          setDetailState({ status: 'project', details })
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unable to load details'
-        if (!cancelled) {
-          setDetailState({ status: 'error', message })
-        }
-      }
-    }
+  // A view for another target is never shown: the selection moved and its read is pending.
+  if (!content) {
+    return (
+      <>
+        <text style={{ fg: theme.secondary }}>{item.title}</text>
+        {view.kind === 'failed' && view.key === key ? (
+          <text style={{ fg: theme.danger, marginTop: 1 }}>{view.message}</text>
+        ) : (
+          <text style={{ fg: theme.textSubtle, marginTop: 1 }}>Loading…</text>
+        )}
+      </>
+    )
+  }
 
-    void loadDetails()
+  return (
+    <>
+      {view.kind === 'refreshing' && (
+        <text style={{ fg: theme.textSubtle, marginBottom: 1 }}>Refreshing…</text>
+      )}
+      {view.kind === 'stale' && (
+        <text style={{ fg: theme.danger, marginBottom: 1 }}>
+          {`Stale: ${view.message} Showing the last details read.`}
+        </text>
+      )}
+      <ContentView content={content} />
+    </>
+  )
+}
 
-    return () => {
-      cancelled = true
-    }
-  }, [backend, config, selectedItem])
+export default function SessionDetailsPanel({
+  width,
+  selectedItem,
+  mode,
+  view,
+  inspectHint,
+}: Props) {
+  const theme = useTheme()
 
   const panelStyle = {
     ...getDetailPanelStyle(theme),
@@ -247,27 +250,17 @@ export default function SessionDetailsPanel({ width, selectedItem, config, backe
 
   return (
     <box style={panelStyle}>
-      {detailState.status === 'idle' ? (
+      {!selectedItem ? (
         <>
           <text style={{ fg: theme.textMuted }}>Nothing selected</text>
           <text style={{ fg: theme.textSubtle, marginTop: 1 }}>
             Pick a session or project to see details.
           </text>
         </>
-      ) : detailState.status === 'loading' ? (
-        <>
-          <text style={{ fg: theme.secondary }}>{selectedItem?.title ?? 'Details'}</text>
-          <text style={{ fg: theme.textSubtle, marginTop: 1 }}>Loading…</text>
-        </>
-      ) : detailState.status === 'error' ? (
-        <>
-          <text style={{ fg: theme.secondary }}>{selectedItem?.title ?? 'Details'}</text>
-          <text style={{ fg: theme.danger, marginTop: 1 }}>{detailState.message}</text>
-        </>
-      ) : detailState.status === 'session' ? (
-        <SessionDetailsView details={detailState.details} />
+      ) : mode === 'compact' ? (
+        <CompactDetailsView item={selectedItem} inspectHint={inspectHint} />
       ) : (
-        <ProjectPreviewView preview={detailState.details} />
+        <InspectedDetails item={selectedItem} view={view} />
       )}
     </box>
   )

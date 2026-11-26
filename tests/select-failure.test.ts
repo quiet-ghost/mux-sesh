@@ -57,6 +57,7 @@ function handlersFor(runner: CommandRunner, showMessage: (message: string) => vo
     renamedValue: '',
     searchTerm: '',
     rememberedSessions: mock(() => {}),
+    toggleDetails: mock(() => {}),
   })
 }
 

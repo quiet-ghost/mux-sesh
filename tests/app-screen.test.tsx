@@ -36,11 +36,7 @@ describe('production session screen', () => {
     expect(frame).toMatch(/› .*beta/)
     expect(frame).not.toMatch(/› .*alpha/)
 
-    if (dimensions.width >= 120) {
-      expect(screen.calls).toContainEqual({ operation: 'details', id: 'w2' })
-    } else {
-      expect(screen.calls).toEqual([{ operation: 'list' }])
-    }
+    expect(screen.calls).toEqual([{ operation: 'list' }])
   })
 
   test('keeps the selected row through terminal resize', async () => {

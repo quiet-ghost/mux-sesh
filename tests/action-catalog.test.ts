@@ -172,6 +172,25 @@ describe('action catalog key hints', () => {
     expect(getActionKeyHint(context({ appMode: AppMode.Search }), 'kill-session')).toBe('')
     expect(getActionKeyHint(context({ appMode: AppMode.AgentsManage }), 'back')).toBe('esc')
   })
+
+  test('offers the details toggle in both keybinding modes without a new direct standard key', () => {
+    const standard = context({ keybindMode: 'standard' })
+
+    expect(getActionKeyHint(context(), 'toggle-details')).toBe('v')
+    expect(getActionKeyHint(context({ appMode: AppMode.AgentsManage }), 'toggle-details')).toBe('v')
+    expect(getActionKeyHint(context({ appMode: AppMode.Search }), 'toggle-details')).toBe('')
+    expect(getActionKeyHint(standard, 'toggle-details')).toBe('ctrl+x v')
+    expect(getActionKeyHint({ ...standard, appMode: AppMode.Search }, 'toggle-details')).toBe(
+      'ctrl+x v'
+    )
+    expect(getActionKeyHint({ ...standard, prefixKey: undefined }, 'toggle-details')).toBe('')
+
+    for (const appMode of [AppMode.Normal, AppMode.AgentsManage]) {
+      expect(getCommandEntries(context({ appMode })).map(entry => entry.id)).toContain(
+        'toggle-details'
+      )
+    }
+  })
 })
 
 const FOOTER_ACTIONS: ReadonlyArray<readonly [ActionId, string]> = [

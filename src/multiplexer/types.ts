@@ -1,3 +1,5 @@
+import type { CommandOptions } from './command'
+
 export type BackendKind = 'tmux' | 'herdr'
 export type BackendPreference = BackendKind
 export type AgentStatus = 'idle' | 'working' | 'blocked' | 'done' | 'unknown'
@@ -98,7 +100,8 @@ export interface MultiplexerBackend {
   close(workspace: WorkspaceRef): Promise<void>
   current(): Promise<WorkspaceRef | undefined>
   directory(workspace: WorkspaceRef): Promise<string | undefined>
-  details(workspace: WorkspaceRef): Promise<WorkspaceDetails>
+  // Reads stop when options.signal aborts.
+  details(workspace: WorkspaceRef, options?: CommandOptions): Promise<WorkspaceDetails>
   openEditor(path: string, command: string): Promise<boolean>
 }
 

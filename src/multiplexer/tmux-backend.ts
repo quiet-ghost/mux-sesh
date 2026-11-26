@@ -42,7 +42,6 @@ const WINDOW_FORMAT = [
   '#{window_active}',
 ].join(TMUX_FIELD_SEPARATOR)
 
-const DETAILS_CACHE_TTL_MS = 4000
 const SESSION_ID = /^\$\d+$/
 const WINDOW_ID = /^@\d+$/
 const PANE_ID = /^%\d+$/
@@ -91,8 +90,6 @@ function lines(output: string): string[] {
 }
 
 export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBackend {
-  const detailsCache = new Map<string, { details: WorkspaceDetails; expiresAt: number }>()
-
   function tmuxArgv(args: readonly string[]): string[] {
     return [...(options.socketName ? ['tmux', '-L', options.socketName] : ['tmux']), ...args]
   }
@@ -157,10 +154,6 @@ export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBacke
     }
   }
 
-  function invalidate(): void {
-    detailsCache.clear()
-  }
-
   async function create(input: CreateSessionInput): Promise<CreatedSessionReceipt> {
     const title = sanitizeTmuxSessionName(input.title)
 
@@ -184,8 +177,6 @@ export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBacke
     if (!SESSION_ID.test(id) || !PANE_ID.test(rootPaneId)) {
       invalidReply(`new-session printed '${output.trim()}' instead of a session and pane id`)
     }
-
-    invalidate()
 
     return { workspace: { backend: 'tmux', id, title }, rootPaneId }
   }
@@ -223,7 +214,6 @@ export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBacke
         ['rename-session', '-t', workspace.id, applied],
         `Failed to rename tmux session '${workspace.title}'`
       )
-      invalidate()
 
       return { backend: 'tmux', id: workspace.id, title: applied }
     },
@@ -232,7 +222,6 @@ export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBacke
         ['kill-session', '-t', workspace.id],
         `Failed to close tmux session '${workspace.title}'`
       )
-      invalidate()
     },
     async current(): Promise<WorkspaceRef | undefined> {
       if (!options.insideTmux) return undefined
@@ -256,19 +245,27 @@ export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBacke
 
       return output.trim() || undefined
     },
-    async details(workspace: WorkspaceRef): Promise<WorkspaceDetails> {
-      const cached = detailsCache.get(workspace.id)
-
-      if (cached && cached.expiresAt > Date.now()) return cached.details
-
+    // Uncached: the inspector owns when details are read again.
+    async details(
+      workspace: WorkspaceRef,
+      readOptions?: CommandOptions
+    ): Promise<WorkspaceDetails> {
       const failure = `Failed to read tmux session '${workspace.title}'`
 
       const attached = (
-        await tmuxOk(['display-message', '-t', workspace.id, '-p', '#{session_attached}'], failure)
+        await tmuxOk(
+          ['display-message', '-t', workspace.id, '-p', '#{session_attached}'],
+          failure,
+          readOptions
+        )
       ).trim()
 
       const windows = lines(
-        await tmuxOk(['list-windows', '-t', workspace.id, '-F', WINDOW_FORMAT], failure)
+        await tmuxOk(
+          ['list-windows', '-t', workspace.id, '-F', WINDOW_FORMAT],
+          failure,
+          readOptions
+        )
       ).map(row => {
         const [windowId = '', index = '', name = '', path = '', command = '', active = ''] =
           row.split(TMUX_FIELD_SEPARATOR)
@@ -291,12 +288,12 @@ export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBacke
 
       // A missing preview leaves the details usable; the inventory and window list still stand.
       const preview = activeWindow
-        ? await tmux(['capture-pane', '-p', '-t', activeWindow.windowId, '-S', '-16'])
+        ? await tmux(['capture-pane', '-p', '-t', activeWindow.windowId, '-S', '-16'], readOptions)
         : undefined
 
       const previewLines = preview?.exitCode === 0 ? formatPanePreview(preview.stdout) : undefined
 
-      const details: WorkspaceDetails = {
+      return {
         workspace,
         isActive: count(attached, 'session_attached') > 0,
         unitLabel: 'Windows',
@@ -304,10 +301,6 @@ export function createTmuxBackend(options: TmuxBackendOptions): MultiplexerBacke
         previewLines: previewLines && previewLines.length > 0 ? previewLines : undefined,
         agents: [],
       }
-
-      detailsCache.set(workspace.id, { details, expiresAt: Date.now() + DETAILS_CACHE_TTL_MS })
-
-      return details
     },
     async openEditor(path: string, command: string): Promise<boolean> {
       if (!options.insideTmux) return false

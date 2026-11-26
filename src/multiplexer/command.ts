@@ -58,6 +58,7 @@ export interface CommandResult {
 // Runs captured commands only. Interactive clients are terminal handoffs run after the picker exits.
 export interface CommandOptions {
   signal?: AbortSignal
+  cwd?: string
 }
 
 export interface CommandRunner {
@@ -133,7 +134,12 @@ export function createCommandRunner(overrides: Partial<CommandPolicy> = {}): Com
       let proc: ReturnType<typeof spawn<'ignore', 'pipe', 'pipe'>>
 
       try {
-        proc = spawn([...command], { stdin: 'ignore', stdout: 'pipe', stderr: 'pipe' })
+        proc = spawn([...command], {
+          cwd: options.cwd,
+          stdin: 'ignore',
+          stdout: 'pipe',
+          stderr: 'pipe',
+        })
       } catch (cause) {
         throw new CommandTransportError({ executable, phase: 'spawn', cause })
       }

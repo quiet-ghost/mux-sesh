@@ -178,6 +178,11 @@ describe('OpenCode-named tmux agents', () => {
         { keybindMode, backend: createTmuxAgentBackend(detailRequests) }
       )
 
+      expect(detailRequests).toEqual([])
+      await screen.pressKey('p', { ctrl: true })
+      await screen.replaceQuery('Toggle details')
+      await screen.pressKey('RETURN')
+
       if (keybindMode === 'standard') await screen.pressKey('x', { ctrl: true })
       await screen.pressKey('o')
 

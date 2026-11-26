@@ -634,6 +634,23 @@ describe('Herdr backend', () => {
     ])
   })
 
+  test('passes the caller signal to the snapshot and pane reads behind details', async () => {
+    const { runner, options } = recordingRunner([
+      { exitCode: 0, stdout: snapshot, stderr: '' },
+      { exitCode: 0, stdout: 'ready\n', stderr: '' },
+    ])
+    const backend = createHerdrBackend({ runner, insideHerdr: true })
+    const controller = new AbortController()
+
+    await backend.details(
+      { backend: 'herdr', id: 'w1', title: 'api' },
+      { signal: controller.signal }
+    )
+
+    expect(options).toHaveLength(2)
+    expect(options.every(option => option?.signal === controller.signal)).toBe(true)
+  })
+
   test('returns details and preview for the targeted agent tab', async () => {
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: agentsWorkspaceSnapshot, stderr: '' },

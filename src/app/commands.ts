@@ -31,6 +31,7 @@ interface ExecuteCommandContext {
   handleRootSession: (item?: Item) => Promise<void>
   handleEditTarget: (item?: Item) => Promise<void>
   showMessage: (message: string, timeout?: number) => void
+  toggleDetails: () => void
 }
 
 // The palette refuses unavailable commands first; these guards only keep the target exact.
@@ -131,6 +132,11 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
       refreshProjectDiscovery()
       await ctx.refreshItems()
       ctx.showMessage('Refreshed')
+
+      return
+    case 'toggle-details':
+      ctx.closeModal()
+      ctx.toggleDetails()
 
       return
     case 'back':

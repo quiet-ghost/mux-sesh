@@ -4,6 +4,7 @@ import { useAutoUpdateScheduler, useAppBehaviors } from './effects'
 import { createAppControls } from './controls'
 import { getSessionCommandState, getSettingsState } from './derived'
 import { FocusOwner } from './focus-owner'
+import { useDetailsInspector } from './inspector'
 import { useAppKeyboard } from './keyboard'
 import { useAppModalState } from './modal-state'
 import { createAppRuntime } from './runtime'
@@ -13,7 +14,8 @@ import { useAppStartup } from './state'
 import { useEffectRuntime } from './use-effect-runtime'
 import { useResolvedTheme } from './resolved-theme'
 import { getConfigPath, getHomeDir, saveConfig } from '../config'
-import { useTerminalSize } from '../util/terminal'
+import { shouldShowDetailPanel, useTerminalSize } from '../util/terminal'
+import { AppMode } from '../types'
 import { mark, measure } from '../util/perf'
 import { getSettingEditorTitle, isOptionSetting } from '../settings'
 
@@ -167,6 +169,15 @@ export function useAppController(invocationCwd: string) {
 
   useAutoUpdateScheduler(config)
 
+  const details = useDetailsInspector({
+    effects,
+    inventory,
+    visible: shouldShowDetailPanel(columns, appMode === AppMode.NewSession),
+    item: selectedPrimaryItem,
+    config,
+    backend,
+  })
+
   const { showMessage, refreshItems } = createAppRuntime({
     config,
     backend,
@@ -270,6 +281,7 @@ export function useAppController(invocationCwd: string) {
     renameTarget,
     renamedValue: (modalTextareaRef.current?.plainText ?? modalInputValue).trim(),
     searchTerm: searchQuery.trim(),
+    toggleDetails: details.toggle,
   })
 
   useAppKeyboard({
@@ -393,6 +405,7 @@ export function useAppController(invocationCwd: string) {
       regularSessions,
       agentSessions,
       selectedPrimaryItem,
+      details,
       cursor,
       agentCursor,
       searchQuery,

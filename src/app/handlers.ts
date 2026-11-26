@@ -344,6 +344,7 @@ interface CreateAppHandlersOptions extends NewSessionHandlerOptions {
   renamedValue: string
   searchTerm: string
   rememberedSessions: (key: string | null) => void
+  toggleDetails: () => void
 }
 
 export function createAppHandlers(options: CreateAppHandlersOptions) {
@@ -476,6 +477,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       handleRootSession: handleRootSessionWrapper,
       handleEditTarget: handleEditTargetWrapper,
       showMessage: options.showMessage,
+      toggleDetails: options.toggleDetails,
     })
   }
 

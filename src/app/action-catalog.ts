@@ -17,6 +17,7 @@ export type CommandId =
   | 'edit-target'
   | 'open-agents'
   | 'refresh'
+  | 'toggle-details'
   | 'back'
 
 // Footer-only actions: they are keys, not palette commands.
@@ -76,6 +77,7 @@ const AGENT_PALETTE: readonly CommandId[] = [
   'open-settings',
   'open-themes',
   'rename-session',
+  'toggle-details',
 ]
 
 const SESSION_PALETTE: readonly CommandId[] = [
@@ -93,6 +95,7 @@ const SESSION_PALETTE: readonly CommandId[] = [
   'root-session',
   'refresh',
   'edit-target',
+  'toggle-details',
 ]
 
 const DIRECT_COMMANDS: ReadonlySet<CommandId> = new Set<CommandId>([
@@ -108,6 +111,7 @@ const DIRECT_COMMANDS: ReadonlySet<CommandId> = new Set<CommandId>([
 
 const KEYWORDS: Partial<Record<CommandId, string>> = {
   'open-themes': 'theme color scheme appearance',
+  'toggle-details': 'inspect preview panes windows tabs',
 }
 
 const FOOTER_LABELS: Partial<Record<ActionId, string>> = {
@@ -219,6 +223,7 @@ export function getActionAvailability(context: ActionContext, id: ActionId): Act
     case 'view-projects':
     case 'view-sessions':
     case 'refresh':
+    case 'toggle-details':
     case 'back':
       return AVAILABLE
   }
@@ -271,6 +276,7 @@ const KEY_HINTS: Record<AppMode, Partial<Record<ActionId, KeyHint>>> = {
     'kill-session': vimOrPrefix('d'),
     'rename-session': prefixOrVim('r'),
     'open-settings': context => (context.keybindMode === 'vim' && !context.prefixKey ? ',' : ''),
+    'toggle-details': vimOrPrefix('v'),
   },
   [AppMode.Normal]: {
     select: fixed('enter'),
@@ -286,6 +292,7 @@ const KEY_HINTS: Record<AppMode, Partial<Record<ActionId, KeyHint>>> = {
     'root-session': prefixOrVim('g'),
     'edit-target': prefixOrVim('e'),
     refresh: prefixOrVim('shift+r', 'R'),
+    'toggle-details': vimOrPrefix('v'),
   },
   [AppMode.Search]: {
     select: fixed('enter'),
@@ -297,6 +304,7 @@ const KEY_HINTS: Record<AppMode, Partial<Record<ActionId, KeyHint>>> = {
     'root-session': standardPrefix('g'),
     'rename-session': standardPrefix('r'),
     refresh: standardPrefix('shift+r'),
+    'toggle-details': standardPrefix('v'),
   },
   [AppMode.NewSession]: {
     select: fixed('enter'),
@@ -345,6 +353,8 @@ function getActionTitle(context: ActionContext, id: CommandId): string {
       return 'Edit target'
     case 'refresh':
       return 'Refresh'
+    case 'toggle-details':
+      return 'Toggle details'
   }
 }
 

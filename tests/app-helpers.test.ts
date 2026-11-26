@@ -545,6 +545,8 @@ describe('app runtime helpers', () => {
       refresh: mock(async () => ({ kind: 'superseded' as const })),
       observe: mock(() => {}),
       status: () => ({ kind: 'fresh' }),
+      revision: () => 0,
+      subscribe: () => () => {},
       dispose: mock(() => {}),
     }
     const runtime = createAppRuntime({
@@ -608,6 +610,7 @@ describe('app handler factory', () => {
       renamedValue: 'alpha-2',
       searchTerm: '',
       rememberedSessions: mock(() => {}),
+      toggleDetails: mock(() => {}),
     })
 
     await handlers.executeCommand('refresh')
@@ -674,6 +677,7 @@ describe('app handler factory', () => {
       renamedValue: 'alpha',
       searchTerm: '',
       rememberedSessions: mock(() => {}),
+      toggleDetails: mock(() => {}),
     })
 
     await handlers.handleRenameSubmit()

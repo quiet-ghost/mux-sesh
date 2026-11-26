@@ -318,4 +318,44 @@ describe('tmux backend details', () => {
     expect(details.previewLines).toEqual(['line one', 'line two'])
     expect(calls.at(-1)?.command).toBe('tmux capture-pane -p -t @5 -S -16')
   })
+
+  test('reads fresh details on every request and passes the caller signal to each read', async () => {
+    const signals: Array<AbortSignal | undefined> = []
+    let captures = 0
+
+    const runner: CommandRunner = {
+      async run(command, options) {
+        signals.push(options?.signal)
+        const joined = command.join(' ')
+
+        if (joined.startsWith('tmux display-message'))
+          return { exitCode: 0, stdout: '0\n', stderr: '' }
+
+        if (joined.startsWith('tmux list-windows')) {
+          return {
+            exitCode: 0,
+            stdout: ['@4', '1', 'shell', '/fixture', 'zsh', '1'].join(SEP),
+            stderr: '',
+          }
+        }
+
+        captures++
+
+        return { exitCode: 0, stdout: `capture ${captures}\n`, stderr: '' }
+      },
+    }
+
+    const backend = createTmuxBackend({ runner, insideTmux: true })
+    const ref = { backend: 'tmux' as const, id: '$7', title: 'api' }
+    const controller = new AbortController()
+
+    expect((await backend.details(ref, { signal: controller.signal })).previewLines).toEqual([
+      'capture 1',
+    ])
+    expect((await backend.details(ref, { signal: controller.signal })).previewLines).toEqual([
+      'capture 2',
+    ])
+    expect(signals).toHaveLength(6)
+    expect(signals.every(signal => signal === controller.signal)).toBe(true)
+  })
 })
