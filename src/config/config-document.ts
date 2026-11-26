@@ -1,4 +1,8 @@
-import { Data, Result, Schema, SchemaAST, SchemaIssue } from 'effect'
+import * as Data from 'effect/Data'
+import * as Result from 'effect/Result'
+import * as Schema from 'effect/Schema'
+import * as SchemaAST from 'effect/SchemaAST'
+import * as SchemaIssue from 'effect/SchemaIssue'
 
 // Validates the JSON document as written. The normalizer still maps aliases and applies defaults;
 // this only guarantees that every supplied field is usable, instead of silently dropping it.

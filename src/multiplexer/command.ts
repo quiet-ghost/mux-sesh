@@ -1,5 +1,7 @@
 import { spawn } from 'bun'
-import { Data, Option, Schema } from 'effect'
+import * as Data from 'effect/Data'
+import * as Option from 'effect/Option'
+import * as Schema from 'effect/Schema'
 
 const missingExecutable = Schema.decodeUnknownOption(
   Schema.Struct({ code: Schema.Literal('ENOENT') })

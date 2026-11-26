@@ -1,4 +1,8 @@
-import { Option, Result, Schema, SchemaIssue, SchemaTransformation } from 'effect'
+import * as Option from 'effect/Option'
+import * as Result from 'effect/Result'
+import * as Schema from 'effect/Schema'
+import * as SchemaIssue from 'effect/SchemaIssue'
+import * as SchemaTransformation from 'effect/SchemaTransformation'
 import { MultiplexerError, type AgentStatus } from '../multiplexer'
 
 export interface HerdrWorkspace {

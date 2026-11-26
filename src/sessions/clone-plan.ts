@@ -1,6 +1,8 @@
 import { lstat, mkdir, realpath, stat } from 'fs/promises'
 import { dirname, isAbsolute, join, relative } from 'path'
-import { Data, Result, Schema } from 'effect'
+import * as Data from 'effect/Data'
+import * as Result from 'effect/Result'
+import * as Schema from 'effect/Schema'
 import {
   CommandInterrupted,
   CommandOutputLimitError,

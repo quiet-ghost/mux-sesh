@@ -1,6 +1,7 @@
 import { stat } from 'fs/promises'
 import { resolve } from 'path'
-import { Data, Result } from 'effect'
+import * as Data from 'effect/Data'
+import * as Result from 'effect/Result'
 import { resolveProjectSession } from '../config/session-rules'
 import {
   expandUserPath,

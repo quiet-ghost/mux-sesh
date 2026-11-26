@@ -1,6 +1,7 @@
 import { readdir, stat } from 'fs/promises'
 import { basename, dirname, join } from 'path'
-import { Option, Schema } from 'effect'
+import * as Option from 'effect/Option'
+import * as Schema from 'effect/Schema'
 import type { Config } from '../types'
 import type { WorkspaceDetails, WorkspaceRef } from '../multiplexer'
 import {

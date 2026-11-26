@@ -1,4 +1,10 @@
-import { Cause, Context, Effect, Exit, Layer, ManagedRuntime, Result } from 'effect'
+import * as Cause from 'effect/Cause'
+import * as Context from 'effect/Context'
+import * as Effect from 'effect/Effect'
+import * as Exit from 'effect/Exit'
+import * as Layer from 'effect/Layer'
+import * as ManagedRuntime from 'effect/ManagedRuntime'
+import * as Result from 'effect/Result'
 import {
   CommandInterrupted,
   createCommandRunner,

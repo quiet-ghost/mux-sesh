@@ -1,4 +1,5 @@
-import { Option, Schema } from 'effect'
+import * as Option from 'effect/Option'
+import * as Schema from 'effect/Schema'
 import type { InstallMethod } from '../types'
 
 const PACKAGE_NAME = 'mux-sesh'

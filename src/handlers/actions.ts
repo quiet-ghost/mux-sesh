@@ -1,4 +1,4 @@
-import { Result } from 'effect'
+import * as Result from 'effect/Result'
 import type { Item, Config } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey, getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
