@@ -15,9 +15,5 @@ jobs:
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
 
-      - name: Lint refined corridor
-        run: bun run lint:corridor
-
-      - name: Report legacy findings
-        continue-on-error: true
+      - name: Lint source and tests
         run: bun run lint
