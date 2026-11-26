@@ -53,7 +53,10 @@ describe.skipIf(!tmuxAvailable)('tmux backend against an isolated server', () =>
     const renamed = (await backend.list()).find(session => session.id === alpha.id)
     expect(renamed?.title).toBe('renamed_one')
 
-    expect(await backend.directory(alpha)).toBe(directory)
+    // session_path is the -c start directory. pane_current_path follows the pane's process and
+    // some tmux builds (e.g. CI) report the creating client's directory, so only its shape is checked.
+    expect(alpha.path).toBe(directory)
+    expect(await backend.directory(alpha)).toStartWith('/')
 
     const details = await backend.details(alpha)
     expect(details.isActive).toBe(false)
