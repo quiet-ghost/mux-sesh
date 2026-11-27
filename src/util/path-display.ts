@@ -1,4 +1,5 @@
 import { basename, dirname } from 'path'
+import { truncateMiddle } from './truncate'
 
 export function toHomeRelativePath(path: string): string {
   const homeDir = process.env.HOME || ''
@@ -16,6 +17,11 @@ export function toHomeRelativePath(path: string): string {
   }
 
   return path
+}
+
+// A path as shown in a fixed width: home as `~`, then its start and end kept.
+export function fitPath(path: string, width: number): string {
+  return truncateMiddle(toHomeRelativePath(path), width)
 }
 
 function getWorktreeProjectName(path: string): string | null {

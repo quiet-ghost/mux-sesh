@@ -110,7 +110,7 @@ describe('session viewport row budget', () => {
 })
 
 describe('list row text', () => {
-  test('keeps short rows and truncates long titles and contexts with an ellipsis', () => {
+  test('keeps short rows and truncates long titles at the end and contexts in the middle', () => {
     expect(fitListRow('alpha', 'projects', 40, 10)).toEqual({
       title: 'alpha',
       spacer: '       ',
@@ -120,7 +120,7 @@ describe('list row text', () => {
 
     const row = fitListRow('a-very-long-session-title', 'a-long-context-path', 20, 25)
     expect(row.title).toBe('a-very-long…')
-    expect(row.context).toBe('a-lon…')
+    expect(row.context).toBe('a-l…th')
     expect(row.title.length + row.spacer.length + row.context.length).toBe(20)
   })
 

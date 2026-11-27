@@ -1,5 +1,6 @@
 import { getSessionSection } from '../items/order'
 import type { Item } from '../types'
+import { truncateMiddle } from '../util/truncate'
 import { truncateDialogText } from './dialog-layout'
 import { getVisibleWindow, type VisibleWindow } from './list-window'
 
@@ -141,6 +142,6 @@ export function fitListRow(
   const contextWidth = width - fittedTitle.length - spacer.length
 
   return contextWidth > 0
-    ? { title: fittedTitle, spacer, context: truncateDialogText(context, contextWidth) }
+    ? { title: fittedTitle, spacer, context: truncateMiddle(context, contextWidth) }
     : { title: fittedTitle, spacer: '', context: '' }
 }

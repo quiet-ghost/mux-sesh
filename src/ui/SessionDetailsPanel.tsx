@@ -4,6 +4,7 @@ import type { ProjectPreview } from '../preview/project'
 import { getDetailPanelStyle, useTheme } from '../styles/theme'
 import type { Item } from '../types'
 import type { WorkspaceDetails } from '../multiplexer'
+import { fitPath } from '../util/path-display'
 import { getCompactDetails } from './session-meta'
 
 interface Props {
@@ -14,6 +15,8 @@ interface Props {
   // How to ask for details, e.g. "v" or "ctrl+x v"; empty when only the palette offers it.
   inspectHint: string
 }
+
+const PANEL_PADDING_COLUMNS = 2
 
 function formatSourceLabel(source: ProjectPreview['source']): string {
   switch (source) {
@@ -39,19 +42,30 @@ function MetaRow(props: { label: string; value: string; color?: string }) {
   )
 }
 
+// One row: a long path keeps its start and end instead of wrapping or losing its tail.
+function PathLine(props: { path: string; width: number; marginTop?: number }) {
+  const theme = useTheme()
+
+  return (
+    <text style={{ fg: theme.fileTree, wrapMode: 'none', marginTop: props.marginTop }}>
+      {fitPath(props.path, props.width)}
+    </text>
+  )
+}
+
 function SectionLabel(props: { children: string }) {
   const theme = useTheme()
 
   return <text style={{ fg: theme.textSubtle, marginTop: 1 }}>{props.children}</text>
 }
 
-function ProjectPreviewView({ preview }: { preview: ProjectPreview }) {
+function ProjectPreviewView({ preview, width }: { preview: ProjectPreview; width: number }) {
   const theme = useTheme()
 
   return (
     <box style={{ flexDirection: 'column' }}>
       <text style={{ fg: theme.secondary }}>{preview.sessionName}</text>
-      <text style={{ fg: theme.fileTree, marginTop: 1 }}>{preview.path}</text>
+      <PathLine path={preview.path} width={width} marginTop={1} />
 
       <box style={{ flexDirection: 'column', marginTop: 1 }}>
         <MetaRow label="Source" value={formatSourceLabel(preview.source)} color={theme.action} />
@@ -99,7 +113,7 @@ function ProjectPreviewView({ preview }: { preview: ProjectPreview }) {
   )
 }
 
-function SessionDetailsView({ details }: { details: WorkspaceDetails }) {
+function SessionDetailsView({ details, width }: { details: WorkspaceDetails; width: number }) {
   const theme = useTheme()
 
   return (
@@ -123,7 +137,7 @@ function SessionDetailsView({ details }: { details: WorkspaceDetails }) {
           details.units.map(unit => (
             <box key={unit.id} style={{ flexDirection: 'column', marginBottom: 1 }}>
               <text style={{ fg: theme.text }}>{unit.name}</text>
-              {unit.currentPath && <text style={{ fg: theme.fileTree }}>{unit.currentPath}</text>}
+              {unit.currentPath && <PathLine path={unit.currentPath} width={width} />}
               {unit.currentCommand && (
                 <text style={{ fg: theme.textSubtle }}>{unit.currentCommand}</text>
               )}
@@ -141,7 +155,7 @@ function SessionDetailsView({ details }: { details: WorkspaceDetails }) {
                 <text style={{ fg: theme.action }}>
                   {agent.name} · {agent.status}
                 </text>
-                {agent.cwd && <text style={{ fg: theme.fileTree }}>{agent.cwd}</text>}
+                {agent.cwd && <PathLine path={agent.cwd} width={width} />}
               </box>
             ))}
           </box>
@@ -167,14 +181,14 @@ function SessionDetailsView({ details }: { details: WorkspaceDetails }) {
   )
 }
 
-function CompactDetailsView(props: { item: Item; inspectHint: string }) {
+function CompactDetailsView(props: { item: Item; inspectHint: string; width: number }) {
   const theme = useTheme()
   const compact = getCompactDetails(props.item)
 
   return (
     <box style={{ flexDirection: 'column' }}>
       <text style={{ fg: theme.secondary }}>{props.item.title}</text>
-      {compact.path && <text style={{ fg: theme.fileTree, marginTop: 1 }}>{compact.path}</text>}
+      {compact.path && <PathLine path={compact.path} width={props.width} marginTop={1} />}
 
       <box style={{ flexDirection: 'column', marginTop: 1 }}>
         {compact.rows.map(row => (
@@ -189,15 +203,15 @@ function CompactDetailsView(props: { item: Item; inspectHint: string }) {
   )
 }
 
-function ContentView({ content }: { content: DetailsContent }) {
+function ContentView({ content, width }: { content: DetailsContent; width: number }) {
   return content.kind === 'session' ? (
-    <SessionDetailsView details={content.details} />
+    <SessionDetailsView details={content.details} width={width} />
   ) : (
-    <ProjectPreviewView preview={content.preview} />
+    <ProjectPreviewView preview={content.preview} width={width} />
   )
 }
 
-function InspectedDetails(props: { item: Item; view: DetailsView }) {
+function InspectedDetails(props: { item: Item; view: DetailsView; width: number }) {
   const theme = useTheme()
   const { item, view } = props
   const key = getInspectionKey(item)
@@ -227,7 +241,7 @@ function InspectedDetails(props: { item: Item; view: DetailsView }) {
           {`Stale: ${view.message} Showing the last details read.`}
         </text>
       )}
-      <ContentView content={content} />
+      <ContentView content={content} width={props.width} />
     </>
   )
 }
@@ -240,6 +254,7 @@ export default function SessionDetailsPanel({
   inspectHint,
 }: Props) {
   const theme = useTheme()
+  const contentWidth = Math.max(1, width - PANEL_PADDING_COLUMNS)
 
   const panelStyle = {
     ...getDetailPanelStyle(theme),
@@ -258,9 +273,9 @@ export default function SessionDetailsPanel({
           </text>
         </>
       ) : mode === 'compact' ? (
-        <CompactDetailsView item={selectedItem} inspectHint={inspectHint} />
+        <CompactDetailsView item={selectedItem} inspectHint={inspectHint} width={contentWidth} />
       ) : (
-        <InspectedDetails item={selectedItem} view={view} />
+        <InspectedDetails item={selectedItem} view={view} width={contentWidth} />
       )}
     </box>
   )
