@@ -170,6 +170,8 @@ describe('crash diagnostics', () => {
     for (const output of [
       report.summary,
       report.text,
+      report.screen.summary,
+      report.screen.text,
       url.searchParams.get('title'),
       url.searchParams.get('body'),
     ]) {
@@ -202,8 +204,48 @@ describe('crash diagnostics', () => {
       expect(output).not.toContain('fixture-link.test')
     }
 
+    for (const output of [report.screen.summary, report.screen.text]) {
+      // oxlint-disable-next-line no-control-regex -- Asserts raw control characters are absent.
+      expect(output).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/)
+      expect(output).not.toContain('fixture-osc-payload')
+      expect(output).not.toContain('fixture-dcs-payload')
+      expect(output).not.toContain('fixture-unterminated-osc')
+      expect(output).not.toContain('fixture-link.test')
+    }
+
     expect(url.searchParams.get('body')?.match(/```/g)).toHaveLength(2)
     expect(url.searchParams.get('body')).toContain(report.text)
+  })
+
+  test('keeps Markdown neutralized only in the copied and shared report, not on screen', () => {
+    const message = 'Cannot read properties of undefined (reading "title") [items] #3 a|b'
+    const error = new Error(message)
+    error.stack = `TypeError: ${message}\n    at render (<anonymous>)`
+    const report = DiagnosticReport.capture(error, context)
+    const url = new URL(report.issueUrl)
+    const shared = 'Cannot read properties of undefined （reading "title"） ［items］ ＃3 a｜b'
+
+    expect(report.summary).toBe(shared)
+    expect(report.text).toContain(`Message:\n${shared}`)
+    expect(url.searchParams.get('title')).toBe(`Crash: ${shared}`)
+    expect(url.searchParams.get('body')).toContain(report.text)
+    expect(url.searchParams.get('body')).not.toContain(message)
+
+    expect(report.screen.summary).toBe(message)
+    expect(report.screen.text).toContain(`Message:\n${message}`)
+    expect(report.text).toContain('at render （‹anonymous›）')
+    expect(report.screen.text).toContain('at render (<anonymous>)')
+    expect(report.screen.text).not.toMatch(/[（）［］＃｜]/)
+    expect(report.screen.text.length).toBe(report.text.length)
+  })
+
+  test('bounds the screen report like the shared report', () => {
+    const report = DiagnosticReport.capture('(🔥) '.repeat(50000) + '\ud800', context)
+
+    expect(report.screen.summary.length).toBeLessThanOrEqual(240)
+    expect(report.screen.text.length).toBeLessThanOrEqual(MAX_DIAGNOSTIC_LENGTH)
+    expect(report.screen.text.isWellFormed()).toBe(true)
+    expect(report.screen.text).toEndWith('... (diagnostics truncated)')
   })
 
   test('captures an immutable snapshot before the original error or context changes', () => {

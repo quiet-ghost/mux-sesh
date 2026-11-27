@@ -1,6 +1,7 @@
 import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import type { StartupFailureStage, StartupState } from '../app/state'
-import { useTheme } from '../styles/theme'
+import { FailureScreen, useFailurePalette } from './failure-screen'
+import type { KeyHint } from './key-hints'
 
 interface Props {
   startup: Extract<StartupState, { kind: 'failed' | 'retrying' }>
@@ -8,10 +9,10 @@ interface Props {
   onQuit: () => void
 }
 
-const STAGE_LABEL: Record<StartupFailureStage, string> = {
-  config: 'Configuration',
-  backend: 'Multiplexer backend',
-  inventory: 'Session list',
+const STAGE_DESCRIPTION: Record<StartupFailureStage, string> = {
+  config: 'Configuration could not be loaded',
+  backend: 'Multiplexer backend is unavailable',
+  inventory: 'Session list could not be read',
 }
 
 const STAGE_HINT: Record<StartupFailureStage, string> = {
@@ -20,10 +21,15 @@ const STAGE_HINT: Record<StartupFailureStage, string> = {
   inventory: 'Check the backend is responding, then retry.',
 }
 
+const QUIT: KeyHint = { label: 'quit', key: 'q' }
+const HINTS: readonly KeyHint[] = [{ label: 'retry', key: 'r' }, QUIT]
+const RETRYING_HINTS: readonly KeyHint[] = [QUIT]
+
 export function StartupErrorScreen({ startup, onRetry, onQuit }: Props) {
-  const theme = useTheme()
+  const theme = useFailurePalette()
   const { width, height } = useTerminalDimensions()
   const { failure } = startup
+  const retrying = startup.kind === 'retrying'
 
   useKeyboard(key => {
     if ((key.ctrl && key.name === 'c') || key.name === 'q' || key.name === 'escape') onQuit()
@@ -31,25 +37,16 @@ export function StartupErrorScreen({ startup, onRetry, onQuit }: Props) {
   })
 
   return (
-    <box
-      style={{
-        width,
-        height,
-        backgroundColor: theme.background,
-        flexDirection: 'column',
-        paddingTop: 1,
-        paddingLeft: 2,
-        paddingRight: 2,
-        gap: 1,
-      }}
+    <FailureScreen
+      title="mux-sesh could not start"
+      description={STAGE_DESCRIPTION[failure.stage]}
+      hints={retrying ? RETRYING_HINTS : HINTS}
+      end={retrying ? { kind: 'status', text: 'Retrying…' } : undefined}
+      columns={width}
+      rows={height}
     >
-      <text style={{ fg: theme.text }}>mux-sesh could not start</text>
-      <text style={{ fg: theme.textSubtle }}>{STAGE_LABEL[failure.stage]}</text>
-      <text style={{ fg: theme.action }}>{failure.message}</text>
-      <text style={{ fg: theme.textMuted }}>{STAGE_HINT[failure.stage]}</text>
-      <text style={{ fg: theme.textSubtle }}>
-        {startup.kind === 'retrying' ? 'Retrying…' : 'r retry · q/esc/ctrl+c quit'}
-      </text>
-    </box>
+      <text style={{ fg: theme.text, flexShrink: 0 }}>{failure.message}</text>
+      <text style={{ fg: theme.textMuted, flexShrink: 0 }}>{STAGE_HINT[failure.stage]}</text>
+    </FailureScreen>
   )
 }

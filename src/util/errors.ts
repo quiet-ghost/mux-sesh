@@ -19,21 +19,30 @@ export interface DiagnosticContext {
   backend?: string
 }
 
+// `summary` and `text` are what is copied and shared, with Markdown neutralized for GitHub.
+// `screen` is the same redacted, terminal-safe report with its plain characters, for display only.
 export interface DiagnosticReport {
   readonly [REPORT_BRAND]: true
   readonly schemaVersion: 1
   readonly summary: string
   readonly text: string
+  readonly screen: { readonly summary: string; readonly text: string }
   readonly issueUrl: string
   readonly truncated: boolean
   readonly issueUrlTruncated: boolean
 }
 
+const UNAVAILABLE_SUMMARY = 'Diagnostic capture unavailable'
+
+const UNAVAILABLE_TEXT =
+  'mux-sesh crashed\n\nDiagnostic capture failed; raw details were omitted. Report reproduction steps manually.'
+
 const UNAVAILABLE_REPORT: DiagnosticReport = Object.freeze({
   [REPORT_BRAND]: true as const,
   schemaVersion: 1,
-  summary: 'Diagnostic capture unavailable',
-  text: 'mux-sesh crashed\n\nDiagnostic capture failed; raw details were omitted. Report reproduction steps manually.',
+  summary: UNAVAILABLE_SUMMARY,
+  text: UNAVAILABLE_TEXT,
+  screen: Object.freeze({ summary: UNAVAILABLE_SUMMARY, text: UNAVAILABLE_TEXT }),
   issueUrl: ISSUE_URL,
   truncated: true,
   issueUrlTruncated: false,
@@ -133,41 +142,72 @@ function buildIssueUrl(summary: string, text: string): IssueUrl {
   return { url: url.toString(), truncated: true }
 }
 
+// One piece of the report in both forms: `shared` for the clipboard and GitHub, `screen` for display.
+interface ReportText {
+  readonly shared: string
+  readonly screen: string
+}
+
+const ReportText = {
+  of(text: string): ReportText {
+    return { shared: text, screen: text }
+  },
+  map(text: ReportText, transform: (value: string) => string): ReportText {
+    return { shared: transform(text.shared), screen: transform(text.screen) }
+  },
+  prefix(prefix: string, text: ReportText): ReportText {
+    return ReportText.map(text, value => `${prefix}${value}`)
+  },
+  join(lines: readonly ReportText[]): ReportText {
+    return {
+      shared: lines.map(line => line.shared).join('\n'),
+      screen: lines.map(line => line.screen).join('\n'),
+    }
+  },
+} as const
+
 export const DiagnosticReport = {
   capture(cause: unknown, context: DiagnosticContext = {}): DiagnosticReport {
     try {
       let truncated = false
 
-      const sanitize = (value: string, limit: number): string => {
+      const sanitize = (value: string, limit: number): ReportText => {
         const result = sanitizeDiagnosticText(value, limit)
         truncated ||= result.truncated
 
-        return result.text.trim()
+        return { shared: result.shared.trim(), screen: result.screen.trim() }
       }
 
-      const field = (key: keyof DiagnosticContext, fallback: string): string =>
-        sanitize(ownString(context, key) || fallback, 200).replace(/\s+/g, ' ') || 'unavailable'
+      const field = (key: keyof DiagnosticContext, fallback: string): ReportText => {
+        const value = ReportText.map(sanitize(ownString(context, key) || fallback, 200), text =>
+          text.replace(/\s+/g, ' ')
+        )
+
+        return value.shared ? value : ReportText.of('unavailable')
+      }
+
+      const blank = ReportText.of('')
 
       // Keep runtime facts ahead of traces so size-limited reports retain them.
       const lines = [
-        'mux-sesh crashed',
-        '',
-        'Environment:',
-        `mux-sesh: ${field('muxSeshVersion', CURRENT_VERSION)}`,
-        `Bun: ${field('bunVersion', Bun.version)}`,
-        `OS: ${field('os', `${platform()} ${release()}`)}`,
-        `Architecture: ${field('architecture', arch())}`,
-        `Terminal: ${field('terminal', detectTerminal())}`,
-        `Backend: ${field('backend', detectBackend())}`,
+        ReportText.of('mux-sesh crashed'),
+        blank,
+        ReportText.of('Environment:'),
+        ReportText.prefix('mux-sesh: ', field('muxSeshVersion', CURRENT_VERSION)),
+        ReportText.prefix('Bun: ', field('bunVersion', Bun.version)),
+        ReportText.prefix('OS: ', field('os', `${platform()} ${release()}`)),
+        ReportText.prefix('Architecture: ', field('architecture', arch())),
+        ReportText.prefix('Terminal: ', field('terminal', detectTerminal())),
+        ReportText.prefix('Backend: ', field('backend', detectBackend())),
       ]
 
       const seen = new Set<Error>()
       let current = decodeCause(cause)
-      let summary = ''
+      let summary = ReportText.of('')
 
       for (let depth = 0; depth <= 3; depth++) {
         if (current.kind === 'error' && seen.has(current.error)) {
-          lines.push('', 'Cause cycle omitted.')
+          lines.push(blank, ReportText.of('Cause cycle omitted.'))
           truncated = true
           break
         }
@@ -183,17 +223,22 @@ export const DiagnosticReport = {
                 'Error details unavailable'
               : `Non-Error failure (${current.kind === 'other' ? current.type : 'undefined'}; details omitted)`
 
-        const message = sanitize(rawMessage, 1024) || 'Error details unavailable'
+        const sanitized = sanitize(rawMessage, 1024)
+        const message = sanitized.shared ? sanitized : ReportText.of('Error details unavailable')
 
-        if (depth === 0) summary = message.replace(/\s+/g, ' ').slice(0, 240).toWellFormed()
-        lines.push('', depth === 0 ? 'Message:' : `Cause ${depth}:`, message)
+        if (depth === 0)
+          summary = ReportText.map(message, text =>
+            text.replace(/\s+/g, ' ').slice(0, 240).toWellFormed()
+          )
+        lines.push(blank, ReportText.of(depth === 0 ? 'Message:' : `Cause ${depth}:`), message)
 
         const stack =
           current.kind === 'error' && rawMessage.length <= MAX_DIAGNOSTIC_INPUT_LENGTH
             ? ownString(current.error, 'stack')
             : undefined
 
-        if (stack) lines.push('', 'Stack:', sanitize(stack, depth === 0 ? 6000 : 2000))
+        if (stack)
+          lines.push(blank, ReportText.of('Stack:'), sanitize(stack, depth === 0 ? 6000 : 2000))
         current = current.kind === 'error' ? ownField(current.error, 'cause') : ABSENT
 
         if (current.kind === 'absent') break
@@ -201,20 +246,24 @@ export const DiagnosticReport = {
         if (depth === 3) truncated = true
       }
 
-      let text = lines.join('\n')
-      truncated ||= text.length > MAX_DIAGNOSTIC_LENGTH
+      let text = ReportText.join(lines)
+      truncated ||= text.shared.length > MAX_DIAGNOSTIC_LENGTH
 
       if (truncated)
-        text =
-          text.slice(0, MAX_DIAGNOSTIC_LENGTH - REPORT_TRUNCATION.length).toWellFormed() +
-          REPORT_TRUNCATION
-      const issue = buildIssueUrl(summary, text)
+        text = ReportText.map(
+          text,
+          value =>
+            value.slice(0, MAX_DIAGNOSTIC_LENGTH - REPORT_TRUNCATION.length).toWellFormed() +
+            REPORT_TRUNCATION
+        )
+      const issue = buildIssueUrl(summary.shared, text.shared)
 
       return Object.freeze({
         [REPORT_BRAND]: true as const,
         schemaVersion: 1,
-        summary,
-        text,
+        summary: summary.shared,
+        text: text.shared,
+        screen: Object.freeze({ summary: summary.screen, text: text.screen }),
         issueUrl: issue.url,
         truncated,
         issueUrlTruncated: issue.truncated,

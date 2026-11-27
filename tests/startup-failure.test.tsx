@@ -143,7 +143,7 @@ test('a stopped backend shows a startup screen that retries into a working picke
   expect(failed).toContain('mux-sesh could not start')
   expect(failed).toContain('Multiplexer backend')
   expect(failed).toContain('Herdr is configured, but its server is not running.')
-  expect(failed).toContain('r retry')
+  expect(failed).toContain('retry r')
 
   await screen.press('r')
 

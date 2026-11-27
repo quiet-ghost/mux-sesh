@@ -68,10 +68,16 @@ async function pressBareEscape(current: Screen): Promise<void> {
   })
 }
 
+// Notices render as cards with a `┃` border on each wrapped line; read the text without it.
 async function shownText(current: Screen): Promise<string> {
   await current.renderOnce()
 
-  return current.captureCharFrame().replace(/\s+/g, ' ')
+  return current
+    .captureCharFrame()
+    .split('\n')
+    .map(line => line.replace(/^\s*┃ ?/, '').replace(/ ?┃\s*$/, ''))
+    .join(' ')
+    .replace(/\s+/g, ' ')
 }
 
 function largeReport(): DiagnosticReport {
@@ -115,7 +121,7 @@ test('headline, clipboard, and browser use the same captured safe report', async
   const current = setup
   await current.renderOnce()
   const frame = current.captureCharFrame()
-  expect(frame).toContain(report.summary)
+  expect(frame).toContain(report.screen.summary)
   expect(frame).toContain('Backend: unknown')
   expect(frame).not.toContain('fixture-screen-secret')
   expect(frame).not.toContain('fixture-url-secret')
@@ -152,7 +158,7 @@ test.each([
   await act(async () => current.mockInput.pressKey('c'))
   expect(fixture.copied).toEqual([report.text])
   await current.renderOnce()
-  expect(current.captureCharFrame()).toContain('shares diagnostics')
+  expect(current.captureCharFrame()).toContain('share o')
 })
 
 test.each([
@@ -166,8 +172,8 @@ test.each([
 
   expect(frame).toContain('github.com')
   expect(frame).toContain('The browser copy is shortened to fit the URL.')
-  expect(frame).toContain('y/enter open')
-  expect(frame).toContain('n/esc cancel')
+  expect(frame).toContain('open y/enter')
+  expect(frame).toContain('cancel n/esc')
 })
 
 test('o asks before opening and only an explicit confirm opens the issue once', async () => {

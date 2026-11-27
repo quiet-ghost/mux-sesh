@@ -23,9 +23,19 @@ const MARKDOWN_REPLACEMENTS = new Map([
   ['&', '＆'],
 ])
 
+// Both forms are terminal-safe and redacted. `shared` also neutralizes Markdown for GitHub;
+// `screen` keeps the plain characters. Each replacement is one code unit, so they align.
 interface SanitizedDiagnosticText {
-  readonly text: string
+  readonly shared: string
+  readonly screen: string
   readonly truncated: boolean
+}
+
+function neutralizeMarkdown(text: string): string {
+  return text.replace(
+    /[\\`*_{}[\]()<>#!|~&]/g,
+    character => MARKDOWN_REPLACEMENTS.get(character) ?? '�'
+  )
 }
 
 export function sanitizeDiagnosticText(value: string, limit: number): SanitizedDiagnosticText {
@@ -73,9 +83,9 @@ export function sanitizeDiagnosticText(value: string, limit: number): SanitizedD
       /(^|[\s("'=,:<[`])(?:~[/\\]|\.\.?[/\\]|[a-z]:[/\\]|[/\\])[^\n]*/gim,
       '$1‹path redacted›'
     )
-    .replace(/[\\`*_{}[\]()<>#!|~&]/g, character => MARKDOWN_REPLACEMENTS.get(character) ?? '�')
 
   truncated ||= text.length > limit
+  const screen = text.slice(0, limit).toWellFormed()
 
-  return { text: text.slice(0, limit).toWellFormed(), truncated }
+  return { shared: neutralizeMarkdown(screen), screen, truncated }
 }
