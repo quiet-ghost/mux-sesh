@@ -121,19 +121,22 @@ async function showProjects(fixture: Screen): Promise<void> {
 }
 
 // Discovery and planning hit the real filesystem, so both can outlast one settle.
-async function waitForFrame(fixture: Screen, text: string): Promise<string> {
-  const deadline = Date.now() + 10_000
+async function waitForFrame(fixture: Screen, ...texts: string[]): Promise<string> {
+  const deadline = Date.now() + 4_000
 
   while (Date.now() < deadline) {
     const frame = await fixture.frame()
 
-    if (frame.includes(text)) return frame
+    if (texts.some(text => frame.includes(text))) return frame
     await fixture.settle()
     await Bun.sleep(5)
   }
 
-  throw new Error(`The screen never showed '${text}':\n${await fixture.frame()}`)
+  throw new Error(`The screen never showed '${texts.join("' or '")}':\n${await fixture.frame()}`)
 }
+
+// A launch ends with the fixture's open failure, whichever path ran it.
+const LAUNCH_ENDED = ['Workspace created, but not opened', 'the fixture has no attached client']
 
 // Standard mode browses Projects from Search, so its screen hints are Search's.
 function screenHints(keybindMode: KeybindMode): string {
@@ -247,5 +250,78 @@ describe('Projects view Enter', () => {
     await waitForFrame(screen, 'the fixture has no attached client')
 
     expect(calls).toEqual(['open w2'])
+  })
+})
+
+// Number keys open a row the cursor is not on, so they plan that row before running it.
+describe('Projects view number keys', () => {
+  test('2 focuses a project with a live workspace through its plan', async () => {
+    const root = await projectRoot('api', 'beta')
+
+    const beta: LiveWorkspace = {
+      backend: 'herdr',
+      id: 'w2',
+      title: 'beta',
+      path: join(root, 'beta'),
+      isActive: false,
+      unitCount: 1,
+    }
+
+    const { screen, calls } = await render('vim', root, { workspaces: [beta] })
+    await showProjects(screen)
+    await waitForFrame(screen, "Create 'api'")
+
+    await screen.pressKey('2')
+    const frame = await waitForFrame(screen, "Could not open workspace 'beta'", ...LAUNCH_ENDED)
+
+    expect(calls).toEqual(['open w2'])
+    expect(frame).toContain("Focus existing 'beta'")
+    expect(screen.defects).toEqual([])
+  })
+
+  test('2 creates a new project with the planned name and startup command', async () => {
+    const root = await projectRoot('api', 'beta')
+    const { screen, calls } = await render('vim', root)
+    await showProjects(screen)
+    await waitForFrame(screen, "Create 'api'")
+
+    await screen.pressKey('2')
+    await waitForFrame(screen, ...LAUNCH_ENDED)
+
+    expect(calls).toEqual([`create beta ${join(root, 'beta')}`, 'start w9:p1 bun dev', 'open w9'])
+    expect(screen.defects).toEqual([])
+  })
+
+  test('the highlighted row runs the plan the summary shows', async () => {
+    const root = await projectRoot('api', 'beta')
+    const { screen, calls } = await render('vim', root)
+    await showProjects(screen)
+    await waitForFrame(screen, `Create 'api' in ${join(root, 'api')}, then run: bun dev`)
+
+    await screen.pressKey('1')
+    await waitForFrame(screen, ...LAUNCH_ENDED)
+
+    expect(calls).toEqual([`create api ${join(root, 'api')}`, 'start w9:p1 bun dev', 'open w9'])
+  })
+
+  test('a second press while the launch runs does not start another', async () => {
+    const root = await projectRoot('api', 'beta')
+    const created = Promise.withResolvers<CreatedSessionReceipt>()
+    const { screen, calls } = await render('vim', root, { create: created.promise })
+    await showProjects(screen)
+    await waitForFrame(screen, "Create 'api'")
+
+    await screen.pressKey('2')
+    await screen.settle()
+    await screen.pressKey('2')
+    await waitForFrame(screen, 'A launch is already running', ...LAUNCH_ENDED)
+
+    created.resolve({
+      workspace: { backend: 'herdr', id: 'w9', title: 'beta' },
+      rootPaneId: 'w9:p1',
+    })
+    await waitForFrame(screen, ...LAUNCH_ENDED)
+
+    expect(calls).toEqual([`create beta ${join(root, 'beta')}`, 'start w9:p1 bun dev', 'open w9'])
   })
 })

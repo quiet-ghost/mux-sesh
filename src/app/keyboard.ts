@@ -81,6 +81,7 @@ interface UseAppKeyboardOptions {
   refreshList: () => Promise<void>
   handleSelect: (item: Item) => Promise<void>
   launchPlanned: () => Promise<void>
+  launchProjectRow: (item: Item) => Promise<void>
   handleLastSession: () => Promise<void>
   handleRootSession: (item?: Item) => Promise<void>
   handleEditTarget: (item?: Item) => Promise<void>
@@ -137,6 +138,7 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     togglePinnedSession: options.togglePinnedSession,
     handleSelect: options.handleSelect,
     launchPlanned: options.launchPlanned,
+    launchProjectRow: options.launchProjectRow,
     handleLastSession: options.handleLastSession,
     handleRootSession: options.handleRootSession,
     handleEditTarget: options.handleEditTarget,

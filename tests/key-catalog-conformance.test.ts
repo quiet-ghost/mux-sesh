@@ -181,6 +181,7 @@ function press(
     togglePinnedSession: recordAsync('toggle-pin-session'),
     handleSelect: recordAsync('select'),
     launchPlanned: recordAsync('select'),
+    launchProjectRow: recordAsync('select'),
     handleLastSession: recordAsync('last-session'),
     handleRootSession: recordAsync('root-session'),
     handleEditTarget: recordAsync('edit-target'),

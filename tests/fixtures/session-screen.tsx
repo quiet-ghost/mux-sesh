@@ -18,7 +18,12 @@ import { FocusOwner } from '../../src/app/focus-owner'
 import { createAppHandlers, handleSelectItem } from '../../src/app/handlers'
 import { useDetailsInspector } from '../../src/app/inspector'
 import { useAppKeyboard } from '../../src/app/keyboard'
-import { getLaunchScope, useLaunchRequest } from '../../src/app/launch-scope'
+import {
+  getLaunchScope,
+  planProjectRow,
+  useLaunchRequest,
+  type LaunchPlanning,
+} from '../../src/app/launch-scope'
 import {
   LAUNCHER_QUERY_SERVICES,
   useLauncherQuery,
@@ -339,14 +344,18 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     derived.selectedPrimaryItem
   )
 
-  const launchPreview = useLaunchPreview({
-    active: launchScope !== 'none',
-    request: launchRequest,
+  const launchPlanning: LaunchPlanning = {
     config,
     backend: backend.kind,
     invocationCwd: fixture.invocationCwd,
     liveSessions: core.sessionItems,
     clone: fixture.clone,
+  }
+
+  const launchPreview = useLaunchPreview({
+    ...launchPlanning,
+    active: launchScope !== 'none',
+    request: launchRequest,
     onDefect: cause => {
       fixture.defects.push(cause)
     },
@@ -386,6 +395,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     isOptionSetting,
     handleSelect: item => handleSelectItem(item, config, backend),
     launchPlanned: handlers.handleNewSessionSubmit,
+    launchProjectRow: item => handlers.handleNewSessionSubmit(planProjectRow(item, launchPlanning)),
     executeCommand: command =>
       executeAppCommand(command, {
         keybindMode: config.keybindMode ?? 'vim',

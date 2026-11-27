@@ -53,6 +53,8 @@ export interface KeyboardHandlerContext {
   handleSelect: (item: Item) => Promise<void>
   // Runs the frozen launch plan for the highlighted Projects row, the one the footer names.
   launchPlanned: () => Promise<void>
+  // Plans another Projects row with the same planner and runs that plan, under the same guard.
+  launchProjectRow: (item: Item) => Promise<void>
   handleLastSession: () => Promise<void>
   handleRootSession: (item?: Item) => Promise<void>
   handleEditTarget: (item?: Item) => Promise<void>
@@ -122,6 +124,29 @@ export function openSelectedItem(ctx: KeyboardHandlerContext, item: Item | undef
 
 export function getQuickSelectItem(ctx: KeyboardHandlerContext, index: number): Item | undefined {
   return ctx.viewMode === ViewMode.Sessions ? ctx.regularSessions[index] : ctx.items[index]
+}
+
+// A Projects row opens through a launch plan, as Enter would: the highlighted row runs the plan the
+// screen shows, and another row is highlighted and runs its own plan, made now.
+export function openQuickSelectItem(ctx: KeyboardHandlerContext, index: number): void {
+  const item = getQuickSelectItem(ctx, index)
+
+  if (!item) return
+
+  if (ctx.viewMode !== ViewMode.Projects) {
+    ctx.runAction(() => ctx.handleSelect(item))
+
+    return
+  }
+
+  if (index === ctx.cursor) {
+    ctx.runAction(ctx.launchPlanned)
+
+    return
+  }
+
+  ctx.setCursor(index)
+  ctx.runAction(() => ctx.launchProjectRow(item))
 }
 
 export function enterNewSessionMode(ctx: KeyboardHandlerContext) {

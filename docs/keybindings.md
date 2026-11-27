@@ -56,11 +56,11 @@ The action tables on this page are checked against the action catalog by the tes
 
 Also in vim mode:
 
-| Key                    | Action                        |
-| ---------------------- | ----------------------------- |
-| `j` / `k` or `↑` / `↓` | Move                          |
-| `1`–`9`                | Open the matching visible row |
-| `q` / `esc`            | Quit                          |
+| Key                    | Action                                                                 |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `j` / `k` or `↑` / `↓` | Move                                                                   |
+| `1`–`9`                | Open the matching visible row; a project row opens as `enter` plans it |
+| `q` / `esc`            | Quit                                                                   |
 
 ### Vim Search
 

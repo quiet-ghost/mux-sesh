@@ -633,8 +633,9 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     )
   }
 
-  async function handleNewSessionSubmit() {
-    await handleNewSessionSubmitWithPreview(options.launchPreview, {
+  // Runs the frozen preview, or a plan a Projects number key made for another row.
+  async function handleNewSessionSubmit(preview: LaunchPreview = options.launchPreview) {
+    await handleNewSessionSubmitWithPreview(preview, {
       ...sharedOptions,
       clone: options.clone,
       launchGuard: options.launchGuard,

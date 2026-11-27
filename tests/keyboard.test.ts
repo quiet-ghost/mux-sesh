@@ -92,6 +92,7 @@ function createBaseContext(overrides: Partial<KeyboardHandlerContext>): BaseCont
     togglePinnedSession: mock(async () => {}),
     handleSelect: mock(async () => {}),
     launchPlanned: mock(async () => {}),
+    launchProjectRow: mock(async () => {}),
     handleLastSession: mock(async () => {}),
     handleRootSession: mock(async () => {}),
     handleEditTarget: mock(async () => {}),
@@ -296,6 +297,43 @@ describe('keyboard shortcuts', () => {
     handleNormalMode({ name: 'return' }, ctx, 'vim')
 
     expect(ctx.launchPlanned).not.toHaveBeenCalled()
+    expect(ctx.handleSelect).not.toHaveBeenCalled()
+  })
+
+  test('a number key in Projects highlights that row and runs its own plan', () => {
+    const api = createItem({ title: 'api', isSession: false, itemKind: 'project' })
+    const beta = createItem({ title: 'beta', isSession: false, itemKind: 'project' })
+
+    const ctx = createContext({
+      appMode: AppMode.Normal,
+      viewMode: ViewMode.Projects,
+      prefixActive: false,
+      items: [api, beta],
+    })
+
+    handleNormalMode({ name: '2' }, ctx, 'vim')
+
+    expect(ctx.setCursor).toHaveBeenCalledWith(1)
+    expect(ctx.launchProjectRow).toHaveBeenCalledWith(beta)
+    expect(ctx.launchPlanned).not.toHaveBeenCalled()
+    expect(ctx.handleSelect).not.toHaveBeenCalled()
+  })
+
+  test('a number key on the highlighted Projects row runs the plan the screen shows', () => {
+    const api = createItem({ title: 'api', isSession: false, itemKind: 'project' })
+
+    const ctx = createContext({
+      appMode: AppMode.Normal,
+      viewMode: ViewMode.Projects,
+      prefixActive: false,
+      items: [api],
+    })
+
+    handleNormalMode({ name: '1' }, ctx, 'vim')
+    handleNormalMode({ name: '3' }, ctx, 'vim')
+
+    expect(ctx.launchPlanned).toHaveBeenCalledTimes(1)
+    expect(ctx.launchProjectRow).not.toHaveBeenCalled()
     expect(ctx.handleSelect).not.toHaveBeenCalled()
   })
 

@@ -6,11 +6,11 @@ import {
   clearPrefix,
   enterNewSessionMode,
   getKeyName,
-  getQuickSelectItem,
   getSelectedItem,
   matchesPrefixKey,
   openAgentsTarget,
   openLastSession,
+  openQuickSelectItem,
   openRenameTarget,
   openSelectedItem,
   openSelectedEditTarget,
@@ -195,10 +195,6 @@ export function handleNormalMode(
   }
 
   if (!isStandard && keyName >= '1' && keyName <= '9') {
-    const item = getQuickSelectItem(ctx, Number.parseInt(keyName, 10) - 1)
-
-    if (item) {
-      ctx.runAction(() => ctx.handleSelect(item))
-    }
+    openQuickSelectItem(ctx, Number.parseInt(keyName, 10) - 1)
   }
 }

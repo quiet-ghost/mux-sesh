@@ -24,7 +24,12 @@ import { requestFatalShutdown } from '../util/shutdown'
 import { getSettingEditorTitle, isOptionSetting } from '../settings'
 import { useLaunchPreview } from '../ui/launch-preview'
 import { CLONE_SERVICES } from '../sessions/clone-plan'
-import { getLaunchScope, useLaunchRequest } from './launch-scope'
+import {
+  getLaunchScope,
+  planProjectRow,
+  useLaunchRequest,
+  type LaunchPlanning,
+} from './launch-scope'
 import { useLauncherQuery } from './launcher-query'
 import { getNewSessionStepControls, useNewSessionSteps } from './new-session-step'
 
@@ -221,14 +226,18 @@ export function useAppController(invocationCwd: string) {
   const launchScope = getLaunchScope(appMode, viewMode, selectedPrimaryItem)
   const launchRequest = useLaunchRequest(launchScope, newSession.request, selectedPrimaryItem)
 
-  const launchPreview = useLaunchPreview({
-    active: launchScope !== 'none',
-    request: launchRequest,
+  const launchPlanning: LaunchPlanning = {
     config,
     backend: backend?.kind,
     invocationCwd,
     liveSessions: sessionItems,
     clone: CLONE_SERVICES,
+  }
+
+  const launchPreview = useLaunchPreview({
+    ...launchPlanning,
+    active: launchScope !== 'none',
+    request: launchRequest,
     onDefect: requestFatalShutdown,
   })
 
@@ -403,6 +412,7 @@ export function useAppController(invocationCwd: string) {
     refreshList,
     handleSelect: handleSelectWrapper,
     launchPlanned: handleNewSessionSubmit,
+    launchProjectRow: item => handleNewSessionSubmit(planProjectRow(item, launchPlanning)),
     handleLastSession: handleLastSessionWrapper,
     handleRootSession: handleRootSessionWrapper,
     handleEditTarget: handleEditTargetWrapper,
