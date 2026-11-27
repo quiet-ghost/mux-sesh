@@ -138,7 +138,7 @@ test('marked rows are visible and d reviews exactly the marked set, not the curs
   expect(review).toContain("'delta' /fixture/delta 1 window")
   expect(review).not.toContain("'charlie'")
   expect(review).toContain('No files, worktrees or branches are deleted')
-  expect(review).toContain('enter close 2 esc keep')
+  expect(review).toContain('close 2 enter keep esc')
 
   await screen.pressKey('RETURN')
   await screen.settle()
@@ -193,7 +193,7 @@ test('a partial failure reports each reviewed target and never touches unreviewe
   expect(receipt).toContain("✓ Closed session 'delta'")
   expect(receipt).not.toContain("'alpha'")
   expect(receipt).toContain('No files, worktrees or branches were deleted')
-  expect(receipt).toContain('enter retry 1 esc close')
+  expect(receipt).toContain('retry 1 enter close esc')
 })
 
 test('retry reconciles an unfinished close first and never repeats a completed one', async () => {
@@ -217,7 +217,7 @@ test('retry reconciles an unfinished close first and never repeats a completed o
   // The list refresh after the run shows charlie gone, so its unfinished close is reconciled.
   expect(first).toContain("✓ Closed session 'charlie' (confirmed by refresh)")
   expect(first).toContain("· Not attempted: session 'delta'")
-  expect(first).toContain('enter retry 2 esc close')
+  expect(first).toContain('retry 2 enter close esc')
 
   await screen.pressKey('RETURN')
   await screen.settle()

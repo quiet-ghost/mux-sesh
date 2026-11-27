@@ -23,7 +23,10 @@ export default function CloseReviewBatch({ batch, columns }: Props) {
   return (
     <Modal
       title={plain(CleanupBatch.title(batch))}
-      footer={`enter close ${ready.length}  esc keep`}
+      hints={[
+        { label: `close ${ready.length}`, key: 'enter' },
+        { label: 'keep', key: 'esc' },
+      ]}
       columns={columns}
     >
       {ready.map(plan => (

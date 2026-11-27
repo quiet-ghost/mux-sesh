@@ -106,9 +106,9 @@ async function pressDown(fixture: Screen, times: number): Promise<void> {
   }
 }
 
-const COMMAND_HINT = '↑/↓ navigate  enter run  esc close'
-const THEME_HINT = '↑/↓ navigate  enter apply  esc back'
-const SETTINGS_HINT = '↑/↓ navigate  enter open  esc close'
+const COMMAND_HINT = 'navigate ↑/↓  run enter  close esc'
+const THEME_HINT = 'navigate ↑/↓  apply enter  back esc'
+const SETTINGS_HINT = 'navigate ↑/↓  open enter  close esc'
 
 describe('searchable dialog viewports', () => {
   test.each([
@@ -221,6 +221,6 @@ describe('searchable dialog viewports', () => {
     const bounds = await dialogBounds(screen, 'catppuccin', 'Commands')
     expect(bounds.left).toBeGreaterThan(0)
     expect(bounds.right).toBeLessThan(width)
-    await expectDialogFits(screen, 'Commands', 'Search', '↑/↓ navigate')
+    await expectDialogFits(screen, 'Commands', 'Search', 'navigate ↑/↓')
   })
 })

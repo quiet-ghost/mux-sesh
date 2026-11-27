@@ -34,6 +34,7 @@ interface Props {
   setSettingsCursor: Dispatch<SetStateAction<number>>
   setSettingsSearchQuery: Dispatch<SetStateAction<string>>
   filteredSettingOptions: SettingsOption[]
+  savedSettingOption: string | undefined
   settingOptionsCursor: number
   settingOptionsSearchQuery: string
   setSettingOptionsCursor: Dispatch<SetStateAction<number>>
@@ -78,6 +79,7 @@ export function AppModalsLayer({
   setSettingsCursor,
   setSettingsSearchQuery,
   filteredSettingOptions,
+  savedSettingOption,
   settingOptionsCursor,
   settingOptionsSearchQuery,
   setSettingOptionsCursor,
@@ -170,6 +172,7 @@ export function AppModalsLayer({
           columns={columns}
           rows={rows}
           options={filteredSettingOptions}
+          savedValue={savedSettingOption}
           cursor={settingOptionsCursor}
           searchQuery={settingOptionsSearchQuery}
           picker={modalState.picker}

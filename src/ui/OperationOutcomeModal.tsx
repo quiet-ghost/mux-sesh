@@ -21,7 +21,10 @@ export default function OperationOutcomeModal({ report, columns }: Props) {
   return (
     <Modal
       title={plain(report.title)}
-      footer={retry ? `enter ${retry}  esc close` : 'enter close  esc close'}
+      hints={[
+        { label: retry ?? 'close', key: 'enter' },
+        { label: 'close', key: 'esc' },
+      ]}
       columns={columns}
     >
       {report.completed.map(fact => (

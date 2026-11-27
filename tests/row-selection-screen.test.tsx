@@ -224,7 +224,7 @@ describe('selected dialog row', () => {
       const frame = await screen.frame()
       const dialogBars = selectedLines(frame).filter(line => line.includes('New session'))
       expect(dialogBars).toHaveLength(1)
-      expect(frame).toMatch(/┃ New session/)
+      expect(frame).toMatch(/┃ {2}New session/)
 
       const cells = cellsOf(await lineWith(screen, 'New session'))
       const bar = cells.findIndex((cell, index) => cell.char === SELECTION_BAR && index > 4)

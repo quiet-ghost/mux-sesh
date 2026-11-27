@@ -1,7 +1,13 @@
 import type { TextareaRenderable } from '@opentui/core'
 import { useTheme } from '../styles/theme'
+import type { KeyHint } from './key-hints'
 import Modal from './Modal'
 import { useTextareaFocus } from './use-textarea-focus'
+
+const EDITOR_HINTS: readonly KeyHint[] = [
+  { label: 'apply', key: 'enter' },
+  { label: 'back', key: 'esc' },
+]
 
 interface Props {
   title: string
@@ -31,7 +37,7 @@ export default function SettingEditorModal({
     <Modal
       title={title}
       description={description}
-      footer="Enter apply"
+      hints={EDITOR_HINTS}
       columns={columns}
       preferredWidth={88}
     >

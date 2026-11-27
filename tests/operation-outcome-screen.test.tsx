@@ -102,7 +102,7 @@ test('a created workspace that cannot be opened shows the outcome screen, retrie
   expect(outcome).toContain('Workspace created, but not opened')
   expect(outcome).toContain("Created workspace 'scratch'")
   expect(outcome).toContain('Herdr has no attached client')
-  expect(outcome).toContain("enter open 'scratch'")
+  expect(outcome).toContain("open 'scratch' enter")
   expect(screen.defects).toEqual([])
 
   await screen.pressKey('RETURN')

@@ -83,7 +83,7 @@ test('a detached idle session is only reviewed: d twice closes nothing and Esc l
   expect(review).toContain('/fixture/beta')
   expect(review).toContain('Closes 1 window')
   expect(review).toContain('No files, worktrees or branches are deleted')
-  expect(review).toContain('enter close  esc keep')
+  expect(review).toContain('close enter  keep esc')
   expect(review).not.toContain('Attached')
 
   await screen.pressKey('d')

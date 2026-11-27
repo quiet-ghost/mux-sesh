@@ -21,7 +21,10 @@ export default function CloseReviewResults({ receipt, columns }: Props) {
   return (
     <Modal
       title={plain(CloseReceipt.title(receipt))}
-      footer={retry > 0 ? `enter retry ${retry}  esc close` : 'enter close  esc close'}
+      hints={[
+        { label: retry > 0 ? `retry ${retry}` : 'close', key: 'enter' },
+        { label: 'close', key: 'esc' },
+      ]}
       columns={columns}
     >
       {CloseReceipt.lines(receipt).map(line => (

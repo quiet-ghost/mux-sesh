@@ -13,11 +13,17 @@ import {
   truncateDialogText,
 } from './dialog-layout'
 import { DialogFilter, DialogRow } from './DialogList'
+import type { KeyHint } from './key-hints'
 import { getVisibleWindow } from './list-window'
 import Modal from './Modal'
 import { useTextareaFocus } from './use-textarea-focus'
 
-const OPTIONS_FOOTER = '↑/↓ navigate  enter apply  esc back'
+const OPTIONS_HINTS: readonly KeyHint[] = [
+  { label: 'navigate', key: '↑/↓' },
+  { label: 'apply', key: 'enter' },
+  { label: 'back', key: 'esc' },
+]
+
 const OPTIONS_PREFERRED_WIDTH = 68
 const OPTIONS_DETAIL_ROWS = 3
 const NOTICE_MARGIN_ROWS = 1
@@ -48,6 +54,8 @@ interface Props {
   columns: number
   rows: number
   options: SettingsOption[]
+  // The value in the config, which changes only after a save succeeds; the highlight is a preview.
+  savedValue: string | undefined
   cursor: number
   searchQuery: string
   picker: OptionPicker
@@ -61,6 +69,7 @@ export default function SettingOptionsModal({
   columns,
   rows,
   options,
+  savedValue,
   cursor,
   searchQuery,
   picker,
@@ -78,8 +87,7 @@ export default function SettingOptionsModal({
   const noticeLines = OptionPicker.notice(picker).flatMap(text => wrapNotice(text, contentWidth))
   const noticeRows = noticeLines.length > 0 ? NOTICE_MARGIN_ROWS + noticeLines.length : 0
 
-  const reservedRows =
-    getDialogChromeRows({ description, footer: OPTIONS_FOOTER }) + DIALOG_FILTER_ROWS + noticeRows
+  const reservedRows = getDialogChromeRows({ description }) + DIALOG_FILTER_ROWS + noticeRows
 
   const hasDetails = options.some(option => option.description)
   const showDetail = hasDetails && fitsOptionalDialogRows(rows, reservedRows, OPTIONS_DETAIL_ROWS)
@@ -90,7 +98,7 @@ export default function SettingOptionsModal({
     <Modal
       title={title}
       description={description}
-      footer={OPTIONS_FOOTER}
+      hints={OPTIONS_HINTS}
       columns={columns}
       preferredWidth={OPTIONS_PREFERRED_WIDTH}
     >
@@ -111,6 +119,7 @@ export default function SettingOptionsModal({
               label={option.label}
               value={option.value}
               selected={visibleWindow.startIndex + index === cursor}
+              current={option.value === savedValue}
               width={rowWidth}
             />
           ))

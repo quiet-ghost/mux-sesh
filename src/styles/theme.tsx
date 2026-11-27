@@ -320,18 +320,6 @@ export function getDetailPanelStyle(theme: ThemeColors) {
   }
 }
 
-// Width comes from the dialog layout budget, which clamps it to the terminal.
-export function getModalStyle(theme: ThemeColors) {
-  return {
-    backgroundColor: theme.surfaceModal,
-    paddingTop: 1,
-    paddingBottom: 1,
-    paddingLeft: 2,
-    paddingRight: 2,
-    flexDirection: 'column' as const,
-  }
-}
-
 const ThemeContext = createContext<ThemeColors>(resolveTheme(DEFAULT_THEME_ID, {}, 'dark').colors)
 
 export function ThemeProvider(props: { theme: ThemeColors; children: ReactNode }) {

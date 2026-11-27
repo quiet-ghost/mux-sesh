@@ -1,7 +1,13 @@
 import { CleanupPlan } from '../sessions/cleanup-plan'
 import { useTheme } from '../styles/theme'
 import { stripAnsi } from '../util/ansi'
+import type { KeyHint } from './key-hints'
 import Modal from './Modal'
+
+const CLOSE_REVIEW_HINTS: readonly KeyHint[] = [
+  { label: 'close', key: 'enter' },
+  { label: 'keep', key: 'esc' },
+]
 
 interface Props {
   plan: CleanupPlan
@@ -21,7 +27,7 @@ export default function CloseReviewModal({ plan, columns }: Props) {
     <Modal
       title={plain(CleanupPlan.title(plan))}
       description={plain(plan.path)}
-      footer="enter close  esc keep"
+      hints={CLOSE_REVIEW_HINTS}
       columns={columns}
     >
       <text style={{ fg: theme.text }}>{CleanupPlan.scope(plan)}</text>

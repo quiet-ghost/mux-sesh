@@ -192,7 +192,7 @@ describe('clone from New', () => {
       expectShown(outcome, `Cloned acme/widget into ${destination}`)
       expectShown(outcome, "Created workspace 'widget'")
       expectShown(outcome, 'pane run refused')
-      expectShown(outcome, "enter open 'widget'")
+      expectShown(outcome, "open 'widget' enter")
       expect(await exists(join(destination, '.git'))).toBe(true)
 
       await fixture.pressKey('RETURN')

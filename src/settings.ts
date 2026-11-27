@@ -426,8 +426,12 @@ export function getSettingOptions(config: Config, field: SettingsFieldId): Setti
   return getSettingsField(field).getOptions?.(config) ?? []
 }
 
+export function getSettingValue(config: Config, field: SettingsFieldId): string {
+  return getSettingsField(field).getValue(config)
+}
+
 export function getSelectedOptionIndex(config: Config, field: SettingsFieldId): number {
-  const current = getSettingsField(field).getValue(config)
+  const current = getSettingValue(config, field)
 
   return Math.max(
     0,

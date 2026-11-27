@@ -18,7 +18,7 @@ afterEach(() => {
 })
 
 const MODES: KeybindMode[] = ['vim', 'standard']
-const SETTINGS_HINT = '↑/↓ navigate  enter open  esc close'
+const SETTINGS_HINT = 'navigate ↑/↓  open enter  close esc'
 
 function focusedTextarea(fixture: Screen): TextareaRenderable {
   const focused = fixture.renderer.currentFocusedRenderable

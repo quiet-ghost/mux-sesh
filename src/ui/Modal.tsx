@@ -1,7 +1,13 @@
 import type { ReactNode } from 'react'
 import { RGBA } from '@opentui/core'
-import { getModalStyle, useTheme } from '../styles/theme'
-import { getDialogContentWidth, getDialogWidth, truncateDialogText } from './dialog-layout'
+import { useTheme } from '../styles/theme'
+import {
+  DIALOG_INSET_COLUMNS,
+  getDialogContentWidth,
+  getDialogWidth,
+  truncateDialogText,
+} from './dialog-layout'
+import { KeyHint, KeyHints } from './key-hints'
 
 const CLOSE_HINT = 'esc'
 const DEFAULT_PREFERRED_WIDTH = 76
@@ -9,16 +15,18 @@ const DEFAULT_PREFERRED_WIDTH = 76
 interface Props {
   title: string
   description?: string
-  footer?: string
+  hints: readonly KeyHint[]
   columns: number
   preferredWidth?: number
   children: ReactNode
 }
 
+// Every dialog: title with a muted esc, an optional muted description, the body between blank
+// rows, and its own key hints on a raised band that runs edge to edge.
 export default function Modal({
   title,
   description,
-  footer,
+  hints,
   columns,
   preferredWidth = DEFAULT_PREFERRED_WIDTH,
   children,
@@ -40,24 +48,43 @@ export default function Modal({
         backgroundColor: RGBA.fromInts(0, 0, 0, 150),
       }}
     >
-      <box style={{ ...getModalStyle(theme), width }}>
-        <box style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <text style={{ fg: theme.text }}>
-            {truncateDialogText(title, contentWidth - CLOSE_HINT.length - 1)}
-          </text>
-          <text style={{ fg: theme.textMuted }}>{CLOSE_HINT}</text>
+      <box
+        style={{
+          backgroundColor: theme.surfaceModal,
+          width,
+          paddingTop: 1,
+          flexDirection: 'column',
+        }}
+      >
+        <box
+          style={{
+            flexDirection: 'column',
+            paddingLeft: DIALOG_INSET_COLUMNS,
+            paddingRight: DIALOG_INSET_COLUMNS,
+          }}
+        >
+          <box style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <text style={{ fg: theme.text, wrapMode: 'none' }}>
+              {truncateDialogText(title, contentWidth - CLOSE_HINT.length - 1)}
+            </text>
+            <text style={{ fg: theme.textMuted, wrapMode: 'none' }}>{CLOSE_HINT}</text>
+          </box>
+          {description && (
+            <text style={{ fg: theme.textMuted, wrapMode: 'none' }}>
+              {truncateDialogText(description, contentWidth)}
+            </text>
+          )}
+          <box style={{ flexDirection: 'column', marginTop: 1, marginBottom: 1 }}>{children}</box>
         </box>
-        {description && (
-          <text style={{ fg: theme.textMuted, marginTop: 1 }}>
-            {truncateDialogText(description, contentWidth)}
-          </text>
-        )}
-        <box style={{ flexDirection: 'column', marginTop: 1 }}>{children}</box>
-        {footer && (
-          <text style={{ fg: theme.textMuted, marginTop: 1 }}>
-            {truncateDialogText(footer, contentWidth)}
-          </text>
-        )}
+        <box
+          style={{
+            backgroundColor: theme.surfaceAlt,
+            paddingLeft: DIALOG_INSET_COLUMNS,
+            paddingRight: DIALOG_INSET_COLUMNS,
+          }}
+        >
+          <KeyHints hints={KeyHint.fit(hints, contentWidth)} />
+        </box>
       </box>
     </box>
   )

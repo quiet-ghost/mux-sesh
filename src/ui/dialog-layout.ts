@@ -1,9 +1,11 @@
 const DIALOG_MARGIN_COLUMNS = 2
 const DIALOG_MARGIN_ROWS = 1
-const DIALOG_PADDING_COLUMNS = 2
 
-// A row is the 1-cell selection gutter, a 1-cell inset before the label and a 1-cell right pad.
-const DIALOG_ROW_CHROME_COLUMNS = 3
+// Two cells, not OpenCode's three: at 60 columns the dialog is 56 wide and every cell is a label cell.
+export const DIALOG_INSET_COLUMNS = 2
+
+// A row is the selection gutter, the current-value mark, a space before the label and a right pad.
+const DIALOG_ROW_CHROME_COLUMNS = 4
 
 const MIN_LIST_ROWS = 4
 const ELLIPSIS = '…'
@@ -12,7 +14,6 @@ export const DIALOG_FILTER_ROWS = 2
 
 export interface DialogChrome {
   description?: string
-  footer?: string
 }
 
 export interface DialogRowText {
@@ -25,19 +26,21 @@ export function getDialogWidth(columns: number, preferredWidth: number): number 
 }
 
 export function getDialogContentWidth(dialogWidth: number): number {
-  return Math.max(1, dialogWidth - DIALOG_PADDING_COLUMNS * 2)
+  return Math.max(1, dialogWidth - DIALOG_INSET_COLUMNS * 2)
 }
 
 export function getDialogRowWidth(dialogWidth: number): number {
   return Math.max(1, getDialogContentWidth(dialogWidth) - DIALOG_ROW_CHROME_COLUMNS)
 }
 
-export function getDialogChromeRows({ description, footer }: DialogChrome): number {
-  const padding = 2
+// Top pad, title, optional description, a blank row above and below the body, and the footer band.
+export function getDialogChromeRows({ description }: DialogChrome): number {
+  const padding = 1
   const title = 1
-  const contentMargin = 1
+  const gaps = 2
+  const footer = 1
 
-  return padding + title + contentMargin + (description ? 2 : 0) + (footer ? 2 : 0)
+  return padding + title + (description ? 1 : 0) + gaps + footer
 }
 
 export function getDialogListRows(rows: number, reservedRows: number): number {

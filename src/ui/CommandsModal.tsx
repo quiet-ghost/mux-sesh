@@ -11,11 +11,17 @@ import {
   getDialogWidth,
   truncateDialogText,
 } from './dialog-layout'
-import { DialogFilter, DialogRow } from './DialogList'
+import { DialogFilter, DialogRow, DialogSectionHeader } from './DialogList'
+import type { KeyHint } from './key-hints'
 import { getVisibleWindow } from './list-window'
 import Modal from './Modal'
 
-const COMMANDS_FOOTER = '↑/↓ navigate  enter run  esc close'
+const COMMANDS_HINTS: readonly KeyHint[] = [
+  { label: 'navigate', key: '↑/↓' },
+  { label: 'run', key: 'enter' },
+  { label: 'close', key: 'esc' },
+]
+
 const COMMANDS_PREFERRED_WIDTH = 68
 
 export type { CommandEntry, CommandId } from '../app/action-catalog'
@@ -70,6 +76,13 @@ function getCommandRows(entries: CommandEntry[]): CommandRow[] {
   })
 }
 
+// A window cut just after a section break would end on a header with none of its commands.
+function dropTrailingHeadings(rows: CommandRow[]): CommandRow[] {
+  const last = rows.findLastIndex(row => row.kind === 'entry')
+
+  return last === rows.length - 1 ? rows : rows.slice(0, last + 1)
+}
+
 export default function CommandsModal({
   columns,
   rows,
@@ -88,18 +101,18 @@ export default function CommandsModal({
 
   const listRows = getDialogListRows(
     rows,
-    getDialogChromeRows({ description: themeId, footer: COMMANDS_FOOTER }) + DIALOG_FILTER_ROWS
+    getDialogChromeRows({ description: themeId }) + DIALOG_FILTER_ROWS
   )
 
   const commandRows = getCommandRows(entries)
   const cursorRow = commandRows.findIndex(row => row.kind === 'entry' && row.index === cursor)
-  const visibleRows = getVisibleWindow(commandRows, cursorRow, listRows).items
+  const visibleRows = dropTrailingHeadings(getVisibleWindow(commandRows, cursorRow, listRows).items)
 
   return (
     <Modal
       title="Commands"
       description={themeId}
-      footer={COMMANDS_FOOTER}
+      hints={COMMANDS_HINTS}
       columns={columns}
       preferredWidth={COMMANDS_PREFERRED_WIDTH}
     >
@@ -121,9 +134,10 @@ export default function CommandsModal({
 
             if (row.kind === 'heading') {
               return (
-                <text key={row.key} style={{ fg: theme.accent }}>
-                  {truncateDialogText(row.category, getDialogContentWidth(width))}
-                </text>
+                <DialogSectionHeader
+                  key={row.key}
+                  text={truncateDialogText(row.category, getDialogContentWidth(width))}
+                />
               )
             }
 

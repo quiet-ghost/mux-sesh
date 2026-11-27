@@ -108,7 +108,7 @@ export function useAppController(invocationCwd: string) {
   const configPath = getConfigPath()
   const homeDir = getHomeDir()
 
-  const { filteredSettingsEntries, filteredSettingOptions } = getSettingsState(
+  const { filteredSettingsEntries, filteredSettingOptions, savedSettingOption } = getSettingsState(
     config,
     modalState,
     settingsSearchQuery,
@@ -502,6 +502,7 @@ export function useAppController(invocationCwd: string) {
       setSettingsCursor,
       setSettingsSearchQuery,
       filteredSettingOptions,
+      savedSettingOption,
       settingOptionsCursor,
       settingOptionsSearchQuery,
       setSettingOptionsCursor,

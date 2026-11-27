@@ -4,6 +4,7 @@ import {
   filterSettingsOptions,
   getSettingsEntries,
   getSettingOptions,
+  getSettingValue,
   type SettingsEntry,
   type SettingsOption,
 } from '../settings'
@@ -32,6 +33,7 @@ interface SessionCommandState {
 interface SettingsState {
   filteredSettingsEntries: SettingsEntry[]
   filteredSettingOptions: SettingsOption[]
+  savedSettingOption: string | undefined
 }
 
 export function getSessionCommandState(
@@ -101,5 +103,7 @@ export function getSettingsState(
   return {
     filteredSettingsEntries: filterSettingsEntries(settingsEntries, settingsSearchQuery),
     filteredSettingOptions: filterSettingsOptions(settingOptions, settingOptionsSearchQuery),
+    savedSettingOption:
+      config && currentOptionField ? getSettingValue(config, currentOptionField) : undefined,
   }
 }

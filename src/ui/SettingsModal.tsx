@@ -12,12 +12,19 @@ import {
   truncateDialogText,
 } from './dialog-layout'
 import { DialogFilter, DialogRow } from './DialogList'
+import type { KeyHint } from './key-hints'
 import { getVisibleWindow } from './list-window'
 import Modal from './Modal'
 import { useTextareaFocus } from './use-textarea-focus'
 
 const SETTINGS_DESCRIPTION = 'Search for a setting, then open its option or editor screen'
-const SETTINGS_FOOTER = '↑/↓ navigate  enter open  esc close'
+
+const SETTINGS_HINTS: readonly KeyHint[] = [
+  { label: 'navigate', key: '↑/↓' },
+  { label: 'open', key: 'enter' },
+  { label: 'close', key: 'esc' },
+]
+
 const SETTINGS_PREFERRED_WIDTH = 74
 const SETTINGS_SUMMARY_ROWS = 3
 const SETTINGS_DETAIL_ROWS = 3
@@ -56,7 +63,7 @@ export default function SettingsModal({
   const rowWidth = getDialogRowWidth(width)
 
   const reservedRows =
-    getDialogChromeRows({ description: SETTINGS_DESCRIPTION, footer: SETTINGS_FOOTER }) +
+    getDialogChromeRows({ description: SETTINGS_DESCRIPTION }) +
     SETTINGS_SUMMARY_ROWS +
     DIALOG_FILTER_ROWS
 
@@ -68,7 +75,7 @@ export default function SettingsModal({
     <Modal
       title="Settings"
       description={SETTINGS_DESCRIPTION}
-      footer={SETTINGS_FOOTER}
+      hints={SETTINGS_HINTS}
       columns={columns}
       preferredWidth={SETTINGS_PREFERRED_WIDTH}
     >
