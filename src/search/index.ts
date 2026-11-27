@@ -12,6 +12,23 @@ import {
   type SearchTier,
 } from './matcher'
 
+// Every query re-reads each key to notice renamed rows; memoizing the basename keeps that cheap.
+const BASENAME_CACHE_LIMIT = 20_000
+const basenames = new Map<string, string>()
+
+function pathBasename(path: string): string {
+  const cached = basenames.get(path)
+
+  if (cached !== undefined) return cached
+
+  if (basenames.size >= BASENAME_CACHE_LIMIT) basenames.clear()
+
+  const name = basename(path)
+  basenames.set(path, name)
+
+  return name
+}
+
 // Title ×1, path basename ×0.75 (only when it differs from the title), context ×0.25.
 // Positions come back in this key order; the title and context are the strings the lists render.
 const TITLE_KEY = 0
@@ -23,7 +40,7 @@ const ITEM_KEYS: readonly SearchKey<Item>[] = [
     role: 'name',
     weight: 0.75,
     text: item => {
-      const name = basename(item.path)
+      const name = pathBasename(item.path)
 
       return name === item.title ? '' : name
     },
