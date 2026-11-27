@@ -17,6 +17,7 @@ import { isGitHubURL } from '../util/github'
 import { mark, measure } from '../util/perf'
 import { requestFatalShutdown } from '../util/shutdown'
 import { loadSessionCandidateItems } from './data'
+import type { ShowToast } from './notifications'
 
 const FILE_SEARCH_DEBOUNCE_MS = 120
 
@@ -56,7 +57,9 @@ export interface LauncherQueryState {
   readonly setItems: Dispatch<SetStateAction<Item[]>>
   readonly setCursor: Dispatch<SetStateAction<number>>
   readonly setSessionCandidateItems: Dispatch<SetStateAction<Item[]>>
+  // The status line for degraded file search, cleared once a search succeeds again.
   readonly setMessage: Dispatch<SetStateAction<string>>
+  readonly showToast: ShowToast
 }
 
 // A new query selects its first row; rows arriving later for the same query keep the selection.
@@ -308,7 +311,7 @@ function createLauncherQuery(
           return
         }
 
-        latest.current.setMessage(formatCandidateFailure(cause))
+        latest.current.showToast({ kind: 'warning', message: formatCandidateFailure(cause) })
       }
     },
 

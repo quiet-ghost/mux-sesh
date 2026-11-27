@@ -116,8 +116,8 @@ try {
         clone: NO_GIT,
         launchGuard: { active: false },
         backend,
-        showMessage: message => {
-          throw new Error(message)
+        showToast: toast => {
+          throw new Error(toast.message)
         },
         showOutcome: report => {
           throw new Error(report.title)

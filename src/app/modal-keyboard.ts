@@ -1,6 +1,7 @@
 import { describeUnavailableAction } from './action-catalog'
 import type { OperationReport } from './action-outcome'
 import type { ModalState } from './modals'
+import type { ShowToast } from './notifications'
 import { CloseReceipt, type CleanupBatch } from '../sessions/cleanup-batch'
 import type { CleanupPlan } from '../sessions/cleanup-plan'
 import type { SettingsEntry, SettingsOption } from '../settings'
@@ -26,7 +27,7 @@ interface ModalKeyboardContext {
   setSettingEditorError: (message: string) => void
   runAction: (task: () => Promise<void>) => void
   executeCommand: (id: CommandEntry['id']) => Promise<void>
-  showMessage: (message: string) => void
+  showToast: ShowToast
   handleSettingOptionSubmit: (field: SettingsEntry['id'], value: string) => Promise<void>
   handleSettingsEditorSubmit: (field: SettingsEntry['id']) => Promise<void>
   handleRenameSubmit: () => Promise<void>
@@ -151,7 +152,7 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
       const refusal = describeUnavailableAction(command)
 
       if (refusal) {
-        ctx.showMessage(refusal)
+        ctx.showToast({ kind: 'warning', message: refusal })
 
         return true
       }

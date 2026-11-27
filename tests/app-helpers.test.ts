@@ -16,10 +16,15 @@ import {
 } from '../src/app/data'
 import { getSessionCommandState, getSettingsState } from '../src/app/derived'
 import { createAppHandlers, getPinnedSessionsAfterToggle } from '../src/app/handlers'
-import { persistConfigUpdate, runWithErrorMessage } from '../src/app/operations'
+import { persistConfigUpdate, runWithErrorToast } from '../src/app/operations'
+import type { ToastInput } from '../src/app/notifications'
 import { OptionPicker } from '../src/app/option-picker'
 import { createAppRuntime } from '../src/app/runtime'
-import { publishInventory, type SessionInventory } from '../src/app/session-inventory'
+import {
+  publishInventory,
+  type InventoryOutcome,
+  type SessionInventory,
+} from '../src/app/session-inventory'
 import {
   getAppTitle,
   getEmptyStateMessage,
@@ -29,6 +34,7 @@ import {
 import { AppMode, ViewMode, type Item } from '../src/types'
 import { createHerdrBackend } from '../src/herdr/backend'
 import { getItemKey, workspaceToItem } from '../src/multiplexer/items'
+import { MultiplexerError } from '../src/multiplexer/types'
 import { filterHiddenSessions } from '../src/tmux/workflows'
 import { INACTIVE_LAUNCH } from '../src/sessions/launch-plan'
 import { IDLE } from '../src/util/pending'
@@ -390,20 +396,27 @@ describe('app operation helpers', () => {
     expect(getPinnedSessionsAfterToggle(config, 'main')).toEqual([])
   })
 
-  test('reports expected failures through the shared message helper', async () => {
-    const showMessage = mock(() => {})
+  test('reports a refusal as a warning and a backend failure as an error', async () => {
+    const showToast = mock((_toast: ToastInput) => {})
 
-    await runWithErrorMessage(async () => {
+    await runWithErrorToast(async () => {
       throw new ActionRefused({ reason: 'No session or project is selected' })
-    }, showMessage)
+    }, showToast)
 
-    expect(showMessage).toHaveBeenCalledWith('No session or project is selected', 3000)
+    await runWithErrorToast(async () => {
+      throw new MultiplexerError('command-failed', 'tmux exited')
+    }, showToast)
+
+    expect(showToast.mock.calls).toEqual([
+      [{ kind: 'warning', message: 'No session or project is selected' }],
+      [{ kind: 'error', message: 'tmux exited' }],
+    ])
   })
 
-  test('lets defects through the shared message helper to crash recovery', async () => {
+  test('lets defects through the shared toast helper to crash recovery', async () => {
     const showMessage = mock(() => {})
 
-    const failure = await runWithErrorMessage(async () => {
+    const failure = await runWithErrorToast(async () => {
       throw 'boom'
     }, showMessage).then(
       () => undefined,
@@ -632,32 +645,61 @@ describe('app controls', () => {
   })
 })
 
+const REFRESH_CASES: Array<{
+  outcome: 'published' | 'failed' | 'superseded'
+  toasts: ToastInput[]
+}> = [
+  { outcome: 'published', toasts: [{ kind: 'success', message: 'Refreshed' }] },
+  { outcome: 'failed', toasts: [] },
+  { outcome: 'superseded', toasts: [] },
+]
+
 describe('app runtime helpers', () => {
-  test('shows messages through shared setter timing helper', () => {
-    const setMessage = mock(() => {})
+  test.each(REFRESH_CASES)(
+    'a manual refresh that is $outcome confirms only a published list',
+    async ({ outcome, toasts }) => {
+      const showToast = mock((_toast: ToastInput) => {})
 
-    const inventory: SessionInventory = {
-      refresh: mock(async () => ({ kind: 'superseded' as const })),
-      observe: mock(() => {}),
-      status: () => ({ kind: 'fresh' }),
-      revision: () => 0,
-      subscribe: () => () => {},
-      loading: IDLE,
-      dispose: mock(() => {}),
+      const unusedRunner = mock(async () => {
+        throw new Error('The mocked inventory never runs a backend command')
+      })
+
+      const results: Record<typeof outcome, InventoryOutcome> = {
+        published: {
+          kind: 'published',
+          generation: 1,
+          snapshot: { viewMode: ViewMode.Sessions, sessionItems: [] },
+        },
+        failed: { kind: 'failed', failure: new MultiplexerError('server-stopped', 'stopped') },
+        superseded: { kind: 'superseded' },
+      }
+
+      const refresh = mock(async () => results[outcome])
+
+      const inventory: SessionInventory = {
+        refresh,
+        observe: mock(() => {}),
+        status: () => ({ kind: 'fresh' }),
+        revision: () => 0,
+        subscribe: () => () => {},
+        loading: IDLE,
+        dispose: mock(() => {}),
+      }
+
+      const runtime = createAppRuntime({
+        config: getDefaultConfig('/home/tester'),
+        backend: createHerdrBackend({ runner: { run: unusedRunner }, insideHerdr: true }),
+        viewMode: ViewMode.Sessions,
+        inventory,
+        showToast,
+      })
+
+      await runtime.refreshList()
+
+      expect(refresh).toHaveBeenCalledTimes(1)
+      expect(showToast.mock.calls.map(([toast]) => toast)).toEqual(toasts)
     }
-
-    const runtime = createAppRuntime({
-      config: getDefaultConfig('/home/tester'),
-      backend: null,
-      viewMode: ViewMode.Sessions,
-      inventory,
-      setMessage,
-    })
-
-    runtime.showMessage('hello')
-
-    expect(setMessage).toHaveBeenCalledWith('hello')
-  })
+  )
 })
 
 describe('app handler factory', () => {
@@ -665,7 +707,7 @@ describe('app handler factory', () => {
     const config = getDefaultConfig('/home/tester')
     const closeModal = mock(() => {})
     const refreshItems = mock(async () => {})
-    const showMessage = mock(() => {})
+    const refreshList = mock(async () => {})
 
     const handlers = createAppHandlers({
       clone: NO_GIT,
@@ -677,8 +719,9 @@ describe('app handler factory', () => {
       items: [],
       sessionItems: [],
       cursor: 0,
-      showMessage,
+      showToast: mock(() => {}),
       refreshItems,
+      refreshList,
       regularSessions: [],
       agentSessions: [],
       selectedPrimaryItem: undefined,
@@ -718,14 +761,13 @@ describe('app handler factory', () => {
     await handlers.executeCommand('refresh')
 
     expect(closeModal).toHaveBeenCalled()
-    expect(refreshItems).toHaveBeenCalled()
-    expect(showMessage).toHaveBeenCalledWith('Refreshed')
+    expect(refreshList).toHaveBeenCalled()
   })
 
   test('rename submit closes modal when name is unchanged', async () => {
     const closeModal = mock(() => {})
     const refreshItems = mock(async () => {})
-    const showMessage = mock(() => {})
+    const showToast = mock(() => {})
 
     const run = mock(async () => {
       throw new Error('An unchanged name must not trigger a backend command')
@@ -752,8 +794,9 @@ describe('app handler factory', () => {
       items: [],
       sessionItems: [],
       cursor: 0,
-      showMessage,
+      showToast,
       refreshItems,
+      refreshList: mock(async () => {}),
       regularSessions: [],
       agentSessions: [],
       selectedPrimaryItem: undefined,
@@ -795,6 +838,6 @@ describe('app handler factory', () => {
     expect(closeModal).toHaveBeenCalled()
     expect(run).not.toHaveBeenCalled()
     expect(refreshItems).not.toHaveBeenCalled()
-    expect(showMessage).not.toHaveBeenCalled()
+    expect(showToast).not.toHaveBeenCalled()
   })
 })

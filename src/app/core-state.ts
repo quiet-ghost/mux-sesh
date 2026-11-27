@@ -2,6 +2,7 @@ import type { TextareaRenderable } from '@opentui/core'
 import { useRef, useState } from 'react'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
+import { useToasts } from './notifications'
 
 const NO_MARKS: ReadonlyMap<string, Item> = new Map()
 
@@ -16,6 +17,7 @@ export function useAppCoreState() {
   const [cursor, setCursor] = useState(0)
   const [agentCursor, setAgentCursor] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
+  // A persistent status line above the footer: stale inventory, or degraded file search.
   const [message, setMessage] = useState('')
   const [renameTarget, setRenameTarget] = useState<Item | null>(null)
   const [config, setConfig] = useState<Config | null>(null)
@@ -27,8 +29,7 @@ export function useAppCoreState() {
   const textareaRef = useRef<TextareaRenderable | null>(null)
   const lastSessionSelectionRef = useRef<string | null>(null)
   const lastProjectSelectionRef = useRef<string | null>(null)
-  const [toastMessage, setToastMessage] = useState('')
-  const [toastVisible, setToastVisible] = useState(false)
+  const toasts = useToasts()
   const [updatedVersion, setUpdatedVersion] = useState<string | null>(null)
 
   return {
@@ -68,10 +69,10 @@ export function useAppCoreState() {
     textareaRef,
     lastSessionSelectionRef,
     lastProjectSelectionRef,
-    toastMessage,
-    setToastMessage,
-    toastVisible,
-    setToastVisible,
+    toast: toasts.current,
+    moreToasts: toasts.more,
+    showToast: toasts.showToast,
+    acknowledgeToast: toasts.acknowledgeToast,
     updatedVersion,
     setUpdatedVersion,
   }

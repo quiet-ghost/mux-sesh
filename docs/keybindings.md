@@ -21,6 +21,15 @@ The action tables on this page are checked against the action catalog by the tes
 - In vim mode the main list has no text field, so single letters are commands.
 - In dialogs, `↑` / `↓` move, `enter` confirms, and `esc` cancels or goes back.
 
+## Feedback
+
+- Confirmations, refusals, and failures appear as a toast at the top right. Its border color
+  says the kind: success, warning (a refusal that changed nothing), error, or info.
+- A toast leaves after 5 seconds. An error stays for 8 seconds or until the next key, and newer
+  toasts wait behind it; the card counts them as `+N more`.
+- A stale session list or degraded file search stays on the line above the footer until it
+  recovers.
+
 ## Vim Mode
 
 <!-- keys: vim normal -->

@@ -17,6 +17,7 @@ import { getNewSessionAction } from '../ui/launch-preview'
 import { clampCursorIndex } from '../ui/list-window'
 import type { NewSessionAction, NewSessionStepId } from './action-catalog'
 import type { LauncherFiles } from './launcher-query'
+import type { ShowToast } from './notifications'
 
 // Inline states of the New screen. Every step edits its own draft in the same text field, so the
 // project query and selection stay untouched until the step is left.
@@ -335,7 +336,7 @@ export function getNewSessionStepControls(
   steps: NewSessionSteps,
   preview: LaunchPreview,
   launch: () => Promise<void>,
-  showMessage: (message: string) => void
+  showToast: ShowToast
 ): NewSessionStepControls {
   return {
     step: steps.step.kind,
@@ -348,7 +349,7 @@ export function getNewSessionStepControls(
 
       const refusal = await steps.apply(preview)
 
-      if (refusal) showMessage(refusal)
+      if (refusal) showToast({ kind: 'warning', message: refusal })
     },
   }
 }

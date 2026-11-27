@@ -1,5 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react'
-import { showTemporaryMessage } from './notifications'
+import type { ShowToast } from './notifications'
 import type { SessionInventory } from './session-inventory'
 import type { Config, Item, ViewMode } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
@@ -9,14 +8,10 @@ interface AppRuntimeOptions {
   backend: MultiplexerBackend | null
   viewMode: ViewMode
   inventory: SessionInventory
-  setMessage: Dispatch<SetStateAction<string>>
+  showToast: ShowToast
 }
 
 export function createAppRuntime(options: AppRuntimeOptions) {
-  function showMessage(message: string, timeout = 2000) {
-    showTemporaryMessage(options.setMessage, message, timeout)
-  }
-
   async function refreshItems(forceViewMode?: ViewMode, nextConfig = options.config) {
     if (!nextConfig || !options.backend) {
       return
@@ -26,6 +21,18 @@ export function createAppRuntime(options: AppRuntimeOptions) {
       { kind: 'refresh', viewMode: forceViewMode ?? options.viewMode },
       { config: nextConfig, backend: options.backend }
     )
+  }
+
+  // A manual refresh confirms only a published list; a failed read stays on the status line.
+  async function refreshList(): Promise<void> {
+    if (!options.config || !options.backend) return
+
+    const outcome = await options.inventory.refresh(
+      { kind: 'refresh', viewMode: options.viewMode },
+      { config: options.config, backend: options.backend }
+    )
+
+    if (outcome.kind === 'published') options.showToast({ kind: 'success', message: 'Refreshed' })
   }
 
   // Refreshes like refreshItems, and returns the published session list for reconciling a close.
@@ -41,8 +48,8 @@ export function createAppRuntime(options: AppRuntimeOptions) {
   }
 
   return {
-    showMessage,
     refreshItems,
+    refreshList,
     reloadSessions,
   }
 }

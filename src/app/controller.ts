@@ -68,10 +68,10 @@ export function useAppController(invocationCwd: string) {
     textareaRef,
     lastSessionSelectionRef,
     lastProjectSelectionRef,
-    toastMessage,
-    setToastMessage,
-    toastVisible,
-    setToastVisible,
+    toast,
+    moreToasts,
+    showToast,
+    acknowledgeToast,
     updatedVersion,
     setUpdatedVersion,
   } = useAppCoreState()
@@ -205,6 +205,7 @@ export function useAppController(invocationCwd: string) {
     setCursor,
     setSessionCandidateItems,
     setMessage,
+    showToast,
   })
 
   const newSession = useNewSessionSteps({
@@ -231,12 +232,12 @@ export function useAppController(invocationCwd: string) {
     onDefect: requestFatalShutdown,
   })
 
-  const { showMessage, refreshItems, reloadSessions } = createAppRuntime({
+  const { refreshItems, refreshList, reloadSessions } = createAppRuntime({
     config,
     backend,
     viewMode,
     inventory,
-    setMessage,
+    showToast,
   })
 
   const {
@@ -300,7 +301,7 @@ export function useAppController(invocationCwd: string) {
     items,
     sessionItems,
     cursor,
-    showMessage,
+    showToast,
     showOutcome: report => openOutcomeModal(report, setModalState),
     refreshItems,
     regularSessions,
@@ -339,6 +340,7 @@ export function useAppController(invocationCwd: string) {
     renamedValue: (modalTextareaRef.current?.plainText ?? modalInputValue).trim(),
     launchPreview,
     toggleDetails: details.toggle,
+    refreshList,
   })
 
   useAppKeyboard({
@@ -379,7 +381,7 @@ export function useAppController(invocationCwd: string) {
       newSession,
       launchPreview,
       handleNewSessionSubmit,
-      showMessage
+      showToast
     ),
     handleOutcomeRetry,
     confirmCloseReview,
@@ -398,6 +400,7 @@ export function useAppController(invocationCwd: string) {
     openCommandsModal,
     openSettingsModal,
     refreshItems,
+    refreshList,
     handleSelect: handleSelectWrapper,
     launchPlanned: handleNewSessionSubmit,
     handleLastSession: handleLastSessionWrapper,
@@ -411,12 +414,13 @@ export function useAppController(invocationCwd: string) {
     setAllItems,
     setItems,
     setPrefixActive,
-    setMessage,
+    showToast,
+    acknowledgeToast,
   })
 
   useAppBehaviors({
     inventory,
-    setMessage,
+    showToast,
     appMode,
     viewMode,
     config,
@@ -440,8 +444,6 @@ export function useAppController(invocationCwd: string) {
     searchQuery,
     allItems,
     setUpdatedVersion,
-    setToastMessage,
-    setToastVisible,
   })
 
   return {
@@ -479,8 +481,8 @@ export function useAppController(invocationCwd: string) {
       textareaRef,
       setSearchQuery,
       message,
-      toastMessage,
-      toastVisible,
+      toast,
+      moreToasts,
       updatedVersion,
     },
     modalProps: {

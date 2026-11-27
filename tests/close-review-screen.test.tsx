@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from 'bun:test'
 import type { LiveWorkspace, MultiplexerBackend, WorkspaceRef } from '../src/multiplexer'
 import { renderSessionScreen } from './fixtures/session-screen'
+import { readToast } from './fixtures/toast'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -146,7 +147,7 @@ test('a reviewed session renamed before confirm is not closed', async () => {
   await screen.settle()
 
   expect(closed).toEqual([])
-  const after = (await screen.frame()).replace(/\s+/g, ' ')
+  const after = readToast(await screen.frame())
   expect(after).toContain("Did not close session 'beta'")
   expect(after).toContain("renamed to 'beta-renamed'")
   expect(after).toContain('Nothing was closed')
@@ -165,7 +166,7 @@ test('a reviewed session that gained a window before confirm is not closed', asy
   await screen.settle()
 
   expect(closed).toEqual([])
-  expect(await screen.frame()).toContain('now has 2 windows')
+  expect(readToast(await screen.frame())).toContain('now has 2 windows')
 })
 
 test('a list that reorders under the review still closes only the reviewed ref', async () => {
@@ -197,7 +198,7 @@ test('a reviewed session that vanished before confirm is not replaced by another
   await screen.settle()
 
   expect(closed).toEqual([])
-  expect(await screen.frame()).toContain("'beta' is no longer listed")
+  expect(readToast(await screen.frame())).toContain("'beta' is no longer listed")
 })
 
 test('a long path keeps its start and end in the single and batch reviews', async () => {

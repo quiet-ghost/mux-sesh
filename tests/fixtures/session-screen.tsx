@@ -206,12 +206,12 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     backend,
   })
 
-  const { refreshItems, reloadSessions, showMessage } = createAppRuntime({
+  const { refreshItems, refreshList, reloadSessions } = createAppRuntime({
     config,
     backend,
     viewMode: core.viewMode,
     inventory,
-    setMessage: core.setMessage,
+    showToast: core.showToast,
   })
 
   useEffect(() => {
@@ -353,9 +353,9 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     launchGuard,
     backend,
     config,
-    showMessage,
     showOutcome: report => openOutcomeModal(report, modal.setModalState),
     refreshItems,
+    refreshList,
     reloadSessions,
     toggleDetails: details.toggle,
     saveConfig: fixture.saveConfig,
@@ -386,10 +386,10 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
         ...controls,
         togglePinnedSession: unsupportedFixtureAction,
         refreshItems,
+        refreshList,
         handleLastSession: unsupportedFixtureAction,
         handleRootSession: unsupportedFixtureAction,
         handleEditTarget: unsupportedFixtureAction,
-        showMessage: core.setMessage,
         toggleDetails: details.toggle,
       }),
     handleSettingOptionSubmit: handlers.handleSettingOptionSubmit,
@@ -399,7 +399,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
       newSession,
       launchPreview,
       handlers.handleNewSessionSubmit,
-      showMessage
+      core.showToast
     ),
     handleOutcomeRetry: handlers.handleOutcomeRetry,
     confirmCloseReview: handlers.confirmCloseReview,
@@ -410,6 +410,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     },
     togglePinnedSession: unsupportedFixtureAction,
     refreshItems,
+    refreshList,
     handleLastSession: unsupportedFixtureAction,
     handleRootSession: unsupportedFixtureAction,
     handleEditTarget: unsupportedFixtureAction,

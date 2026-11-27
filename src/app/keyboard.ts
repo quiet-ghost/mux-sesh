@@ -19,8 +19,8 @@ import type { SettingsEntry, SettingsFieldId, SettingsOption } from '../settings
 import type { Config, Item } from '../types'
 import type { CommandEntry } from '../ui/CommandsModal'
 import type { ActionContext } from './action-catalog'
-import { setTimedMessage } from '../handlers/keyboard/shared'
-import { showTemporaryMessage as showTimedMessage } from './notifications'
+import { failureKind } from './action-outcome'
+import type { ShowToast } from './notifications'
 import { AppMode, ViewMode } from '../types'
 
 interface UseAppKeyboardOptions {
@@ -77,6 +77,7 @@ interface UseAppKeyboardOptions {
   toggleDetails: () => void
   openSettingsModal: () => void
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config | null) => Promise<void>
+  refreshList: () => Promise<void>
   handleSelect: (item: Item) => Promise<void>
   launchPlanned: () => Promise<void>
   handleLastSession: () => Promise<void>
@@ -90,12 +91,13 @@ interface UseAppKeyboardOptions {
   setAllItems: Dispatch<SetStateAction<Item[]>>
   setItems: Dispatch<SetStateAction<Item[]>>
   setPrefixActive: Dispatch<SetStateAction<boolean>>
-  setMessage: Dispatch<SetStateAction<string>>
+  showToast: ShowToast
+  acknowledgeToast: () => void
 }
 
 export function useAppKeyboard(options: UseAppKeyboardOptions) {
   const owner = ActionOwner.create({
-    report: message => showTimedMessage(options.setMessage, message, 5000),
+    report: cause => options.showToast({ kind: failureKind(cause), message: cause.message }),
     onDefect: options.onDefect,
   })
 
@@ -127,6 +129,7 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     setItems: options.setItems,
     setPrefixActive: options.setPrefixActive,
     refreshItems: options.refreshItems,
+    refreshList: options.refreshList,
     requestKillSession: options.requestKillSession,
     requestMarkedClose: options.requestMarkedClose,
     toggleMark: options.toggleMark,
@@ -140,7 +143,7 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     openCommandsModal: options.openCommandsModal,
     toggleDetails: options.toggleDetails,
     openSettingsModal: options.openSettingsModal,
-    setMessage: options.setMessage,
+    showToast: options.showToast,
   }
 
   // The renderer only logs errors thrown from key callbacks, so the owner routes them instead.
@@ -156,6 +159,8 @@ function handleKey(
   owner: ActionOwner
 ): void {
   if (!options.active) return
+
+  options.acknowledgeToast()
 
   const keybindMode = options.config?.keybindMode || 'vim'
   const focus = FocusOwner.of(options)
@@ -180,7 +185,7 @@ function handleKey(
       setSettingEditorError: options.setSettingEditorError,
       runAction: owner.run,
       executeCommand: options.executeCommand,
-      showMessage: message => setTimedMessage(keyboardContext, message),
+      showToast: options.showToast,
       handleSettingOptionSubmit: options.handleSettingOptionSubmit,
       handleSettingsEditorSubmit: options.handleSettingsEditorSubmit,
       handleRenameSubmit: options.handleRenameSubmit,

@@ -84,6 +84,7 @@ function createBaseContext(overrides: Partial<KeyboardHandlerContext>): BaseCont
     setItems: mock(() => items),
     setPrefixActive: mock(() => {}),
     refreshItems: mock(async () => {}),
+    refreshList: mock(async () => {}),
     requestKillSession: mock(() => {}),
     requestMarkedClose: mock(async () => {}),
     toggleMark: mock(() => {}),
@@ -97,7 +98,7 @@ function createBaseContext(overrides: Partial<KeyboardHandlerContext>): BaseCont
     openCommandsModal: mock(() => {}),
     openSettingsModal: mock(() => {}),
     toggleDetails: mock(() => {}),
-    setMessage: mock(() => {}),
+    showToast: mock(() => {}),
     ...overrides,
   }
 }
@@ -109,8 +110,8 @@ describe('keyboard shortcuts', () => {
 
     handleSearchMode(key, ctx, 'standard')
 
-    expect(ctx.refreshItems).toHaveBeenCalledTimes(1)
-    expect(ctx.setMessage).toHaveBeenCalledWith('Refreshed')
+    expect(ctx.refreshList).toHaveBeenCalledTimes(1)
+    expect(ctx.showToast).not.toHaveBeenCalled()
     expect(ctx.setPrefixActive).toHaveBeenCalledWith(false)
   })
 
@@ -232,8 +233,14 @@ describe('keyboard shortcuts', () => {
     expect(prefixCtx.openRenameModal).not.toHaveBeenCalled()
 
     for (const ctx of [directCtx, prefixCtx]) {
-      expect(ctx.setMessage).toHaveBeenCalledWith('Close session unavailable: Close it in Herdr')
-      expect(ctx.setMessage).toHaveBeenCalledWith('Rename session unavailable: Rename it in Herdr')
+      expect(ctx.showToast).toHaveBeenCalledWith({
+        kind: 'warning',
+        message: 'Close session unavailable: Close it in Herdr',
+      })
+      expect(ctx.showToast).toHaveBeenCalledWith({
+        kind: 'warning',
+        message: 'Rename session unavailable: Rename it in Herdr',
+      })
     }
   })
 

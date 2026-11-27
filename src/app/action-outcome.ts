@@ -7,6 +7,7 @@ import {
 } from '../multiplexer/command'
 import { isBackendFailure } from '../multiplexer/failure'
 import { MultiplexerError, type WorkspaceRef } from '../multiplexer/types'
+import type { ShowToast, ToastKind } from './notifications'
 
 // An action the user can fix locally (nothing selected, wrong item kind); nothing was changed.
 export class ActionRefused extends Data.TaggedError('ActionRefused')<{ readonly reason: string }> {
@@ -70,18 +71,23 @@ export type ActionOutcome =
   | OperationReport
 
 export interface OutcomePresenter {
-  showMessage: (message: string, timeout?: number) => void
+  showToast: ShowToast
   showOutcome: (report: OperationReport) => void
+}
+
+// A refusal is something the user can fix and changed nothing; any other expected failure is an error.
+export function failureKind(cause: Error): ToastKind {
+  return cause instanceof ActionRefused ? 'warning' : 'error'
 }
 
 function present(outcome: ActionOutcome, presenter: OutcomePresenter): void {
   switch (outcome.kind) {
     case 'completed':
-      presenter.showMessage(outcome.message)
+      presenter.showToast({ kind: 'success', message: outcome.message })
 
       return
     case 'failed':
-      presenter.showMessage(outcome.message, 5000)
+      presenter.showToast({ kind: 'error', message: outcome.message })
 
       return
     case 'partial':

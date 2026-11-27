@@ -7,6 +7,8 @@ import {
   type CommandId,
 } from '../../app/action-catalog'
 import { openNewSession } from '../../app/launcher-query'
+import type { ShowToast } from '../../app/notifications'
+import { refreshProjectDiscovery } from '../../tmux/projects'
 import { AppMode, ViewMode, type Config, type Item } from '../../types'
 
 export interface KeyboardInput {
@@ -41,6 +43,8 @@ export interface KeyboardHandlerContext {
   setItems: Dispatch<SetStateAction<Item[]>>
   setPrefixActive: (active: boolean) => void
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config) => Promise<void>
+  // Refreshes the list and confirms it once published.
+  refreshList: () => Promise<void>
   requestKillSession: (item: Item) => void
   requestMarkedClose: () => Promise<void>
   toggleMark: (item: Item) => void
@@ -56,7 +60,7 @@ export interface KeyboardHandlerContext {
   openCommandsModal: () => void
   toggleDetails: () => void
   openSettingsModal: () => void
-  setMessage: (message: string) => void
+  showToast: ShowToast
 }
 
 export function getKeyName(key: KeyboardInput): string {
@@ -92,9 +96,9 @@ export function activatePrefix(ctx: KeyboardHandlerContext) {
   }, 2000)
 }
 
-export function setTimedMessage(ctx: KeyboardHandlerContext, message: string, timeout = 2000) {
-  ctx.setMessage(message)
-  setTimeout(() => ctx.setMessage(''), timeout)
+export function refreshList(ctx: KeyboardHandlerContext) {
+  refreshProjectDiscovery()
+  ctx.runAction(ctx.refreshList)
 }
 
 export function getSelectedItem(ctx: KeyboardHandlerContext): Item | undefined {
@@ -133,7 +137,7 @@ export function runAvailableAction(
   const refusal = describeUnavailableAction(getCommandEntry(ctx.actionContext, id))
 
   if (refusal) {
-    setTimedMessage(ctx, refusal)
+    ctx.showToast({ kind: 'warning', message: refusal })
 
     return
   }

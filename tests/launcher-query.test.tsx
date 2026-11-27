@@ -3,6 +3,7 @@ import type { TestRendererSetup } from '@opentui/core/testing'
 import { testRender } from '@opentui/react/test-utils'
 import { act, useState, type Dispatch, type SetStateAction } from 'react'
 import { useLauncherQuery, type LauncherQueryServices } from '../src/app/launcher-query'
+import type { ShowToast, ToastInput } from '../src/app/notifications'
 import { getDefaultConfig } from '../src/config'
 import type { MultiplexerBackend } from '../src/multiplexer'
 import { MultiplexerError } from '../src/multiplexer/types'
@@ -118,6 +119,7 @@ interface LauncherProbe {
   cursor: number
   message: string
   messages: string[]
+  toasts: ToastInput[]
   writes: number
   setQuery: (query: string) => void
   setAppMode: (mode: AppMode) => void
@@ -130,6 +132,7 @@ function createProbe(): LauncherProbe {
     cursor: 0,
     message: '',
     messages: [],
+    toasts: [],
     writes: 0,
     setQuery: unsupportedBackendCall,
     setAppMode: unsupportedBackendCall,
@@ -169,12 +172,17 @@ function LauncherScreen({
       setMessageState(value)
     }
 
+    const showToast: ShowToast = toast => {
+      probe.toasts.push(toast)
+    }
+
     return {
       setAllItems: count(setAllItemsState),
       setItems: count(setItemsState),
       setCursor: count(setCursorState),
       setSessionCandidateItems: count(setSessionCandidateItems),
       setMessage,
+      showToast,
     }
   })
 
@@ -432,7 +440,13 @@ describe('launcher query owner', () => {
     await settle()
 
     expect(titles(launcher.probe.items)).toEqual(titles(PROJECTS))
-    expect(launcher.probe.message).toContain('fixture server stopped')
+    expect(launcher.probe.message).toBe('')
+    expect(launcher.probe.toasts).toEqual([
+      {
+        kind: 'warning',
+        message: 'fixture server stopped Showing cached projects; reopen New session to retry.',
+      },
+    ])
     expect(scripted.defects).toEqual([])
   })
 

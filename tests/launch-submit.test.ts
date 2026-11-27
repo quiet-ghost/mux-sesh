@@ -7,6 +7,7 @@ import {
   type MultiplexerBackend,
 } from '../src/multiplexer/types'
 import type { LaunchPreview } from '../src/sessions/launch-plan'
+import type { ToastInput } from '../src/app/notifications'
 import { NO_GIT } from './fixtures/local-github'
 
 const receipt: CreatedSessionReceipt = {
@@ -61,8 +62,8 @@ test('a second Enter while a launch runs is refused, and a failed launch refresh
     clone: NO_GIT,
     backend,
     launchGuard,
-    showMessage: (message: string) => {
-      messages.push(message)
+    showToast: (toast: ToastInput) => {
+      messages.push(`${toast.kind}: ${toast.message}`)
     },
     showOutcome: (report: OperationReport) => {
       reports.push(report)
@@ -75,7 +76,7 @@ test('a second Enter while a launch runs is refused, and a failed launch refresh
   const first = handleNewSessionSubmitWithPreview(scratch, options)
   await handleNewSessionSubmitWithPreview(scratch, options)
 
-  expect(messages).toEqual(['A launch is already running; wait for it to finish.'])
+  expect(messages).toEqual(['warning: A launch is already running; wait for it to finish.'])
 
   creation.resolve(receipt)
   await first
@@ -123,8 +124,8 @@ function recording() {
     clone: NO_GIT,
     backend,
     launchGuard: { active: false },
-    showMessage: (message: string) => {
-      messages.push(message)
+    showToast: (toast: ToastInput) => {
+      messages.push(`${toast.kind}: ${toast.message}`)
     },
     showOutcome: () => {},
     refreshItems: async () => {},
@@ -150,6 +151,7 @@ test('Enter executes the shown plan as frozen: a focus plan only opens its exact
   )
 
   expect(calls).toEqual(['open w4'])
+  expect(messages[0]).toStartWith('error: ')
   expect(messages[0]).toContain("Could not open workspace 'api'")
 })
 
@@ -163,5 +165,6 @@ test.each<{ preview: LaunchPreview; message: string }>([
 
   expect(calls).toEqual([])
   expect(messages).toHaveLength(1)
+  expect(messages[0]).toStartWith('error: ')
   expect(messages[0]).toContain(message)
 })

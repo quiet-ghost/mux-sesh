@@ -1,12 +1,14 @@
 import { executeCommand as runCommand } from './commands'
 import {
   ActionOutcome,
+  failureKind,
   isExpectedActionFailure,
   type OperationReport,
   type OutcomePresenter,
 } from './action-outcome'
 import type { ModalState } from './modals'
-import { persistConfigUpdate, runWithErrorMessage } from './operations'
+import type { ShowToast } from './notifications'
+import { persistConfigUpdate, runWithErrorToast } from './operations'
 import { OptionPicker } from './option-picker'
 import type { Dispatch, SetStateAction } from 'react'
 import { AppMode, type Config, type Item, type ViewMode } from '../types'
@@ -34,15 +36,13 @@ import {
   handleSelect as actionHandleSelect,
 } from '../handlers/actions'
 
-type ShowMessage = (message: string, timeout?: number) => void
-
 interface SharedHandlerOptions {
   backend: MultiplexerBackend | null
   config: Config | null
   items: Item[]
   sessionItems: Item[]
   cursor: number
-  showMessage: ShowMessage
+  showToast: ShowToast
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config | null) => Promise<void>
 }
 
@@ -53,7 +53,7 @@ export interface LaunchGuard {
 
 interface NewSessionHandlerOptions extends Pick<
   SharedHandlerOptions,
-  'backend' | 'showMessage' | 'refreshItems'
+  'backend' | 'showToast' | 'refreshItems'
 > {
   clone: CloneServices
   launchGuard: LaunchGuard
@@ -79,7 +79,7 @@ interface SettingsHandlerOptions {
   settingEditorValue: string
   settingEditorPlainText?: string
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config | null) => Promise<void>
-  showMessage: ShowMessage
+  showToast: ShowToast
   showOutcome: (report: OperationReport) => void
 }
 
@@ -96,7 +96,7 @@ export async function handleReviewedCloseWithFeedback(
   const check = CleanupPlan.recheck(plan, options.sessionItems, options.inventoryRevision())
 
   if (check.kind === 'changed') {
-    options.showMessage(check.message, 5000)
+    options.showToast({ kind: 'warning', message: check.message })
 
     return
   }
@@ -117,18 +117,18 @@ interface BatchCloseOptions {
   reloadSessions: () => Promise<readonly Item[] | undefined>
   clearMarks: () => void
   closeModal: () => void
-  showMessage: ShowMessage
+  showToast: ShowToast
   showReceipt: (receipt: CloseReceipt) => void
 }
 
 function presentBatch(outcome: BatchCloseOutcome, options: BatchCloseOptions): void {
   switch (outcome.kind) {
     case 'completed':
-      options.showMessage(outcome.message)
+      options.showToast({ kind: 'success', message: outcome.message })
 
       return
     case 'failed':
-      options.showMessage(outcome.message, 5000)
+      options.showToast({ kind: 'error', message: outcome.message })
 
       return
     case 'receipt':
@@ -186,9 +186,9 @@ export async function handleSelectItem(
 export async function handleLastSessionWithFeedback(options: SharedHandlerOptions): Promise<void> {
   if (!options.backend) return
   const backend = options.backend
-  await runWithErrorMessage(
+  await runWithErrorToast(
     () => actionHandleLastSession(options.sessionItems, backend),
-    options.showMessage
+    options.showToast
   )
 }
 
@@ -198,9 +198,9 @@ export async function handleRootSessionWithFeedback(
 ): Promise<void> {
   if (!options.backend) return
   const backend = options.backend
-  await runWithErrorMessage(
+  await runWithErrorToast(
     () => actionHandleRootSession(item, options.config, backend),
-    options.showMessage
+    options.showToast
   )
 }
 
@@ -210,15 +210,15 @@ export async function handleEditTargetWithFeedback(
 ): Promise<void> {
   if (!options.backend) return
   const backend = options.backend
-  await runWithErrorMessage(
+  await runWithErrorToast(
     () => actionHandleEditTarget(item, options.config, backend),
-    options.showMessage
+    options.showToast
   )
 }
 
 interface RenameHandlerOptions extends Pick<
   SharedHandlerOptions,
-  'backend' | 'config' | 'sessionItems' | 'showMessage' | 'refreshItems'
+  'backend' | 'config' | 'sessionItems' | 'showToast' | 'refreshItems'
 > {
   saveConfig: (config: Config) => Promise<void>
   setConfig: (config: Config) => void
@@ -246,7 +246,7 @@ export async function handleRenameSubmitWithFeedback(
   }
 
   if (outcome.kind === 'failed') {
-    options.showMessage(outcome.message, 5000)
+    options.showToast({ kind: 'error', message: outcome.message })
 
     return
   }
@@ -265,8 +265,11 @@ export async function handleRenameSubmitWithFeedback(
     : { kind: 'none' as const }
 
   let message = `${noun} renamed to '${outcome.target.title}'`
+  // The rename happened either way; a pin left behind is worth a warning, not a failure.
+  let kind: 'success' | 'warning' = 'success'
 
   if (pin.kind === 'ambiguous') {
+    kind = 'warning'
     message += `. The pin on '${renameTarget.title}' was kept because another ${noun.toLowerCase()} still uses that name.`
   }
 
@@ -277,11 +280,12 @@ export async function handleRenameSubmitWithFeedback(
       await options.saveConfig(next)
       options.setConfig(next)
     } catch (cause) {
+      kind = 'warning'
       message += `. The pin could not be moved to the new name: ${cause instanceof Error ? cause.message : 'unknown error'}`
     }
   }
 
-  options.showMessage(message)
+  options.showToast({ kind, message })
   await options.refreshItems()
 }
 
@@ -292,7 +296,10 @@ export async function handleNewSessionSubmitWithPreview(
   if (!options.backend) return
 
   if (options.launchGuard.active) {
-    options.showMessage('A launch is already running; wait for it to finish.')
+    options.showToast({
+      kind: 'warning',
+      message: 'A launch is already running; wait for it to finish.',
+    })
 
     return
   }
@@ -305,7 +312,7 @@ export async function handleNewSessionSubmitWithPreview(
     ActionOutcome.present(outcome, options)
 
     // A failed launch may still have created a session; plan the next Enter against fresh inventory.
-    await runWithErrorMessage(() => options.refreshItems(), options.showMessage)
+    await runWithErrorToast(() => options.refreshItems(), options.showToast)
   } finally {
     options.launchGuard.active = false
   }
@@ -328,7 +335,10 @@ async function retryOpen(
   if (!options.backend) return
 
   if (options.launchGuard.active) {
-    options.showMessage('A launch is already running; wait for it to finish.')
+    options.showToast({
+      kind: 'warning',
+      message: 'A launch is already running; wait for it to finish.',
+    })
 
     return
   }
@@ -364,7 +374,7 @@ async function retryRefresh(report: PartialReport, options: OutcomeRetryOptions)
   }
 
   options.closeModal()
-  options.showMessage('Refreshed')
+  options.showToast({ kind: 'success', message: 'Refreshed' })
 }
 
 // Enter on the outcome screen repeats only its safe follow-up; with none, it just closes.
@@ -544,6 +554,7 @@ interface CreateAppHandlersOptions extends NewSessionHandlerOptions, SharedHandl
   rememberedSessions: (key: string | null) => void
   inventoryRevision: () => number
   toggleDetails: () => void
+  refreshList: () => Promise<void>
 }
 
 export function createAppHandlers(options: CreateAppHandlersOptions) {
@@ -553,7 +564,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     items: options.items,
     sessionItems: options.sessionItems,
     cursor: options.cursor,
-    showMessage: options.showMessage,
+    showToast: options.showToast,
     refreshItems: options.refreshItems,
   }
 
@@ -566,7 +577,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       rememberedSessions: options.rememberedSessions,
       refreshItems: () => options.refreshItems(),
       closeModal: options.closeModal,
-      showMessage: options.showMessage,
+      showToast: options.showToast,
       showOutcome: options.showOutcome,
     })
   }
@@ -578,7 +589,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     reloadSessions: options.reloadSessions,
     clearMarks: options.clearMarks,
     closeModal: options.closeModal,
-    showMessage: options.showMessage,
+    showToast: options.showToast,
     showReceipt: receipt => options.setModalState({ type: 'close-batch-results', receipt }),
   }
 
@@ -597,7 +608,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       // Expected failures leave the picker and its inventory usable; defects still crash.
       if (!isExpectedActionFailure(cause)) throw cause
 
-      options.showMessage(cause.message, 5000)
+      options.showToast({ kind: failureKind(cause), message: cause.message })
     }
   }
 
@@ -637,7 +648,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       launchGuard: options.launchGuard,
       refreshItems: () => options.refreshItems(),
       closeModal: options.closeModal,
-      showMessage: options.showMessage,
+      showToast: options.showToast,
       showOutcome: options.showOutcome,
     })
   }
@@ -652,7 +663,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       settingEditorValue: options.settingEditorValue,
       settingEditorPlainText: options.settingEditorPlainText,
       refreshItems: options.refreshItems,
-      showMessage: options.showMessage,
+      showToast: options.showToast,
       showOutcome: options.showOutcome,
     })
   }
@@ -669,7 +680,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
         openSettingsModal: options.openSettingsModal,
         settingEditorValue: options.settingEditorValue,
         refreshItems: options.refreshItems,
-        showMessage: options.showMessage,
+        showToast: options.showToast,
         showOutcome: options.showOutcome,
       },
       picker => options.setModalState(OptionPicker.within(field, picker))
@@ -685,7 +696,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       openSettingsModal: options.openSettingsModal,
       settingEditorValue: options.settingEditorValue,
       refreshItems: options.refreshItems,
-      showMessage: options.showMessage,
+      showToast: options.showToast,
       showOutcome: options.showOutcome,
     })
   }
@@ -718,7 +729,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       handleLastSession: handleLastSessionWrapper,
       handleRootSession: handleRootSessionWrapper,
       handleEditTarget: handleEditTargetWrapper,
-      showMessage: options.showMessage,
+      refreshList: options.refreshList,
       toggleDetails: options.toggleDetails,
     })
   }

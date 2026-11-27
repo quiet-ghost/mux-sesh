@@ -1,21 +1,25 @@
 import type { Config, ViewMode } from '../types'
-import { isExpectedActionFailure, reasonOf, type ActionOutcome } from './action-outcome'
-
-type ShowMessage = (message: string, timeout?: number) => void
+import {
+  failureKind,
+  isExpectedActionFailure,
+  reasonOf,
+  type ActionOutcome,
+} from './action-outcome'
+import type { ShowToast } from './notifications'
 
 type RefreshItems = (forceViewMode?: ViewMode, nextConfig?: Config) => Promise<void>
 
-// Expected failures become a local message; defects propagate to crash recovery.
-export async function runWithErrorMessage(
+// Expected failures become a toast; defects propagate to crash recovery.
+export async function runWithErrorToast(
   operation: () => Promise<void>,
-  showMessage: ShowMessage
+  showToast: ShowToast
 ): Promise<void> {
   try {
     await operation()
   } catch (cause) {
     if (!isExpectedActionFailure(cause)) throw cause
 
-    showMessage(cause.message, 3000)
+    showToast({ kind: failureKind(cause), message: cause.message })
   }
 }
 

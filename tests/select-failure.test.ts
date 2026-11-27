@@ -6,6 +6,7 @@ import type { CommandRunner } from '../src/multiplexer/command'
 import { workspaceToItem } from '../src/multiplexer/items'
 import { INACTIVE_LAUNCH } from '../src/sessions/launch-plan'
 import { ViewMode } from '../src/types'
+import type { ShowToast } from '../src/app/notifications'
 import { NO_GIT } from './fixtures/local-github'
 
 const agent = workspaceToItem({
@@ -18,7 +19,7 @@ const agent = workspaceToItem({
   target: { kind: 'agent', tabId: 'w3:t1', paneId: 'w3:p2' },
 })
 
-function handlersFor(runner: CommandRunner, showMessage: (message: string) => void) {
+function handlersFor(runner: CommandRunner, showToast: ShowToast) {
   return createAppHandlers({
     clone: NO_GIT,
     launchGuard: { active: false },
@@ -28,9 +29,10 @@ function handlersFor(runner: CommandRunner, showMessage: (message: string) => vo
     items: [agent],
     sessionItems: [agent],
     cursor: 0,
-    showMessage,
+    showToast,
     showOutcome: mock(() => {}),
     refreshItems: mock(async () => {}),
+    refreshList: mock(async () => {}),
     regularSessions: [],
     agentSessions: [agent],
     selectedPrimaryItem: agent,
@@ -73,12 +75,13 @@ test('an expected backend failure while selecting is shown, not treated as a cra
 
   const handlers = handlersFor(
     { run: async () => ({ exitCode: 1, stdout: '', stderr: 'agent not found' }) },
-    message => messages.push(message)
+    toast => messages.push(`${toast.kind}: ${toast.message}`)
   )
 
   await handlers.handleSelectWrapper(agent)
 
   expect(messages).toHaveLength(1)
+  expect(messages[0]).toStartWith('error: ')
   expect(messages[0]).toContain("Herdr could not focus agent pane 'w3:p2'")
 })
 

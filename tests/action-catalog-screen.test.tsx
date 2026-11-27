@@ -3,6 +3,7 @@ import { TextareaRenderable } from '@opentui/core'
 import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import type { KeybindMode } from '../src/types'
 import { footerHints } from './fixtures/footer'
+import { readToast } from './fixtures/toast'
 import { renderSessionScreen } from './fixtures/session-screen'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
@@ -121,7 +122,7 @@ describe('actions on an empty session list', () => {
 
     await runPaletteCommand(screen, 'Refresh')
     await screen.settle()
-    expect(await screen.frame()).toContain('Refreshed')
+    expect(readToast(await screen.frame())).toBe('Refreshed')
 
     await runPaletteCommand(screen, 'Open settings')
     expect(await screen.frame()).toContain('Search settings')
@@ -206,7 +207,7 @@ describe('actions on a targeted Herdr agent', () => {
     await screen.pressKey('RETURN')
     const refused = await screen.frame()
     expect(refused).toContain('Commands')
-    expect(refused).toContain('Close session unavailable: Close it in Herdr')
+    expect(readToast(refused)).toBe('Close session unavailable: Close it in Herdr')
     expect(screen.calls.filter(call => call.operation === 'open')).toEqual([])
   })
 
@@ -223,11 +224,11 @@ describe('actions on a targeted Herdr agent', () => {
       await pressPrefixed(screen, 'd')
     }
 
-    expect(await screen.frame()).toContain('Close session unavailable: Close it in Herdr')
+    expect(readToast(await screen.frame())).toBe('Close session unavailable: Close it in Herdr')
 
     await pressPrefixed(screen, 'r')
     const renamed = await screen.frame()
-    expect(renamed).toContain('Rename session unavailable: Rename it in Herdr')
+    expect(readToast(renamed)).toBe('Rename session unavailable: Rename it in Herdr')
     expect(renamed).not.toContain('Rename Session')
     expect(screen.calls.filter(call => call.operation === 'open')).toEqual([])
   })
@@ -244,14 +245,14 @@ describe('previous session on Herdr', () => {
 
     await screen.replaceQuery('Last session')
     await screen.pressKey('RETURN')
-    expect(await screen.frame()).toContain(
+    expect(readToast(await screen.frame())).toBe(
       'Last session unavailable: Herdr does not track the previous workspace'
     )
     await screen.pressKey('ESCAPE')
 
     await screen.settle()
     await pressPrefixed(screen, 'l')
-    expect(await screen.frame()).toContain(
+    expect(readToast(await screen.frame())).toBe(
       'Last session unavailable: Herdr does not track the previous workspace'
     )
   })

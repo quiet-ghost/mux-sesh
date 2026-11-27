@@ -19,6 +19,7 @@ import {
 import type { CloneServices } from '../src/sessions/clone-plan'
 import { previewLaunch, type LaunchPreview } from '../src/sessions/launch-plan'
 import type { Config, Item } from '../src/types'
+import type { ToastInput } from '../src/app/notifications'
 import { createLocalGitHub, NO_GIT, type LocalGitHub } from './fixtures/local-github'
 
 const receipt: CreatedSessionReceipt = {
@@ -102,8 +103,8 @@ function launchOptions(backend: MultiplexerBackend, clone: CloneServices = NO_GI
       clone,
       backend,
       launchGuard,
-      showMessage: (message: string) => {
-        messages.push(message)
+      showToast: (toast: ToastInput) => {
+        messages.push(`${toast.kind}: ${toast.message}`)
       },
       showOutcome: (report: OperationReport) => {
         reports.push(report)
@@ -219,6 +220,7 @@ test('a definite create failure stays a local message and creates nothing', asyn
 
   expect(launch.reports).toEqual([])
   expect(launch.messages).toHaveLength(1)
+  expect(launch.messages[0]).toStartWith('error: ')
   expect(launch.messages[0]).toContain("Could not create workspace 'scratch'")
   expect(launch.messages[0]).toContain('label already used')
 })
@@ -290,8 +292,8 @@ function settingsOptions(
       },
       settingEditorValue: 'nvim',
       refreshItems,
-      showMessage: (message: string) => {
-        messages.push(message)
+      showToast: (toast: ToastInput) => {
+        messages.push(`${toast.kind}: ${toast.message}`)
       },
       showOutcome: (report: OperationReport) => {
         reports.push(report)
@@ -333,7 +335,7 @@ test('a saved pin whose refresh fails reports the saved pin and retries only the
 
   expect(refreshes).toBe(2)
   expect(writes).toHaveLength(1)
-  expect(retry.messages).toEqual(['closed', 'Refreshed'])
+  expect(retry.messages).toEqual(['closed', 'success: Refreshed'])
 })
 
 test('a pin or option whose save fails is reported locally and never rejects', async () => {
@@ -352,7 +354,7 @@ test('a pin or option whose save fails is reported locally and never rejects', a
   expect(settings.messages).toHaveLength(2)
 
   for (const message of settings.messages) {
-    expect(message).toContain('Could not save settings')
+    expect(message).toStartWith('error: Could not save settings')
     expect(message).toContain('permission denied')
     expect(message).toContain('not changed')
   }

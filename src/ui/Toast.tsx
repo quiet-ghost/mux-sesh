@@ -1,14 +1,34 @@
+import type { QueuedToast, ToastKind } from '../app/notifications'
 import { useTheme } from '../styles/theme'
+import type { ThemeColors } from '../types'
+
+const MAX_WIDTH_COLUMNS = 60
+const SCREEN_MARGIN_COLUMNS = 6
 
 interface ToastProps {
-  message: string
-  visible: boolean
+  toast: QueuedToast | undefined
+  more: number
+  columns: number
 }
 
-export default function Toast({ message, visible }: ToastProps) {
+// The theme has no warning token; `key` is the palette's warning color.
+export function toastColor(theme: ThemeColors, kind: ToastKind): string {
+  switch (kind) {
+    case 'info':
+      return theme.primary
+    case 'success':
+      return theme.active
+    case 'warning':
+      return theme.key
+    case 'error':
+      return theme.danger
+  }
+}
+
+export default function Toast({ toast, more, columns }: ToastProps) {
   const theme = useTheme()
 
-  if (!visible) return null
+  if (!toast) return null
 
   return (
     <box
@@ -16,19 +36,25 @@ export default function Toast({ message, visible }: ToastProps) {
         position: 'absolute',
         top: 1,
         right: 2,
+        maxWidth: Math.max(1, Math.min(MAX_WIDTH_COLUMNS, columns - SCREEN_MARGIN_COLUMNS)),
+        flexDirection: 'column',
+        paddingLeft: 2,
+        paddingRight: 2,
+        paddingTop: 1,
+        paddingBottom: 1,
+        backgroundColor: theme.surfaceAlt,
+        border: ['left', 'right'],
+        borderStyle: 'heavy',
+        borderColor: toastColor(theme, toast.kind),
       }}
     >
-      <box
-        style={{
-          flexDirection: 'row',
-          backgroundColor: theme.surface,
-          paddingTop: 1,
-        }}
-      >
-        <text style={{ fg: theme.action }}>▎</text>
-        <text style={{ fg: theme.text, marginLeft: 1, marginRight: 1 }}>{message}</text>
-        <text style={{ fg: theme.action }}>▎</text>
-      </box>
+      {toast.title && (
+        <text style={{ fg: theme.text, marginBottom: 1 }}>
+          <b>{toast.title}</b>
+        </text>
+      )}
+      <text style={{ fg: theme.text, wrapMode: 'word', width: '100%' }}>{toast.message}</text>
+      {more > 0 && <text style={{ fg: theme.textMuted }}>{`+${more} more`}</text>}
     </box>
   )
 }

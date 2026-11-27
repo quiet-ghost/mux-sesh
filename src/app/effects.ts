@@ -10,7 +10,7 @@ import { useRenderer } from '@opentui/react'
 import type { TerminalColors } from '@opentui/core'
 import { checkAndUpdate, updateEvents } from '../update'
 import { createAutoUpdateScheduler, type AutoUpdateScheduler } from '../update/scheduler'
-import { showTemporaryMessage, showTemporaryToast } from './notifications'
+import type { ShowToast } from './notifications'
 import { useHerdrAgentPolling } from './herdr-refresh'
 import type { SessionInventory } from './session-inventory'
 import { clearMatchIndices, createItemFilter, type ItemFilter } from '../search'
@@ -24,8 +24,6 @@ import { getItemKey } from '../multiplexer/items'
 import { describeDiscoveryFailures } from '../tmux/project-discovery-service'
 import { subscribeProjectDiscoveryFailures } from '../tmux/projects'
 import { clampCursorIndex } from '../ui/list-window'
-
-const DISCOVERY_FAILURE_MESSAGE_MS = 8000
 
 export function useSystemThemeFollow(
   themeId: string | undefined,
@@ -119,31 +117,25 @@ export function useAutoUpdateScheduler(
 
 export function useUpdateEventToasts(
   setUpdatedVersion: Dispatch<SetStateAction<string | null>>,
-  setToastMessage: Dispatch<SetStateAction<string>>,
-  setToastVisible: Dispatch<SetStateAction<boolean>>
+  showToast: ShowToast
 ) {
   useEffect(() => {
     const unsubscribe = updateEvents.on(event => {
       if (event.kind === 'updated') {
         setUpdatedVersion(event.version)
-        showTemporaryToast(
-          setToastMessage,
-          setToastVisible,
-          `Updated in background to v${event.version}. Restart mux-sesh to use it.`
-        )
+        showToast({
+          kind: 'success',
+          message: `Updated in background to v${event.version}. Restart mux-sesh to use it.`,
+        })
       } else if (event.kind === 'available') {
-        showTemporaryToast(setToastMessage, setToastVisible, `Update available: v${event.version}`)
+        showToast({ kind: 'info', message: `Update available: v${event.version}` })
       } else {
-        showTemporaryToast(
-          setToastMessage,
-          setToastVisible,
-          `Background update to v${event.version} failed.`
-        )
+        showToast({ kind: 'error', message: `Background update to v${event.version} failed.` })
       }
     })
 
     return unsubscribe
-  }, [setToastMessage, setToastVisible, setUpdatedVersion])
+  }, [setUpdatedVersion, showToast])
 }
 
 export function useNormalModeSessionReset(
@@ -167,17 +159,13 @@ export function useNormalModeSessionReset(
   }, [appMode, lastSessionSelectionRef, sessionItems, setAllItems, setCursor, setItems, viewMode])
 }
 
-export function useProjectDiscoveryFailureMessages(setMessage: Dispatch<SetStateAction<string>>) {
+export function useProjectDiscoveryFailureToasts(showToast: ShowToast) {
   useEffect(
     () =>
       subscribeProjectDiscoveryFailures(failures => {
-        showTemporaryMessage(
-          setMessage,
-          describeDiscoveryFailures(failures),
-          DISCOVERY_FAILURE_MESSAGE_MS
-        )
+        showToast({ kind: 'error', message: describeDiscoveryFailures(failures) })
       }),
-    [setMessage]
+    [showToast]
   )
 }
 
@@ -263,7 +251,7 @@ export function useSearchFiltering(
 
 interface UseAppBehaviorsOptions {
   inventory: SessionInventory
-  setMessage: Dispatch<SetStateAction<string>>
+  showToast: ShowToast
   appMode: AppMode
   viewMode: ViewMode
   config: Config | null
@@ -287,12 +275,10 @@ interface UseAppBehaviorsOptions {
   searchQuery: string
   allItems: Item[]
   setUpdatedVersion: Dispatch<SetStateAction<string | null>>
-  setToastMessage: Dispatch<SetStateAction<string>>
-  setToastVisible: Dispatch<SetStateAction<boolean>>
 }
 
 export function useAppBehaviors(options: UseAppBehaviorsOptions) {
-  useUpdateEventToasts(options.setUpdatedVersion, options.setToastMessage, options.setToastVisible)
+  useUpdateEventToasts(options.setUpdatedVersion, options.showToast)
   useNormalModeSessionReset(
     options.appMode,
     options.viewMode,
@@ -302,7 +288,7 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.setItems,
     options.setCursor
   )
-  useProjectDiscoveryFailureMessages(options.setMessage)
+  useProjectDiscoveryFailureToasts(options.showToast)
   useBoundedCursor(options.filteredCommandEntriesLength, options.setCommandsCursor)
   useBoundedCursor(options.filteredSettingsEntriesLength, options.setSettingsCursor)
   useBoundedCursor(options.filteredSettingOptionsLength, options.setSettingOptionsCursor)

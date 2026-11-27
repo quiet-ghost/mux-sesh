@@ -1,6 +1,5 @@
 import { AppMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
-import { refreshProjectDiscovery } from '../../tmux/projects'
 import { requestShutdown } from '../../util/shutdown'
 import {
   activatePrefix,
@@ -14,8 +13,8 @@ import {
   openSelectedItem,
   openSelectedRootSession,
   requestKillTarget,
+  refreshList,
   toggleMarkTarget,
-  setTimedMessage,
   toggleDetailsPanel,
   type KeyboardHandlerContext,
   type KeyboardInput,
@@ -68,9 +67,7 @@ export function handleSearchMode(
           return true
         case 'r':
           if (key.shift) {
-            refreshProjectDiscovery()
-            ctx.runAction(() => ctx.refreshItems())
-            setTimedMessage(ctx, 'Refreshed')
+            refreshList(ctx)
 
             return true
           }

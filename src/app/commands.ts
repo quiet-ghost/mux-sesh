@@ -30,7 +30,8 @@ interface ExecuteCommandContext {
   handleLastSession: () => Promise<void>
   handleRootSession: (item?: Item) => Promise<void>
   handleEditTarget: (item?: Item) => Promise<void>
-  showMessage: (message: string, timeout?: number) => void
+  // Refreshes the list and confirms it once published.
+  refreshList: () => Promise<void>
   toggleDetails: () => void
 }
 
@@ -131,8 +132,7 @@ export async function executeCommand(commandID: CommandId, ctx: ExecuteCommandCo
     case 'refresh':
       ctx.closeModal()
       refreshProjectDiscovery()
-      await ctx.refreshItems()
-      ctx.showMessage('Refreshed')
+      await ctx.refreshList()
 
       return
     case 'toggle-details':

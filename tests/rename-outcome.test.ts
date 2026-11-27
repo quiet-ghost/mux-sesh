@@ -64,8 +64,8 @@ function harness(backend: MultiplexerBackend, config: Config, sessionItems: Item
           backend,
           config,
           sessionItems,
-          showMessage: message => {
-            messages.push(message)
+          showToast: toast => {
+            messages.push(`${toast.kind}: ${toast.message}`)
           },
           refreshItems: async () => {
             refreshes++
@@ -86,7 +86,7 @@ test('the message names the backend-normalized session name', async () => {
 
   await run.submit(target, 'my.app')
 
-  expect(run.messages).toEqual(["Session renamed to 'my_app'"])
+  expect(run.messages).toEqual(["success: Session renamed to 'my_app'"])
   expect(run.closedCount()).toBe(1)
   expect(run.refreshCount()).toBe(1)
 })
@@ -103,7 +103,7 @@ test('a failed rename keeps the draft open and says the name is unchanged', asyn
   await run.submit(target, 'beta')
 
   expect(run.messages).toEqual([
-    "Could not rename session 'alpha': duplicate session: beta The name is unchanged.",
+    "error: Could not rename session 'alpha': duplicate session: beta The name is unchanged.",
   ])
   expect(run.closedCount()).toBe(0)
   expect(run.refreshCount()).toBe(0)
@@ -135,6 +135,6 @@ test('a pin shared by duplicate labels is left alone and explained', async () =>
 
   expect(run.saved).toEqual([])
   expect(run.messages).toEqual([
-    "Workspace renamed to 'api-old'. The pin on 'api' was kept because another workspace still uses that name.",
+    "warning: Workspace renamed to 'api-old'. The pin on 'api' was kept because another workspace still uses that name.",
   ])
 })

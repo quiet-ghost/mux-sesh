@@ -16,6 +16,7 @@ import type { FocusOwner } from './focus-owner'
 import { getLaunchScope } from './launch-scope'
 import { getNewSessionEnterAction, type NewSessionSteps } from './new-session-step'
 import type { DetailsInspectorState } from './inspector'
+import type { QueuedToast } from './notifications'
 import { AppMode, ViewMode, type Config, type Item, type ThemeColors } from '../types'
 import { isGitHubURL } from '../util/github'
 import { shouldShowDetailPanel } from '../util/terminal'
@@ -61,9 +62,10 @@ interface Props {
   columns: number
   textareaRef: MutableRefObject<TextareaRenderable | null>
   setSearchQuery: Dispatch<SetStateAction<string>>
+  // A persistent status, such as stale inventory; transient feedback is a toast.
   message: string
-  toastMessage: string
-  toastVisible: boolean
+  toast: QueuedToast | undefined
+  moreToasts: number
   updatedVersion: string | null
 }
 
@@ -103,8 +105,8 @@ export function AppScreen({
   textareaRef,
   setSearchQuery,
   message,
-  toastMessage,
-  toastVisible,
+  toast,
+  moreToasts,
   updatedVersion,
 }: Props) {
   const newSessionActive = appMode === AppMode.NewSession
@@ -296,7 +298,7 @@ export function AppScreen({
           }}
         >
           {message && (
-            <text style={{ fg: theme.action, paddingLeft: 1, paddingRight: 1 }}>{message}</text>
+            <text style={{ fg: theme.key, paddingLeft: 1, paddingRight: 1 }}>{message}</text>
           )}
           <Footer
             footer={footer}
@@ -306,7 +308,7 @@ export function AppScreen({
           />
         </box>
 
-        <Toast message={toastMessage} visible={toastVisible} />
+        <Toast toast={toast} more={moreToasts} columns={columns} />
       </box>
     </>
   )

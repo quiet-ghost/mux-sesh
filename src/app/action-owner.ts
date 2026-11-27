@@ -2,7 +2,7 @@ import { isExpectedActionFailure } from './action-outcome'
 
 export interface ActionOwnerOptions {
   // Shows an expected failure that a handler did not already turn into an outcome.
-  report: (message: string) => void
+  report: (cause: Error) => void
   // Crash recovery for defects; production passes requestFatalShutdown.
   onDefect: (cause: unknown) => void
 }
@@ -16,7 +16,7 @@ export interface ActionOwner {
 function create(options: ActionOwnerOptions): ActionOwner {
   function fail(cause: unknown): void {
     if (isExpectedActionFailure(cause)) {
-      options.report(cause.message)
+      options.report(cause)
 
       return
     }
