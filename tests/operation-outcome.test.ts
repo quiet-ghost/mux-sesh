@@ -221,8 +221,9 @@ test('a definite create failure stays a local message and creates nothing', asyn
   expect(launch.reports).toEqual([])
   expect(launch.messages).toHaveLength(1)
   expect(launch.messages[0]).toStartWith('error: ')
-  expect(launch.messages[0]).toContain("Could not create workspace 'scratch'")
-  expect(launch.messages[0]).toContain('label already used')
+  expect(launch.messages[0]).toContain(
+    "Could not create workspace 'scratch': label already used. Nothing was created."
+  )
 })
 
 let github: LocalGitHub | undefined

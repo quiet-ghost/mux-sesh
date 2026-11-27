@@ -431,6 +431,21 @@ describe('close outcomes (DEV-341)', () => {
     expect(backend.commands).toEqual([])
   })
 
+  test('a backend reason without a full stop still reads as two sentences', async () => {
+    const backend = createFakeBackend({ workspaces: [{ id: 'a', title: 'alpha' }], focusedId: 'a' })
+
+    backend.close = async () => {
+      throw new MultiplexerError('command-failed', 'server busy')
+    }
+
+    const { callbacks } = createCallbacks(sessions())
+
+    expect(await handleKillSession(planOf(liveItem('a', 'alpha')), backend, callbacks)).toEqual({
+      kind: 'failed',
+      message: "Could not close workspace 'alpha': server busy. Nothing was closed.",
+    })
+  })
+
   test('a close with an unknown outcome refreshes instead of retrying or moving focus', async () => {
     const backend = createFakeBackend({
       workspaces: [

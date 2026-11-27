@@ -181,7 +181,7 @@ export async function handleKillSession(
 
     return {
       kind: 'failed',
-      message: `Could not close ${noun} '${target.title}': ${cause.message} Nothing was closed.`,
+      message: `Could not close ${noun} '${target.title}': ${sentence(cause.message)} Nothing was closed.`,
     }
   }
 
@@ -503,7 +503,7 @@ function launchFailureOutcome(
 
   return {
     kind: 'failed',
-    message: `Could not create ${noun} '${title}': ${cause.message} Nothing was created.`,
+    message: `Could not create ${noun} '${title}': ${sentence(cause.message)} Nothing was created.`,
   }
 }
 
