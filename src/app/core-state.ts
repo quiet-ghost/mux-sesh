@@ -1,7 +1,8 @@
 import type { TextareaRenderable } from '@opentui/core'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
+import type { StatusLine } from '../ui/status-line'
 import { useToasts } from './notifications'
 
 const NO_MARKS: ReadonlyMap<string, Item> = new Map()
@@ -17,8 +18,18 @@ export function useAppCoreState() {
   const [cursor, setCursor] = useState(0)
   const [agentCursor, setAgentCursor] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
-  // A persistent status line above the footer: stale inventory, or degraded file search.
-  const [message, setMessage] = useState('')
+  // Persistent status lines above the footer: stale inventory, and degraded file search.
+  const [inventoryStatus, setInventoryStatus] = useState('')
+  const [fileSearchStatus, setFileSearchStatus] = useState('')
+
+  const statusLines = useMemo(
+    (): readonly StatusLine[] => [
+      ...(inventoryStatus ? [{ kind: 'stale' as const, text: inventoryStatus }] : []),
+      ...(fileSearchStatus ? [{ kind: 'warn' as const, text: fileSearchStatus }] : []),
+    ],
+    [inventoryStatus, fileSearchStatus]
+  )
+
   const [renameTarget, setRenameTarget] = useState<Item | null>(null)
   const [config, setConfig] = useState<Config | null>(null)
   const [backend, setBackend] = useState<MultiplexerBackend | null>(null)
@@ -53,8 +64,9 @@ export function useAppCoreState() {
     setAgentCursor,
     searchQuery,
     setSearchQuery,
-    message,
-    setMessage,
+    statusLines,
+    setInventoryStatus,
+    setFileSearchStatus,
     renameTarget,
     setRenameTarget,
     config,

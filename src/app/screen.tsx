@@ -32,7 +32,7 @@ import { BusySpinner } from '../ui/Spinner'
 import NewSessionSummary from '../ui/NewSessionSummary'
 import { getSelectedRowAction } from '../ui/launch-preview'
 import Footer from '../ui/Footer'
-import Toast from '../ui/Toast'
+import { getStatusRows, type StatusLine } from '../ui/status-line'
 import { formatVersionBadge } from '../ui/VersionBadge'
 import { CURRENT_VERSION } from '../update/version'
 import type { MultiplexerBackend } from '../multiplexer'
@@ -66,8 +66,8 @@ interface Props {
   columns: number
   textareaRef: MutableRefObject<TextareaRenderable | null>
   setSearchQuery: Dispatch<SetStateAction<string>>
-  // A persistent status, such as stale inventory; transient feedback is a toast.
-  message: string
+  // Persistent status, such as stale inventory; transient feedback is a notice in the footer.
+  statusLines: readonly StatusLine[]
   toast: QueuedToast | undefined
   moreToasts: number
   updatedVersion: string | null
@@ -109,7 +109,7 @@ export function AppScreen({
   columns,
   textareaRef,
   setSearchQuery,
-  message,
+  statusLines,
   toast,
   moreToasts,
   updatedVersion,
@@ -150,7 +150,7 @@ export function AppScreen({
     appMode,
     showDetailPanel,
     showLaunchSummary,
-    message,
+    statusRows: getStatusRows(toast, moreToasts, statusLines, columns, versionLabel),
   })
 
   const rowWidth = getListRowWidth(layout.listContentWidth)
@@ -319,24 +319,16 @@ export function AppScreen({
             flexShrink: 0,
           }}
         >
-          {message && (
-            <text style={{ fg: theme.key, paddingLeft: 1, paddingRight: 1 }}>{message}</text>
-          )}
           <Footer
             footer={footer}
             width={columns}
             version={versionLabel}
             prefixActive={prefixActive}
+            notice={toast}
+            moreNotices={moreToasts}
+            statusLines={statusLines}
           />
         </box>
-
-        {/* Anchored to the list column, so it never covers the details panel. */}
-        <Toast
-          toast={toast}
-          more={moreToasts}
-          columns={layout.listWidth}
-          reservedRight={columns - layout.listWidth}
-        />
       </box>
     </>
   )

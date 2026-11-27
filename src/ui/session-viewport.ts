@@ -93,30 +93,6 @@ export function getSessionViewport({
   }
 }
 
-function getWrappedLineRows(line: string, width: number): number {
-  let rows = 1
-  let used = 0
-
-  for (const word of line.split(' ')) {
-    if (used > 0 && used + 1 + word.length <= width) {
-      used += 1 + word.length
-      continue
-    }
-
-    if (used > 0) rows++
-    rows += Math.floor(Math.max(0, word.length - 1) / width)
-    used = word.length === 0 ? 0 : word.length % width || width
-  }
-
-  return rows
-}
-
-export function getWrappedRowCount(text: string, width: number): number {
-  const safeWidth = Math.max(1, width)
-
-  return text.split('\n').reduce((rows, line) => rows + getWrappedLineRows(line, safeWidth), 0)
-}
-
 export function getListRowWidth(listWidth: number): number {
   return Math.max(1, listWidth - ROW_CHROME_COLUMNS)
 }

@@ -22,7 +22,7 @@ export interface ToastQueue {
   readonly nextId: number
 }
 
-// Failures stay longer so they can be read. No key dismisses a toast early.
+// Failures stay longer so they can be read; only an error also leaves on the next key.
 export const TOAST_DURATION_MS: Readonly<Record<ToastKind, number>> = {
   info: 5000,
   success: 5000,
@@ -84,7 +84,8 @@ export interface Toasts {
   readonly acknowledgeToast: () => void
 }
 
-// One toast at a time; the timer belongs to the toast on screen and is cleared on unmount.
+// One notice at a time, shown in the footer's status line. The timer belongs to the notice on
+// screen and is cleared on unmount.
 export function useToasts(): Toasts {
   const [queue, setQueue] = useState(ToastQueue.empty)
   const { current } = queue

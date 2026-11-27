@@ -69,7 +69,11 @@ function StartupHarness({ dependencies, onQuit }: Props) {
     ''
   )
 
-  const inventory = useSessionInventory(effects, passthroughMeasure, { ...core, ...derived })
+  const inventory = useSessionInventory(effects, passthroughMeasure, {
+    ...core,
+    ...derived,
+    setMessage: core.setInventoryStatus,
+  })
 
   const { startup, retryStartup } = useAppStartup(
     effects,

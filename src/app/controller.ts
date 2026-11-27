@@ -57,8 +57,9 @@ export function useAppController(invocationCwd: string) {
     setAgentCursor,
     searchQuery,
     setSearchQuery,
-    message,
-    setMessage,
+    statusLines,
+    setInventoryStatus,
+    setFileSearchStatus,
     renameTarget,
     setRenameTarget,
     config,
@@ -169,7 +170,7 @@ export function useAppController(invocationCwd: string) {
     setItems,
     setCursor,
     setAgentCursor,
-    setMessage,
+    setMessage: setInventoryStatus,
   })
 
   const [busy] = useState(() => anyPending([inventory.loading, launchGuard]))
@@ -209,7 +210,7 @@ export function useAppController(invocationCwd: string) {
     setItems,
     setCursor,
     setSessionCandidateItems,
-    setMessage,
+    setMessage: setFileSearchStatus,
     showToast,
   })
 
@@ -491,7 +492,7 @@ export function useAppController(invocationCwd: string) {
       columns,
       textareaRef,
       setSearchQuery,
-      message,
+      statusLines,
       toast,
       moreToasts,
       updatedVersion,

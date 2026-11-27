@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test'
 import type { LiveWorkspace, MultiplexerBackend, WorkspaceRef } from '../src/multiplexer'
 import { renderSessionScreen } from './fixtures/session-screen'
-import { readToast } from './fixtures/toast'
+import { noticeOf } from './fixtures/status-line'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -109,7 +109,7 @@ test('confirming the review closes exactly the reviewed session and leaves the p
   expect(closed).toEqual([{ backend: 'tmux', id: '$2', title: 'beta' }])
 
   const after = await screen.frame()
-  expect(after).toContain("Session 'beta' closed")
+  expect(noticeOf(after)).toEqual({ kind: 'done', text: "Session 'beta' closed" })
   expect(after).not.toContain('Close tmux session')
   expect(after).toContain('gamma')
 
@@ -147,10 +147,11 @@ test('a reviewed session renamed before confirm is not closed', async () => {
   await screen.settle()
 
   expect(closed).toEqual([])
-  const after = readToast(await screen.frame())
-  expect(after).toContain("Did not close session 'beta'")
-  expect(after).toContain("renamed to 'beta-renamed'")
-  expect(after).toContain('Nothing was closed')
+  const after = noticeOf(await screen.frame())
+  expect(after?.kind).toBe('warn')
+  expect(after?.text).toContain("Did not close session 'beta'")
+  expect(after?.text).toContain("renamed to 'beta-renamed'")
+  expect(after?.text).toContain('Nothing was closed')
 })
 
 test('a reviewed session that gained a window before confirm is not closed', async () => {
@@ -166,7 +167,9 @@ test('a reviewed session that gained a window before confirm is not closed', asy
   await screen.settle()
 
   expect(closed).toEqual([])
-  expect(readToast(await screen.frame())).toContain('now has 2 windows')
+  const notice = noticeOf(await screen.frame())
+  expect(notice?.kind).toBe('warn')
+  expect(notice?.text).toContain('now has 2 windows')
 })
 
 test('a list that reorders under the review still closes only the reviewed ref', async () => {
@@ -198,7 +201,9 @@ test('a reviewed session that vanished before confirm is not replaced by another
   await screen.settle()
 
   expect(closed).toEqual([])
-  expect(readToast(await screen.frame())).toContain("'beta' is no longer listed")
+  const notice = noticeOf(await screen.frame())
+  expect(notice?.kind).toBe('warn')
+  expect(notice?.text).toContain("'beta' is no longer listed")
 })
 
 test('a long path keeps its start and end in the single and batch reviews', async () => {

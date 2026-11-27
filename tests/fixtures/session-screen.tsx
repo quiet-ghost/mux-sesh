@@ -219,6 +219,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     ...derived,
     config,
     backend,
+    setMessage: core.setInventoryStatus,
   })
 
   const details = useDetailsInspector({
@@ -308,7 +309,10 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     filterItems
   )
 
-  const launcherFiles = useLauncherQuery({ ...core, config, backend }, fixture.launcher)
+  const launcherFiles = useLauncherQuery(
+    { ...core, config, backend, setMessage: core.setFileSearchStatus },
+    fixture.launcher
+  )
 
   const appControls = createAppControls({
     ...core,

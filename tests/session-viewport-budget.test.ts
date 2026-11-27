@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { Item } from '../src/types'
-import { fitListRow, getSessionViewport, getWrappedRowCount } from '../src/ui/session-viewport'
+import { fitListRow, getSessionViewport } from '../src/ui/session-viewport'
+import { getStatusRows, type StatusLine } from '../src/ui/status-line'
 
 function session(index: number, isPinned = false): Item {
   return {
@@ -124,12 +125,21 @@ describe('list row text', () => {
     expect(row.title.length + row.spacer.length + row.context.length).toBe(20)
   })
 
-  test('counts word-wrapped message rows', () => {
-    expect(getWrappedRowCount('short', 20)).toBe(1)
-    expect(getWrappedRowCount('fixture server stopped. Existing sessions are unchanged.', 20)).toBe(
-      4
-    )
-    expect(getWrappedRowCount('one\ntwo', 20)).toBe(2)
-    expect(getWrappedRowCount('x'.repeat(45), 20)).toBe(3)
+  test('counts the rows the status line adds to the footer', () => {
+    const stale: StatusLine = {
+      kind: 'stale',
+      text: 'fixture server stopped. Existing sessions are unchanged.',
+    }
+
+    expect(getStatusRows(undefined, 0, [], 60, 'v1.0.0')).toBe(0)
+    expect(
+      getStatusRows({ id: 1, kind: 'success', message: 'Refreshed' }, 0, [], 60, 'v1.0.0')
+    ).toBe(0)
+    // 21 message columns wrap it into four rows; the third ends in an ellipsis instead.
+    expect(getStatusRows(undefined, 0, [stale], 30, 'v1.0.0')).toBe(3)
+    // 34 columns beside `any key  v1.0.0`, then 51 per row: 100 characters take three rows.
+    expect(
+      getStatusRows({ id: 1, kind: 'error', message: 'x'.repeat(100) }, 0, [], 60, 'v1.0.0')
+    ).toBe(2)
   })
 })

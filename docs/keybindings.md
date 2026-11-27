@@ -24,12 +24,13 @@ The action tables on this page are checked against the action catalog by the tes
 
 ## Feedback
 
-- Confirmations, refusals, and failures appear as a toast at the top right. Its border color
-  says the kind: success, warning (a refusal that changed nothing), error, or info.
-- A toast leaves after 5 seconds. An error stays for 8 seconds or until the next key, and newer
-  toasts wait behind it; the card counts them as `+N more`.
-- A stale session list or degraded file search stays on the line above the footer until it
-  recovers.
+- Confirmations, refusals, and failures replace the footer hints for a moment. The first word
+  says the kind: `done`, `warn` (a refusal that changed nothing), `error`, or `info`. The version
+  stays at the right. A message too long for one row continues below it, up to three rows.
+- A notice leaves after 5 seconds and the hints return. An error stays for 8 seconds or until the
+  next key, as `any key` at its right says; newer notices wait behind it, counted as `+N more`.
+- A stale session list (`stale`) or degraded file search (`warn`) stays on the line above the
+  footer until it recovers.
 
 ## Vim Mode
 

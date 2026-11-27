@@ -10,7 +10,7 @@ import type { KeybindMode } from '../src/types'
 import { createLocalGitHub, type LocalGitHub } from './fixtures/local-github'
 import { footerGroups, hints } from './fixtures/footer'
 import { renderSessionScreen } from './fixtures/session-screen'
-import { readToast } from './fixtures/toast'
+import { noticeOf, statusWordColor, type Notice } from './fixtures/status-line'
 import { createFakeSpinnerMotion } from './fixtures/spinner-motion'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
@@ -157,30 +157,18 @@ async function waitForFrame(fixture: Screen, text: string): Promise<string> {
 
 const colors = resolveTheme('catppuccin', {}, 'dark').colors
 
-// The toast card's right border: the last `┃` on a row with two, since a selected row starts with one.
-function cardBorderColor(fixture: Screen): number[] | undefined {
-  for (const line of fixture.captureSpans().lines) {
-    const borders = line.spans.filter(span => span.text.includes('┃'))
-    const right = borders.at(-1)
-
-    if (borders.length >= 2 && right) return right.fg.toInts()
-  }
-
-  return undefined
-}
-
-async function waitForToast(fixture: Screen, text: string): Promise<string> {
+async function waitForNotice(fixture: Screen, text: string): Promise<Notice> {
   const deadline = Date.now() + FRAME_WAIT_MS
 
   while (Date.now() < deadline) {
-    const toast = readToast(await fixture.frame())
+    const notice = noticeOf(await fixture.frame())
 
-    if (toast?.includes(text)) return toast
+    if (notice?.text.includes(text)) return notice
     await fixture.settle()
     await Bun.sleep(5)
   }
 
-  throw new Error(`No toast showed '${text}':\n${await fixture.frame()}`)
+  throw new Error(`No notice showed '${text}':\n${await fixture.frame()}`)
 }
 
 function expectShown(frame: string, text: string): void {
@@ -319,8 +307,12 @@ describe('clone from New', () => {
     await writeFile(join(destination, 'todo.txt'), 'mine')
     await fixture.pressKey('RETURN')
 
-    expect(await waitForToast(fixture, 'not a git checkout')).toStartWith(destination)
-    expect(cardBorderColor(fixture)).toEqual(RGBA.fromHex(colors.key).toInts())
+    const notice = await waitForNotice(fixture, 'not a git checkout')
+    expect(notice.kind).toBe('warn')
+    expect(notice.text).toStartWith(destination)
+    expect(statusWordColor(fixture.captureSpans().lines, 'warn')).toEqual(
+      RGBA.fromHex(colors.key).toInts()
+    )
     expect(github.clones).toEqual([])
     expect(calls).toEqual([])
     expect(await readdir(destination)).toEqual(['todo.txt'])
