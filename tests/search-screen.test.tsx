@@ -100,11 +100,11 @@ describe('search results use the main list rows', () => {
     const frame = await screen.frame()
 
     expect(frame).not.toContain('(1)')
-    expect(frame).toMatch(/┃ {2}○ T dotfiles {5}~/)
-    expect(frame).toMatch(/^ {4}● T api-gateway {2}dev/m)
-    expect(frame).toMatch(/^ {4}○ T blog {9}dev/m)
+    expect(frame).toMatch(/┃ {2}○ dotfiles {5}~/)
+    expect(frame).toMatch(/^ {4}● api-gateway {2}dev/m)
+    expect(frame).toMatch(/^ {4}○ blog {9}dev/m)
     // Flat: no section headers while searching.
-    expect(frame).not.toContain('T Live')
+    expect(frame).not.toMatch(/^ (Pinned|Configured|Live)\s*$/m)
   })
 
   test('a query shows one flat best-first list in the same rows', async () => {
@@ -113,14 +113,14 @@ describe('search results use the main list rows', () => {
     const frame = await screen.frame()
 
     expect(selectedLines(frame)).toHaveLength(1)
-    expect(frame).toMatch(/┃ {2}○ T mixer {5}dev/)
-    expect(frame).toMatch(/^ {4}○ T mux-sesh {2}an-extremely-long-parent/m)
+    expect(frame).toMatch(/┃ {2}○ mixer {5}dev/)
+    expect(frame).toMatch(/^ {4}○ mux-sesh {2}an-extremely-long-parent/m)
   })
 
   test('arrow keys follow screen order', async () => {
     screen = await openSearch()
     await screen.replaceQuery('dev')
-    const before = lines(await screen.frame()).filter(line => / [●○] T /.test(line))
+    const before = lines(await screen.frame()).filter(line => / [●○] /.test(line))
 
     await screen.pressKey('ARROW_DOWN')
     await screen.pressKey('ARROW_DOWN')
@@ -147,7 +147,7 @@ describe('search results stay windowed', () => {
     for (let press = 0; press < 25; press++) await screen.pressKey('ARROW_DOWN')
 
     const rows = lines(await screen.frame())
-    const listed = rows.filter(line => / ○ T w\d\d /.test(line))
+    const listed = rows.filter(line => / ○ w\d\d /.test(line))
 
     expect(listed).toHaveLength(HEIGHT - 5)
     expect(selectedLines(rows.join('\n'))[0]).toContain('w26')

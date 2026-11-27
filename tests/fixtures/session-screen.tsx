@@ -479,7 +479,6 @@ export async function renderSessionScreen(
     colorScheme: 'dark',
     autoUpdate: false,
     projectPaths: [],
-    icons: { tmux: 'T', herdr: 'H', configured: 'C', project: 'P', opencode: 'A' },
     ...data.config,
   }
 

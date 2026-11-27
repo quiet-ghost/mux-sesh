@@ -92,7 +92,7 @@ describe('selected session row', () => {
       const frame = await screen.frame()
       expect(frame).not.toContain('›')
       expect(selectedLines(frame)).toHaveLength(1)
-      expect(frame).toMatch(selectedRow('○ T beta'))
+      expect(frame).toMatch(selectedRow('○ beta'))
 
       const cells = cellsOf(await lineWith(screen, 'beta'))
       const bar = barColumn(cells)
@@ -134,8 +134,8 @@ describe('selected session row', () => {
 
     const frame = await screen.frame()
     expect(selectedLines(frame)).toHaveLength(1)
-    expect(frame).toMatch(/^ {2}\* ○ T charlie .*marked/m)
-    expect(frame).toMatch(selectedRow('○ T beta'))
+    expect(frame).toMatch(/^ {2}\* ○ charlie .*marked/m)
+    expect(frame).toMatch(selectedRow('○ beta'))
 
     const marked = cellsOf(await lineWith(screen, 'charlie'))
     expect(barColumn(marked)).toBe(-1)
@@ -146,7 +146,7 @@ describe('selected session row', () => {
     await screen.pressKey('m')
     const both = await screen.frame()
     expect(selectedLines(both)).toHaveLength(1)
-    expect(both).toMatch(/┃\* ○ T beta .*marked/)
+    expect(both).toMatch(/┃\* ○ beta .*marked/)
   })
 
   test('search matches stay visible on the highlight', async () => {
@@ -155,7 +155,7 @@ describe('selected session row', () => {
     await screen.pressKey('i')
     await screen.typeText('bt')
 
-    expect(await screen.frame()).toMatch(selectedRow('○ T beta'))
+    expect(await screen.frame()).toMatch(selectedRow('○ beta'))
 
     const cells = cellsOf(await lineWith(screen, 'beta'))
 

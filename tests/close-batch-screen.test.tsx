@@ -126,9 +126,9 @@ test('marked rows are visible and d reviews exactly the marked set, not the curs
   await screen.pressKey('k')
 
   const list = await screen.frame()
-  expect(list).toMatch(/\* ○ T beta/)
-  expect(list).toMatch(/\* ○ T delta/)
-  expect(list).not.toMatch(/\* ○ T charlie/)
+  expect(list).toMatch(/\* ○ beta/)
+  expect(list).toMatch(/\* ○ delta/)
+  expect(list).not.toMatch(/\* ○ charlie/)
   expect(footerHints(list)).toContain('close 2 marked d')
 
   await screen.pressKey('d')
@@ -171,7 +171,7 @@ test('m unmarks a marked row, so it is not reviewed', async () => {
   await screen.pressKey('ESCAPE')
   expect(closed).toEqual([])
   // Keeping the review keeps the marks.
-  expect(await screen.frame()).toMatch(/\* ○ T charlie/)
+  expect(await screen.frame()).toMatch(/\* ○ charlie/)
 })
 
 test('a partial failure reports each reviewed target and never touches unreviewed ones', async () => {

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { getDefaultConfig } from '../src/config'
 import { orderProjectItems, orderSessionItems } from '../src/items/order'
 import { resolveTheme } from '../src/styles/theme'
 import {
@@ -142,6 +143,46 @@ describe('item ordering', () => {
 })
 
 describe('item icons', () => {
+  test('the default icons show no glyph on rows or section headers', () => {
+    const theme = resolveTheme('catppuccin', {}, 'dark').colors
+    const defaults = getDefaultConfig('/fixture').icons
+
+    const rows: Item[] = [
+      { title: 'tmux', desc: '', path: '/r/t', isSession: true, itemKind: 'tmux' },
+      { title: 'herdr', desc: '', path: '/r/h', isSession: true, itemKind: 'herdr' },
+      { title: 'opencode-main', desc: '', path: '/r/o', isSession: true, itemKind: 'tmux' },
+      { title: 'cfg', desc: '', path: '/r/c', isSession: false, itemKind: 'configured' },
+      { title: 'project', desc: '', path: '/r/p', isSession: false, itemKind: 'project' },
+      { title: 'a.ts', desc: '', path: '/r/a.ts', isSession: false, itemKind: 'file' },
+      {
+        title: 'linked',
+        desc: '',
+        path: '/r/l',
+        isSession: false,
+        linkedSessionName: 'linked',
+        linkedSessionBackend: 'herdr',
+      },
+    ]
+
+    for (const icons of [defaults, undefined]) {
+      expect(rows.map(item => getItemIconPresentation(theme, item, icons).glyph)).toEqual(
+        rows.map(() => '')
+      )
+      expect(formatSectionHeader(theme, 'live', icons, 'tmux').text).toBe('Live')
+      expect(formatSectionHeader(theme, 'live', icons, 'herdr').text).toBe('Live')
+      expect(formatSectionHeader(theme, 'agents', icons).text).toBe('Agents')
+      expect(formatSectionHeader(theme, 'configured', icons).text).toBe('Configured')
+      expect(formatSectionHeader(theme, 'pinned', icons).text).toBe('Pinned')
+    }
+  })
+
+  test('a project icon still renders on its row', () => {
+    const theme = resolveTheme('catppuccin', {}, 'dark').colors
+    const item: Item = { title: 'p', desc: '', path: '/r/p', isSession: false, icon: 'X' }
+
+    expect(getItemIconPresentation(theme, item, getDefaultConfig('/fixture').icons).glyph).toBe('X')
+  })
+
   test('labels the agents section header', () => {
     const theme = resolveTheme('catppuccin', {}, 'dark').colors
 

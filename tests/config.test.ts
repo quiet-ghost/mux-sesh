@@ -250,6 +250,18 @@ describe('config normalization', () => {
     })
   })
 
+  test('rows have no icons by default, and a partial icons object keeps the rest empty', () => {
+    const empty = { tmux: '', herdr: '', configured: '', project: '', opencode: '' }
+
+    expect(getDefaultConfig('/home/tester').icons).toEqual(empty)
+    expect(normalizeConfig({}, '/home/tester').icons).toEqual(empty)
+    expect(normalizeConfig({ icons: { tmux: 'T', config: 'C' } }, '/home/tester').icons).toEqual({
+      ...empty,
+      tmux: 'T',
+      configured: 'C',
+    })
+  })
+
   test('preserves theme system without changing the default theme', () => {
     expect(getDefaultConfig('/home/tester').theme).toBe('rosepine')
     expect(normalizeConfig({ theme: 'system' }, '/home/tester').theme).toBe('system')

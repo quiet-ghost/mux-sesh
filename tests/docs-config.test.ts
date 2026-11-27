@@ -1,6 +1,7 @@
 import { join } from 'path'
 import { describe, expect, test } from 'bun:test'
 import { Schema } from 'effect'
+import { getDefaultConfig } from '../src/config'
 import { CONFIG_DOCUMENT_KEYS, checkConfigDocument } from '../src/config/config-document'
 import { renderConfigSchema, SCHEMA_PATH } from '../tools/schema/generate'
 
@@ -94,5 +95,14 @@ describe('documented config examples', () => {
     const snakeCase = [...CONFIG_DOCUMENT_KEYS].filter(key => key === key.toLowerCase())
 
     expect(documented.sort()).toEqual(snakeCase.sort())
+  })
+
+  test('docs/configuration.md documents no icons by default, as the runtime defaults', async () => {
+    const docs = await read('docs/configuration.md')
+
+    expect(docs).toMatch(/^\| `icons` +\| none +\|/m)
+    expect(Object.values(getDefaultConfig('/fixture').icons ?? {}).every(icon => icon === '')).toBe(
+      true
+    )
   })
 })

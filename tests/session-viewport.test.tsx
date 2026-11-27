@@ -76,8 +76,8 @@ function lineIndex(frame: string, pattern: RegExp): number {
 function expectViewport(frame: string, height: number): void {
   const rows = lines(frame)
   const header = lineIndex(frame, /mux-sesh/)
-  const sessions = lineIndex(frame, /^\s*H Live(\s\s|\s*$)/)
-  const agents = lineIndex(frame, /^\s*A Agents(\s\s|\s*$)/)
+  const sessions = lineIndex(frame, /^\s*Live(\s\s|\s*$)/)
+  const agents = lineIndex(frame, /^\s*Agents(\s\s|\s*$)/)
   const footer = lineIndex(frame, /^ .*(select enter|back esc)/)
   const lastRow = rows.findLastIndex(line => /[●○] /.test(line))
 

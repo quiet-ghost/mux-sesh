@@ -7,14 +7,13 @@ export interface ItemIconPresentation {
   color: string
 }
 
-const FILE_ITEM_GLYPH = '  '
-
+// No icon config means no icons: rows and headers render without a glyph column.
 function getIconConfig(icons?: IconConfig): IconConfig {
   return {
-    tmux: icons?.tmux ?? '',
-    herdr: icons?.herdr ?? 'H',
-    configured: icons?.configured ?? '',
-    project: icons?.project ?? '',
+    tmux: icons?.tmux ?? '',
+    herdr: icons?.herdr ?? '',
+    configured: icons?.configured ?? '',
+    project: icons?.project ?? '',
     opencode: icons?.opencode ?? '',
   }
 }
@@ -35,7 +34,7 @@ export function getItemIconPresentation(
 
   if (item.itemKind === 'file') {
     return {
-      glyph: item.icon ?? FILE_ITEM_GLYPH,
+      glyph: item.icon ?? '',
       color: item.linkedSessionAttached
         ? theme.active
         : item.linkedSessionName

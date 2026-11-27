@@ -64,7 +64,7 @@ startup check remains the final authority. A complete example is in
 | `dir_length`      | `1`                   | Path depth used when generating session names (a whole number, ≥ 1)         |
 | `hidden_sessions` | none                  | Glob patterns for live sessions to hide                                     |
 | `pinned_sessions` | none                  | Session names kept at the top; `ctrl+f` and the palette edit the list       |
-| `icons`           | built-in icons        | Row icons: `tmux`, `herdr`, `configured`, `config`, `project`, `opencode`   |
+| `icons`           | none                  | Row icons: `tmux`, `herdr`, `configured`, `config`, `project`, `opencode`   |
 | `default_session` | none                  | Fallback `startup_command` and `preview_command`                            |
 | `projects`        | none                  | Exact-path project rules                                                    |
 | `wildcards`       | none                  | Pattern-based project rules                                                 |
@@ -101,13 +101,16 @@ take effect on the next launch.
 }
 ```
 
-Icons can distinguish backend rows. `icons.herdr` is empty by default.
+Rows and section headers show no icons by default. Set an icon to show it before matching row
+titles and their section header; `config` is an alias for `configured`, and a project's own
+`icon` overrides `project`. This example restores the earlier Nerd Font icons.
 
 ```json
 {
   "icons": {
-    "tmux": "",
-    "herdr": ""
+    "tmux": "",
+    "configured": "",
+    "project": ""
   }
 }
 ```

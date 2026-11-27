@@ -30,11 +30,12 @@ export function resolvePrefixKey(config: Pick<Config, 'prefixKey'> | null): stri
 const DEFAULT_EDITOR_COMMAND =
   "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\""
 
+// Rows and section headers show no icon unless the config sets one.
 const DEFAULT_ICONS: IconConfig = {
-  tmux: '',
+  tmux: '',
   herdr: '',
-  configured: '',
-  project: '',
+  configured: '',
+  project: '',
   opencode: '',
 }
 
