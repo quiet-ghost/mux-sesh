@@ -15,6 +15,7 @@ import {
   handleSearchMode,
   type KeyboardHandlerContext,
 } from '../handlers/keyboard'
+import { resolvePrefixKey } from '../config'
 import type { SettingsEntry, SettingsFieldId, SettingsOption } from '../settings'
 import type { Config, Item } from '../types'
 import type { CommandEntry } from '../ui/CommandsModal'
@@ -112,7 +113,7 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
     agentCursor: options.agentCursor,
     searchQuery: options.searchQuery,
     actionContext: options.actionContext,
-    prefixKey: options.config?.prefixKey,
+    prefixKey: resolvePrefixKey(options.config),
     projectItems:
       options.sessionCandidateItems.length > 0
         ? options.sessionCandidateItems

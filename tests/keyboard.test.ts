@@ -65,6 +65,7 @@ function createBaseContext(overrides: Partial<KeyboardHandlerContext>): BaseCont
     cursor: 0,
     agentCursor: 0,
     searchQuery: '',
+    prefixKey: 'ctrl+x',
     projectItems: [],
     sessionItems: items,
     prefixActive: true,
@@ -222,26 +223,29 @@ describe('keyboard shortcuts', () => {
       agentSessions: [herdrAgent],
     })
 
+    // Rename has no direct key in Agents; vim reaches it through the prefix, like standard.
     handleAgentsManageMode({ name: 'd' }, directCtx, 'vim')
-    handleAgentsManageMode({ name: 'r' }, directCtx, 'vim')
+    handleAgentsManageMode({ name: 'r' }, prefixCtx, 'vim')
     handleAgentsManageMode({ name: 'd' }, prefixCtx, 'standard')
     handleAgentsManageMode({ name: 'r' }, prefixCtx, 'standard')
 
     expect(directCtx.requestKillSession).not.toHaveBeenCalled()
-    expect(directCtx.openRenameModal).not.toHaveBeenCalled()
     expect(prefixCtx.requestKillSession).not.toHaveBeenCalled()
     expect(prefixCtx.openRenameModal).not.toHaveBeenCalled()
 
-    for (const ctx of [directCtx, prefixCtx]) {
-      expect(ctx.showToast).toHaveBeenCalledWith({
-        kind: 'warning',
-        message: 'Close session unavailable: Close it in Herdr',
-      })
-      expect(ctx.showToast).toHaveBeenCalledWith({
-        kind: 'warning',
-        message: 'Rename session unavailable: Rename it in Herdr',
-      })
-    }
+    expect(directCtx.showToast).toHaveBeenCalledWith({
+      kind: 'warning',
+      message: 'Close session unavailable: Close it in Herdr',
+    })
+    expect(prefixCtx.showToast).toHaveBeenCalledWith({
+      kind: 'warning',
+      message: 'Close session unavailable: Close it in Herdr',
+    })
+    expect(prefixCtx.showToast).toHaveBeenCalledWith({
+      kind: 'warning',
+      message: 'Rename session unavailable: Rename it in Herdr',
+    })
+    expect(prefixCtx.showToast).toHaveBeenCalledTimes(3)
   })
 
   test('selects highlighted search result with Enter', () => {
@@ -302,16 +306,5 @@ describe('keyboard shortcuts', () => {
 
     expect(ctx.handleSelect).toHaveBeenCalledWith(ctx.regularSessions[0])
     expect(ctx.launchPlanned).not.toHaveBeenCalled()
-  })
-
-  test('opens settings from agents mode with comma in vim mode', () => {
-    const ctx = createContext({
-      appMode: AppMode.AgentsManage,
-      prefixActive: false,
-    })
-
-    handleAgentsManageMode({ name: ',' }, ctx, 'vim')
-
-    expect(ctx.openSettingsModal).toHaveBeenCalledTimes(1)
   })
 })

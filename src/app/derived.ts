@@ -1,3 +1,4 @@
+import { resolvePrefixKey } from '../config'
 import { filterCommandEntries } from '../ui/CommandsModal'
 import {
   filterSettingsEntries,
@@ -63,7 +64,7 @@ export function getSessionCommandState(
     appMode,
     viewMode,
     keybindMode: config?.keybindMode ?? 'vim',
-    prefixKey: config?.prefixKey,
+    prefixKey: resolvePrefixKey(config),
     backend,
     agentCount: sessionSplit.agentSessions.length,
     target: getActionTarget(selectedPrimaryItem),

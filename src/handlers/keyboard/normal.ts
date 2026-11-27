@@ -85,7 +85,7 @@ export function handleNormalMode(
     return
   }
 
-  if (ctx.prefixKey && matchesPrefixKey(key, ctx.prefixKey)) {
+  if (matchesPrefixKey(key, ctx.prefixKey)) {
     activatePrefix(ctx)
 
     return
@@ -131,24 +131,6 @@ export function handleNormalMode(
     return
   }
 
-  if (!ctx.prefixKey && !isStandard && keyName === 'l') {
-    openLastSession(ctx)
-
-    return
-  }
-
-  if (!ctx.prefixKey && !isStandard && keyName === 'g') {
-    openSelectedRootSession(ctx)
-
-    return
-  }
-
-  if (!ctx.prefixKey && !isStandard && keyName === 'e') {
-    openSelectedEditTarget(ctx)
-
-    return
-  }
-
   if (!isStandard && keyName === 'd') {
     requestKillTarget(ctx)
 
@@ -163,18 +145,6 @@ export function handleNormalMode(
 
   if (!isStandard && keyName === 'v') {
     toggleDetailsPanel(ctx)
-
-    return
-  }
-
-  if (!ctx.prefixKey && !isStandard && keyName === 'r') {
-    openRenameTarget(ctx)
-
-    return
-  }
-
-  if (!ctx.prefixKey && !isStandard && keyName === 'R') {
-    refreshList(ctx)
 
     return
   }

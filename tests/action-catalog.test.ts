@@ -162,9 +162,11 @@ describe('action catalog key hints', () => {
   test('follows the keybinding mode and prefix key', () => {
     const target = getActionTarget(session)
 
-    expect(getActionKeyHint(context({ prefixKey: undefined, target }), 'rename-session')).toBe('r')
     expect(getActionKeyHint(context({ target }), 'rename-session')).toBe('ctrl+x r')
-    expect(getActionKeyHint(context({ prefixKey: undefined }), 'refresh')).toBe('R')
+    expect(getActionKeyHint(context({ prefixKey: 'ctrl+a', target }), 'rename-session')).toBe(
+      'ctrl+a r'
+    )
+    expect(getActionKeyHint(context(), 'refresh')).toBe('ctrl+x shift+r')
     expect(
       getActionKeyHint(
         context({ appMode: AppMode.Search, keybindMode: 'standard', target }),
@@ -173,6 +175,25 @@ describe('action catalog key hints', () => {
     ).toBe('ctrl+x d')
     expect(getActionKeyHint(context({ appMode: AppMode.Search }), 'kill-session')).toBe('')
     expect(getActionKeyHint(context({ appMode: AppMode.AgentsManage }), 'back')).toBe('esc')
+  })
+
+  test('the palette lists every key of an action, the footer key first', () => {
+    const keybind = (ctx: ActionContext, id: string) =>
+      getCommandEntries(ctx).find(entry => entry.id === id)?.keybind
+
+    expect(keybind(context(), 'view-sessions')).toBe('s / ctrl+x s')
+    expect(keybind(context(), 'kill-session')).toBe('d / ctrl+x d')
+    expect(keybind(context({ appMode: AppMode.AgentsManage }), 'back')).toBe('esc / ctrl+x o')
+    expect(keybind(context({ appMode: AppMode.AgentsManage }), 'open-settings')).toBe('')
+    expect(getActionKeyHint(context(), 'view-sessions')).toBe('s')
+  })
+
+  test('New offers no palette key, since its handler has none', () => {
+    for (const keybindMode of MODES) {
+      expect(
+        getActionKeyHint(context({ appMode: AppMode.NewSession, keybindMode }), 'open-commands')
+      ).toBe('')
+    }
   })
 
   test('offers the details toggle in both keybinding modes without a new direct standard key', () => {
@@ -185,7 +206,6 @@ describe('action catalog key hints', () => {
     expect(getActionKeyHint({ ...standard, appMode: AppMode.Search }, 'toggle-details')).toBe(
       'ctrl+x v'
     )
-    expect(getActionKeyHint({ ...standard, prefixKey: undefined }, 'toggle-details')).toBe('')
 
     for (const appMode of [AppMode.Normal, AppMode.AgentsManage]) {
       expect(getCommandEntries(context({ appMode })).map(entry => entry.id)).toContain(
@@ -215,7 +235,7 @@ describe('action catalog footer', () => {
 
     for (const appMode of appModes) {
       for (const keybindMode of MODES) {
-        for (const prefixKey of ['ctrl+x', undefined]) {
+        for (const prefixKey of ['ctrl+x', 'space']) {
           for (const backend of [tmux, herdr, null]) {
             for (const agentCount of [0, 2]) {
               for (const target of TARGETS) {
@@ -314,10 +334,10 @@ describe('action catalog footer', () => {
       global: [{ id: 'back', label: 'back', key: 'esc' }, COMMANDS, PREFIX],
       target: [enter('focus')],
     })
-    expect(getActionFooter(context({ prefixKey: undefined })).global.at(-1)).toEqual({
+    expect(getActionFooter(context({ prefixKey: 'space' })).global.at(-1)).toEqual({
       id: 'prefix',
-      label: 'direct keys',
-      key: '',
+      label: 'prefix',
+      key: 'space',
     })
   })
 

@@ -21,6 +21,12 @@ const DEFAULT_THEME = 'rosepine'
 const DEFAULT_COLOR_SCHEME: ThemeColorScheme = 'system'
 const DEFAULT_PREFIX_KEY = 'ctrl+x'
 
+// A loaded config always carries a prefix (an empty `prefix_key` means the default); this covers
+// the moment before the config has loaded, so key handling never has a "no prefix" state.
+export function resolvePrefixKey(config: Pick<Config, 'prefixKey'> | null): string {
+  return config?.prefixKey ?? DEFAULT_PREFIX_KEY
+}
+
 const DEFAULT_EDITOR_COMMAND =
   "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\""
 

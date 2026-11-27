@@ -57,13 +57,13 @@ export function handleAgentsManageMode(
     return
   }
 
-  if (ctx.prefixKey && matchesPrefixKey(key, ctx.prefixKey)) {
+  if (matchesPrefixKey(key, ctx.prefixKey)) {
     activatePrefix(ctx)
 
     return
   }
 
-  if (keyName === 'escape' || (!ctx.prefixKey && !isStandard && keyName === 'o')) {
+  if (keyName === 'escape') {
     ctx.setAppMode(returnMode)
 
     return
@@ -105,19 +105,5 @@ export function handleAgentsManageMode(
 
   if (!isStandard && keyName === 'v') {
     toggleDetailsPanel(ctx)
-
-    return
-  }
-
-  if (!ctx.prefixKey && !isStandard && keyName === 'r') {
-    openRenameTarget(ctx)
-
-    return
-  }
-
-  if (!ctx.prefixKey && !isStandard && keyName === ',') {
-    ctx.openSettingsModal()
-
-    return
   }
 }

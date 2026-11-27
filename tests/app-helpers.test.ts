@@ -146,7 +146,6 @@ describe('app view helpers', () => {
     const entries = getCommandEntries(
       actionContext({
         appMode: AppMode.AgentsManage,
-        prefixKey: undefined,
         agentCount: 1,
         target: getActionTarget(agent),
       })
@@ -164,7 +163,6 @@ describe('app view helpers', () => {
     const footer = getActionFooter(
       actionContext({
         appMode: AppMode.AgentsManage,
-        prefixKey: undefined,
         agentCount: 1,
         target: getActionTarget(agent),
       })

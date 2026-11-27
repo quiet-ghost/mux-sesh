@@ -8,7 +8,8 @@ Keys are written the way the footer and the command palette show them. The foote
 action before its key, such as `search i` or `commands ctrl+p`. Screen actions sit on the left
 and actions on the selected row sit on the right, next to the version. The footer lists only
 actions that are available right now, and an unavailable key says why instead of doing
-something else. Every action is also in the command palette (`ctrl+p`). While the prefix key
+something else. Every action is also in the command palette (`ctrl+p`, everywhere except the
+New screen), which lists every key of an action, such as `d / ctrl+x d`. While the prefix key
 waits for its second key, the footer shows `prefix ctrl+x …`.
 
 The action tables on this page are checked against the action catalog by the test suite.
@@ -40,12 +41,12 @@ The action tables on this page are checked against the action catalog by the tes
 | `i`              | Search                                                                |
 | `n`              | New session (the project-first launcher)                              |
 | `o`              | Agents, when agent rows are listed in the sessions view               |
-| `d`              | Close: review the selected live session, or the marked rows           |
-| `m`              | Mark or unmark the selected row for a batch close                     |
-| `v`              | Toggle details                                                        |
+| `d` / `ctrl+x d` | Close: review the selected live session, or the marked rows           |
+| `m` / `ctrl+x m` | Mark or unmark the selected row for a batch close                     |
+| `v` / `ctrl+x v` | Toggle details                                                        |
 | `ctrl+f`         | Pin or unpin the selected session (sessions view)                     |
-| `ctrl+x s`       | Show sessions                                                         |
-| `ctrl+x p`       | Show projects                                                         |
+| `s` / `ctrl+x s` | Show sessions                                                         |
+| `p` / `ctrl+x p` | Show projects                                                         |
 | `ctrl+x r`       | Rename the selected live session                                      |
 | `ctrl+x l`       | Last session (tmux only; Herdr does not track the previous workspace) |
 | `ctrl+x g`       | Root session: open the git root of the selected row                   |
@@ -59,8 +60,6 @@ Also in vim mode:
 | ---------------------- | ----------------------------- |
 | `j` / `k` or `↑` / `↓` | Move                          |
 | `1`–`9`                | Open the matching visible row |
-| `s` / `p`              | Show sessions / projects      |
-| `ctrl+x d`, `m`, `v`   | Same as `d`, `m`, `v`         |
 | `q` / `esc`            | Quit                          |
 
 ### Vim Search
@@ -98,8 +97,9 @@ is the command layer.
 | `ctrl+x shift+r` | Refresh sessions and projects                               |
 | `ctrl+p`         | Command palette                                             |
 
-Type to filter, `↑` / `↓` to move, `esc` to clear the query, and `ctrl+q` to quit. Pinning,
-themes, switching to projects, and editing a configured target are in the command palette.
+Type to filter, `↑` / `↓` to move, `esc` to clear the query, and `ctrl+q` to quit. Standard mode
+has no key for pinning, switching to projects, editing a configured target, or themes; run them
+from the command palette.
 
 ## New Session
 
@@ -140,31 +140,30 @@ offered for a live session, a typed path, or a GitHub URL. See [workflows.md](wo
 
 <!-- keys: vim agents -->
 
-| Key        | Action                                                            |
-| ---------- | ----------------------------------------------------------------- |
-| `esc`      | Back                                                              |
-| `enter`    | Focus the selected agent                                          |
-| `d`        | Close: review the selected tmux agent session, or the marked rows |
-| `m`        | Mark or unmark the selected row                                   |
-| `v`        | Toggle details                                                    |
-| `ctrl+x r` | Rename the selected tmux agent session                            |
-| `ctrl+p`   | Command palette                                                   |
+| Key                | Action                                                            |
+| ------------------ | ----------------------------------------------------------------- |
+| `esc` / `ctrl+x o` | Back                                                              |
+| `enter`            | Focus the selected agent                                          |
+| `d` / `ctrl+x d`   | Close: review the selected tmux agent session, or the marked rows |
+| `m` / `ctrl+x m`   | Mark or unmark the selected row                                   |
+| `v` / `ctrl+x v`   | Toggle details                                                    |
+| `ctrl+x r`         | Rename the selected tmux agent session                            |
+| `ctrl+p`           | Command palette                                                   |
 
 <!-- keys: standard agents -->
 
-| Key        | Action                                                            |
-| ---------- | ----------------------------------------------------------------- |
-| `esc`      | Back                                                              |
-| `enter`    | Focus the selected agent                                          |
-| `ctrl+x d` | Close: review the selected tmux agent session, or the marked rows |
-| `ctrl+x m` | Mark or unmark the selected row                                   |
-| `ctrl+x v` | Toggle details                                                    |
-| `ctrl+x r` | Rename the selected tmux agent session                            |
-| `ctrl+p`   | Command palette                                                   |
+| Key                | Action                                                            |
+| ------------------ | ----------------------------------------------------------------- |
+| `esc` / `ctrl+x o` | Back                                                              |
+| `enter`            | Focus the selected agent                                          |
+| `ctrl+x d`         | Close: review the selected tmux agent session, or the marked rows |
+| `ctrl+x m`         | Mark or unmark the selected row                                   |
+| `ctrl+x v`         | Toggle details                                                    |
+| `ctrl+x r`         | Rename the selected tmux agent session                            |
+| `ctrl+p`           | Command palette                                                   |
 
-`↑` / `↓` move (also `j` / `k` in vim mode), and `ctrl+x o` also goes back. Herdr agent rows are
-panes inside a workspace: they can be focused and inspected, but rename and close are
-unavailable and say to use Herdr instead.
+`↑` / `↓` move (also `j` / `k` in vim mode). Herdr agent rows are panes inside a workspace: they
+can be focused and inspected, but rename and close are unavailable and say to use Herdr instead.
 
 ## Dialogs
 

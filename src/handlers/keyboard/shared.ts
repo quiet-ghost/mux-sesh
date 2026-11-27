@@ -29,7 +29,7 @@ export interface KeyboardHandlerContext {
   agentCursor: number
   searchQuery: string
   actionContext: ActionContext
-  prefixKey?: string
+  prefixKey: string
   projectItems: Item[]
   sessionItems: Item[]
   prefixActive: boolean
@@ -67,7 +67,7 @@ export function getKeyName(key: KeyboardInput): string {
   return key.name ?? ''
 }
 
-export function matchesPrefixKey(key: KeyboardInput, prefixKey = 'ctrl+x'): boolean {
+export function matchesPrefixKey(key: KeyboardInput, prefixKey: string): boolean {
   const parts = prefixKey.toLowerCase().split('+')
   const keyPart = parts.at(-1) ?? prefixKey.toLowerCase()
   const expectsCtrl = parts.includes('ctrl')

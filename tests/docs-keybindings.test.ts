@@ -1,47 +1,13 @@
 import { join } from 'path'
 import { describe, expect, test } from 'bun:test'
-import { getActionKeyHint, type ActionContext, type ActionId } from '../src/app/action-catalog'
+import { getActionKeys, type ActionContext } from '../src/app/action-catalog'
 import { AppMode, ViewMode, type KeybindMode } from '../src/types'
+import { ACTION_IDS, EVERY_ACTION_LISTED } from './fixtures/action-ids'
 
 const ROOT = join(import.meta.dir, '..')
 
 // The defaults the docs are written for; prefix_key always resolves to a key, ctrl+x by default.
 const DOCUMENTED_PREFIX = 'ctrl+x'
-
-const ACTION_IDS = [
-  'search',
-  'new-session',
-  'open-settings',
-  'open-themes',
-  'view-projects',
-  'view-sessions',
-  'rename-session',
-  'kill-session',
-  'mark-target',
-  'toggle-pin-session',
-  'last-session',
-  'root-session',
-  'edit-target',
-  'open-agents',
-  'refresh',
-  'toggle-details',
-  'back',
-  'select',
-  'open-commands',
-  'new-session-name',
-  'new-session-startup',
-  'new-session-here',
-  'new-session-file',
-] as const satisfies readonly ActionId[]
-
-type UnlistedActionId = Exclude<ActionId, (typeof ACTION_IDS)[number]>
-
-const EVERY_ACTION_LISTED: [UnlistedActionId] extends [never] ? true : never = true
-
-// The New screen handles no ctrl+p, and its footer does not offer the palette.
-function isOffered(mode: AppMode, id: ActionId): boolean {
-  return !(mode === AppMode.NewSession && id === 'open-commands')
-}
 
 // Standard mode never enters Normal: it starts in, and returns to, Search.
 const REACHABLE: readonly (readonly [KeybindMode, AppMode])[] = [
@@ -135,13 +101,7 @@ function catalogKeys(keybindMode: KeybindMode, mode: AppMode): string[] {
     marked: new Map(),
   }
 
-  const keys = ACTION_IDS.flatMap(id => {
-    const key = isOffered(mode, id) ? getActionKeyHint(context, id) : ''
-
-    return key ? [key] : []
-  })
-
-  return [...new Set(keys)].sort()
+  return [...new Set(ACTION_IDS.flatMap(id => getActionKeys(context, id)))].sort()
 }
 
 const tables = [

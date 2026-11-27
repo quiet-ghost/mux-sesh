@@ -51,7 +51,8 @@ export interface ActionContext {
   appMode: AppMode
   viewMode: ViewMode
   keybindMode: KeybindMode
-  prefixKey: string | undefined
+  // Always a key: an empty or missing `prefix_key` resolves to ctrl+x.
+  prefixKey: string
   // Null until the multiplexer backend has been resolved.
   backend: ActionBackend | null
   agentCount: number
@@ -278,75 +279,72 @@ export function getActionAvailability(context: ActionContext, id: ActionId): Act
   }
 }
 
-type KeyHint = (context: ActionContext) => string
+// Every key that runs the action, the one the footer shows first.
+type KeyHint = (context: ActionContext) => readonly string[]
+
+const NO_KEYS: readonly string[] = []
 
 function prefixed(context: ActionContext, suffix: string): string {
-  return `${context.prefixKey ?? 'ctrl+x'} ${suffix}`
+  return `${context.prefixKey} ${suffix}`
+}
+
+function fixed(...keys: readonly string[]): KeyHint {
+  return () => keys
+}
+
+function prefix(suffix: string): KeyHint {
+  return context => [prefixed(context, suffix)]
 }
 
 function vimOnly(key: string): KeyHint {
-  return context => (context.keybindMode === 'vim' ? key : '')
+  return context => (context.keybindMode === 'vim' ? [key] : NO_KEYS)
 }
 
-// A direct vim key that also has a prefix binding once a prefix key is configured.
-function vimOrPrefix(key: string): KeyHint {
-  return context => {
-    if (context.keybindMode === 'vim') return key
-
-    return context.prefixKey ? prefixed(context, key) : ''
-  }
-}
-
-// Prefix commands take a direct vim key only when no prefix key is configured.
-function prefixOrVim(suffix: string, vimKey = suffix): KeyHint {
-  return context => {
-    if (context.prefixKey) return prefixed(context, suffix)
-
-    return context.keybindMode === 'vim' ? vimKey : ''
-  }
-}
-
-function fixed(key: string): KeyHint {
-  return () => key
+// A direct vim key that the prefix also reaches, in both keybinding modes.
+function vimAndPrefix(key: string): KeyHint {
+  return context =>
+    context.keybindMode === 'vim' ? [key, prefixed(context, key)] : [prefixed(context, key)]
 }
 
 function standardPrefix(suffix: string): KeyHint {
-  return context => (context.keybindMode === 'standard' ? prefixed(context, suffix) : '')
+  return context => (context.keybindMode === 'standard' ? [prefixed(context, suffix)] : NO_KEYS)
 }
 
 function standardOnly(key: string): KeyHint {
-  return context => (context.keybindMode === 'standard' ? key : '')
+  return context => (context.keybindMode === 'standard' ? [key] : NO_KEYS)
 }
 
 const KEY_HINTS: Record<AppMode, Partial<Record<ActionId, KeyHint>>> = {
   [AppMode.AgentsManage]: {
-    back: fixed('esc'),
+    back: context => ['esc', prefixed(context, 'o')],
     select: fixed('enter'),
-    'kill-session': vimOrPrefix('d'),
-    'mark-target': vimOrPrefix('m'),
-    'rename-session': prefixOrVim('r'),
-    'open-settings': context => (context.keybindMode === 'vim' && !context.prefixKey ? ',' : ''),
-    'toggle-details': vimOrPrefix('v'),
+    'kill-session': vimAndPrefix('d'),
+    'mark-target': vimAndPrefix('m'),
+    'rename-session': prefix('r'),
+    'toggle-details': vimAndPrefix('v'),
+    'open-commands': fixed('ctrl+p'),
   },
   [AppMode.Normal]: {
     select: fixed('enter'),
     search: vimOnly('i'),
     'new-session': vimOnly('n'),
     'open-agents': vimOnly('o'),
-    'kill-session': vimOrPrefix('d'),
-    'mark-target': vimOrPrefix('m'),
+    'kill-session': vimAndPrefix('d'),
+    'mark-target': vimAndPrefix('m'),
     'toggle-pin-session': fixed('ctrl+f'),
-    'view-projects': prefixOrVim('p'),
-    'view-sessions': prefixOrVim('s'),
-    'rename-session': prefixOrVim('r'),
-    'last-session': prefixOrVim('l'),
-    'root-session': prefixOrVim('g'),
-    'edit-target': prefixOrVim('e'),
-    refresh: prefixOrVim('shift+r', 'R'),
-    'toggle-details': vimOrPrefix('v'),
+    'view-projects': vimAndPrefix('p'),
+    'view-sessions': vimAndPrefix('s'),
+    'rename-session': prefix('r'),
+    'last-session': prefix('l'),
+    'root-session': prefix('g'),
+    'edit-target': prefix('e'),
+    refresh: prefix('shift+r'),
+    'toggle-details': vimAndPrefix('v'),
+    'open-commands': fixed('ctrl+p'),
   },
   [AppMode.Search]: {
     select: fixed('enter'),
+    'open-commands': fixed('ctrl+p'),
     'kill-session': standardPrefix('d'),
     'mark-target': standardPrefix('m'),
     'new-session': standardPrefix('n'),
@@ -369,10 +367,13 @@ const KEY_HINTS: Record<AppMode, Partial<Record<ActionId, KeyHint>>> = {
   },
 }
 
-export function getActionKeyHint(context: ActionContext, id: ActionId): string {
-  if (id === 'open-commands') return 'ctrl+p'
+export function getActionKeys(context: ActionContext, id: ActionId): readonly string[] {
+  return KEY_HINTS[context.appMode][id]?.(context) ?? NO_KEYS
+}
 
-  return KEY_HINTS[context.appMode][id]?.(context) ?? ''
+// The key the footer shows; empty when the action has no key in this mode.
+export function getActionKeyHint(context: ActionContext, id: ActionId): string {
+  return getActionKeys(context, id)[0] ?? ''
 }
 
 function getActionTitle(context: ActionContext, id: CommandId): string {
@@ -432,14 +433,14 @@ function getActionEntry<Id extends ActionId>(
     id,
     category,
     title,
-    keybind: getActionKeyHint(context, id),
+    keybind: getActionKeys(context, id).join(' / '),
     scope: TARGET_ACTIONS.has(id) ? 'target' : 'global',
     availability: getActionAvailability(context, id),
   }
 }
 
 export function getCommandEntries(context: ActionContext): CommandEntry[] {
-  const prefixCategory = context.prefixKey ? `Prefix ${context.prefixKey}` : 'Prefix'
+  const prefixCategory = `Prefix ${context.prefixKey}`
   const ids = context.appMode === AppMode.AgentsManage ? AGENT_PALETTE : SESSION_PALETTE
 
   return ids.map(id => {
@@ -496,9 +497,7 @@ function footerAction(context: ActionContext, id: ActionId): FooterHint[] {
 }
 
 function prefixHint(context: ActionContext): FooterHint {
-  return context.prefixKey
-    ? { id: 'prefix', label: 'prefix', key: context.prefixKey }
-    : { id: 'prefix', label: 'direct keys', key: '' }
+  return { id: 'prefix', label: 'prefix', key: context.prefixKey }
 }
 
 // What Enter does for the current frozen launch plan (New, or a Projects row), or 'apply' for an edit.
