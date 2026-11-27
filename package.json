@@ -65,6 +65,7 @@
     "@opentui/core": "0.5.17",
     "@opentui/react": "0.5.17",
     "effect": "4.0.5",
+    "fuzzysort": "4.0.2",
     "react": "19.2.8"
   },
   "devDependencies": {

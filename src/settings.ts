@@ -1,5 +1,6 @@
 import * as Schema from 'effect/Schema'
 import { normalizeConfig, serializeConfig } from './config'
+import { rankSettingsEntries, rankSettingsOptions } from './search/lists'
 import { BUILTIN_THEMES, DEFAULT_THEME_ID, SYSTEM_THEME_ID, getBuiltinTheme } from './styles/theme'
 import type { Config, KeybindMode, SortOrder, ThemeColorScheme, ZoxideMode } from './types'
 
@@ -474,29 +475,9 @@ export function getSettingEditorTitle(field: SettingsFieldId): string {
 }
 
 export function filterSettingsEntries(entries: SettingsEntry[], query: string): SettingsEntry[] {
-  const normalizedQuery = query.trim().toLowerCase()
-
-  if (!normalizedQuery) {
-    return entries
-  }
-
-  return entries.filter(entry => {
-    const haystack = `${entry.label} ${entry.value} ${entry.hint}`.toLowerCase()
-
-    return haystack.includes(normalizedQuery)
-  })
+  return rankSettingsEntries(entries, query)
 }
 
 export function filterSettingsOptions(options: SettingsOption[], query: string): SettingsOption[] {
-  const normalizedQuery = query.trim().toLowerCase()
-
-  if (!normalizedQuery) {
-    return options
-  }
-
-  return options.filter(option => {
-    const haystack = `${option.label} ${option.value} ${option.description ?? ''}`.toLowerCase()
-
-    return haystack.includes(normalizedQuery)
-  })
+  return rankSettingsOptions(options, query)
 }

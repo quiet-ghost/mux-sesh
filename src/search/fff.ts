@@ -1,7 +1,7 @@
 import { basename, join } from 'path'
 import { homedir } from 'os'
 import type { MixedSearchResult } from '@ff-labs/fff-bun'
-import { scoreSearchItems } from './index'
+import { rankItems } from './index'
 import type { Config, Item } from '../types'
 
 declare global {
@@ -174,6 +174,10 @@ export function mergeScoredItems(results: ScoredItem[][], limit: number): Item[]
     .slice(0, limit)
 }
 
+// Native results are re-ranked by the shared matcher on the same strings the rows render, so
+// local and native rows share one scale: a local row wins its path, file rows take FILE_LIFT,
+// and equal scores keep local rows first, then native order. Rows only fff matched (typos)
+// follow every matched row in native order, without highlights.
 export function combineFileSearchResults(
   fileSearchItems: Item[],
   localItems: Item[],
@@ -185,16 +189,11 @@ export function combineFileSearchResults(
 
   const localPaths = new Set(localItems.map(item => item.path))
   const newFileSearchItems = fileSearchItems.filter(item => !localPaths.has(item.path))
-  const candidates = [...localItems, ...newFileSearchItems]
+  const ranked = rankItems([...localItems, ...newFileSearchItems], query)
+  const rankedPaths = new Set(ranked.map(result => result.item.path))
+  const typoOnlyItems = newFileSearchItems.filter(item => !rankedPaths.has(item.path))
 
-  const scored = scoreSearchItems(candidates, query).sort((left, right) => right.score - left.score)
-  const scoredPaths = new Set(scored.map(result => result.item.path))
-
-  // fff matched these (typo-resistant) even though the local matcher rejected
-  // them; keep them visible at the bottom in fff ranking order.
-  const typoOnlyItems = newFileSearchItems.filter(item => !scoredPaths.has(item.path))
-
-  return [...scored.map(result => result.item), ...typoOnlyItems]
+  return [...ranked.map(result => result.item), ...typoOnlyItems]
 }
 
 export class FileSearchFailedError extends Error {

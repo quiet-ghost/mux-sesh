@@ -159,9 +159,10 @@ describe('theme picker preview', () => {
     await screen.replaceQuery('o')
     await expectPreview(screen, colorsOf('nord'), 'Nord')
 
+    // Filtered options are ranked best match first; `Shades of Purple` ranks just above `Nord`.
     await screen.pressKey('ARROW_UP')
-    const [upRow] = await highlightedRows(screen, colorsOf('nightowl'))
-    expect(upRow).toContain('Night Owl')
+    const [upRow] = await highlightedRows(screen, colorsOf('shadesofpurple'))
+    expect(upRow).toContain('Shades of Purple')
   })
 
   test('Escape from the palette restores the saved theme on the main screen', async () => {

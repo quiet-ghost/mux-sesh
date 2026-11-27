@@ -1,4 +1,11 @@
-import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type MutableRefObject,
+  type SetStateAction,
+} from 'react'
 import { useRenderer } from '@opentui/react'
 import type { TerminalColors } from '@opentui/core'
 import { checkAndUpdate, updateEvents } from '../update'
@@ -6,7 +13,7 @@ import { createAutoUpdateScheduler, type AutoUpdateScheduler } from '../update/s
 import { showTemporaryMessage, showTemporaryToast } from './notifications'
 import { useHerdrAgentPolling } from './herdr-refresh'
 import type { SessionInventory } from './session-inventory'
-import { clearMatchIndices, filterAndSortItems } from '../search'
+import { clearMatchIndices, createItemFilter, type ItemFilter } from '../search'
 import { getSessionSelectionIndex } from './data'
 import { SYSTEM_THEME_ID } from '../styles/theme'
 import { subscribeThemeFollow, type SubscribeThemeFollowOptions } from '../styles/theme-follow'
@@ -230,8 +237,12 @@ export function useSearchFiltering(
   allItems: Item[],
   setItems: Dispatch<SetStateAction<Item[]>>,
   setCursor: Dispatch<SetStateAction<number>>,
-  filterItems: typeof filterAndSortItems = filterAndSortItems
+  filterItems?: ItemFilter
 ) {
+  // Owned per hook so typing refines the previous Search result instead of rescanning.
+  const [ownFilter] = useState(() => createItemFilter())
+  const filter = filterItems ?? ownFilter
+
   useEffect(() => {
     // New-session rows belong to useLauncherQuery, which merges native file search in.
     if (appMode !== AppMode.Search) {
@@ -239,7 +250,7 @@ export function useSearchFiltering(
     }
 
     if (searchQuery.trim()) {
-      setItems(filterItems(allItems, searchQuery))
+      setItems(filter(allItems, searchQuery))
       setCursor(0)
 
       return
@@ -247,7 +258,7 @@ export function useSearchFiltering(
 
     setItems(allItems)
     setCursor(0)
-  }, [allItems, appMode, filterItems, searchQuery, setCursor, setItems])
+  }, [allItems, appMode, filter, searchQuery, setCursor, setItems])
 }
 
 interface UseAppBehaviorsOptions {

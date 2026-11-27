@@ -164,16 +164,6 @@ export interface Config {
   wildcards?: ProjectWildcard[]
 }
 
-export interface SearchResult {
-  item: Item
-  score: number
-}
-
-export interface FuzzyMatch {
-  score: number
-  indices: number[]
-}
-
 export type InstallMethod = 'npm' | 'bun' | 'brew' | 'source' | 'unknown'
 
 export type UpdateEvent =

@@ -3,7 +3,7 @@ import type { MultiplexerBackend } from '../multiplexer'
 import { isBackendFailure } from '../multiplexer/failure'
 import { getItemKey } from '../multiplexer/items'
 import { annotateProjectItemsWithSessionLinks } from '../projects/session-links'
-import { filterAndSortItems } from '../search'
+import { createItemFilter, type ItemFilter } from '../search'
 import {
   combineFileSearchResults,
   createFileSearchScope,
@@ -22,7 +22,7 @@ const FILE_SEARCH_DEBOUNCE_MS = 120
 
 export interface LauncherQueryServices {
   readonly debounceMs: number
-  readonly filterItems: (items: Item[], query: string) => Item[]
+  readonly filterItems: ItemFilter
   // Each query owner opens one scope and owns the native finders it creates.
   readonly openFileSearch: () => FileSearchScope
   // Time a synchronous native search spent on a result that was discarded as stale.
@@ -34,7 +34,8 @@ export interface LauncherQueryServices {
 
 export const LAUNCHER_QUERY_SERVICES: LauncherQueryServices = {
   debounceMs: FILE_SEARCH_DEBOUNCE_MS,
-  filterItems: filterAndSortItems,
+  // Refines only while the candidate list keeps its identity and the query extends the last one.
+  filterItems: createItemFilter(),
   openFileSearch: () => createFileSearchScope(),
   onDiscardedSearch: nativeMs => mark(`fileSearch:discarded ${nativeMs.toFixed(1)}ms`),
   loadCandidates: (config, backend) => loadSessionCandidateItems(config, measure, backend),

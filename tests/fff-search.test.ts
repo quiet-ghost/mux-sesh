@@ -201,6 +201,27 @@ describe('combined file search ranking', () => {
     expect(combined).toHaveLength(1)
     expect(combined[0]?.linkedSessionName).toBe('mux-sesh')
   })
+
+  test('ranks an equally strong project above a file and keeps native order for equal files', () => {
+    const local = [makeItem('/dev/notes', 'project')]
+    const fffItems = [makeItem('/dev/b/notes', 'file'), makeItem('/dev/a/notes', 'file')]
+
+    const combined = combineFileSearchResults(fffItems, local, 'notes')
+
+    expect(combined.map(item => item.path)).toEqual(['/dev/notes', '/dev/b/notes', '/dev/a/notes'])
+  })
+
+  test('ranks a strong file match above a weak local match', () => {
+    const local = [makeItem('/dev/the-big-old-notebook', 'project')]
+    const fffItems = [makeItem('/dev/lib/tbon.ts', 'file')]
+
+    const combined = combineFileSearchResults(fffItems, local, 'tbon')
+
+    expect(combined.map(item => item.path)).toEqual([
+      '/dev/lib/tbon.ts',
+      '/dev/the-big-old-notebook',
+    ])
+  })
 })
 
 const config = getDefaultConfig('/fixture')

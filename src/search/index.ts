@@ -1,5 +1,56 @@
 import { basename } from 'path'
-import type { FuzzyMatch, Item, SearchMatchMetadata, SearchResult } from '../types'
+import type { Item, SearchMatchMetadata } from '../types'
+import {
+  createSearchSchema,
+  createSearchSession,
+  rankValues,
+  type PrepareTarget,
+  type SearchHit,
+  type SearchKey,
+  type SearchRanking,
+  type SearchSchema,
+  type SearchTier,
+} from './matcher'
+
+// Title ×1, path basename ×0.75 (only when it differs from the title), context ×0.25.
+// Positions come back in this key order; the title and context are the strings the lists render.
+const TITLE_KEY = 0
+const CONTEXT_KEY = 2
+
+const ITEM_KEYS: readonly SearchKey<Item>[] = [
+  { role: 'name', weight: 1, text: item => item.title },
+  {
+    role: 'name',
+    weight: 0.75,
+    text: item => {
+      const name = basename(item.path)
+
+      return name === item.title ? '' : name
+    },
+  },
+  { role: 'context', weight: 0.25, text: item => item.desc },
+]
+
+export const PINNED_LIFT = 1.15
+export const LIVE_LIFT = 1.05
+export const ATTACHED_LIFT = 1.05
+
+// A native file result loses an equal match to a project or session.
+export const FILE_LIFT = 0.9
+
+function itemLift(item: Item): number {
+  const live = item.isSession || item.linkedSessionName !== undefined
+  const attached = item.isAttached === true || item.linkedSessionAttached === true
+
+  return (
+    (item.isPinned ? PINNED_LIFT : 1) *
+    (live ? LIVE_LIFT : 1) *
+    (attached ? ATTACHED_LIFT : 1) *
+    (item.itemKind === 'file' ? FILE_LIFT : 1)
+  )
+}
+
+const ITEM_SCHEMA = createSearchSchema(ITEM_KEYS)
 
 function withSearchMatch(item: Item, searchMatch?: SearchMatchMetadata): Item {
   if (!searchMatch || (!searchMatch.titleIndices && !searchMatch.descIndices)) {
@@ -18,195 +69,81 @@ function withSearchMatch(item: Item, searchMatch?: SearchMatchMetadata): Item {
   }
 }
 
-/**
- * Performs fuzzy matching and returns match positions and score
- * Similar to fzf/telescope matching algorithm
- */
-export function fuzzyMatch(text: string, query: string): FuzzyMatch | null {
-  if (!query) return { score: 0, indices: [] }
-
-  const textLower = text.toLowerCase()
-  const queryLower = query.toLowerCase()
-
-  const indices: number[] = []
-  let textIndex = 0
-  let queryIndex = 0
-
-  while (queryIndex < queryLower.length && textIndex < textLower.length) {
-    if (textLower[textIndex] === queryLower[queryIndex]) {
-      indices.push(textIndex)
-      queryIndex++
-    }
-
-    textIndex++
-  }
-
-  if (queryIndex !== queryLower.length) {
-    return null
-  }
-
-  let score = 100
-
-  if (text.toLowerCase() === query.toLowerCase()) {
-    score += 10000
-  }
-
-  if (indices[0] === 0) {
-    score += 1000
-  }
-
-  let consecutiveBonus = 0
-
-  for (let i = 1; i < indices.length; i++) {
-    if (indices[i] === indices[i - 1] + 1) {
-      consecutiveBonus += 50
-    }
-  }
-
-  score += consecutiveBonus
-
-  let boundaryBonus = 0
-
-  for (const idx of indices) {
-    if (idx > 0) {
-      const prevChar = text[idx - 1]
-
-      if (['-', '_', '.', ' ', '/'].includes(prevChar)) {
-        boundaryBonus += 30
-      }
-    }
-  }
-
-  score += boundaryBonus
-
-  let caseBonus = 0
-
-  for (let index = 0; index < indices.length; index += 1) {
-    if (text[indices[index]] === query[index]) {
-      caseBonus += 10
-    }
-  }
-
-  score += caseBonus
-
-  const firstMatchPos = indices[0]
-  score -= firstMatchPos * 5
-  score -= text.length * 2
-
-  const matchPercentage = indices.length / text.length
-  score += matchPercentage * 100
-
-  return { score, indices }
+export interface RankedItem {
+  readonly item: Item
+  readonly tier: SearchTier
+  readonly score: number
 }
 
-interface ScoredSearchResult extends SearchResult {
-  item: Item
+function toRankedItem(schema: SearchSchema<Item>, hit: SearchHit<Item>): RankedItem {
+  const title = hit.positions[TITLE_KEY] ?? []
+  const context = hit.positions[CONTEXT_KEY] ?? []
+
+  const searchMatch: SearchMatchMetadata = {}
+
+  if (title.length > 0) searchMatch.titleIndices = [...title]
+
+  if (context.length > 0) searchMatch.descIndices = [...context]
+
+  const item = withSearchMatch(hit.value, searchMatch)
+
+  schema.share(item, hit.value)
+
+  return { item, tier: hit.tier, score: hit.score }
 }
 
-function calculateItemBonus(item: Item, query: string): number {
-  const normalizedQuery = query.toLowerCase()
-  const title = item.title.toLowerCase()
-  const pathBaseName = basename(item.path).toLowerCase()
-  const description = item.desc.toLowerCase()
-
-  let bonus = 0
-
-  if (title === normalizedQuery || pathBaseName === normalizedQuery) {
-    bonus += 5000
-  } else if (title.startsWith(normalizedQuery) || pathBaseName.startsWith(normalizedQuery)) {
-    bonus += 1200
-  }
-
-  if (
-    item.path.toLowerCase().endsWith(`/${normalizedQuery}`) ||
-    description.endsWith(`/${normalizedQuery}`)
-  ) {
-    bonus += 2000
-  }
-
-  if (!item.isSession) {
-    const depth = item.path.split('/').filter(Boolean).length
-    bonus -= depth * 2
-  }
-
-  if (item.isPinned) {
-    bonus += 50000
-  }
-
-  return bonus
+export interface ItemSearchOptions {
+  // Frecency hook: a per-item boost ≥ 0 applied as `score × (1 + boost)`.
+  readonly boost?: (item: Item) => number
+  // Test seam: counts or replaces how searchable strings are prepared.
+  readonly prepare?: PrepareTarget
 }
 
-function buildSearchResult(item: Item, query: string): ScoredSearchResult | null {
-  const queryTrimmed = query.trim()
+function itemRanking(options: ItemSearchOptions): SearchRanking<Item> {
+  return options.boost ? { lift: itemLift, boost: options.boost } : { lift: itemLift }
+}
 
-  if (queryTrimmed === '') {
-    return {
-      item: withSearchMatch(item),
-      score: 1,
-    }
-  }
-
-  let bestScore = 0
-  let hasMatch = false
-  let searchMatch: SearchMatchMetadata | undefined
-
-  const titleMatch = fuzzyMatch(item.title, queryTrimmed)
-
-  if (titleMatch && titleMatch.score > 0) {
-    searchMatch = {
-      ...searchMatch,
-      titleIndices: titleMatch.indices,
-    }
-    bestScore = Math.max(bestScore, titleMatch.score)
-    hasMatch = true
-  }
-
-  if (item.desc) {
-    const descMatch = fuzzyMatch(item.desc, queryTrimmed)
-
-    if (descMatch && descMatch.score > 0) {
-      searchMatch = {
-        ...searchMatch,
-        descIndices: descMatch.indices,
-      }
-      bestScore = Math.max(bestScore, descMatch.score * 0.8)
-      hasMatch = true
-    }
-  }
-
-  if (!hasMatch) {
-    return null
-  }
-
-  return {
-    item: withSearchMatch(item, searchMatch),
-    score: bestScore + calculateItemBonus(item, queryTrimmed),
-  }
+function itemSchema(options: ItemSearchOptions): SearchSchema<Item> {
+  return options.prepare ? createSearchSchema(ITEM_KEYS, options.prepare) : ITEM_SCHEMA
 }
 
 export function clearMatchIndices(items: Item[]): Item[] {
   return items.map(item => withSearchMatch(item))
 }
 
-export function scoreSearchItems(items: Item[], query: string): SearchResult[] {
-  return items.flatMap(item => {
-    const result = buildSearchResult(item, query)
+// Best match first, one flat list; each row keeps its kind and section fields.
+export function rankItems(
+  items: Item[],
+  query: string,
+  options: ItemSearchOptions = {}
+): RankedItem[] {
+  const schema = itemSchema(options)
 
-    return result ? [result] : []
-  })
+  return rankValues(schema, items, query, itemRanking(options)).map(hit =>
+    toRankedItem(schema, hit)
+  )
 }
+
+export type ItemFilter = (items: Item[], query: string) => Item[]
 
 export function filterAndSortItems(items: Item[], query: string): Item[] {
   if (!query.trim()) {
     return clearMatchIndices(items)
   }
 
-  return items
-    .flatMap(item => {
-      const result = buildSearchResult(item, query)
+  return rankItems(items, query).map(ranked => ranked.item)
+}
 
-      return result ? [result] : []
-    })
-    .sort((a, b) => b.score - a.score)
-    .map(({ item }) => item)
+// A filter that refines its previous result while the source list stays the same and the query grows.
+export function createItemFilter(options: ItemSearchOptions = {}): ItemFilter {
+  const schema = itemSchema(options)
+  const session = createSearchSession(schema, itemRanking(options))
+
+  return (items, query) => {
+    const hits = session.search(items, query)
+
+    if (!query.trim()) return clearMatchIndices(items)
+
+    return hits.map(hit => toRankedItem(schema, hit).item)
+  }
 }

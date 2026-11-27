@@ -1,5 +1,6 @@
 import type { TextareaRenderable } from '@opentui/core'
 import type { CommandEntry } from '../app/action-catalog'
+import { rankCommandEntries } from '../search/lists'
 import { useTheme } from '../styles/theme'
 import { useTextareaFocus } from './use-textarea-focus'
 import {
@@ -43,18 +44,7 @@ interface Props {
 }
 
 export function filterCommandEntries(entries: CommandEntry[], query: string): CommandEntry[] {
-  const normalizedQuery = query.trim().toLowerCase()
-
-  if (!normalizedQuery) {
-    return entries
-  }
-
-  return entries.filter(entry => {
-    const haystack =
-      `${entry.category} ${entry.title} ${entry.keybind} ${entry.keywords ?? ''}`.toLowerCase()
-
-    return haystack.includes(normalizedQuery)
-  })
+  return rankCommandEntries(entries, query)
 }
 
 export function getCommandEntryKey(entry: CommandEntry): string {
