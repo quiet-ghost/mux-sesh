@@ -5,7 +5,7 @@ import { MultiplexerError } from '../src/multiplexer/types'
 import type { Item, KeybindMode } from '../src/types'
 import { footerGroups, hints } from './fixtures/footer'
 import { renderSessionScreen } from './fixtures/session-screen'
-import { selectedRow } from './fixtures/selection'
+import { listRow, selectedRowText } from './fixtures/selection'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -155,7 +155,7 @@ describe('project-first New', () => {
     expect(frame).toContain('Type a project name, path, or GitHub URL...')
     expect(frame).not.toContain('custom session name')
     expect(frame).toContain("Create 'api' in /fixture/api")
-    expect(frame).toMatch(selectedRow('  api\\s+create'))
+    expect(await selectedRowText(screen)).toMatch(listRow('  api\\s+create'))
   })
 
   test('a project with a live workspace in the same directory is focused, not created', async () => {
@@ -169,7 +169,7 @@ describe('project-first New', () => {
 
     const frame = await screen.frame()
     expect(frame).toContain("Focus existing 'alpha' in /fixture/alpha")
-    expect(frame).toMatch(selectedRow('  alpha\\s+focus'))
+    expect(await selectedRowText(screen)).toMatch(listRow('  alpha\\s+focus'))
     expect(footerOf(frame)).toEqual(newFooter('focus'))
 
     await screen.pressKey('RETURN')

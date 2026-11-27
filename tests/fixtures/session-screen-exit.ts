@@ -1,7 +1,7 @@
 import { writeSync } from 'fs'
 import { initializeShutdown } from '../../src/util/shutdown'
 import { renderSessionScreen } from './session-screen'
-import { selectedRow } from './selection'
+import { listRow, selectedRowText } from './selection'
 
 const key = process.argv[2]
 
@@ -31,7 +31,7 @@ process.once('exit', exitCode => {
 
 try {
   await screen.pressKey('ARROW_DOWN')
-  selectedBeta = selectedRow('.*beta').test(await screen.frame())
+  selectedBeta = listRow('.*beta').test(await selectedRowText(screen))
   await screen.pressKey(key)
   throw new Error('Session-screen keyboard action did not exit the fixture process')
 } finally {

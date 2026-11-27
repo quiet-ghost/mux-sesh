@@ -9,7 +9,7 @@ import { resolveTheme, type ThemeResolver } from '../src/styles/theme'
 import type { ThemeColors } from '../src/types'
 import type { SubscribeThemeFollowOptions } from '../src/styles/theme-follow'
 import { renderSessionScreen } from './fixtures/session-screen'
-import { selectedRow } from './fixtures/selection'
+import { listRow, selectedRowText } from './fixtures/selection'
 
 const omarchyFixtureDir = join(import.meta.dir, 'fixtures', 'omarchy')
 
@@ -130,7 +130,7 @@ describe('live theme palette', () => {
     await screen.typeText('a')
     await screen.pressKey('ARROW_DOWN')
 
-    expect(await screen.frame()).toMatch(selectedRow('.*beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*beta'))
     expect(resolutions.count()).toBe(mounted)
   })
 
@@ -146,7 +146,7 @@ describe('live theme palette', () => {
     await screen.pressKey('i')
     await screen.typeText('a')
     await screen.pressKey('ARROW_DOWN')
-    expect(await screen.frame()).toMatch(selectedRow('.*beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*beta'))
     const beforeRefresh = resolutions.count()
 
     await writeOmarchyColors(homeDir, 'catppuccin.toml')
@@ -159,7 +159,7 @@ describe('live theme palette', () => {
     const input = screen.renderer.currentFocusedRenderable
 
     if (!(input instanceof TextareaRenderable)) throw new Error('Search textarea lost focus')
-    expect(await screen.frame()).toMatch(selectedRow('.*beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*beta'))
     expect(input.plainText).toBe('a')
     expect(resolutions.count()).toBe(beforeRefresh + 1)
     expectPainted(screen, await omarchyColors('catppuccin.toml'))

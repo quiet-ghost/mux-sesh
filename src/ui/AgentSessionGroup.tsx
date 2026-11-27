@@ -2,7 +2,7 @@ import { useTheme } from '../styles/theme'
 import type { IconConfig, Item } from '../types'
 import { formatSectionHeader } from './item-icon'
 import { getItemKey } from '../multiplexer/items'
-import { markedMeta, rowBackground, rowForeground, rowGutter, rowMarker } from './row-mark'
+import { markedMeta, rowBackground, rowForeground, rowMarker } from './row-mark'
 import { getSessionMeta } from './session-meta'
 import type { VisibleWindow } from './list-window'
 import { fitListRow, getTitleColumnWidth } from './session-viewport'
@@ -17,7 +17,7 @@ interface Props {
   marked?: ReadonlyMap<string, Item>
 }
 
-const AGENT_ROW_PREFIX_COLUMNS = 4
+const AGENT_ROW_PREFIX_COLUMNS = 3
 
 function getAgentContext(item: Item): string {
   return item.workspaceTitle ?? item.desc
@@ -71,7 +71,6 @@ export default function AgentSessionGroup({
             }}
           >
             <text style={{ wrapMode: 'none' }}>
-              <span style={{ fg: theme.primary, bg: theme.surface }}>{rowGutter(selected)}</span>
               <span style={{ fg: rowForeground(theme, selected, theme.danger) }}>
                 {rowMarker(isMarked)}
               </span>

@@ -4,7 +4,7 @@ import type { LiveWorkspace } from '../src/multiplexer'
 import { resolveTheme } from '../src/styles/theme'
 import type { KeybindMode, ThemeColors } from '../src/types'
 import { renderSessionScreen } from './fixtures/session-screen'
-import { cellsOf, sameColor, SELECTION_BAR, selectedLines, type Cell } from './fixtures/selection'
+import { cellsOf, listRow, sameColor, selectedRowText, type Cell } from './fixtures/selection'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -100,9 +100,9 @@ describe('search results use the main list rows', () => {
     const frame = await screen.frame()
 
     expect(frame).not.toContain('(1)')
-    expect(frame).toMatch(/┃ {2}○ dotfiles {5}~/)
-    expect(frame).toMatch(/^ {4}● api-gateway {2}dev/m)
-    expect(frame).toMatch(/^ {4}○ blog {9}dev/m)
+    expect(await selectedRowText(screen)).toMatch(listRow('○ dotfiles {5}~'))
+    expect(frame).toMatch(/^ {3}● api-gateway {2}dev/m)
+    expect(frame).toMatch(/^ {3}○ blog {9}dev/m)
     // Flat: no section headers while searching.
     expect(frame).not.toMatch(/^ (Pinned|Configured|Live)\s*$/m)
   })
@@ -112,9 +112,8 @@ describe('search results use the main list rows', () => {
     await screen.replaceQuery('mx')
     const frame = await screen.frame()
 
-    expect(selectedLines(frame)).toHaveLength(1)
-    expect(frame).toMatch(/┃ {2}○ mixer {5}dev/)
-    expect(frame).toMatch(/^ {4}○ mux-sesh {2}an-extremely-long-parent/m)
+    expect(await selectedRowText(screen)).toMatch(listRow('○ mixer {5}dev'))
+    expect(frame).toMatch(/^ {3}○ mux-sesh {2}an-extremely-long-parent/m)
   })
 
   test('arrow keys follow screen order', async () => {
@@ -124,11 +123,7 @@ describe('search results use the main list rows', () => {
 
     await screen.pressKey('ARROW_DOWN')
     await screen.pressKey('ARROW_DOWN')
-    const after = lines(await screen.frame())
-    const selected = selectedLines(after.join('\n'))
-
-    expect(selected).toHaveLength(1)
-    expect(selected[0]?.slice(2)).toBe(before[2]?.slice(2))
+    expect(before[2]?.trimEnd()).toEndWith(await selectedRowText(screen))
   })
 })
 
@@ -150,7 +145,7 @@ describe('search results stay windowed', () => {
     const listed = rows.filter(line => / ○ w\d\d /.test(line))
 
     expect(listed).toHaveLength(HEIGHT - 5)
-    expect(selectedLines(rows.join('\n'))[0]).toContain('w26')
+    expect(await selectedRowText(screen)).toContain('w26')
     expect(rows[HEIGHT - 1]).toContain('cancel esc')
     expect(rows[2]).toMatch(/30 of 30 {2}$/)
   })
@@ -164,7 +159,8 @@ describe('search input', () => {
     expect(rows[2]).toMatch(/^ {2}› Type to search\.\.\. +7 {2}$/)
     // The input is one row, then a gap, then the list.
     expect(rows[3]?.trim()).toBe('')
-    expect(rows[4]).toContain(SELECTION_BAR)
+    // The selected first result.
+    expect(rows[4]?.trimEnd()).toEndWith(await selectedRowText(screen))
 
     const input = await rowCells(screen, 'Type to search')
     const glyph = cellsFor(input, '›')[0]

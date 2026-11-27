@@ -2,7 +2,7 @@ import { TextareaRenderable, type TerminalColors } from '@opentui/core'
 import type { TestRendererOptions, TestRendererSetup } from '@opentui/core/testing'
 import { useRenderer } from '@opentui/react'
 import { testRender } from '@opentui/react/test-utils'
-import { act, useCallback, useEffect, useState } from 'react'
+import { act, useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { executeCommand as executeAppCommand } from '../../src/app/commands'
 import { createAppControls } from '../../src/app/controls'
 import { useAppCoreState } from '../../src/app/core-state'
@@ -48,7 +48,13 @@ import type { CloneServices } from '../../src/sessions/clone-plan'
 import { getSettingEditorTitle, isOptionSetting } from '../../src/settings'
 import { resolveTheme, ThemeProvider, type ThemeResolver } from '../../src/styles/theme'
 import type { SubscribeThemeFollowOptions } from '../../src/styles/theme-follow'
-import { AppMode, type Config, type Item, type KeybindMode } from '../../src/types'
+import {
+  AppMode,
+  type Config,
+  type Item,
+  type KeybindMode,
+  type ThemeColors,
+} from '../../src/types'
 import { useLaunchPreview } from '../../src/ui/launch-preview'
 import {
   BusyContext,
@@ -68,6 +74,8 @@ interface SessionScreenHarness {
   defects: unknown[]
   frame(): Promise<string>
   captureSpans: TestRendererSetup['captureSpans']
+  // The colors of the theme the screen last rendered with, including a previewed theme.
+  colors(): ThemeColors
   pressKey(...args: Parameters<TestRendererSetup['mockInput']['pressKey']>): Promise<void>
   typeText(text: string): Promise<void>
   replaceQuery(text: string): Promise<void>
@@ -101,6 +109,7 @@ interface SessionFixture {
 
 interface FixtureHandle {
   refresh?: () => Promise<void>
+  colors?: ThemeColors
 }
 
 interface SessionScreenData {
@@ -188,6 +197,10 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
   )
 
   const theme = resolvedTheme.colors
+
+  useLayoutEffect(() => {
+    fixture.handle.colors = theme
+  }, [fixture.handle, theme])
 
   const derived = getSessionCommandState(
     core.appMode,
@@ -633,6 +646,11 @@ export async function renderSessionScreen(
     defects,
     frame,
     captureSpans: setup.captureSpans,
+    colors(): ThemeColors {
+      if (!handle.colors) throw new Error('Session-screen fixture has not rendered a theme yet')
+
+      return handle.colors
+    },
     async pressKey(...args: Parameters<typeof setup.mockInput.pressKey>): Promise<void> {
       await act(async () => setup.mockInput.pressKey(...args))
     },

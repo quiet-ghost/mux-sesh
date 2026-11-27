@@ -7,10 +7,10 @@ import { renderSessionScreen } from './fixtures/session-screen'
 import {
   cellsOf,
   contrastRatio,
+  listRow,
   sameColor,
-  SELECTION_BAR,
-  selectedLines,
-  selectedRow,
+  selectedRows,
+  selectedRowText,
   type Cell,
 } from './fixtures/selection'
 
@@ -74,13 +74,16 @@ async function lineWith(fixture: Screen, text: string): Promise<CapturedLine> {
   return line
 }
 
-function barColumn(cells: Cell[]): number {
-  return cells.findIndex(cell => cell.char === SELECTION_BAR)
+// The list's first column is its padding; every row starts on the next one.
+const ROW_START = 1
+
+function highlightedCells(cells: Cell[], colors: ThemeColors): Cell[] {
+  return cells.filter(cell => sameColor(cell.bg, colors.selection))
 }
 
 describe('selected session row', () => {
   test.each(THEMES)(
-    'shows an accent bar and a full-width readable highlight ($theme $colorScheme)',
+    'shows a full-width readable highlight and no bar ($theme $colorScheme)',
     async ({ theme, colorScheme }) => {
       const colors = colorsOf(theme, colorScheme)
       screen = await renderSessionScreen(
@@ -91,35 +94,29 @@ describe('selected session row', () => {
 
       const frame = await screen.frame()
       expect(frame).not.toContain('›')
-      expect(selectedLines(frame)).toHaveLength(1)
-      expect(frame).toMatch(selectedRow('○ beta'))
+      expect(frame).not.toContain('┃')
+      expect(await selectedRowText(screen)).toMatch(listRow('○ beta {5}projects$'))
+      expect(frame).toMatch(/^ {3}● alpha {4}projects\s/m)
+      expect(frame).toMatch(/^ {3}○ charlie {2}projects\s/m)
 
       const cells = cellsOf(await lineWith(screen, 'beta'))
-      const bar = barColumn(cells)
-      const barCell = cells[bar]
 
-      if (!barCell) throw new Error('The selected row has no accent bar')
+      // The highlight runs from the row's first cell to the list's right edge, on the panel.
+      expect(sameColor(cells[0]?.bg ?? colors.selection, colors.surface)).toBe(true)
+      const row = cells.slice(ROW_START, WIDTH - 1)
+      expect(row.every(cell => sameColor(cell.bg, colors.selection))).toBe(true)
+      expect(highlightedCells(cells, colors)).toHaveLength(row.length)
 
-      // The bar sits in the gutter on the panel, outside the highlight.
-      expect(sameColor(barCell.fg, colors.primary)).toBe(true)
-      expect(sameColor(barCell.bg, colors.surface)).toBe(true)
-
-      // The highlight runs from the gutter to the list's right edge.
-      const highlighted = cells.slice(bar + 1, WIDTH - 1)
-      expect(highlighted.every(cell => sameColor(cell.bg, colors.selection))).toBe(true)
-
-      const title = cells.find((cell, index) => index > bar && cell.char === 'b')
+      const title = cells.find(cell => cell.char === 'b')
 
       if (!title) throw new Error('The selected row title was not rendered')
       expect(sameColor(title.fg, colors.selectionText)).toBe(true)
 
-      // Text on the highlight meets WCAG AA; the bar meets the 3:1 non-text minimum on the panel.
+      // Text on the highlight meets WCAG AA.
       expect(contrastRatio(colors.selectionText, colors.selection)).toBeGreaterThanOrEqual(4.5)
-      expect(contrastRatio(colors.primary, colors.surface)).toBeGreaterThanOrEqual(3)
 
-      // Rows that are not selected keep the panel background and no bar.
+      // Rows that are not selected keep the panel background.
       const other = cellsOf(await lineWith(screen, 'charlie'))
-      expect(barColumn(other)).toBe(-1)
       expect(other.every(cell => sameColor(cell.bg, colors.surface))).toBe(true)
     }
   )
@@ -133,20 +130,25 @@ describe('selected session row', () => {
     await screen.pressKey('k')
 
     const frame = await screen.frame()
-    expect(selectedLines(frame)).toHaveLength(1)
-    expect(frame).toMatch(/^ {2}\* ○ charlie .*marked/m)
-    expect(frame).toMatch(selectedRow('○ beta'))
+    expect(frame).toMatch(/^ \* ○ charlie .*marked/m)
+    expect(await selectedRowText(screen)).toMatch(listRow('○ beta'))
 
     const marked = cellsOf(await lineWith(screen, 'charlie'))
-    expect(barColumn(marked)).toBe(-1)
-    expect(marked.slice(2, WIDTH - 1).every(cell => sameColor(cell.bg, colors.dangerSurface))).toBe(
-      true
-    )
+    expect(
+      marked.slice(ROW_START, WIDTH - 1).every(cell => sameColor(cell.bg, colors.dangerSurface))
+    ).toBe(true)
 
     await screen.pressKey('m')
-    const both = await screen.frame()
-    expect(selectedLines(both)).toHaveLength(1)
-    expect(both).toMatch(/┃\* ○ beta .*marked/)
+    expect(await selectedRowText(screen)).toMatch(/^\* ○ beta .*marked/)
+
+    // The marker stays readable on the highlight.
+    const both = cellsOf(await lineWith(screen, 'beta'))
+    const marker = both[ROW_START]
+
+    if (!marker) throw new Error('The selected marked row was not rendered')
+    expect(marker.char).toBe('*')
+    expect(sameColor(marker.fg, colors.selectionText)).toBe(true)
+    expect(sameColor(marker.bg, colors.selection)).toBe(true)
   })
 
   test('search matches stay visible on the highlight', async () => {
@@ -155,7 +157,7 @@ describe('selected session row', () => {
     await screen.pressKey('i')
     await screen.typeText('bt')
 
-    expect(await screen.frame()).toMatch(selectedRow('○ beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('○ beta'))
 
     const cells = cellsOf(await lineWith(screen, 'beta'))
 
@@ -175,7 +177,7 @@ describe('selected session row', () => {
 })
 
 describe('selected agent row', () => {
-  test('uses the same accent bar in the agents section', async () => {
+  test('uses the same highlight, and no bar, in the agents section', async () => {
     const host: LiveWorkspace = {
       backend: 'herdr',
       id: 'ws-1',
@@ -203,15 +205,15 @@ describe('selected agent row', () => {
     )
     await screen.pressKey('o')
 
-    const frame = await screen.frame()
-    expect(selectedLines(frame)).toHaveLength(1)
-    expect(frame).toMatch(selectedRow('○ agent-one'))
+    expect(await selectedRowText(screen)).toMatch(listRow('○ agent-one {2}ws-1 +working$'))
+    expect(await screen.frame()).not.toContain('┃')
+    expect(await screen.frame()).toMatch(/^ {3}○ ws-1/m)
   })
 })
 
 describe('selected dialog row', () => {
   test.each(THEMES)(
-    'palette rows show the bar beside a readable highlight ($theme $colorScheme)',
+    'palette rows show a readable highlight and no bar ($theme $colorScheme)',
     async ({ theme, colorScheme }) => {
       const colors = colorsOf(theme, colorScheme)
       screen = await renderSessionScreen(
@@ -222,21 +224,34 @@ describe('selected dialog row', () => {
       await screen.pressKey('ARROW_DOWN')
 
       const frame = await screen.frame()
-      const dialogBars = selectedLines(frame).filter(line => line.includes('New session'))
-      expect(dialogBars).toHaveLength(1)
-      expect(frame).toMatch(/┃ {2}New session/)
+      expect(frame).not.toContain('┃')
+
+      const dialogRows = (await selectedRows(screen)).filter(row => row.includes('New session'))
+      expect(dialogRows).toHaveLength(1)
+      expect(dialogRows[0]).toMatch(/^ {2}New session +n$/)
+
+      // Unselected rows line up with the selected one: the mark cell, a space, the label.
+      const search = frame.split('\n').find(line => /\s{3}Search\s+i\s/.test(line)) ?? ''
+      const selected = frame.split('\n').find(line => line.includes('New session')) ?? ''
+      expect(search.indexOf('Search')).toBe(selected.indexOf('New session'))
 
       const cells = cellsOf(await lineWith(screen, 'New session'))
-      const bar = cells.findIndex((cell, index) => cell.char === SELECTION_BAR && index > 4)
-      const barCell = cells[bar]
-      const labelCell = cells[bar + 1]
 
-      if (!barCell || !labelCell) throw new Error('The selected dialog row has no accent bar')
+      const label = cells.findIndex(
+        (cell, index) => cell.char === 'N' && cells[index + 1]?.char === 'e'
+      )
 
-      expect(sameColor(barCell.fg, colors.primary)).toBe(true)
-      expect(sameColor(barCell.bg, colors.surfaceModal)).toBe(true)
-      expect(sameColor(labelCell.bg, colors.selection)).toBe(true)
-      expect(contrastRatio(colors.primary, colors.surfaceModal)).toBeGreaterThanOrEqual(3)
+      const rowStart = label - 2
+      const before = cells[rowStart - 1]
+
+      if (!before) throw new Error('The selected dialog row was not rendered')
+
+      // The highlight starts at the row's first cell, right after the dialog's inset.
+      expect(sameColor(before.bg, colors.surfaceModal)).toBe(true)
+      expect(
+        cells.slice(rowStart, label + 11).every(cell => sameColor(cell.bg, colors.selection))
+      ).toBe(true)
+      expect(sameColor(cells[label]?.fg ?? colors.text, colors.selectionText)).toBe(true)
     }
   )
 })

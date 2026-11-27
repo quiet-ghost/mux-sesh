@@ -9,7 +9,7 @@ import type { CommandOptions } from '../src/multiplexer/command'
 import { MultiplexerError } from '../src/multiplexer/types'
 import type { KeybindMode } from '../src/types'
 import { renderSessionScreen } from './fixtures/session-screen'
-import { selectedRow } from './fixtures/selection'
+import { listRow, selectedRowText } from './fixtures/selection'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -118,7 +118,7 @@ describe('details stay compact during routine navigation', () => {
     for (const key of ['ARROW_DOWN', 'ARROW_UP', 'ARROW_DOWN'] as const) await move(screen, key)
 
     const frame = await screen.frame()
-    expect(frame).toMatch(selectedRow('.*beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*beta'))
     expect(frame).toContain('Status inactive')
     expect(frame).toContain('Toggle details')
     expect(screen.calls).toEqual([{ operation: 'list' }])
@@ -169,7 +169,7 @@ describe('inspecting details on request', () => {
     await screen.settle()
 
     const frame = await screen.frame()
-    expect(frame).toMatch(selectedRow('.*beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*beta'))
     expect(frame).toContain('beta-window')
     expect(frame).not.toContain('alpha-window')
   })
@@ -205,7 +205,7 @@ describe('inspecting details on request', () => {
     await screen.settle()
 
     const frame = await screen.frame()
-    expect(frame).toMatch(selectedRow('.*alpha'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*alpha'))
     expect(frame).toContain('first')
     expect(frame).toContain('Stale')
     expect(frame).toContain('fixture server stopped')
@@ -221,7 +221,7 @@ describe('inspecting details on request', () => {
 
     expect(await screen.frame()).toContain('fixture capture failed')
     await move(screen, 'ARROW_DOWN')
-    expect(await screen.frame()).toMatch(selectedRow('.*beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*beta'))
     expect(deferred.reads.map(read => read.id)).toEqual(['alpha', 'beta'])
   })
 

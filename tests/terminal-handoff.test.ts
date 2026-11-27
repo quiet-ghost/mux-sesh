@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { chmod, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import { RGBA } from '@opentui/core'
+import { getDefaultConfig } from '../src/config'
 import { createCommandRunner } from '../src/multiplexer/command'
-import { SELECTION_BAR } from './fixtures/selection'
+import { resolveTheme } from '../src/styles/theme'
 
 // Runs the real entry point in real pseudo-terminals, so it stays opt-in:
 //   MUX_SESH_TERMINAL_TESTS=1 bun test tests/terminal-handoff.test.ts
@@ -161,14 +163,129 @@ async function waitForScreen(text: string): Promise<void> {
   await waitFor(`'${text}' on the host screen`, async () => (await hostScreen()).includes(text))
 }
 
+// The host screen with its SGR escapes, so row backgrounds can be read.
+function hostStyledScreen(): Promise<string> {
+  return harness().host('capture-pane', '-p', '-e', '-t', 'host')
+}
+
+interface ScreenCell {
+  char: string
+  bg: string
+}
+
+// Background-setting SGR parameters; every other parameter leaves the background alone.
+function applySgr(params: number[], bg: string): string {
+  let current = bg
+
+  for (let index = 0; index < params.length; index++) {
+    const param = params[index] ?? 0
+
+    if (param === 0 || param === 49) current = 'default'
+    else if ((param >= 40 && param <= 47) || (param >= 100 && param <= 107)) current = `${param}`
+    else if (param === 38 || param === 48) {
+      const mode = params[index + 1]
+      const width = mode === 2 ? 3 : mode === 5 ? 1 : 0
+      const color = params.slice(index + 2, index + 2 + width).join(';')
+
+      if (param === 48) current = `${mode}:${color}`
+      index += 1 + width
+    }
+  }
+
+  return current
+}
+
+const CSI = '\u001b['
+
+// `capture-pane -e` output as rows of cells, each with the background it is drawn on.
+function parseStyledScreen(screen: string): ScreenCell[][] {
+  const rows: ScreenCell[][] = [[]]
+  let bg = 'default'
+  let index = 0
+
+  while (index < screen.length) {
+    const char = screen[index] ?? ''
+
+    if (screen.startsWith(CSI, index)) {
+      const params = /^[0-9;:]*/.exec(screen.slice(index + CSI.length))?.[0] ?? ''
+      const end = index + CSI.length + params.length
+
+      if (screen[end] === 'm') {
+        bg = applySgr(
+          params.split(/[;:]/).map(part => (part === '' ? 0 : Number(part))),
+          bg
+        )
+      }
+
+      index = end + 1
+    } else if (char === '\n') {
+      rows.push([])
+      index++
+    } else {
+      const codePoint = screen.codePointAt(index) ?? 0
+      const text = String.fromCodePoint(codePoint)
+      rows[rows.length - 1]?.push({ char: text, bg })
+      index += text.length
+    }
+  }
+
+  return rows
+}
+
+// tmux's colour_find_rgb: a 24-bit color as the nearest xterm-256 cube or grey entry, the way a
+// pane without RGB support stores it.
+function tmux256(r: number, g: number, b: number): number {
+  const toCube = (value: number) =>
+    value < 48 ? 0 : value < 114 ? 1 : Math.floor((value - 35) / 40)
+
+  // The cube's levels: 0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff.
+  const level = (index: number) => (index === 0 ? 0 : 55 + 40 * index)
+  const distance = (x: number, y: number, z: number) => (x - r) ** 2 + (y - g) ** 2 + (z - b) ** 2
+  const [qr, qg, qb] = [toCube(r), toCube(g), toCube(b)]
+  const [cr, cg, cb] = [level(qr), level(qg), level(qb)]
+  const cube = 16 + 36 * qr + 6 * qg + qb
+
+  if (cr === r && cg === g && cb === b) return cube
+
+  const average = Math.floor((r + g + b) / 3)
+  const greyIndex = average > 238 ? 23 : Math.floor((average - 3) / 10)
+  const grey = 8 + 10 * greyIndex
+
+  return distance(grey, grey, grey) < distance(cr, cg, cb) ? 232 + greyIndex : cube
+}
+
+// The picker runs on the default theme; the terminal decides its light or dark variant, and the
+// pane stores the color in 24 bits or as its xterm-256 match.
+const SELECTION_BACKGROUNDS = new Set(
+  (['light', 'dark'] as const).flatMap(mode => {
+    const { selection } = resolveTheme(getDefaultConfig('/').theme, {}, mode).colors
+    const [r, g, b] = RGBA.fromHex(selection).toInts()
+
+    return [`2:${r};${g};${b}`, `5:${tmux256(r, g, b)}`]
+  })
+)
+
+// The selected list row: no bar, so it is the one row with a session status whose cells from the
+// row's first column through the status are drawn on the theme's selection background.
 function selectedRow(screen: string): string | undefined {
-  return screen.split('\n').find(line => line.includes(SELECTION_BAR))
+  const selected = parseStyledScreen(screen).flatMap(cells => {
+    const text = cells.map(cell => cell.char).join('')
+    const status = text.search(/[●○]/)
+    const lead = cells.slice(1, status + 1)
+
+    if (status < 1 || !lead.every(cell => SELECTION_BACKGROUNDS.has(cell.bg))) return []
+
+    return [text]
+  })
+
+  return selected.length === 1 ? selected[0] : undefined
 }
 
 // Row order follows each session's directory name, which varies with where the repo is checked
 // out, so rows are reached by title rather than by position.
 async function moveCursorTo(title: string): Promise<void> {
-  const isSelected = async () => selectedRow(await hostScreen())?.includes(` ${title} `) === true
+  const isSelected = async () =>
+    selectedRow(await hostStyledScreen())?.includes(` ${title} `) === true
 
   for (let step = 0; step < 6 && !(await isSelected()); step++) await press('k')
 

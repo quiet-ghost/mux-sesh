@@ -1,7 +1,7 @@
 import type { MultiplexerBackend } from '../../src/multiplexer'
 import { summarizeTimings, type TimingSummary } from '../../src/util/perf'
 import { renderSessionScreen } from '../fixtures/session-screen'
-import { SELECTION_BAR } from '../fixtures/selection'
+import { selectedRowText, type SelectionScreen } from '../fixtures/selection'
 import {
   createPickerCorpus,
   createPickerOpenHistory,
@@ -48,8 +48,9 @@ function subtractPickerWork(after: PickerWork, before: PickerWork): PickerWork {
   }
 }
 
-function requireSelectedRow(frame: string, title: string): void {
-  if (!frame.split('\n').some(line => line.includes(SELECTION_BAR) && line.includes(title))) {
+// Checked after each timed frame, so reading the highlight's spans is not part of the timing.
+async function requireSelectedRow(screen: SelectionScreen, title: string): Promise<void> {
+  if (!(await selectedRowText(screen)).includes(title)) {
     throw new Error(`Baseline frame did not show selected row ${title}`)
   }
 }
@@ -92,7 +93,7 @@ async function captureAgentEntry(corpus: ReturnType<typeof createPickerCorpus>):
 
   try {
     await screen.pressKey('o')
-    requireSelectedRow(await screen.frame(), 'opencode-fixture')
+    await requireSelectedRow(screen, 'opencode-fixture')
     screen.destroy()
 
     return (
@@ -120,17 +121,20 @@ export async function runPickerBaseline({
   })
 
   try {
-    requireSelectedRow(await screen.frame(), 'session-000')
+    await screen.frame()
     const firstUsableFrameMs = performance.now() - start
+    await requireSelectedRow(screen, 'session-000')
     const startupWork = { ...corpus.work }
 
     async function navigate(index: number): Promise<number> {
       const start = performance.now()
       corpus.work.navigation++
       await screen.pressKey('ARROW_DOWN')
-      requireSelectedRow(await screen.frame(), `session-${String(index).padStart(3, '0')}`)
+      await screen.frame()
+      const elapsed = performance.now() - start
+      await requireSelectedRow(screen, `session-${String(index).padStart(3, '0')}`)
 
-      return performance.now() - start
+      return elapsed
     }
 
     for (let index = 0; index < warmup; index++) await navigate(index + 1)
@@ -148,17 +152,20 @@ export async function runPickerBaseline({
     const beforeProjects = { ...corpus.work }
     const projectStart = performance.now()
     await screen.pressKey('n')
-    requireSelectedRow(await screen.frame(), 'project-00000')
+    await screen.frame()
     const cachedProjectsFrameMs = performance.now() - projectStart
+    await requireSelectedRow(screen, 'project-00000')
     const projectWork = subtractPickerWork(corpus.work, beforeProjects)
 
     async function query(index: number): Promise<number> {
       const query = PICKER_QUERIES[index % PICKER_QUERIES.length]
       const start = performance.now()
       await screen.replaceQuery(query)
-      requireSelectedRow(await screen.frame(), query)
+      await screen.frame()
+      const elapsed = performance.now() - start
+      await requireSelectedRow(screen, query)
 
-      return performance.now() - start
+      return elapsed
     }
 
     for (let index = 0; index < warmup; index++) await query(index)

@@ -4,7 +4,7 @@ import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import { resolveTheme } from '../src/styles/theme'
 import type { ThemeColors } from '../src/types'
 import { renderSessionScreen } from './fixtures/session-screen'
-import { cellsOf, contrastRatio, sameColor, type Cell } from './fixtures/selection'
+import { cellsOf, contrastRatio, sameColor, selectedRowText, type Cell } from './fixtures/selection'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -252,13 +252,13 @@ describe('shared dialog chrome', () => {
 
     const frame = await screen.frame()
     expect(frame.match(/●/g)).toHaveLength(1)
-    expect(frame).toMatch(/┃● Catppuccin\s{2,}catppuccin /)
+    expect(await selectedRowText(screen)).toMatch(/^● Catppuccin\s{2,}catppuccin$/)
 
     await screen.pressKey('ARROW_DOWN')
     const previewing = await screen.frame()
     expect(previewing.match(/●/g)).toHaveLength(1)
     expect(previewing).toMatch(/ ● Catppuccin\s{2,}catppuccin /)
-    expect(previewing).toMatch(/┃ {2}Catppuccin Frappe/)
+    expect(await selectedRowText(screen)).toMatch(/^ {2}Catppuccin Frappe\s{2,}catppuccin-frappe$/)
 
     // The dot is painted in the accent, and on the highlight it takes the highlight's text color.
     const preview = colorsOf('catppuccin-frappe', 'dark')

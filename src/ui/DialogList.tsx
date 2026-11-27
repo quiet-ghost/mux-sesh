@@ -2,7 +2,7 @@ import { TextAttributes, type TextareaRenderable } from '@opentui/core'
 import { useTheme } from '../styles/theme'
 import { fitDialogLabelMatches, fitDialogRow } from './dialog-layout'
 import HighlightedText from './HighlightedText'
-import { rowForeground, rowGutter, SELECTED_MATCH_ATTRIBUTES } from './row-mark'
+import { rowForeground, SELECTED_MATCH_ATTRIBUTES } from './row-mark'
 
 interface DialogFilterProps {
   placeholder: string
@@ -23,7 +23,7 @@ interface DialogRowProps {
   matches?: readonly number[]
 }
 
-// The saved value's mark, in the cell between the selection gutter and the label.
+// The saved value's mark, in the row's first cell before the label.
 const CURRENT_MARK = '●'
 
 export function DialogSectionHeader({ text }: { text: string }) {
@@ -89,7 +89,6 @@ export function DialogRow({
       }}
     >
       <text style={{ wrapMode: 'none' }}>
-        <span style={{ fg: theme.primary, bg: theme.surfaceModal }}>{rowGutter(selected)}</span>
         <span style={{ fg: rowForeground(theme, selected, theme.primary) }}>
           {current ? CURRENT_MARK : ' '}
         </span>

@@ -42,8 +42,8 @@ describe('row icons', () => {
     const frame = await screen.frame()
 
     expect(frame).toMatch(/^ Live\s*$/m)
-    expect(frame).toMatch(/^ [ ┃] {2}● api-gateway  projects\s/m)
-    expect(frame).toMatch(/^ {4}○ blog {9}projects\s/m)
+    expect(frame).toMatch(/^ {3}● api-gateway  projects\s/m)
+    expect(frame).toMatch(/^ {3}○ blog {9}projects\s/m)
     expect(frame).not.toMatch(/[●○] [TPHCA] /)
   })
 
@@ -55,7 +55,7 @@ describe('row icons', () => {
     const frame = await screen.frame()
 
     expect(frame).toMatch(/^ T Live\s*$/m)
-    expect(frame).toMatch(/^ [ ┃] {2}● T api-gateway  projects\s/m)
-    expect(frame).toMatch(/^ {4}○ T blog {9}projects\s/m)
+    expect(frame).toMatch(/^ {3}● T api-gateway  projects\s/m)
+    expect(frame).toMatch(/^ {3}○ T blog {9}projects\s/m)
   })
 })

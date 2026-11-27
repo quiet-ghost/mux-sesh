@@ -4,8 +4,8 @@ const DIALOG_MARGIN_ROWS = 1
 // Two cells, not OpenCode's three: at 60 columns the dialog is 56 wide and every cell is a label cell.
 export const DIALOG_INSET_COLUMNS = 2
 
-// A row is the selection gutter, the current-value mark, a space before the label and a right pad.
-const DIALOG_ROW_CHROME_COLUMNS = 4
+// A row is the current-value mark, a space before the label and a right pad.
+const DIALOG_ROW_CHROME_COLUMNS = 3
 
 const MIN_LIST_ROWS = 4
 

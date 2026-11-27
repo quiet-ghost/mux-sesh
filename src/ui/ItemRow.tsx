@@ -7,7 +7,6 @@ import {
   markedMeta,
   rowBackground,
   rowForeground,
-  rowGutter,
   rowMarker,
   SELECTED_MATCH_ATTRIBUTES,
 } from './row-mark'
@@ -26,8 +25,8 @@ interface Props {
   icons?: IconConfig
 }
 
-// The gutter, the mark cell and its space, and the status cell.
-const ROW_PREFIX_COLUMNS = 4
+// The mark cell and its space, and the status cell.
+const ROW_PREFIX_COLUMNS = 3
 
 type RowStatus = { kind: 'live'; attached: boolean } | { kind: 'none' }
 
@@ -95,7 +94,6 @@ function ItemRow({
       }}
     >
       <text style={{ wrapMode: 'none' }}>
-        <span style={{ fg: theme.primary, bg: theme.surface }}>{rowGutter(selected)}</span>
         <span style={{ fg: rowForeground(theme, selected, theme.danger) }}>
           {rowMarker(marked)}
         </span>

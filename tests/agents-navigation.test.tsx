@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { TextareaRenderable } from '@opentui/core'
 import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import { renderSessionScreen } from './fixtures/session-screen'
-import { selectedRow } from './fixtures/selection'
+import { listRow, selectedRowText } from './fixtures/selection'
 
 function createTmuxAgentBackend(detailRequests: string[]): MultiplexerBackend {
   function unexpectedBackendCall(): never {
@@ -111,9 +111,9 @@ describe('Agents navigation through production keyboard wiring', () => {
       await screen.pressKey('RETURN')
 
       expect(await screen.frame()).toContain('Agent Sessions')
-      expect(await screen.frame()).toMatch(selectedRow('.*agent-one'))
+      expect(await selectedRowText(screen)).toMatch(listRow('.*agent-one'))
       await screen.pressKey('ARROW_DOWN')
-      expect(await screen.frame()).toMatch(selectedRow('.*agent-two'))
+      expect(await selectedRowText(screen)).toMatch(listRow('.*agent-two'))
 
       await screen.pressKey('p', { ctrl: true })
       const commands = await screen.frame()
@@ -144,7 +144,7 @@ describe('Agents navigation through production keyboard wiring', () => {
 
       const agents = await screen.frame()
       expect(agents).toContain('Agent Sessions')
-      expect(agents).toMatch(selectedRow('.*agent-one'))
+      expect(await selectedRowText(screen)).toMatch(listRow('.*agent-one'))
       expect(agents).not.toContain('opencode-native-unknown')
 
       for (const [key, refusal] of [
@@ -155,7 +155,7 @@ describe('Agents navigation through production keyboard wiring', () => {
         await screen.pressKey(key)
         const refused = await screen.frame()
         expect(refused).toContain(refusal)
-        expect(refused).toMatch(selectedRow('.*agent-one'))
+        expect(await selectedRowText(screen)).toMatch(listRow('.*agent-one'))
         expect(refused).not.toContain('Rename Session')
       }
 
@@ -164,7 +164,7 @@ describe('Agents navigation through production keyboard wiring', () => {
 
       expect(screen.renderer.currentFocusedRenderable instanceof TextareaRenderable).toBe(true)
       expect(await screen.frame()).not.toContain('Agent Sessions')
-      expect(await screen.frame()).toMatch(selectedRow('.*agent-one'))
+      expect(await selectedRowText(screen)).toMatch(listRow('.*agent-one'))
     }
   )
 })
@@ -189,17 +189,16 @@ describe('OpenCode-named tmux agents', () => {
 
       const opencode = await screen.frame()
       expect(opencode).toContain('Agent Sessions')
-      expect(opencode).toMatch(selectedRow('.*opencode-main'))
+      expect(await selectedRowText(screen)).toMatch(listRow('.*opencode-main'))
       expect(opencode).not.toContain('OpenCode Stats')
       expect(detailRequests).toContain('opencode-main')
 
       await screen.pressKey('ARROW_DOWN')
-      const pi = await screen.frame()
-      expect(pi).toMatch(selectedRow('.*pi-main'))
+      expect(await selectedRowText(screen)).toMatch(listRow('.*pi-main'))
       expect(detailRequests).toContain('pi-main')
 
       await screen.pressKey('ARROW_UP')
-      expect(await screen.frame()).toMatch(selectedRow('.*opencode-main'))
+      expect(await selectedRowText(screen)).toMatch(listRow('.*opencode-main'))
       expect(detailRequests.filter(id => id === 'opencode-main')).toHaveLength(2)
     }
   )

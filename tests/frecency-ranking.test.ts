@@ -8,7 +8,7 @@ import { createOpenHistory, type OpenHistory } from '../src/search/frecency-stor
 import type { LiveWorkspace } from '../src/multiplexer'
 import type { Item } from '../src/types'
 import { renderSessionScreen } from './fixtures/session-screen'
-import { selectedRow } from './fixtures/selection'
+import { listRow, selectedRowText } from './fixtures/selection'
 
 const DAY = 86_400_000
 const NOW = Date.UTC(2026, 10, 26)
@@ -180,20 +180,20 @@ describe('search ranking on the picker screen', () => {
       await screen.settle()
       // Joins the read the screen started after mounting; it does nothing while history is off.
       await restarted.load()
-      expect(await screen.frame()).toMatch(selectedRow('.*api-one'))
+      expect(await selectedRowText(screen)).toMatch(listRow('.*api-one'))
       await screen.typeText('api')
 
-      return await screen.frame()
+      return await selectedRowText(screen)
     } finally {
       screen.destroy()
     }
   }
 
   test('a session opened in an earlier run ranks first among equal matches', async () => {
-    expect(await searchApi(true)).toMatch(selectedRow('.*api-two'))
+    expect(await searchApi(true)).toMatch(listRow('.*api-two'))
   })
 
   test('search_history off keeps the match order', async () => {
-    expect(await searchApi(false)).toMatch(selectedRow('.*api-one'))
+    expect(await searchApi(false)).toMatch(listRow('.*api-one'))
   })
 })

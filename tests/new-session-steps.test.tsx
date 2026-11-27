@@ -11,7 +11,7 @@ import { FileSearchUnavailableError, type FileSearchOutcome } from '../src/searc
 import type { Item, KeybindMode } from '../src/types'
 import { footerGroups, hints } from './fixtures/footer'
 import { renderSessionScreen } from './fixtures/session-screen'
-import { selectedRow } from './fixtures/selection'
+import { listRow, selectedRows, selectedRowText } from './fixtures/selection'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -200,7 +200,7 @@ describe('New secondary steps', () => {
         expect(fieldText(screen)).toBe('b')
         expect(back).toContain('New Workspace')
         expect(back).toContain("Create 'bravo' in /fixture/bravo")
-        expect(back).toMatch(selectedRow('  bravo\\s+create'))
+        expect(await selectedRowText(screen)).toMatch(listRow('  bravo\\s+create'))
       }
 
       expect(calls).toEqual([])
@@ -330,7 +330,9 @@ describe('named session here', () => {
 
     const named = await replaceField(screen, 'scratch')
     expect(named).toContain(`Create 'scratch' in ${cwd}`)
-    expect(named).not.toMatch(selectedRow('  api\\s+create'))
+    expect(
+      (await selectedRows(screen)).filter(row => listRow('  api\\s+create').test(row))
+    ).toEqual([])
     expect(footerOf(named)).toEqual(newFooter('create', CANCEL))
 
     await press(screen, 'RETURN')
@@ -405,7 +407,7 @@ describe('open file step', () => {
 
     const prompt = await press(screen, 'o', true)
     expect(prompt).toContain('Open file')
-    expect(prompt).not.toMatch(selectedRow('  api'))
+    expect((await selectedRows(screen)).filter(row => listRow('  api').test(row))).toEqual([])
 
     const found = await replaceField(screen, 'a')
     expect(searches).toEqual(['a'])

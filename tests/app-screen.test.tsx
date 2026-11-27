@@ -5,7 +5,7 @@ import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import { MultiplexerError } from '../src/multiplexer/types'
 import { resolveTheme } from '../src/styles/theme'
 import { renderSessionScreen } from './fixtures/session-screen'
-import { selectedRow } from './fixtures/selection'
+import { listRow, selectedRowText } from './fixtures/selection'
 
 let screen: Awaited<ReturnType<typeof renderSessionScreen>> | undefined
 
@@ -28,14 +28,14 @@ describe('production session screen', () => {
   ])('moves the selected row at $width x $height', async dimensions => {
     screen = await renderSessionScreen(dimensions)
 
-    expect(await screen.frame()).toMatch(selectedRow('.*alpha'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*alpha'))
     expect(screen.captureSpans()).toMatchObject({ cols: dimensions.width, rows: dimensions.height })
 
     await screen.pressKey('ARROW_DOWN')
 
-    const frame = await screen.frame()
-    expect(frame).toMatch(selectedRow('.*beta'))
-    expect(frame).not.toMatch(selectedRow('.*alpha'))
+    const selected = await selectedRowText(screen)
+    expect(selected).toMatch(listRow('.*beta'))
+    expect(selected).not.toContain('alpha')
 
     expect(screen.calls).toEqual([{ operation: 'list' }])
   })
@@ -46,19 +46,19 @@ describe('production session screen', () => {
 
     await screen.resize(60, 18)
 
-    expect(await screen.frame()).toMatch(selectedRow('.*beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*beta'))
     expect(screen.captureSpans()).toMatchObject({ cols: 60, rows: 18 })
     expect(await screen.frame()).not.toContain('Status inactive')
 
     await screen.resize(80, 24)
 
-    expect(await screen.frame()).toMatch(selectedRow('.*beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*beta'))
     expect(screen.captureSpans()).toMatchObject({ cols: 80, rows: 24 })
     expect(await screen.frame()).not.toContain('Status inactive')
 
     await screen.resize(120, 36)
 
-    expect(await screen.frame()).toMatch(selectedRow('.*beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*beta'))
     expect(await screen.frame()).toContain('Status inactive')
   })
 
@@ -91,7 +91,7 @@ describe('production session screen', () => {
 
     const frame = await screen.frame()
     expect(input.plainText).toBe('beta')
-    expect(frame).toMatch(selectedRow('.*beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*beta'))
     expect(frame).not.toContain('alpha')
 
     await screen.pressKey('ESCAPE')
@@ -223,7 +223,7 @@ describe('session inventory on the production screen', () => {
       await screen.settle()
     }
 
-    expect(await screen.frame()).toMatch(selectedRow('.*alpha'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*alpha'))
     expect(scripted.lists()).toBe(listsAfterMount)
   })
 
@@ -236,7 +236,7 @@ describe('session inventory on the production screen', () => {
 
     screen = await renderSessionScreen({ width: 120, height: 36 }, { backend: scripted.backend })
     await screen.pressKey('ARROW_DOWN')
-    expect(await screen.frame()).toMatch(selectedRow('.*beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*beta'))
 
     scripted.respond([
       liveWorkspace('aaron'),
@@ -247,13 +247,13 @@ describe('session inventory on the production screen', () => {
     await refreshScreen(screen)
     const reordered = await screen.frame()
     expect(reordered).toContain('aaron')
-    expect(reordered).toMatch(selectedRow('.*beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*beta'))
 
     scripted.respond([liveWorkspace('aaron'), liveWorkspace('alpha'), liveWorkspace('delta')])
     await refreshScreen(screen)
     const removed = await screen.frame()
     expect(removed).not.toContain('beta')
-    expect(removed).toMatch(selectedRow('.*delta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*delta'))
   })
 
   test('an expected list failure keeps rows and selection, reports staleness, and recovers', async () => {
@@ -265,14 +265,14 @@ describe('session inventory on the production screen', () => {
     await refreshScreen(screen)
     const stale = await screen.frame()
     expect(stale).toContain('alpha')
-    expect(stale).toMatch(selectedRow('.*beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*beta'))
     expect(stale).toMatch(/fixture server stopped\s+Existing\s+sessions are unchanged/)
 
     scripted.respond([liveWorkspace('alpha'), liveWorkspace('beta'), liveWorkspace('delta')])
     await refreshScreen(screen)
     const recovered = await screen.frame()
     expect(recovered).toContain('delta')
-    expect(recovered).toMatch(selectedRow('.*beta'))
+    expect(await selectedRowText(screen)).toMatch(listRow('.*beta'))
     expect(recovered).not.toContain('Existing sessions are unchanged')
   })
 })
