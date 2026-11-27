@@ -373,6 +373,9 @@ export function normalizeConfig(rawConfig: Schema.Json, homeDir = process.env.HO
   const autoUpdate =
     asBoolean(raw.auto_update) ?? asBoolean(raw.autoUpdate) ?? defaultConfig.autoUpdate
 
+  const searchHistory =
+    asBoolean(raw.search_history) ?? asBoolean(raw.searchHistory) ?? defaultConfig.searchHistory
+
   const dirLength =
     asPositiveInteger(raw.dir_length) ?? asPositiveInteger(raw.dirLength) ?? defaultConfig.dirLength
 
@@ -409,6 +412,7 @@ export function normalizeConfig(rawConfig: Schema.Json, homeDir = process.env.HO
     colorScheme,
     themes,
     autoUpdate,
+    searchHistory,
     dirLength,
     hiddenSessions,
     pinnedSessions,
@@ -433,6 +437,7 @@ export function getDefaultConfig(homeDir = process.env.HOME || '~'): Config {
     colorScheme: DEFAULT_COLOR_SCHEME,
     themes: {},
     autoUpdate: true,
+    searchHistory: true,
     dirLength: 1,
     hiddenSessions: [],
     pinnedSessions: [],
@@ -470,6 +475,7 @@ export function serializeConfig(config: Config) {
     theme: config.theme,
     color_scheme: config.colorScheme,
     auto_update: config.autoUpdate,
+    search_history: config.searchHistory,
     dir_length: config.dirLength,
     hidden_sessions: config.hiddenSessions,
     pinned_sessions: config.pinnedSessions,

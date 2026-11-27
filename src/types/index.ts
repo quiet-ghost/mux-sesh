@@ -150,6 +150,7 @@ export interface Config {
   keybindMode?: KeybindMode
   prefixKey?: string
   autoUpdate?: boolean
+  searchHistory?: boolean
   dirLength?: number
   hiddenSessions?: string[]
   pinnedSessions?: string[]

@@ -13,6 +13,7 @@ export type SettingsFieldId =
   | 'sortOrder'
   | 'zoxideMode'
   | 'autoUpdate'
+  | 'searchHistory'
   | 'dirLength'
   | 'reposPath'
   | 'editor'
@@ -272,6 +273,25 @@ const SETTINGS_FIELD_MAP = {
     applyOption: (config, value) => ({
       ...config,
       autoUpdate: value === 'true',
+    }),
+  },
+  searchHistory: {
+    id: 'searchHistory',
+    label: 'Search History',
+    hint: 'Rank searches by what you open',
+    kind: 'options',
+    getValue: config => (config.searchHistory === false ? 'off' : 'on'),
+    getOptions: () => [
+      {
+        value: 'true',
+        label: 'on',
+        description: 'Remember opens locally and rank matches you open often first',
+      },
+      { value: 'false', label: 'off', description: 'Record nothing and rank by match only' },
+    ],
+    applyOption: (config, value) => ({
+      ...config,
+      searchHistory: value === 'true',
     }),
   },
   dirLength: {

@@ -215,6 +215,8 @@
     },
     "auto_update": { "type": "boolean", "description": "true or false" },
     "autoUpdate": { "type": "boolean", "description": "true or false" },
+    "search_history": { "type": "boolean", "description": "true or false" },
+    "searchHistory": { "type": "boolean", "description": "true or false" },
     "dir_length": {
       "type": "integer",
       "maximum": 9007199254740991,

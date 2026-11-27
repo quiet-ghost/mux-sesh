@@ -38,7 +38,7 @@ console.log(
         firstFrame:
           'Fresh renderer and fixture inventory after module imports and corpus generation',
         warmQueries:
-          'Cached project candidates; native search and discovery excluded from UI timing',
+          'Cached project candidates ranked with a full 1000-entry open history; native search and discovery excluded from UI timing',
         subprocess: 'Recorded Herdr CommandRunner calls; no backend processes spawned',
         navigation: 'Compact details panel; the details inspector stays closed',
         agentEntry: 'One tmux OpenCode-named agent entry at 60x18; no detail pane',

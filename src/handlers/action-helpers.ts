@@ -2,6 +2,7 @@ import { dirname } from 'path'
 import { ActionRefused } from '../app/action-outcome'
 import type { Config, Item } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
+import type { OpenWorkspaceInput } from '../multiplexer/types'
 import { getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 import { getGitRoot, resolveProjectSession } from '../config/session-rules'
 import { isFileItem, resolveFileSession } from '../files/target'
@@ -44,32 +45,38 @@ export function getNextSessionName(renameTarget: string, newName: string): strin
 export async function openProjectSession(
   projectPath: string,
   config: Config,
-  backend: MultiplexerBackend
+  backend: MultiplexerBackend,
+  onOpened: (input: OpenWorkspaceInput) => Promise<void> = async () => {}
 ): Promise<void> {
   const resolvedSession = await resolveProjectSession(projectPath, config)
 
-  const focus = await backend.openOrCreate({
+  const input = {
     title: resolvedSession.sessionName,
     path: projectPath,
     startupCommand: resolvedSession.startupCommand,
-  })
+  }
 
+  const focus = await backend.openOrCreate(input)
+  await onOpened(input)
   await requestShutdown(0, handoffOf(focus))
 }
 
 export async function openFileSession(
   filePath: string,
   config: Config,
-  backend: MultiplexerBackend
+  backend: MultiplexerBackend,
+  onOpened: (input: OpenWorkspaceInput) => Promise<void> = async () => {}
 ): Promise<void> {
   const resolvedSession = resolveFileSession(filePath, config)
 
-  const focus = await backend.openOrCreate({
+  const input = {
     title: resolvedSession.sessionName,
     path: resolvedSession.cwd,
     startupCommand: resolvedSession.startupCommand,
-  })
+  }
 
+  const focus = await backend.openOrCreate(input)
+  await onOpened(input)
   await requestShutdown(0, handoffOf(focus))
 }
 

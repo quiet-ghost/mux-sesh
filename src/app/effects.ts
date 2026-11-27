@@ -14,6 +14,8 @@ import type { ShowToast } from './notifications'
 import { useHerdrAgentPolling } from './herdr-refresh'
 import type { SessionInventory } from './session-inventory'
 import { clearMatchIndices, createItemFilter, type ItemFilter } from '../search'
+import { OPEN_HISTORY, type OpenHistory } from '../search/frecency-store'
+import { requestFatalShutdown } from '../util/shutdown'
 import { getSessionSelectionIndex } from './data'
 import { SYSTEM_THEME_ID } from '../styles/theme'
 import { subscribeThemeFollow, type SubscribeThemeFollowOptions } from '../styles/theme-follow'
@@ -228,7 +230,7 @@ export function useSearchFiltering(
   filterItems?: ItemFilter
 ) {
   // Owned per hook so typing refines the previous Search result instead of rescanning.
-  const [ownFilter] = useState(() => createItemFilter())
+  const [ownFilter] = useState(() => createItemFilter({ boost: item => OPEN_HISTORY.boost(item) }))
   const filter = filterItems ?? ownFilter
 
   useEffect(() => {
@@ -247,6 +249,30 @@ export function useSearchFiltering(
     setItems(allItems)
     setCursor(0)
   }, [allItems, appMode, filter, searchQuery, setCursor, setItems])
+}
+
+// History follows config and loads on a later task, so its read never joins a frame. A query typed
+// before it finishes ranks without history; nothing is reordered under the user when it lands.
+export function useOpenHistory(
+  config: Config | null,
+  history: OpenHistory = OPEN_HISTORY,
+  onDefect: (cause: unknown) => void = requestFatalShutdown
+) {
+  const enabled = config ? config.searchHistory !== false : undefined
+
+  useEffect(() => {
+    if (enabled === undefined) return
+
+    history.configure(enabled)
+
+    if (!enabled) return
+
+    const timer = setTimeout(() => {
+      history.load().catch(onDefect)
+    }, 0)
+
+    return () => clearTimeout(timer)
+  }, [enabled, history, onDefect])
 }
 
 interface UseAppBehaviorsOptions {
@@ -301,6 +327,7 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.lastProjectSelectionRef,
     options.lastSessionSelectionRef
   )
+  useOpenHistory(options.config)
   useSearchFiltering(
     options.appMode,
     options.searchQuery,

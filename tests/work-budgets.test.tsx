@@ -27,7 +27,7 @@ import { IDLE } from '../src/util/pending'
 import { renderSessionScreen } from './fixtures/session-screen'
 import { selectedRow } from './fixtures/selection'
 import { createFakeSpinnerMotion } from './fixtures/spinner-motion'
-import { createPickerCorpus, PICKER_QUERIES } from './perf/picker-corpus'
+import { createPickerCorpus, createPickerOpenHistory, PICKER_QUERIES } from './perf/picker-corpus'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -213,7 +213,9 @@ function projects(count: number): Item[] {
 describe('navigation and query work budget at the baseline corpus', () => {
   test('after startup, navigation and project queries stat nothing, read no files, and resolve no theme', async () => {
     const homeDir = await createOmarchyHome()
-    const corpus = createPickerCorpus()
+    const openHistory = await createPickerOpenHistory()
+    cleanups.push(() => openHistory.dispose())
+    const corpus = createPickerCorpus(openHistory.history)
     const theme = countThemeResolutions()
     const follow = createFollowProbe()
     const filesystem = recordFilesystem()
@@ -229,9 +231,14 @@ describe('navigation and query work budget at the baseline corpus', () => {
           resolveTheme: theme.resolve,
           themeFollow: follow.options,
           spinnerMotion: spinner.motion,
+          openHistory: openHistory.history,
         }
       )
     )
+
+    // The open history is read once after startup; ranking below uses it without reading again.
+    await screen.settle()
+    expect(openHistory.history.boost(corpus.projects[0] ?? unsupported())).toBeGreaterThan(0)
 
     // The spies see the system theme's palette read at startup, so silence below is meaningful.
     expect(filesystem.calls()).toHaveProperty(['fs.readFileSync'])

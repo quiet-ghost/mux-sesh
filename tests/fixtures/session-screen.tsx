@@ -10,6 +10,7 @@ import { loadSessionItems } from '../../src/app/data'
 import { getSessionCommandState, getSettingsState } from '../../src/app/derived'
 import {
   useNormalModeSessionReset,
+  useOpenHistory,
   useSearchFiltering,
   useSelectionMemory,
 } from '../../src/app/effects'
@@ -37,6 +38,7 @@ import { getDefaultConfig } from '../../src/config'
 import type { LiveWorkspace, MultiplexerBackend } from '../../src/multiplexer'
 import { filterAndSortItems } from '../../src/search'
 import type { FileSearchOutcome } from '../../src/search/fff'
+import type { OpenHistory } from '../../src/search/frecency-store'
 import type { CloneServices } from '../../src/sessions/clone-plan'
 import { getSettingEditorTitle, isOptionSetting } from '../../src/settings'
 import { resolveTheme, ThemeProvider, type ThemeResolver } from '../../src/styles/theme'
@@ -89,6 +91,7 @@ interface SessionFixture {
   clone: CloneServices
   handle: FixtureHandle
   spinnerMotion: SpinnerMotion
+  openHistory?: OpenHistory
 }
 
 interface FixtureHandle {
@@ -118,6 +121,9 @@ interface SessionScreenData {
   saveConfig?: (config: Config) => Promise<void>
   // Spinner timers; defaults to still, so no frame depends on the wall clock.
   spinnerMotion?: SpinnerMotion
+  // Search history as the app wires it: loaded from config, and the default filters rank by it.
+  // Opens record into the production history, which this follows only when it is passed here.
+  openHistory?: OpenHistory
 }
 
 // Assigned inside act(), so control-flow narrowing cannot track a local binding.
@@ -312,6 +318,8 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     },
     [fixture.defects]
   )
+
+  useOpenHistory(fixture.openHistory ? config : null, fixture.openHistory, onDefect)
 
   const newSession = useNewSessionSteps({
     active: core.appMode === AppMode.NewSession,
@@ -523,6 +531,14 @@ export async function renderSessionScreen(
   }
 
   const { sessionItems } = await loadSessionItems(config, async (_name, run) => run(), backend)
+  const history = data.openHistory
+
+  const filterItems: typeof filterAndSortItems =
+    data.filterItems ??
+    (history
+      ? (items, query) => filterAndSortItems(items, query, { boost: item => history.boost(item) })
+      : filterAndSortItems)
+
   const projects = data.projects ?? []
 
   // Native search, warm-up, and candidate discovery stay offline; candidates are the fixture rows.
@@ -535,7 +551,7 @@ export async function renderSessionScreen(
     onDefect: cause => {
       throw cause
     },
-    filterItems: data.filterItems ?? filterAndSortItems,
+    filterItems,
     openFileSearch: () => ({
       warm: async () => {},
       search: async query => fileSearch(query),
@@ -559,7 +575,7 @@ export async function renderSessionScreen(
             backend,
             items: sessionItems,
             projects,
-            filterItems: data.filterItems ?? filterAndSortItems,
+            filterItems,
             lifecycle,
             defects,
             homeDir: data.homeDir ?? '/fixture',
@@ -570,6 +586,7 @@ export async function renderSessionScreen(
             invocationCwd: data.invocationCwd ?? '/fixture',
             clone: data.clone ?? NO_GIT,
             spinnerMotion: data.spinnerMotion ?? STILL_MOTION,
+            openHistory: history,
           }}
         />,
         { ...options, consoleMode: 'disabled', exitOnCtrlC: false, kittyKeyboard: true }

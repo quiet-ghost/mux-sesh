@@ -4,6 +4,7 @@ import { renderSessionScreen } from '../fixtures/session-screen'
 import { SELECTION_BAR } from '../fixtures/selection'
 import {
   createPickerCorpus,
+  createPickerOpenHistory,
   PICKER_CORPUS_SIZE,
   PICKER_QUERIES,
   type PickerWork,
@@ -108,10 +109,15 @@ export async function runPickerBaseline({
   iterations = 30,
   warmup = 5,
 }: PickerBaselineOptions = {}): Promise<PickerBaseline> {
-  const corpus = createPickerCorpus()
+  const openHistory = await createPickerOpenHistory()
+  const corpus = createPickerCorpus(openHistory.history)
   const dimensions = { width: 120, height: 36 }
   const start = performance.now()
-  const screen = await renderSessionScreen(dimensions, corpus)
+
+  const screen = await renderSessionScreen(dimensions, {
+    ...corpus,
+    openHistory: openHistory.history,
+  })
 
   try {
     requireSelectedRow(await screen.frame(), 'session-000')
@@ -196,5 +202,6 @@ export async function runPickerBaseline({
     }
   } finally {
     screen.destroy()
+    await openHistory.dispose()
   }
 }

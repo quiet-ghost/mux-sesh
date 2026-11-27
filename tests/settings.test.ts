@@ -25,6 +25,7 @@ describe('settings metadata', () => {
       'sortOrder',
       'zoxideMode',
       'autoUpdate',
+      'searchHistory',
       'dirLength',
       'reposPath',
       'editor',

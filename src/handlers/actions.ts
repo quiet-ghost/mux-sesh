@@ -13,7 +13,7 @@ import {
   reasonOf,
 } from '../app/action-outcome'
 import { handoffOf } from '../multiplexer/focus-outcome'
-import type { BackendKind, WorkspaceRef } from '../multiplexer/types'
+import type { BackendKind, OpenWorkspaceInput, WorkspaceRef } from '../multiplexer/types'
 import {
   CleanupBatch,
   CloseReceipt,
@@ -39,6 +39,8 @@ import {
   type PlannedLaunch,
   type SessionPlan,
 } from '../sessions/launch-plan'
+import { OpenKey } from '../search/frecency'
+import { OPEN_HISTORY, type OpenHistory } from '../search/frecency-store'
 import { gitHubRepositoryName } from '../util/github'
 import { toHomeRelativePath } from '../util/path-display'
 import { requestShutdown } from '../util/shutdown'
@@ -52,20 +54,52 @@ import {
   requireConfiguredItem,
 } from './action-helpers'
 
-export async function handleSelect(item: Item, config: Config | null, backend: MultiplexerBackend) {
+// What an open records, so search ranks it next time: the session it landed in and its directory.
+function launchKeys(backend: BackendKind, input: OpenWorkspaceInput): OpenKey[] {
+  return [OpenKey.session(backend, input.title), OpenKey.path(input.path)]
+}
+
+// Recorded only once the backend confirmed the open, and before any terminal handoff.
+function recordLaunch(
+  history: OpenHistory,
+  backend: BackendKind
+): (input: OpenWorkspaceInput) => Promise<void> {
+  return async input => {
+    await history.record(launchKeys(backend, input))
+  }
+}
+
+export async function handleSelect(
+  item: Item,
+  config: Config | null,
+  backend: MultiplexerBackend,
+  history: OpenHistory = OPEN_HISTORY
+) {
   if (isLiveSessionItem(item)) {
-    await requestShutdown(0, handoffOf(await backend.open(getWorkspaceRef(item))))
+    const focus = await backend.open(getWorkspaceRef(item))
+    await history.record(OpenKey.ofItem(item))
+    await requestShutdown(0, handoffOf(focus))
 
     return
   }
 
   if (isFileItem(item)) {
-    await openFileSession(item.path, requireConfig(config), backend)
+    await openFileSession(
+      item.path,
+      requireConfig(config),
+      backend,
+      recordLaunch(history, backend.kind)
+    )
 
     return
   }
 
-  await openProjectSession(item.path, requireConfig(config), backend)
+  await openProjectSession(
+    item.path,
+    requireConfig(config),
+    backend,
+    recordLaunch(history, backend.kind)
+  )
 }
 
 function getKillNeighbor(key: string, regularSessions: Item[]): Item | undefined {
@@ -476,25 +510,42 @@ function launchFailureOutcome(
 async function runPlannedLaunch(
   plan: PlannedLaunch,
   backend: MultiplexerBackend,
-  clone: CloneServices
+  clone: CloneServices,
+  history: OpenHistory
 ): Promise<ActionOutcome> {
   // Plan failures are expected and local; nothing was opened or created.
   if (Result.isFailure(plan)) return { kind: 'failed', message: plan.failure.message }
 
-  return runLaunchPlan(plan.success, backend, clone)
+  return runLaunchPlan(plan.success, backend, clone, history)
+}
+
+// A focused agent pane names no workspace title, so only its directory is recorded.
+function sessionPlanKeys(plan: SessionPlan, backend: BackendKind): OpenKey[] {
+  if (plan.kind === 'create') return launchKeys(backend, plan.input)
+
+  return plan.target.backend === 'herdr' && plan.target.target?.kind === 'agent'
+    ? [OpenKey.path(plan.path)]
+    : launchKeys(backend, { title: plan.target.title, path: plan.path })
 }
 
 async function runSessionPlan(
   plan: SessionPlan,
-  backend: MultiplexerBackend
+  backend: MultiplexerBackend,
+  history: OpenHistory
 ): Promise<ActionOutcome> {
   let outcome: LaunchOutcome
 
   try {
     outcome = await executeLaunchPlan(plan, backend)
   } catch (cause) {
+    // A follow-up failure still created the session, so it counts as opened.
+    if (cause instanceof LaunchFollowUpFailed)
+      await history.record(sessionPlanKeys(plan, backend.kind))
+
     return launchFailureOutcome(plan, cause, backend.kind)
   }
+
+  await history.record(sessionPlanKeys(plan, backend.kind))
 
   return requestShutdown(0, handoffOf(outcome.focus))
 }
@@ -502,11 +553,12 @@ async function runSessionPlan(
 async function runLaunchPlan(
   plan: LaunchPlan,
   backend: MultiplexerBackend,
-  clone: CloneServices
+  clone: CloneServices,
+  history: OpenHistory
 ): Promise<ActionOutcome> {
   return plan.kind === 'clone'
-    ? launchClone(plan.clone, plan.session, backend, clone)
-    : runSessionPlan(plan, backend)
+    ? launchClone(plan.clone, plan.session, backend, clone, history)
+    : runSessionPlan(plan, backend, history)
 }
 
 function receiptFact(receipt: CheckoutReceipt): string {
@@ -603,20 +655,22 @@ async function launchClone(
   plan: ClonePlan,
   session: SessionPlan,
   backend: MultiplexerBackend,
-  clone: CloneServices
+  clone: CloneServices,
+  history: OpenHistory
 ): Promise<ActionOutcome> {
   const checkout = await executeCheckout(plan, clone)
 
   if (Result.isFailure(checkout)) return checkoutFailureOutcome(plan, checkout.failure)
 
-  return afterCheckout(checkout.success, await runSessionPlan(session, backend))
+  return afterCheckout(checkout.success, await runSessionPlan(session, backend, history))
 }
 
 // Enter runs the plan New or the Projects view shows; it never re-resolves rules or inventory first.
 export async function handleNewSessionSubmit(
   preview: LaunchPreview,
   backend: MultiplexerBackend,
-  clone: CloneServices
+  clone: CloneServices,
+  history: OpenHistory = OPEN_HISTORY
 ): Promise<ActionOutcome> {
   switch (preview.kind) {
     case 'inactive':
@@ -658,15 +712,19 @@ export async function handleNewSessionSubmit(
         message: `Nothing to open: no file matches '${preview.query}', and nothing was created.`,
       }
     case 'planning':
-      return runPlannedLaunch((await preview.prepared).result, backend, clone)
+      return runPlannedLaunch((await preview.prepared).result, backend, clone, history)
     case 'refused':
       return { kind: 'failed', message: preview.failure.message }
     case 'ready':
-      return runLaunchPlan(preview.plan, backend, clone)
+      return runLaunchPlan(preview.plan, backend, clone, history)
   }
 }
 
-export async function handleLastSession(items: Item[], backend: MultiplexerBackend) {
+export async function handleLastSession(
+  items: Item[],
+  backend: MultiplexerBackend,
+  history: OpenHistory = OPEN_HISTORY
+) {
   if (!backend.capabilities.previousWorkspace) {
     throw new ActionRefused({
       reason:
@@ -683,19 +741,27 @@ export async function handleLastSession(items: Item[], backend: MultiplexerBacke
 
   if (!isLiveSessionItem(target))
     throw new ActionRefused({ reason: 'No previous live session is available' })
-  await requestShutdown(0, handoffOf(await backend.open(getWorkspaceRef(target))))
+  const focus = await backend.open(getWorkspaceRef(target))
+  await history.record(OpenKey.ofItem(target))
+  await requestShutdown(0, handoffOf(focus))
 }
 
 export async function handleRootSession(
   item: Item | undefined,
   config: Config | null,
-  backend: MultiplexerBackend
+  backend: MultiplexerBackend,
+  history: OpenHistory = OPEN_HISTORY
 ) {
   if (!item) {
     throw new ActionRefused({ reason: 'No session or project is selected' })
   }
 
-  await openProjectSession(await getRootSessionPath(item, backend), requireConfig(config), backend)
+  await openProjectSession(
+    await getRootSessionPath(item, backend),
+    requireConfig(config),
+    backend,
+    recordLaunch(history, backend.kind)
+  )
 }
 
 export async function handleEditTarget(

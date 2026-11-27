@@ -70,6 +70,10 @@ tmux source-file ~/.tmux.conf
 - The details panel is compact by default; Toggle details (`v`) inspects the selected row.
 - The Agents section lists tmux agent sessions and each Herdr agent pane; Herdr agent panes are
   read-only here.
+- Searches rank what you open often a little higher. Session names, directories, open counts and
+  times are kept in `~/.local/state/mux-sesh/frecency.jsonl` and never leave your machine; delete
+  the file to clear it, or set `"search_history": false`. See
+  [Search History](docs/configuration.md#search-history).
 
 Full walkthroughs: [docs/workflows.md](docs/workflows.md)
 

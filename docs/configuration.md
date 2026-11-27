@@ -45,28 +45,29 @@ startup check remains the final authority. A complete example is in
 
 <!-- config-options -->
 
-| Option            | Default               | Purpose                                                                   |
-| ----------------- | --------------------- | ------------------------------------------------------------------------- |
-| `backend`         | auto detected         | `tmux` or `herdr`; omit for auto detection (see below)                    |
-| `project_paths`   | `~/dev`, `~/personal` | Directories scanned for projects and searched by the New file step        |
-| `repos_path`      | `~/dev/repos`         | Destination for repositories cloned from New                              |
-| `editor`          | `nvim`                | Editor used to open files picked in New                                   |
-| `editor_cmd`      | `nvim` with Telescope | Startup command when no `default_session.startup_command` is set          |
-| `keybind_mode`    | `vim`                 | `vim` or `standard`; see [keybindings.md](keybindings.md)                 |
-| `prefix_key`      | `ctrl+x`              | Prefix for secondary actions; an empty value means the default            |
-| `theme`           | `rosepine`            | Built-in theme id, custom `themes` id, or `system`                        |
-| `color_scheme`    | `system`              | `system`, `dark`, or `light`                                              |
-| `themes`          | none                  | Custom theme definitions; see [themes.md](themes.md)                      |
-| `sort_order`      | `live-first`          | `live-first`, `configured-first`, `zoxide-first`, or `alphabetical`       |
-| `zoxide_mode`     | `off`                 | `off`, `rank`, or `merge`                                                 |
-| `auto_update`     | `true`                | Background update checks for supported installs                           |
-| `dir_length`      | `1`                   | Path depth used when generating session names (a whole number, ≥ 1)       |
-| `hidden_sessions` | none                  | Glob patterns for live sessions to hide                                   |
-| `pinned_sessions` | none                  | Session names kept at the top; `ctrl+f` and the palette edit the list     |
-| `icons`           | built-in icons        | Row icons: `tmux`, `herdr`, `configured`, `config`, `project`, `opencode` |
-| `default_session` | none                  | Fallback `startup_command` and `preview_command`                          |
-| `projects`        | none                  | Exact-path project rules                                                  |
-| `wildcards`       | none                  | Pattern-based project rules                                               |
+| Option            | Default               | Purpose                                                                     |
+| ----------------- | --------------------- | --------------------------------------------------------------------------- |
+| `backend`         | auto detected         | `tmux` or `herdr`; omit for auto detection (see below)                      |
+| `project_paths`   | `~/dev`, `~/personal` | Directories scanned for projects and searched by the New file step          |
+| `repos_path`      | `~/dev/repos`         | Destination for repositories cloned from New                                |
+| `editor`          | `nvim`                | Editor used to open files picked in New                                     |
+| `editor_cmd`      | `nvim` with Telescope | Startup command when no `default_session.startup_command` is set            |
+| `keybind_mode`    | `vim`                 | `vim` or `standard`; see [keybindings.md](keybindings.md)                   |
+| `prefix_key`      | `ctrl+x`              | Prefix for secondary actions; an empty value means the default              |
+| `theme`           | `rosepine`            | Built-in theme id, custom `themes` id, or `system`                          |
+| `color_scheme`    | `system`              | `system`, `dark`, or `light`                                                |
+| `themes`          | none                  | Custom theme definitions; see [themes.md](themes.md)                        |
+| `sort_order`      | `live-first`          | `live-first`, `configured-first`, `zoxide-first`, or `alphabetical`         |
+| `zoxide_mode`     | `off`                 | `off`, `rank`, or `merge`                                                   |
+| `auto_update`     | `true`                | Background update checks for supported installs                             |
+| `search_history`  | `true`                | Rank search matches by what you open; see [Search History](#search-history) |
+| `dir_length`      | `1`                   | Path depth used when generating session names (a whole number, ≥ 1)         |
+| `hidden_sessions` | none                  | Glob patterns for live sessions to hide                                     |
+| `pinned_sessions` | none                  | Session names kept at the top; `ctrl+f` and the palette edit the list       |
+| `icons`           | built-in icons        | Row icons: `tmux`, `herdr`, `configured`, `config`, `project`, `opencode`   |
+| `default_session` | none                  | Fallback `startup_command` and `preview_command`                            |
+| `projects`        | none                  | Exact-path project rules                                                    |
+| `wildcards`       | none                  | Pattern-based project rules                                                 |
 
 Environment overrides: `MUX_SESH_COLOR_SCHEME=light|dark` overrides the reported color scheme,
 `MUX_SESH_DISABLE_FFF=1` turns off native file search, and `MUX_SESH_DISABLE_AUTOUPDATE=1` turns
@@ -204,6 +205,34 @@ Pinned sessions stay at the top in every order.
 - `off` scans configured roots only
 - `rank` reorders discovered projects by zoxide score
 - `merge` adds extra zoxide-ranked projects that fall inside configured roots
+
+## Search History
+
+While you type a query, matches you open often and recently rank a little higher. The empty list
+is never reordered, and a clearly better match still wins: history only reorders matches of
+similar quality (the lift is capped at ×1.4, below the gap between an exact name, a prefix, and
+an inner match).
+
+Each confirmed open (a session or workspace focused or attached, or a session created or focused
+from a project) is appended to `$XDG_STATE_HOME/mux-sesh/frecency.jsonl`
+(`~/.local/state/mux-sesh/frecency.jsonl` by default). The file is created with `0600`
+permissions. Each line holds one key, an open count and the time of the last open:
+
+- `session:<backend>:<name>`: a tmux session or Herdr workspace by name (a Herdr agent pane counts
+  as its workspace)
+- `path:<directory>`: the directory a project or file launch opened in
+
+Nothing else is stored, and the file never leaves your machine. It keeps the newest 1000 entries.
+A failed or refused open records nothing. If the file cannot be written, the open still goes
+ahead unrecorded; run with `MUX_SESH_DEBUG_PERF=1` to log why. To clear the history, delete the
+file; to stop recording and ranking, set `search_history` to `false` (or switch it off in
+settings). Turning it off keeps the file; delete it as well to forget what was recorded.
+
+```json
+{
+  "search_history": false
+}
+```
 
 ## Preview Behavior
 

@@ -255,6 +255,18 @@ describe('config normalization', () => {
     expect(normalizeConfig({ theme: 'system' }, '/home/tester').theme).toBe('system')
   })
 
+  test('search history is on by default, and either spelling turns it off and saves snake_case', () => {
+    expect(getDefaultConfig('/home/tester').searchHistory).toBe(true)
+    expect(normalizeConfig({}, '/home/tester').searchHistory).toBe(true)
+
+    const snake = normalizeConfig({ search_history: false }, '/home/tester')
+    const camel = normalizeConfig({ searchHistory: false }, '/home/tester')
+
+    expect(snake.searchHistory).toBe(false)
+    expect(camel.searchHistory).toBe(false)
+    expect(serializeConfig(camel).search_history).toBe(false)
+  })
+
   test('returns defaults for invalid config values', () => {
     const defaults = getDefaultConfig('/home/tester')
 

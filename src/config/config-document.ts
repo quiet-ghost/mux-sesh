@@ -104,6 +104,7 @@ export const ConfigDocument = Schema.Struct({
   ...aliased('color_scheme', 'colorScheme', oneOf(['light', 'dark', 'system'])),
   themes: Schema.optionalKey(Schema.Record(Schema.String, ThemeDefinition)),
   ...aliased('auto_update', 'autoUpdate', Flag),
+  ...aliased('search_history', 'searchHistory', Flag),
   ...aliased('dir_length', 'dirLength', PositiveInteger),
   ...aliased('hidden_sessions', 'hiddenSessions', TextList),
   ...aliased('pinned_sessions', 'pinnedSessions', TextList),

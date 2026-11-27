@@ -143,12 +143,16 @@ export function rankItems(
 
 export type ItemFilter = (items: Item[], query: string) => Item[]
 
-export function filterAndSortItems(items: Item[], query: string): Item[] {
+export function filterAndSortItems(
+  items: Item[],
+  query: string,
+  options: ItemSearchOptions = {}
+): Item[] {
   if (!query.trim()) {
     return clearMatchIndices(items)
   }
 
-  return rankItems(items, query).map(ranked => ranked.item)
+  return rankItems(items, query, options).map(ranked => ranked.item)
 }
 
 // A filter that refines its previous result while the source list stays the same and the query grows.

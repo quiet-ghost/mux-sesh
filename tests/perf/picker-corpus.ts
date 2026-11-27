@@ -1,6 +1,11 @@
+import { mkdtemp, rm, writeFile } from 'fs/promises'
+import { tmpdir } from 'os'
+import { join } from 'path'
 import { createHerdrBackend } from '../../src/herdr/backend'
 import type { MultiplexerBackend } from '../../src/multiplexer'
 import { filterAndSortItems } from '../../src/search'
+import { FRECENCY_ENTRY_LIMIT, OpenKey } from '../../src/search/frecency'
+import { createOpenHistory, type OpenHistory } from '../../src/search/frecency-store'
 import type { Item } from '../../src/types'
 
 export const PICKER_CORPUS_SIZE = { sessions: 200, projects: 5000 } as const
@@ -30,7 +35,43 @@ interface PickerCorpus {
   filterItems: typeof filterAndSortItems
 }
 
-export function createPickerCorpus(): PickerCorpus {
+export interface PickerOpenHistory {
+  readonly history: OpenHistory
+  dispose(): Promise<void>
+}
+
+// A full history file in a fresh temporary directory, so startup load and every ranked query pay
+// the real cost of FRECENCY_ENTRY_LIMIT entries; it never touches the user's state.
+export async function createPickerOpenHistory(): Promise<PickerOpenHistory> {
+  const root = await mkdtemp(join(tmpdir(), 'mux-sesh-picker-history-'))
+  const path = join(root, 'frecency.jsonl')
+  const now = Date.now()
+
+  const lines = Array.from({ length: FRECENCY_ENTRY_LIMIT }, (_, index) =>
+    JSON.stringify({
+      key: OpenKey.path(`/fixture/projects/project-${String(index * 5).padStart(5, '0')}`),
+      frequency: 1 + (index % 7),
+      lastOpen: now - index * 60_000,
+    })
+  )
+
+  await writeFile(path, `${lines.join('\n')}\n`, { mode: 0o600 })
+
+  const history = createOpenHistory({
+    path: () => path,
+    now: () => now,
+    timeoutMs: 1000,
+    report: message => {
+      throw new Error(`The picker history fixture failed: ${message}`)
+    },
+  })
+
+  return { history, dispose: () => rm(root, { recursive: true, force: true }) }
+}
+
+export function createPickerCorpus(history?: OpenHistory): PickerCorpus {
+  const ranking = history ? { boost: (item: Item) => history.boost(item) } : {}
+
   const sessions = Array.from({ length: PICKER_CORPUS_SIZE.sessions }, (_, index) => ({
     id: `w${index}`,
     title: `session-${String(index).padStart(3, '0')}`,
@@ -143,7 +184,7 @@ export function createPickerCorpus(): PickerCorpus {
       const start = performance.now()
 
       try {
-        return filterAndSortItems(items, query)
+        return filterAndSortItems(items, query, ranking)
       } finally {
         filterSamples.push(performance.now() - start)
       }

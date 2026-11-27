@@ -12,6 +12,7 @@ import {
   type FileSearchOutcome,
   type FileSearchScope,
 } from '../search/fff'
+import { OPEN_HISTORY } from '../search/frecency-store'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
 import { isGitHubURL } from '../util/github'
 import { mark, measure } from '../util/perf'
@@ -36,7 +37,7 @@ export interface LauncherQueryServices {
 export const LAUNCHER_QUERY_SERVICES: LauncherQueryServices = {
   debounceMs: FILE_SEARCH_DEBOUNCE_MS,
   // Refines only while the candidate list keeps its identity and the query extends the last one.
-  filterItems: createItemFilter(),
+  filterItems: createItemFilter({ boost: item => OPEN_HISTORY.boost(item) }),
   openFileSearch: () => createFileSearchScope(),
   onDiscardedSearch: nativeMs => mark(`fileSearch:discarded ${nativeMs.toFixed(1)}ms`),
   loadCandidates: (config, backend) => loadSessionCandidateItems(config, measure, backend),
