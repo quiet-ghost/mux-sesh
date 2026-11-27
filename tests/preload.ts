@@ -28,6 +28,8 @@ const original = {
 }
 
 function resetEnv() {
+  // Spinners draw a still mark unless a test injects its own timers, even under a real terminal.
+  process.env.MUX_SESH_NO_ANIMATION = '1'
   process.env.HOME = home
   process.env.XDG_CONFIG_HOME = config
   process.env.XDG_CACHE_HOME = cache

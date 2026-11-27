@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useState } from 'react'
 import { useAppCoreState } from './core-state'
 import { useAutoUpdateScheduler, useAppBehaviors } from './effects'
 import { createAppControls } from './controls'
@@ -10,7 +10,7 @@ import { useAppModalState } from './modal-state'
 import { openOutcomeModal } from './modals'
 import { OptionPicker } from './option-picker'
 import { createAppRuntime } from './runtime'
-import { createAppHandlers, type LaunchGuard } from './handlers'
+import { createAppHandlers } from './handlers'
 import { useSessionInventory } from './session-inventory'
 import { useAppStartup } from './state'
 import { useEffectRuntime } from './use-effect-runtime'
@@ -18,6 +18,7 @@ import { useLiveResolvedTheme } from './resolved-theme'
 import { getConfigPath, getHomeDir, saveConfig } from '../config'
 import { shouldShowDetailPanel, useTerminalSize } from '../util/terminal'
 import { AppMode } from '../types'
+import { anyPending, createPendingFlag } from '../util/pending'
 import { mark, measure } from '../util/perf'
 import { requestFatalShutdown } from '../util/shutdown'
 import { getSettingEditorTitle, isOptionSetting } from '../settings'
@@ -125,7 +126,8 @@ export function useAppController(invocationCwd: string) {
 
   const theme = resolvedTheme.colors
 
-  const launchGuardRef = useRef<LaunchGuard>({ active: false })
+  // Also the busy signal: a running clone or launch keeps the header spinner going.
+  const [launchGuard] = useState(createPendingFlag)
 
   const {
     regularSessions,
@@ -164,6 +166,8 @@ export function useAppController(invocationCwd: string) {
     setAgentCursor,
     setMessage,
   })
+
+  const [busy] = useState(() => anyPending([inventory.loading, launchGuard]))
 
   const { startup, retryStartup } = useAppStartup(
     effects,
@@ -289,7 +293,7 @@ export function useAppController(invocationCwd: string) {
     executeCommand,
   } = createAppHandlers({
     clone: CLONE_SERVICES,
-    launchGuard: launchGuardRef.current,
+    launchGuard,
     backend,
     viewMode,
     config,
@@ -447,6 +451,7 @@ export function useAppController(invocationCwd: string) {
     resolvedTheme,
     columns,
     rows,
+    busy,
     screenProps: {
       theme,
       actionContext,

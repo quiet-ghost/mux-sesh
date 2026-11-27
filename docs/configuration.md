@@ -70,7 +70,9 @@ startup check remains the final authority. A complete example is in
 
 Environment overrides: `MUX_SESH_COLOR_SCHEME=light|dark` overrides the reported color scheme,
 `MUX_SESH_DISABLE_FFF=1` turns off native file search, and `MUX_SESH_DISABLE_AUTOUPDATE=1` turns
-off update checks.
+off update checks. `MUX_SESH_NO_ANIMATION=1` replaces the busy spinner with a still `…`; output
+that is not a terminal never animates. The spinner runs only while work is pending: a refresh, a
+clone or launch, New planning what Enter will open, or the details inspector reading.
 
 ## Backend Selection
 

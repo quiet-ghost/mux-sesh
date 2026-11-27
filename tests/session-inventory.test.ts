@@ -259,3 +259,30 @@ test('a defect during a load goes to the fatal channel and publishes nothing', a
   expect(harness.published).toEqual([])
   expect(harness.inventory.status()).toEqual({ kind: 'fresh' })
 })
+
+test('loading is pending while a startup or refresh load runs or waits, and polls do not count', async () => {
+  const harness = createHarness()
+  const seen: boolean[] = []
+
+  const unsubscribe = harness.inventory.loading.subscribe(() =>
+    seen.push(harness.inventory.loading.pending())
+  )
+
+  expect(harness.inventory.loading.pending()).toBe(false)
+
+  harness.inventory.observe({ viewMode: ViewMode.Sessions, ...harness.context })
+  const poll = harness.inventory.refresh({ kind: 'agents-poll' }, harness.context)
+  await harness.listCalls(1)
+  expect(harness.inventory.loading.pending()).toBe(false)
+
+  const manual = harness.inventory.refresh(refresh, harness.context)
+  expect(harness.inventory.loading.pending()).toBe(true)
+
+  await harness.drainNewestFirst()
+  await Promise.all([poll, manual])
+  await harness.quiesce()
+
+  expect(harness.inventory.loading.pending()).toBe(false)
+  expect(seen).toEqual([true, false])
+  unsubscribe()
+})

@@ -7,6 +7,7 @@ import { MultiplexerError } from '../src/multiplexer/types'
 import type { KeybindMode } from '../src/types'
 import { createLocalGitHub, type LocalGitHub } from './fixtures/local-github'
 import { renderSessionScreen } from './fixtures/session-screen'
+import { createFakeSpinnerMotion } from './fixtures/spinner-motion'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -310,6 +311,56 @@ describe('clone from New', () => {
 
     expect(github.clones).toHaveLength(1)
     expect(calls).toEqual([`create widget ${join(github.reposPath, 'widget')}`, 'open w9'])
+  })
+
+  test('the header spinner runs while a clone runs and stops once it finishes', async () => {
+    await github.publish('acme', 'widget')
+    const gate = Promise.withResolvers<void>()
+    const spinner = createFakeSpinnerMotion()
+
+    github.interceptClone(async run => {
+      await gate.promise
+
+      return run()
+    })
+
+    const { backend } = recordingBackend()
+
+    screen = await renderSessionScreen(
+      { width: 150, height: 36 },
+      {
+        backend,
+        config: { reposPath: github.reposPath, defaultSession: {} },
+        clone: github.services,
+        spinnerMotion: spinner.motion,
+      }
+    )
+
+    const fixture = screen
+    const header = async () => (await fixture.frame()).split('\n')[0] ?? ''
+
+    await openNewWith(fixture, 'https://github.com/acme/widget')
+    await waitForFrame(fixture, 'Clone acme/widget')
+    expect(await header()).not.toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/)
+    expect(spinner.active()).toBe(0)
+
+    await fixture.pressKey('RETURN')
+    await fixture.settle()
+
+    expect(await header()).toMatch(/⠋ /)
+    expect(spinner.active()).toBe(1)
+
+    gate.resolve()
+    await waitForFrame(fixture, 'not opened')
+
+    // After the launch, inventory refreshes and New plans again with real git; both then settle.
+    for (let wait = 0; spinner.active() > 0 && wait < FRAME_WAIT_MS / 5; wait++) {
+      await fixture.settle()
+      await Bun.sleep(5)
+    }
+
+    expect(await header()).not.toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/)
+    expect(spinner.active()).toBe(0)
   })
 
   test('a timed-out clone is reported as unknown, its leftovers are kept, and the next Enter refuses them', async () => {

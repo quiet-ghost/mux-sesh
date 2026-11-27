@@ -10,6 +10,7 @@ import { isAgentSessionItem } from '../agents/session-name'
 import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey } from '../multiplexer/items'
 import { ViewMode, type Config, type Item } from '../types'
+import { createPendingFlag, type PendingSignal } from '../util/pending'
 import { requestFatalShutdown } from '../util/shutdown'
 import {
   getAgentSelectionIndex,
@@ -82,6 +83,8 @@ export interface SessionInventory {
   // Counts settled startup and refresh loads (manual, mutation, view); polls do not count.
   revision(): number
   subscribe(listener: () => void): () => void
+  // Pending while a startup or refresh load runs or waits; Agents polls are background work.
+  readonly loading: PendingSignal
   dispose(): void
 }
 
@@ -161,6 +164,11 @@ export function createSessionInventory(options: SessionInventoryOptions): Sessio
   let queued: InventoryLoad | undefined
   let revision = 0
   const listeners = new Set<() => void>()
+  const loading = createPendingFlag()
+
+  function syncLoading(): void {
+    loading.active = (running !== undefined && running.request.kind !== 'agents-poll') || !!queued
+  }
 
   function revise(request: InventoryRequest): void {
     if (request.kind === 'agents-poll') return
@@ -236,6 +244,7 @@ export function createSessionInventory(options: SessionInventoryOptions): Sessio
 
   async function run(load: InventoryLoad): Promise<void> {
     running = load
+    syncLoading()
     const loadEpoch = epoch
     const loadGeneration = ++generation
 
@@ -248,6 +257,7 @@ export function createSessionInventory(options: SessionInventoryOptions): Sessio
     queued = undefined
 
     if (next) run(next).catch(options.onDefect)
+    syncLoading()
 
     for (const resolve of load.waiters) resolve(result)
   }
@@ -281,6 +291,7 @@ export function createSessionInventory(options: SessionInventoryOptions): Sessio
     }
 
     queued = { request, context, waiters: [...(queued?.waiters ?? []), resolve] }
+    syncLoading()
 
     return promise
   }
@@ -292,6 +303,8 @@ export function createSessionInventory(options: SessionInventoryOptions): Sessio
       for (const resolve of queued.waiters) resolve(INTERRUPTED)
       queued = undefined
     }
+
+    syncLoading()
   }
 
   function subscribe(listener: () => void): () => void {
@@ -302,7 +315,15 @@ export function createSessionInventory(options: SessionInventoryOptions): Sessio
     }
   }
 
-  return { refresh, observe, status: () => current, revision: () => revision, subscribe, dispose }
+  return {
+    refresh,
+    observe,
+    status: () => current,
+    revision: () => revision,
+    subscribe,
+    loading: { pending: loading.pending, subscribe: loading.subscribe },
+    dispose,
+  }
 }
 
 export interface InventorySelection {

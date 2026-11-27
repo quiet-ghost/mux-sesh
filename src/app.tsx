@@ -5,6 +5,7 @@ import { useAppController } from './app/controller'
 import { AppModalsLayer } from './app/modals-layer'
 import { AppScreen } from './app/screen'
 import { ThemeProvider } from './styles/theme'
+import { BusyContext } from './ui/Spinner'
 import { ErrorScreen } from './ui/ErrorScreen'
 import { StartupErrorScreen } from './ui/StartupErrorScreen'
 import { requestFatalShutdown, requestShutdown } from './util/shutdown'
@@ -122,7 +123,8 @@ function quitAfterStartupFailure(): void {
 }
 
 function AppTree({ invocationCwd }: AppProps) {
-  const { startup, retryStartup, theme, screenProps, modalProps } = useAppController(invocationCwd)
+  const { startup, retryStartup, theme, busy, screenProps, modalProps } =
+    useAppController(invocationCwd)
 
   return (
     <ThemeProvider theme={theme}>
@@ -133,10 +135,10 @@ function AppTree({ invocationCwd }: AppProps) {
           onQuit={quitAfterStartupFailure}
         />
       ) : (
-        <>
+        <BusyContext value={busy}>
           <AppScreen {...screenProps} />
           <AppModalsLayer {...modalProps} />
-        </>
+        </BusyContext>
       )}
     </ThemeProvider>
   )

@@ -2,7 +2,7 @@ import { TextareaRenderable, type TerminalColors } from '@opentui/core'
 import type { TestRendererOptions, TestRendererSetup } from '@opentui/core/testing'
 import { useRenderer } from '@opentui/react'
 import { testRender } from '@opentui/react/test-utils'
-import { act, useCallback, useEffect, useRef, useState } from 'react'
+import { act, useCallback, useEffect, useState } from 'react'
 import { executeCommand as executeAppCommand } from '../../src/app/commands'
 import { createAppControls } from '../../src/app/controls'
 import { useAppCoreState } from '../../src/app/core-state'
@@ -14,7 +14,7 @@ import {
   useSelectionMemory,
 } from '../../src/app/effects'
 import { FocusOwner } from '../../src/app/focus-owner'
-import { createAppHandlers, handleSelectItem, type LaunchGuard } from '../../src/app/handlers'
+import { createAppHandlers, handleSelectItem } from '../../src/app/handlers'
 import { useDetailsInspector } from '../../src/app/inspector'
 import { useAppKeyboard } from '../../src/app/keyboard'
 import { getLaunchScope, useLaunchRequest } from '../../src/app/launch-scope'
@@ -43,6 +43,13 @@ import { resolveTheme, ThemeProvider, type ThemeResolver } from '../../src/style
 import type { SubscribeThemeFollowOptions } from '../../src/styles/theme-follow'
 import { AppMode, type Config, type Item, type KeybindMode } from '../../src/types'
 import { useLaunchPreview } from '../../src/ui/launch-preview'
+import {
+  BusyContext,
+  SpinnerMotionContext,
+  STILL_MOTION,
+  type SpinnerMotion,
+} from '../../src/ui/Spinner'
+import { anyPending, createPendingFlag } from '../../src/util/pending'
 import { shouldShowDetailPanel, useTerminalSize } from '../../src/util/terminal'
 
 type BackendCall = { operation: 'list' } | { operation: 'details' | 'open'; id: string }
@@ -81,6 +88,7 @@ interface SessionFixture {
   invocationCwd: string
   clone: CloneServices
   handle: FixtureHandle
+  spinnerMotion: SpinnerMotion
 }
 
 interface FixtureHandle {
@@ -108,6 +116,8 @@ interface SessionScreenData {
   resolveTheme?: ThemeResolver
   themeFollow?: SubscribeThemeFollowOptions
   saveConfig?: (config: Config) => Promise<void>
+  // Spinner timers; defaults to still, so no frame depends on the wall clock.
+  spinnerMotion?: SpinnerMotion
 }
 
 // Assigned inside act(), so control-flow narrowing cannot track a local binding.
@@ -293,7 +303,8 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     ),
   }
 
-  const launchGuard = useRef<LaunchGuard>({ active: false })
+  const [launchGuard] = useState(createPendingFlag)
+  const [busy] = useState(() => anyPending([inventory.loading, launchGuard]))
 
   const onDefect = useCallback(
     (cause: unknown) => {
@@ -339,7 +350,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     ...derived,
     ...controls,
     clone: fixture.clone,
-    launchGuard: launchGuard.current,
+    launchGuard,
     backend,
     config,
     showMessage,
@@ -406,30 +417,34 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
 
   return (
     <ThemeProvider theme={theme}>
-      <AppScreen
-        {...core}
-        {...derived}
-        {...dimensions}
-        theme={theme}
-        focusOwner={FocusOwner.of({ ...core, modalState: modal.modalState })}
-        config={config}
-        backend={backend}
-        details={details}
-        launchPreview={launchPreview}
-        newSession={newSession}
-        projectCount={projects.length}
-      />
-      <AppModalsLayer
-        {...modal}
-        {...derived}
-        {...settings}
-        {...dimensions}
-        configPath="/fixture/config.json"
-        themeId={resolvedTheme.id}
-        themeName={resolvedTheme.name}
-        colorMode={resolvedTheme.mode}
-        getSettingEditorTitle={getSettingEditorTitle}
-      />
+      <SpinnerMotionContext value={fixture.spinnerMotion}>
+        <BusyContext value={busy}>
+          <AppScreen
+            {...core}
+            {...derived}
+            {...dimensions}
+            theme={theme}
+            focusOwner={FocusOwner.of({ ...core, modalState: modal.modalState })}
+            config={config}
+            backend={backend}
+            details={details}
+            launchPreview={launchPreview}
+            newSession={newSession}
+            projectCount={projects.length}
+          />
+          <AppModalsLayer
+            {...modal}
+            {...derived}
+            {...settings}
+            {...dimensions}
+            configPath="/fixture/config.json"
+            themeId={resolvedTheme.id}
+            themeName={resolvedTheme.name}
+            colorMode={resolvedTheme.mode}
+            getSettingEditorTitle={getSettingEditorTitle}
+          />
+        </BusyContext>
+      </SpinnerMotionContext>
     </ThemeProvider>
   )
 }
@@ -553,6 +568,7 @@ export async function renderSessionScreen(
             handle,
             invocationCwd: data.invocationCwd ?? '/fixture',
             clone: data.clone ?? NO_GIT,
+            spinnerMotion: data.spinnerMotion ?? STILL_MOTION,
           }}
         />,
         { ...options, consoleMode: 'disabled', exitOnCtrlC: false, kittyKeyboard: true }

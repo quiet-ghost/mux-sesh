@@ -23,7 +23,9 @@ import { getOmarchyColorsPath } from '../src/styles/omarchy'
 import { resolveTheme, type ThemeResolver } from '../src/styles/theme'
 import type { SubscribeThemeFollowOptions } from '../src/styles/theme-follow'
 import { AppMode, ViewMode, type Item } from '../src/types'
+import { IDLE } from '../src/util/pending'
 import { renderSessionScreen } from './fixtures/session-screen'
+import { createFakeSpinnerMotion } from './fixtures/spinner-motion'
 import { createPickerCorpus, PICKER_QUERIES } from './perf/picker-corpus'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
@@ -214,6 +216,7 @@ describe('navigation and query work budget at the baseline corpus', () => {
     const theme = countThemeResolutions()
     const follow = createFollowProbe()
     const filesystem = recordFilesystem()
+    const spinner = createFakeSpinnerMotion()
 
     const screen = mountScreen(
       await renderSessionScreen(
@@ -224,6 +227,7 @@ describe('navigation and query work budget at the baseline corpus', () => {
           homeDir,
           resolveTheme: theme.resolve,
           themeFollow: follow.options,
+          spinnerMotion: spinner.motion,
         }
       )
     )
@@ -235,8 +239,15 @@ describe('navigation and query work budget at the baseline corpus', () => {
     const startupResolutions = theme.resolutions()
     const startupWork = { ...corpus.work }
 
+    await screen.settle()
+    const spinnerStartsAtStartup = spinner.starts()
+    expect(spinner.active()).toBe(0)
+
     for (let step = 1; step <= 10; step++) await screen.pressKey('ARROW_DOWN')
     expect(await screen.frame()).toMatch(/› .*session-010/)
+    // Idle navigation starts no spinner timer and draws no spinner frame.
+    expect(spinner.starts()).toBe(spinnerStartsAtStartup)
+    expect(spinner.frameReads()).toBe(0)
 
     await screen.pressKey('n')
     expect(await screen.frame()).toMatch(/› .*project-00000/)
@@ -253,6 +264,8 @@ describe('navigation and query work budget at the baseline corpus', () => {
 
     expect(filesystem.calls()).toEqual({})
     expect(theme.resolutions()).toBe(startupResolutions)
+    // New plans each selection behind a spinner; once every plan settles, no timer remains.
+    expect(spinner.active()).toBe(0)
     // Search counts depend on the native debounce; picker-baseline.test.ts pins them per query.
     expect([corpus.work.inventory, corpus.work.preview, corpus.work.subprocess]).toEqual([
       startupWork.inventory,
@@ -260,6 +273,78 @@ describe('navigation and query work budget at the baseline corpus', () => {
       startupWork.subprocess,
     ])
     expect(screen.defects).toEqual([])
+  })
+})
+
+describe('the header spinner runs only while work is pending', () => {
+  test('a refresh in flight animates the header, and its timer stops when the load settles', async () => {
+    const spinner = createFakeSpinnerMotion()
+    const lists: Array<PromiseWithResolvers<LiveWorkspace[]>> = []
+
+    const alpha: LiveWorkspace = {
+      backend: 'herdr',
+      id: 'w1',
+      title: 'alpha',
+      path: '/fixture/alpha',
+      isActive: true,
+      unitCount: 1,
+    }
+
+    const backend: MultiplexerBackend = {
+      kind: 'herdr',
+      capabilities: { previousWorkspace: false },
+      list() {
+        if (lists.length === 0) {
+          lists.push(Promise.withResolvers())
+
+          return Promise.resolve([alpha])
+        }
+
+        const deferred = Promise.withResolvers<LiveWorkspace[]>()
+        lists.push(deferred)
+
+        return deferred.promise
+      },
+      open: unsupported,
+      openOrCreate: unsupported,
+      create: unsupported,
+      start: unsupported,
+      rename: unsupported,
+      close: unsupported,
+      current: unsupported,
+      directory: unsupported,
+      details: unsupported,
+      openEditor: unsupported,
+    }
+
+    const screen = mountScreen(
+      await renderSessionScreen(
+        { width: 80, height: 20 },
+        { backend, spinnerMotion: spinner.motion }
+      )
+    )
+
+    await screen.settle()
+    const header = async () => (await screen.frame()).split('\n')[0] ?? ''
+    expect(await header()).not.toMatch(/[⠋⠙⠹]/)
+    expect(spinner.active()).toBe(0)
+
+    await screen.pressKey('x', { ctrl: true })
+    await screen.pressKey('R', { shift: true })
+    await screen.settle()
+
+    expect(lists).toHaveLength(2)
+    expect(await header()).toMatch(/⠋ /)
+    expect(spinner.active()).toBe(1)
+    spinner.tick()
+    expect(await header()).toMatch(/⠙ /)
+
+    await act(async () => lists[1]?.resolve([alpha]))
+    await screen.settle()
+
+    expect(await header()).not.toMatch(/[⠋⠙⠹]/)
+    expect(spinner.active()).toBe(0)
+    expect(spinner.starts()).toBe(1)
   })
 })
 
@@ -339,6 +424,7 @@ describe('owned resources are released', () => {
       status: () => ({ kind: 'fresh' }),
       revision: () => 0,
       subscribe: () => () => {},
+      loading: IDLE,
       dispose: () => {},
     }
 

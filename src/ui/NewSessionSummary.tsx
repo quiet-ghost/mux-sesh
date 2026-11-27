@@ -3,6 +3,7 @@ import { useTheme } from '../styles/theme'
 import { toHomeRelativePath } from '../util/path-display'
 import { truncatePathInText } from '../util/truncate'
 import { describeLaunchPreview } from './launch-preview'
+import { Spinner } from './Spinner'
 
 interface Props {
   preview: LaunchPreview
@@ -40,6 +41,12 @@ function summaryPath(preview: LaunchPreview): string {
   }
 }
 
+const SPINNER_COLUMNS = 2
+
+function isPending(preview: LaunchPreview): boolean {
+  return preview.kind === 'planning' || preview.kind === 'file-searching'
+}
+
 // One row naming exactly what Enter will do, read from the frozen launch plan.
 export default function NewSessionSummary({ preview, width }: Props) {
   const theme = useTheme()
@@ -49,9 +56,13 @@ export default function NewSessionSummary({ preview, width }: Props) {
   if (summary.kind === 'none') return null
 
   if (summary.kind === 'note') {
+    const pending = isPending(preview)
+    const textWidth = pending ? Math.max(1, width - SPINNER_COLUMNS) : width
+
     return (
       <text style={{ fg: theme.textMuted, wrapMode: 'none', flexShrink: 0, marginBottom: 1 }}>
-        {truncatePathInText(summary.text, path, width)}
+        {pending && <Spinner still="" />}
+        {truncatePathInText(summary.text, path, textWidth)}
       </text>
     )
   }

@@ -6,6 +6,7 @@ import type { Item } from '../types'
 import type { WorkspaceDetails } from '../multiplexer'
 import { fitPath } from '../util/path-display'
 import { getCompactDetails } from './session-meta'
+import { Spinner } from './Spinner'
 
 interface Props {
   width: number
@@ -225,7 +226,10 @@ function InspectedDetails(props: { item: Item; view: DetailsView; width: number 
         {view.kind === 'failed' && view.key === key ? (
           <text style={{ fg: theme.danger, marginTop: 1 }}>{view.message}</text>
         ) : (
-          <text style={{ fg: theme.textSubtle, marginTop: 1 }}>Loading…</text>
+          <text style={{ fg: theme.textSubtle, marginTop: 1 }}>
+            <Spinner still="" />
+            Loading…
+          </text>
         )}
       </>
     )
@@ -234,7 +238,10 @@ function InspectedDetails(props: { item: Item; view: DetailsView; width: number 
   return (
     <>
       {view.kind === 'refreshing' && (
-        <text style={{ fg: theme.textSubtle, marginBottom: 1 }}>Refreshing…</text>
+        <text style={{ fg: theme.textSubtle, marginBottom: 1 }}>
+          <Spinner still="" />
+          Refreshing…
+        </text>
       )}
       {view.kind === 'stale' && (
         <text style={{ fg: theme.danger, marginBottom: 1 }}>

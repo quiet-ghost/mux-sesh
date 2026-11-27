@@ -31,6 +31,7 @@ import { createHerdrBackend } from '../src/herdr/backend'
 import { getItemKey, workspaceToItem } from '../src/multiplexer/items'
 import { filterHiddenSessions } from '../src/tmux/workflows'
 import { INACTIVE_LAUNCH } from '../src/sessions/launch-plan'
+import { IDLE } from '../src/util/pending'
 import { NO_GIT } from './fixtures/local-github'
 
 function actionContext(overrides: Partial<ActionContext> = {}): ActionContext {
@@ -628,6 +629,7 @@ describe('app runtime helpers', () => {
       status: () => ({ kind: 'fresh' }),
       revision: () => 0,
       subscribe: () => () => {},
+      loading: IDLE,
       dispose: mock(() => {}),
     }
 

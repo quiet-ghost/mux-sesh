@@ -26,6 +26,7 @@ import ItemList from '../ui/ItemList'
 import { truncateDialogText } from '../ui/dialog-layout'
 import { getListRowWidth, getSessionViewport } from '../ui/session-viewport'
 import SessionDetailsPanel from '../ui/SessionDetailsPanel'
+import { BusySpinner } from '../ui/Spinner'
 import NewSessionSummary from '../ui/NewSessionSummary'
 import { getSelectedRowAction } from '../ui/launch-preview'
 import Toast from '../ui/Toast'
@@ -194,6 +195,7 @@ export function AppScreen({
                 <span style={{ fg: theme.textSubtle }}>{`  ${title}`}</span>
               </text>
               <text style={{ fg: theme.textMuted, wrapMode: 'none' }}>
+                <BusySpinner />
                 {getStatusLabel(viewMode, activeSessions, totalSessions, projectCount)}
               </text>
             </box>
