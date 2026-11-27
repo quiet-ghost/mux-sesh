@@ -3,7 +3,14 @@ import { AppMode, type IconConfig } from '../types'
 import HighlightedText from './HighlightedText'
 import { getItemIconPresentation } from './item-icon'
 import { getVisibleWindow } from './list-window'
-import { markedMeta, rowMarker } from './row-mark'
+import {
+  markedMeta,
+  rowBackground,
+  rowForeground,
+  rowGutter,
+  rowMarker,
+  SELECTED_MATCH_ATTRIBUTES,
+} from './row-mark'
 import { fitListRow } from './session-viewport'
 import type { Item } from '../types'
 import { getItemKey } from '../multiplexer/items'
@@ -78,6 +85,11 @@ export default function ItemList({
           item.title.length
         )
 
+        const titleColor = rowForeground(theme, selected, theme.text)
+        const contextColor = rowForeground(theme, selected, theme.textSubtle)
+        const highlightColor = selected ? theme.selectionText : undefined
+        const highlightAttributes = selected ? SELECTED_MATCH_ATTRIBUTES : undefined
+
         return (
           <box
             key={`${getItemKey(item)}:${item.path}`}
@@ -85,56 +97,65 @@ export default function ItemList({
               flexDirection: 'row',
               flexShrink: 0,
               justifyContent: 'space-between',
-              backgroundColor: isMarked
-                ? theme.dangerSurface
-                : selected
-                  ? theme.surfaceAlt
-                  : 'transparent',
-              paddingLeft: 1,
+              backgroundColor: rowBackground(theme, selected, isMarked),
               paddingRight: 1,
             }}
           >
             <text style={{ wrapMode: 'none' }}>
-              <span style={{ fg: selected ? theme.primary : theme.danger }}>
-                {rowMarker(selected, isMarked)}
+              <span style={{ fg: theme.primary, bg: theme.surface }}>{rowGutter(selected)}</span>
+              <span style={{ fg: rowForeground(theme, selected, theme.danger) }}>
+                {rowMarker(isMarked)}
               </span>
               {item.isSession ? (
-                <>
-                  <span style={{ fg: item.isAttached ? theme.active : theme.inactive }}>
-                    {item.isAttached ? '●' : '○'}
-                  </span>{' '}
-                  {isSearching && hasTitleMatch ? (
-                    <HighlightedText text={row.title} matchIndices={titleMatchIndices} />
-                  ) : (
-                    <span style={{ fg: theme.text }}>{row.title}</span>
-                  )}
-                  {row.context ? (
-                    <span style={{ fg: theme.textSubtle }}>{`${row.spacer}${row.context}`}</span>
-                  ) : null}
-                </>
+                <span
+                  style={{
+                    fg: rowForeground(
+                      theme,
+                      selected,
+                      item.isAttached ? theme.active : theme.inactive
+                    ),
+                  }}
+                >
+                  {item.isAttached ? '●' : '○'}
+                </span>
               ) : (
-                <>
-                  <span style={{ fg: icon.color }}>{icon.glyph}</span>{' '}
-                  {isSearching && hasTitleMatch ? (
-                    <HighlightedText text={row.title} matchIndices={titleMatchIndices} />
-                  ) : (
-                    <span style={{ fg: theme.text }}>{row.title}</span>
-                  )}
-                  {row.context ? (
-                    <>
-                      <span style={{ fg: theme.textSubtle }}>{row.spacer}</span>
-                      {isSearching && hasDescMatch ? (
-                        <HighlightedText text={row.context} matchIndices={descMatchIndices} />
-                      ) : (
-                        <span style={{ fg: theme.textSubtle }}>{row.context}</span>
-                      )}
-                    </>
-                  ) : null}
-                </>
+                <span style={{ fg: rowForeground(theme, selected, icon.color) }}>{icon.glyph}</span>
+              )}{' '}
+              {isSearching && hasTitleMatch ? (
+                <HighlightedText
+                  text={row.title}
+                  matchIndices={titleMatchIndices}
+                  color={titleColor}
+                  highlightColor={highlightColor}
+                  highlightAttributes={highlightAttributes}
+                />
+              ) : (
+                <span style={{ fg: titleColor }}>{row.title}</span>
               )}
+              {row.context ? (
+                <>
+                  <span style={{ fg: contextColor }}>{row.spacer}</span>
+                  {!item.isSession && isSearching && hasDescMatch ? (
+                    <HighlightedText
+                      text={row.context}
+                      matchIndices={descMatchIndices}
+                      color={contextColor}
+                      highlightColor={highlightColor}
+                      highlightAttributes={highlightAttributes}
+                    />
+                  ) : (
+                    <span style={{ fg: contextColor }}>{row.context}</span>
+                  )}
+                </>
+              ) : null}
             </text>
 
-            <text style={{ fg: isMarked ? theme.danger : theme.textSubtle, wrapMode: 'none' }}>
+            <text
+              style={{
+                fg: rowForeground(theme, selected, isMarked ? theme.danger : theme.textSubtle),
+                wrapMode: 'none',
+              }}
+            >
               {meta}
             </text>
           </box>

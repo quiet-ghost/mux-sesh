@@ -4,6 +4,7 @@ import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import { MultiplexerError } from '../src/multiplexer/types'
 import type { Item, KeybindMode } from '../src/types'
 import { renderSessionScreen } from './fixtures/session-screen'
+import { selectedRow } from './fixtures/selection'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -145,7 +146,7 @@ describe('project-first New', () => {
     expect(frame).toContain('Type a project name, path, or GitHub URL...')
     expect(frame).not.toContain('custom session name')
     expect(frame).toContain("Create 'api' in /fixture/api")
-    expect(frame).toMatch(/› P api\s+create/)
+    expect(frame).toMatch(selectedRow('P api\\s+create'))
   })
 
   test('a project with a live workspace in the same directory is focused, not created', async () => {
@@ -159,7 +160,7 @@ describe('project-first New', () => {
 
     const frame = await screen.frame()
     expect(frame).toContain("Focus existing 'alpha' in /fixture/alpha")
-    expect(frame).toMatch(/› P alpha\s+focus/)
+    expect(frame).toMatch(selectedRow('P alpha\\s+focus'))
     expect(footerOf(frame)).toBe(
       'enter focus  ctrl+n name  ctrl+t startup  ctrl+g here  ctrl+o file  esc cancel'
     )

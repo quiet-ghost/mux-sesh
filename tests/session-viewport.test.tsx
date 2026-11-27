@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import type { LiveWorkspace } from '../src/multiplexer'
 import { renderSessionScreen } from './fixtures/session-screen'
+import { SELECTION_BAR, selectedLines, selectedRow } from './fixtures/selection'
 
 const LONG_SESSION = 'session-with-an-extremely-long-workspace-name-that-must-not-wrap-in-the-list'
 const LONG_AGENT = 'agent-with-an-extremely-long-pane-name-that-must-truncate-instead-of-wrapping'
@@ -68,10 +69,6 @@ function lines(frame: string): string[] {
   return frame.split('\n').slice(0, -1)
 }
 
-function selectedLines(frame: string): string[] {
-  return lines(frame).filter(line => line.includes('›'))
-}
-
 function lineIndex(frame: string, pattern: RegExp): number {
   return lines(frame).findIndex(line => pattern.test(line))
 }
@@ -96,7 +93,7 @@ function expectViewport(frame: string, height: number): void {
 
 function expectNoWrappedContinuation(frame: string): void {
   const rows = lines(frame)
-  const selected = rows.findIndex(line => line.includes('›'))
+  const selected = rows.findIndex(line => line.includes(SELECTION_BAR))
 
   expect(rows[selected + 1]).not.toMatch(/^\s{2,3}[a-z]/)
 }
@@ -111,7 +108,7 @@ describe('responsive session viewport', () => {
 
     const frame = await screen.frame()
     expectViewport(frame, dimensions.height)
-    expect(selectedLines(frame)[0]).toMatch(/› .*session-00/)
+    expect(selectedLines(frame)[0]).toMatch(selectedRow('.*session-00'))
   })
 
   test.each(SIZES)(
@@ -122,28 +119,28 @@ describe('responsive session viewport', () => {
       await screen.pressKey('o')
       const agents = await screen.frame()
       expectViewport(agents, dimensions.height)
-      expect(selectedLines(agents)[0]).toMatch(/› .*agent-one/)
+      expect(selectedLines(agents)[0]).toMatch(selectedRow('.*agent-one'))
 
       await screen.pressKey('ARROW_DOWN')
-      expect(selectedLines(await screen.frame())[0]).toMatch(/› .*agent-two/)
+      expect(selectedLines(await screen.frame())[0]).toMatch(selectedRow('.*agent-two'))
 
       await screen.pressKey('ESCAPE')
       const sessions = await screen.frame()
       expectViewport(sessions, dimensions.height)
-      expect(selectedLines(sessions)[0]).toMatch(/› .*session-00/)
+      expect(selectedLines(sessions)[0]).toMatch(selectedRow('.*session-00'))
     }
   )
 
   test('keeps a selected session near the bottom visible after shrinking', async () => {
     screen = await renderSessionScreen({ width: 120, height: 36 }, { workspaces })
     await press('ARROW_DOWN', 29)
-    expect(selectedLines(await screen.frame())[0]).toMatch(/› .*session-29/)
+    expect(selectedLines(await screen.frame())[0]).toMatch(selectedRow('.*session-29'))
 
     await screen.resize(60, 18)
 
     const frame = await screen.frame()
     expectViewport(frame, 18)
-    expect(selectedLines(frame)[0]).toMatch(/› .*session-29/)
+    expect(selectedLines(frame)[0]).toMatch(selectedRow('.*session-29'))
   })
 
   test.each(SIZES)(
@@ -177,7 +174,7 @@ describe('responsive session viewport', () => {
     await screen.pressKey('o')
 
     const frame = await screen.frame()
-    expect(selectedLines(frame)[0]).toMatch(/› .*agent-one .*session-03/)
+    expect(selectedLines(frame)[0]).toMatch(selectedRow('.*agent-one .*session-03'))
     expect(screen.calls).toEqual([{ operation: 'list' }])
   })
 })

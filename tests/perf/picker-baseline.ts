@@ -1,6 +1,7 @@
 import type { MultiplexerBackend } from '../../src/multiplexer'
 import { summarizeTimings, type TimingSummary } from '../../src/util/perf'
 import { renderSessionScreen } from '../fixtures/session-screen'
+import { SELECTION_BAR } from '../fixtures/selection'
 import {
   createPickerCorpus,
   PICKER_CORPUS_SIZE,
@@ -47,7 +48,7 @@ function subtractPickerWork(after: PickerWork, before: PickerWork): PickerWork {
 }
 
 function requireSelectedRow(frame: string, title: string): void {
-  if (!frame.split('\n').some(line => line.includes('›') && line.includes(title))) {
+  if (!frame.split('\n').some(line => line.includes(SELECTION_BAR) && line.includes(title))) {
     throw new Error(`Baseline frame did not show selected row ${title}`)
   }
 }

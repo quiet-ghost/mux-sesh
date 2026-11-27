@@ -3,20 +3,28 @@ import { useTheme } from '../styles/theme'
 interface Props {
   text: string
   matchIndices?: number[]
+  color?: string
   highlightColor?: string
+  highlightAttributes?: number
 }
 
 /**
  * Renders text with highlighted characters at specified indices
  * Used for fuzzy search match visualization (like fzf/telescope)
  */
-export default function HighlightedText({ text, matchIndices = [], highlightColor }: Props) {
+export default function HighlightedText({
+  text,
+  matchIndices = [],
+  color,
+  highlightColor,
+  highlightAttributes,
+}: Props) {
   const theme = useTheme()
   const resolvedHighlightColor = highlightColor ?? theme.action
 
   // If no matches, return plain text
   if (matchIndices.length === 0) {
-    return <>{text}</>
+    return <span style={{ fg: color }}>{text}</span>
   }
 
   // Build array of text segments with their highlight status
@@ -49,11 +57,13 @@ export default function HighlightedText({ text, matchIndices = [], highlightColo
     <>
       {segments.map((segment, i) =>
         segment.highlighted ? (
-          <span key={i} style={{ fg: resolvedHighlightColor }}>
+          <span key={i} style={{ fg: resolvedHighlightColor, attributes: highlightAttributes }}>
             {segment.text}
           </span>
         ) : (
-          <span key={i}>{segment.text}</span>
+          <span key={i} style={{ fg: color }}>
+            {segment.text}
+          </span>
         )
       )}
     </>

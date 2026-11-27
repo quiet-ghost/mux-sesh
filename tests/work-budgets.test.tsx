@@ -25,6 +25,7 @@ import type { SubscribeThemeFollowOptions } from '../src/styles/theme-follow'
 import { AppMode, ViewMode, type Item } from '../src/types'
 import { IDLE } from '../src/util/pending'
 import { renderSessionScreen } from './fixtures/session-screen'
+import { selectedRow } from './fixtures/selection'
 import { createFakeSpinnerMotion } from './fixtures/spinner-motion'
 import { createPickerCorpus, PICKER_QUERIES } from './perf/picker-corpus'
 
@@ -244,17 +245,17 @@ describe('navigation and query work budget at the baseline corpus', () => {
     expect(spinner.active()).toBe(0)
 
     for (let step = 1; step <= 10; step++) await screen.pressKey('ARROW_DOWN')
-    expect(await screen.frame()).toMatch(/› .*session-010/)
+    expect(await screen.frame()).toMatch(selectedRow('.*session-010'))
     // Idle navigation starts no spinner timer and draws no spinner frame.
     expect(spinner.starts()).toBe(spinnerStartsAtStartup)
     expect(spinner.frameReads()).toBe(0)
 
     await screen.pressKey('n')
-    expect(await screen.frame()).toMatch(/› .*project-00000/)
+    expect(await screen.frame()).toMatch(selectedRow('.*project-00000'))
 
     for (const query of PICKER_QUERIES) {
       await screen.replaceQuery(query)
-      expect(await screen.frame()).toMatch(new RegExp(`› .*${query}`))
+      expect(await screen.frame()).toMatch(selectedRow(`.*${query}`))
     }
 
     await screen.replaceQuery('project-0')
@@ -357,7 +358,7 @@ describe('rendered rows are bounded by the viewport', () => {
 
     try {
       for (let step = 0; step < 5; step++) await screen.pressKey('ARROW_DOWN')
-      expect(await screen.frame()).toMatch(/› .*session-/)
+      expect(await screen.frame()).toMatch(selectedRow('.*session-'))
 
       return countRenderables(screen.renderer.root)
     } finally {
@@ -374,7 +375,7 @@ describe('rendered rows are bounded by the viewport', () => {
     try {
       await screen.pressKey('n')
       await screen.replaceQuery('project-0')
-      expect(await screen.frame()).toMatch(/› .*project-00000/)
+      expect(await screen.frame()).toMatch(selectedRow('.*project-00000'))
 
       return countRenderables(screen.renderer.root)
     } finally {

@@ -1,6 +1,7 @@
 import type { TextareaRenderable } from '@opentui/core'
 import { useTheme } from '../styles/theme'
 import { fitDialogRow } from './dialog-layout'
+import { rowForeground, rowGutter } from './row-mark'
 
 interface DialogFilterProps {
   placeholder: string
@@ -57,16 +58,22 @@ export function DialogRow({ label, value, selected, width, disabled = false }: D
         flexDirection: 'row',
         justifyContent: 'space-between',
         backgroundColor: selected ? theme.selection : 'transparent',
-        paddingLeft: 1,
         paddingRight: 1,
       }}
     >
-      <text
-        style={{ fg: selected ? theme.selectionText : disabled ? theme.textMuted : theme.text }}
-      >
-        {text.label}
+      <text style={{ wrapMode: 'none' }}>
+        <span style={{ fg: theme.primary, bg: theme.surfaceModal }}>{rowGutter(selected)}</span>
+        <span
+          style={{
+            fg: rowForeground(theme, selected, disabled ? theme.textMuted : theme.text),
+          }}
+        >
+          {` ${text.label}`}
+        </span>
       </text>
-      <text style={{ fg: selected ? theme.selectionText : theme.textMuted }}>{text.value}</text>
+      <text style={{ fg: rowForeground(theme, selected, theme.textMuted), wrapMode: 'none' }}>
+        {text.value}
+      </text>
     </box>
   )
 }

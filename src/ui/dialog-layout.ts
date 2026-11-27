@@ -1,7 +1,10 @@
 const DIALOG_MARGIN_COLUMNS = 2
 const DIALOG_MARGIN_ROWS = 1
 const DIALOG_PADDING_COLUMNS = 2
-const DIALOG_ROW_PADDING_COLUMNS = 1
+
+// A row is the 1-cell selection gutter, a 1-cell inset before the label and a 1-cell right pad.
+const DIALOG_ROW_CHROME_COLUMNS = 3
+
 const MIN_LIST_ROWS = 4
 const ELLIPSIS = '…'
 
@@ -26,7 +29,7 @@ export function getDialogContentWidth(dialogWidth: number): number {
 }
 
 export function getDialogRowWidth(dialogWidth: number): number {
-  return Math.max(1, getDialogContentWidth(dialogWidth) - DIALOG_ROW_PADDING_COLUMNS * 2)
+  return Math.max(1, getDialogContentWidth(dialogWidth) - DIALOG_ROW_CHROME_COLUMNS)
 }
 
 export function getDialogChromeRows({ description, footer }: DialogChrome): number {

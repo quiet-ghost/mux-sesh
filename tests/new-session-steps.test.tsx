@@ -10,6 +10,7 @@ import { MultiplexerError, type BackendKind } from '../src/multiplexer/types'
 import { FileSearchUnavailableError, type FileSearchOutcome } from '../src/search/fff'
 import type { Item, KeybindMode } from '../src/types'
 import { renderSessionScreen } from './fixtures/session-screen'
+import { selectedRow } from './fixtures/selection'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -190,7 +191,7 @@ describe('New secondary steps', () => {
         expect(fieldText(screen)).toBe('b')
         expect(back).toContain('New Workspace')
         expect(back).toContain("Create 'bravo' in /fixture/bravo")
-        expect(back).toMatch(/› P bravo\s+create/)
+        expect(back).toMatch(selectedRow('P bravo\\s+create'))
       }
 
       expect(calls).toEqual([])
@@ -322,7 +323,7 @@ describe('named session here', () => {
 
     const named = await replaceField(screen, 'scratch')
     expect(named).toContain(`Create 'scratch' in ${cwd}`)
-    expect(named).not.toMatch(/› P api\s+create/)
+    expect(named).not.toMatch(selectedRow('P api\\s+create'))
     expect(footerOf(named)).toBe('enter create  esc cancel')
 
     await press(screen, 'RETURN')
@@ -397,7 +398,7 @@ describe('open file step', () => {
 
     const prompt = await press(screen, 'o', true)
     expect(prompt).toContain('Open file')
-    expect(prompt).not.toMatch(/› P api/)
+    expect(prompt).not.toMatch(selectedRow('P api'))
 
     const found = await replaceField(screen, 'a')
     expect(searches).toEqual(['a'])

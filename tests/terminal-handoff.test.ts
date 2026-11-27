@@ -3,6 +3,7 @@ import { chmod, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } fro
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { createCommandRunner } from '../src/multiplexer/command'
+import { SELECTION_BAR } from './fixtures/selection'
 
 // Runs the real entry point in real pseudo-terminals, so it stays opt-in:
 //   MUX_SESH_TERMINAL_TESTS=1 bun test tests/terminal-handoff.test.ts
@@ -161,7 +162,7 @@ async function waitForScreen(text: string): Promise<void> {
 }
 
 function selectedRow(screen: string): string | undefined {
-  return screen.split('\n').find(line => line.includes('›'))
+  return screen.split('\n').find(line => line.includes(SELECTION_BAR))
 }
 
 // Row order follows each session's directory name, which varies with where the repo is checked

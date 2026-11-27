@@ -2,7 +2,7 @@ import { useTheme } from '../styles/theme'
 import type { IconConfig, Item } from '../types'
 import { formatSectionHeader } from './item-icon'
 import { getItemKey } from '../multiplexer/items'
-import { markedMeta, rowMarker } from './row-mark'
+import { markedMeta, rowBackground, rowForeground, rowGutter, rowMarker } from './row-mark'
 import { getSessionMeta } from './session-meta'
 import type { VisibleWindow } from './list-window'
 import { fitListRow, getTitleColumnWidth } from './session-viewport'
@@ -66,38 +66,48 @@ export default function AgentSessionGroup({
               flexDirection: 'row',
               flexShrink: 0,
               justifyContent: 'space-between',
-              backgroundColor: isMarked
-                ? theme.dangerSurface
-                : selected
-                  ? theme.surfaceAlt
-                  : 'transparent',
-              paddingLeft: 1,
+              backgroundColor: rowBackground(theme, selected, isMarked),
               paddingRight: 1,
             }}
           >
             <text style={{ wrapMode: 'none' }}>
-              <span style={{ fg: selected ? theme.primary : theme.danger }}>
-                {rowMarker(selected, isMarked)}
+              <span style={{ fg: theme.primary, bg: theme.surface }}>{rowGutter(selected)}</span>
+              <span style={{ fg: rowForeground(theme, selected, theme.danger) }}>
+                {rowMarker(isMarked)}
               </span>
-              <span style={{ fg: item.isAttached ? theme.active : theme.inactive }}>
+              <span
+                style={{
+                  fg: rowForeground(
+                    theme,
+                    selected,
+                    item.isAttached ? theme.active : theme.inactive
+                  ),
+                }}
+              >
                 {item.isAttached ? '●' : '○'}
               </span>{' '}
-              <span style={{ fg: theme.text }}>{row.title}</span>
+              <span style={{ fg: rowForeground(theme, selected, theme.text) }}>{row.title}</span>
               {row.context ? (
-                <span style={{ fg: theme.textSubtle }}>{`${row.spacer}${row.context}`}</span>
+                <span style={{ fg: rowForeground(theme, selected, theme.textSubtle) }}>
+                  {`${row.spacer}${row.context}`}
+                </span>
               ) : null}
             </text>
 
             <text
               style={{
                 wrapMode: 'none',
-                fg: isMarked
-                  ? theme.danger
-                  : item.agentStatus === 'blocked'
+                fg: rowForeground(
+                  theme,
+                  selected,
+                  isMarked
                     ? theme.danger
-                    : item.agentStatus === 'working'
-                      ? theme.active
-                      : theme.textSubtle,
+                    : item.agentStatus === 'blocked'
+                      ? theme.danger
+                      : item.agentStatus === 'working'
+                        ? theme.active
+                        : theme.textSubtle
+                ),
               }}
             >
               {meta}
