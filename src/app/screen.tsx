@@ -330,7 +330,13 @@ export function AppScreen({
           />
         </box>
 
-        <Toast toast={toast} more={moreToasts} columns={columns} />
+        {/* Anchored to the list column, so it never covers the details panel. */}
+        <Toast
+          toast={toast}
+          more={moreToasts}
+          columns={layout.listWidth}
+          reservedRight={columns - layout.listWidth}
+        />
       </box>
     </>
   )

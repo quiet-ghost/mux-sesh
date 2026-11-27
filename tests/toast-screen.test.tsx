@@ -251,6 +251,55 @@ describe('refusals warn instead of failing', () => {
   })
 })
 
+// The column of the card's right border on each card row.
+function cardRightEdges(frame: string): number[] {
+  return frame.split('\n').flatMap(row => (/┃[^┃]*┃[^┃]*$/.test(row) ? [row.lastIndexOf('┃')] : []))
+}
+
+describe('toast placement', () => {
+  test('with the details panel shown, the card sits in the list column and the panel stays intact', async () => {
+    screen = await renderSessionScreen({ width: 120, height: 32 })
+    await screen.settle()
+
+    // 120 columns: a 48-column panel and a 1-column gap leave the list 71 columns.
+    const listWidth = 71
+
+    const panelRows = (frame: string) =>
+      frame
+        .split('\n')
+        .slice(0, 10)
+        .map(row => row.slice(listWidth + 1))
+
+    const before = await screen.frame()
+    expect(before).toContain('Toggle details')
+
+    await refresh(screen)
+    const after = await screen.frame()
+
+    expect(readToast(after)).toBe('Refreshed')
+    expect(panelRows(after)).toEqual(panelRows(before))
+
+    const edges = cardRightEdges(after)
+    expect(edges.length).toBeGreaterThan(0)
+
+    for (const edge of edges) expect(edge).toBe(listWidth - 3)
+  })
+
+  test('without the details panel the card keeps to the right edge of the screen', async () => {
+    screen = await renderSessionScreen({ width: 100, height: 30 })
+
+    await refresh(screen)
+    const frame = await screen.frame()
+
+    expect(readToast(frame)).toBe('Refreshed')
+
+    const edges = cardRightEdges(frame)
+    expect(edges.length).toBeGreaterThan(0)
+
+    for (const edge of edges) expect(edge).toBe(97)
+  })
+})
+
 describe('toast card', () => {
   test('shows a bold title, the message, and how many more wait', async () => {
     const setup = await testRender(
