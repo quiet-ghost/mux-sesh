@@ -5,6 +5,7 @@ import { join } from 'path'
 import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import { MultiplexerError, type CreatedSessionReceipt } from '../src/multiplexer/types'
 import type { KeybindMode } from '../src/types'
+import { hints, readFooter } from './fixtures/footer'
 import { renderSessionScreen } from './fixtures/session-screen'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
@@ -134,12 +135,11 @@ async function waitForFrame(fixture: Screen, text: string): Promise<string> {
   throw new Error(`The screen never showed '${text}':\n${await fixture.frame()}`)
 }
 
-function footerOf(frame: string): string {
-  const line = frame.split('\n').findLast(row => row.includes('ctrl+p commands'))
-
-  if (line === undefined) throw new Error(`No footer was rendered:\n${frame}`)
-
-  return line.replace(/\s+v\d+\.\d+\.\d+\S*\s*$/, '').trim()
+// Standard mode browses Projects from Search, so its screen hints are Search's.
+function screenHints(keybindMode: KeybindMode): string {
+  return keybindMode === 'vim'
+    ? hints(['search', 'i'], ['new', 'n'], ['commands', 'ctrl+p'], ['prefix', 'ctrl+x'])
+    : hints(['commands', 'ctrl+p'], ['cancel', 'esc'])
 }
 
 describe('Projects view Enter', () => {
@@ -155,7 +155,10 @@ describe('Projects view Enter', () => {
         `Create 'api' in ${join(root, 'api')}, then run: bun dev`
       )
 
-      expect(footerOf(frame)).toStartWith('enter create  ')
+      expect(readFooter(frame)).toMatchObject({
+        global: screenHints(keybindMode),
+        target: hints(['create', 'enter']),
+      })
 
       await screen.pressKey('RETURN')
       await waitForFrame(screen, 'Workspace created, but not opened')
@@ -184,7 +187,14 @@ describe('Projects view Enter', () => {
       await showProjects(screen)
 
       const frame = await waitForFrame(screen, `Focus existing 'alpha' in ${join(root, 'alpha')}`)
-      expect(footerOf(frame)).toStartWith('enter focus  ')
+      expect(readFooter(frame)).toMatchObject({
+        global: screenHints(keybindMode),
+        // The live workspace is also a session row, which vim can close directly.
+        target:
+          keybindMode === 'vim'
+            ? hints(['focus', 'enter'], ['close', 'd'])
+            : hints(['focus', 'enter']),
+      })
 
       await screen.pressKey('RETURN')
       await waitForFrame(screen, "Could not open workspace 'alpha'")
@@ -230,7 +240,7 @@ describe('Projects view Enter', () => {
     const { screen, calls } = await render('vim', root, { workspaces: [beta] })
     const frame = await waitForFrame(screen, 'beta')
 
-    expect(footerOf(frame)).toStartWith('enter select  ')
+    expect(readFooter(frame).target).toStartWith(hints(['select', 'enter']))
     expect(frame).not.toContain("Focus existing 'beta'")
 
     await screen.pressKey('RETURN')

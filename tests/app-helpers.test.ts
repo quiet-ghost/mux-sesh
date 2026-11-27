@@ -104,9 +104,21 @@ describe('app view helpers', () => {
   test('builds title, footer, status, and empty messages from app state', () => {
     expect(getAppTitle(AppMode.NewSession, ViewMode.Projects)).toBe('New Session')
     expect(getAppTitle(AppMode.AgentsManage, ViewMode.Sessions)).toBe('Agent Sessions')
-    expect(getActionFooter(actionContext({ appMode: AppMode.AgentsManage }))).toContain('ctrl+x')
-    expect(getActionFooter(actionContext({ agentCount: 1 }))).toContain('o agents')
-    expect(getActionFooter(actionContext())).not.toContain('o agents')
+    expect(getActionFooter(actionContext({ appMode: AppMode.AgentsManage })).global).toContainEqual(
+      {
+        id: 'prefix',
+        label: 'prefix',
+        key: 'ctrl+x',
+      }
+    )
+    expect(getActionFooter(actionContext({ agentCount: 1 })).global).toContainEqual({
+      id: 'open-agents',
+      label: 'agents',
+      key: 'o',
+    })
+    expect(getActionFooter(actionContext()).global.map(hint => hint.id)).not.toContain(
+      'open-agents'
+    )
     expect(getStatusLabel(ViewMode.Sessions, 2, 5, 9)).toBe('2/5 active')
     expect(getEmptyStateMessage(AppMode.NewSession, 'https://github.com/acme/repo', true)).toBe(
       'Clone & create session'
@@ -142,16 +154,17 @@ describe('app view helpers', () => {
       kind: 'unavailable',
       reason: 'Rename it in Herdr',
     })
-    expect(
-      getActionFooter(
-        actionContext({
-          appMode: AppMode.AgentsManage,
-          prefixKey: undefined,
-          agentCount: 1,
-          target: getActionTarget(agent),
-        })
-      )
-    ).not.toContain('d close')
+
+    const footer = getActionFooter(
+      actionContext({
+        appMode: AppMode.AgentsManage,
+        prefixKey: undefined,
+        agentCount: 1,
+        target: getActionTarget(agent),
+      })
+    )
+
+    expect([...footer.global, ...footer.target].map(hint => hint.id)).not.toContain('kill-session')
   })
 })
 

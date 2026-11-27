@@ -206,7 +206,7 @@ async function startPickerOutsideTmux(): Promise<void> {
     process.execPath,
     join(repoRoot, 'src/index.tsx')
   )
-  await waitForScreen('enter select')
+  await waitForScreen('select enter')
 }
 
 async function seedTarget(name: string, ...command: string[]): Promise<string> {
@@ -356,7 +356,7 @@ describe.skipIf(!enabled)('terminal handoff in isolated tmux servers', () => {
       '-t',
       picker
     )
-    await waitForScreen('enter select')
+    await waitForScreen('select enter')
     await waitForScreen('picker')
 
     const clientSession = () => harness().target('list-clients', '-F', '#{session_id}')

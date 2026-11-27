@@ -461,15 +461,31 @@ export function describeUnavailableAction(entry: ActionEntry): string | undefine
     : undefined
 }
 
-function footerPart(context: ActionContext, id: ActionId, label: string): string[] {
-  const keybind = getActionKeyHint(context, id)
+// `prefix` is the prefix-key indicator; `cancel` is esc leaving Search or New.
+export type FooterHintId = ActionId | 'prefix' | 'cancel'
 
-  return keybind && getActionAvailability(context, id).kind === 'available'
-    ? [`${keybind} ${label}`]
-    : []
+// Shown as `label key`; an empty key shows the label alone.
+export interface FooterHint {
+  readonly id: FooterHintId
+  readonly label: string
+  readonly key: string
 }
 
-function footerAction(context: ActionContext, id: ActionId): string[] {
+// Grouped by catalog scope: screen-wide actions, and actions on the selected row.
+export interface ActionFooter {
+  readonly global: readonly FooterHint[]
+  readonly target: readonly FooterHint[]
+}
+
+const CANCEL_HINT: FooterHint = { id: 'cancel', label: 'cancel', key: 'esc' }
+
+function footerPart(context: ActionContext, id: ActionId, label: string): FooterHint[] {
+  const key = getActionKeyHint(context, id)
+
+  return key && getActionAvailability(context, id).kind === 'available' ? [{ id, label, key }] : []
+}
+
+function footerAction(context: ActionContext, id: ActionId): FooterHint[] {
   const label = FOOTER_LABELS[id] ?? id
 
   if (id === 'kill-session' && context.marked.size > 0) {
@@ -479,35 +495,41 @@ function footerAction(context: ActionContext, id: ActionId): string[] {
   return footerPart(context, id, label)
 }
 
+function prefixHint(context: ActionContext): FooterHint {
+  return context.prefixKey
+    ? { id: 'prefix', label: 'prefix', key: context.prefixKey }
+    : { id: 'prefix', label: 'direct keys', key: '' }
+}
+
 // What Enter does for the current frozen launch plan (New, or a Projects row), or 'apply' for an edit.
 export type NewSessionAction = 'focus' | 'create' | 'clone' | 'apply' | 'none'
 
-function newSessionFooter(
+function newSessionHints(
   context: ActionContext,
   action: NewSessionAction,
   steps: readonly NewSessionStepId[]
-): string {
-  const enter = action === 'none' ? [] : [`${getActionKeyHint(context, 'select')} ${action}`]
+): FooterHint[] {
+  const enter: FooterHint[] =
+    action === 'none'
+      ? []
+      : [{ id: 'select', label: action, key: getActionKeyHint(context, 'select') }]
 
-  return [...enter, ...steps.flatMap(id => footerAction(context, id)), 'esc cancel'].join('  ')
+  return [...enter, ...steps.flatMap(id => footerAction(context, id)), CANCEL_HINT]
 }
 
 // A Projects row opens through its frozen launch plan, so Enter names that plan's action; while
 // it is still planning or refused, Enter is not advertised.
-function selectFooter(context: ActionContext, enter: NewSessionAction): string[] {
+function selectHint(context: ActionContext, enter: NewSessionAction): FooterHint[] {
   if (context.viewMode !== ViewMode.Projects) return footerPart(context, 'select', 'select')
 
   return enter === 'none' || enter === 'apply' ? [] : footerPart(context, 'select', enter)
 }
 
-// `enter` is what the current frozen launch plan does: New's plan, or the highlighted Projects row's.
-export function getActionFooter(
+function footerHints(
   context: ActionContext,
-  enter: NewSessionAction = 'none',
-  newSessionSteps: readonly NewSessionStepId[] = []
-): string {
-  const prefixLabel = context.prefixKey ? `${context.prefixKey} ...` : 'direct keys'
-
+  enter: NewSessionAction,
+  newSessionSteps: readonly NewSessionStepId[]
+): FooterHint[] {
   switch (context.appMode) {
     case AppMode.AgentsManage:
       return [
@@ -515,25 +537,39 @@ export function getActionFooter(
         ...footerPart(context, 'select', 'focus'),
         ...footerAction(context, 'kill-session'),
         ...footerAction(context, 'open-commands'),
-        prefixLabel,
-      ].join('  ')
+        prefixHint(context),
+      ]
     case AppMode.NewSession:
-      return newSessionFooter(context, enter, newSessionSteps)
+      return newSessionHints(context, enter, newSessionSteps)
     case AppMode.Search:
-      return [
-        ...selectFooter(context, enter),
-        ...footerAction(context, 'open-commands'),
-        'esc cancel',
-      ].join('  ')
+      return [...selectHint(context, enter), ...footerAction(context, 'open-commands'), CANCEL_HINT]
     case AppMode.Normal:
       return [
-        ...selectFooter(context, enter),
+        ...selectHint(context, enter),
         ...footerAction(context, 'search'),
         ...footerAction(context, 'new-session'),
         ...footerAction(context, 'open-agents'),
         ...footerAction(context, 'kill-session'),
         ...footerAction(context, 'open-commands'),
-        prefixLabel,
-      ].join('  ')
+        prefixHint(context),
+      ]
+  }
+}
+
+function isTargetHint(hint: FooterHint): boolean {
+  return hint.id !== 'prefix' && hint.id !== 'cancel' && TARGET_ACTIONS.has(hint.id)
+}
+
+// `enter` is what the current frozen launch plan does: New's plan, or the highlighted Projects row's.
+export function getActionFooter(
+  context: ActionContext,
+  enter: NewSessionAction = 'none',
+  newSessionSteps: readonly NewSessionStepId[] = []
+): ActionFooter {
+  const hints = footerHints(context, enter, newSessionSteps)
+
+  return {
+    global: hints.filter(hint => !isTargetHint(hint)),
+    target: hints.filter(isTargetHint),
   }
 }

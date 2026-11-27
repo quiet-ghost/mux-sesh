@@ -43,8 +43,7 @@ const HEADER_ROWS = 2
 const SEARCH_INPUT_ROWS = 4
 const LAUNCH_SUMMARY_ROWS = 2
 const FOOTER_HINT_ROWS = 1
-const FOOTER_PADDING_COLUMNS = 1
-const VERSION_BADGE_GAP_COLUMNS = 3
+const FOOTER_PADDING_COLUMNS = 2
 const LIST_PADDING_COLUMNS = 2
 
 export interface ScreenLayoutInput {
@@ -55,14 +54,12 @@ export interface ScreenLayoutInput {
   // The row naming what Enter's frozen launch plan will do.
   showLaunchSummary: boolean
   message: string
-  versionLabel: string
 }
 
 export interface ScreenLayout {
   listWidth: number
   listContentWidth: number
   detailPanelWidth: number
-  footerWidth: number
   sectionRows: number
 }
 
@@ -73,7 +70,6 @@ export function getScreenLayout({
   showDetailPanel,
   showLaunchSummary,
   message,
-  versionLabel,
 }: ScreenLayoutInput): ScreenLayout {
   const detailPanelWidth = showDetailPanel ? Math.floor(columns * DETAIL_PANEL_SHARE) : 0
 
@@ -82,22 +78,18 @@ export function getScreenLayout({
     columns - (showDetailPanel ? detailPanelWidth + DETAIL_PANEL_GAP_COLUMNS : 0)
   )
 
-  const footerWidth = Math.max(
-    1,
-    columns - FOOTER_PADDING_COLUMNS - versionLabel.length - VERSION_BADGE_GAP_COLUMNS
-  )
+  const messageWidth = Math.max(1, columns - FOOTER_PADDING_COLUMNS)
 
   const searchRows =
     (appMode === AppMode.Search || appMode === AppMode.NewSession ? SEARCH_INPUT_ROWS : 0) +
     (showLaunchSummary ? LAUNCH_SUMMARY_ROWS : 0)
 
-  const messageRows = message ? getWrappedRowCount(message, footerWidth) : 0
+  const messageRows = message ? getWrappedRowCount(message, messageWidth) : 0
 
   return {
     listWidth,
     listContentWidth: Math.max(1, listWidth - LIST_PADDING_COLUMNS),
     detailPanelWidth,
-    footerWidth,
     sectionRows: Math.max(1, rows - HEADER_ROWS - searchRows - messageRows - FOOTER_HINT_ROWS),
   }
 }

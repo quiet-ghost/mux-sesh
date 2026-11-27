@@ -2,6 +2,7 @@ import { afterEach, expect, test } from 'bun:test'
 import { CommandTimeoutError } from '../src/multiplexer/command'
 import { MultiplexerError } from '../src/multiplexer/types'
 import type { LiveWorkspace, MultiplexerBackend, WorkspaceRef } from '../src/multiplexer'
+import { footerHints } from './fixtures/footer'
 import { renderSessionScreen } from './fixtures/session-screen'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
@@ -128,7 +129,7 @@ test('marked rows are visible and d reviews exactly the marked set, not the curs
   expect(list).toMatch(/\* ○ T beta/)
   expect(list).toMatch(/\* ○ T delta/)
   expect(list).not.toMatch(/\* ○ T charlie/)
-  expect(list).toContain('d close 2 marked')
+  expect(footerHints(list)).toContain('close 2 marked d')
 
   await screen.pressKey('d')
   const review = flat(await screen.frame())
@@ -161,7 +162,7 @@ test('m unmarks a marked row, so it is not reviewed', async () => {
   await screen.pressKey('k')
   await screen.pressKey('m')
 
-  expect(await screen.frame()).toContain('d close 1 marked')
+  expect(footerHints(await screen.frame())).toContain('close 1 marked d')
   await screen.pressKey('d')
   const review = flat(await screen.frame())
   expect(review).toContain('Close 1 marked tmux session?')
@@ -296,7 +297,7 @@ test('a marked Herdr agent pane is refused and its workspace stays open', async 
   await screen.pressKey('m')
   await screen.pressKey('o')
   await screen.pressKey('m')
-  expect(await screen.frame()).toContain('d close 2 marked')
+  expect(footerHints(await screen.frame())).toContain('close 2 marked d')
   await screen.pressKey('d')
 
   const review = flat(await screen.frame())

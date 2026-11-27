@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { TextareaRenderable } from '@opentui/core'
 import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import type { KeybindMode } from '../src/types'
+import { footerHints } from './fixtures/footer'
 import { renderSessionScreen } from './fixtures/session-screen'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
@@ -79,14 +80,8 @@ function createTmuxBackend(mutations: string[]): MultiplexerBackend {
   }
 }
 
-function footerOf(frame: string): string {
-  const line = frame
-    .split('\n')
-    .findLast(row => row.includes('ctrl+p commands') || row.includes('esc cancel'))
-
-  if (line === undefined) throw new Error(`No footer hint was rendered:\n${frame}`)
-
-  return line
+function labelsOf(frame: string): string[] {
+  return footerHints(frame).map(text => text.split(' ')[0] ?? '')
 }
 
 async function pressPrefixed(fixture: Screen, key: string): Promise<void> {
@@ -147,13 +142,14 @@ describe('actions on an empty session list', () => {
   test('vim footer offers only global keys', async () => {
     screen = await renderSessionScreen({ width: 120, height: 36 }, { workspaces: [] })
 
-    const footer = footerOf(await screen.frame())
-    expect(footer).toContain('i search')
-    expect(footer).toContain('n new')
-    expect(footer).toContain('ctrl+p commands')
-    expect(footer).not.toContain('enter select')
-    expect(footer).not.toContain('d close')
-    expect(footer).not.toContain('o agents')
+    const frame = await screen.frame()
+    const footer = footerHints(frame)
+    expect(footer).toContain('search i')
+    expect(footer).toContain('new n')
+    expect(footer).toContain('commands ctrl+p')
+    expect(labelsOf(frame)).not.toContain('select')
+    expect(labelsOf(frame)).not.toContain('close')
+    expect(labelsOf(frame)).not.toContain('agents')
   })
 
   test('standard footer offers commands without a selection', async () => {
@@ -162,9 +158,9 @@ describe('actions on an empty session list', () => {
       { keybindMode: 'standard', workspaces: [] }
     )
 
-    const footer = footerOf(await screen.frame())
-    expect(footer).toContain('ctrl+p commands')
-    expect(footer).not.toContain('enter select')
+    const frame = await screen.frame()
+    expect(footerHints(frame)).toContain('commands ctrl+p')
+    expect(labelsOf(frame)).not.toContain('select')
   })
 })
 
@@ -172,7 +168,7 @@ describe('footer follows the live screen context', () => {
   test('vim footer offers agents when agent panes exist', async () => {
     screen = await renderSessionScreen({ width: 120, height: 36 }, { workspaces: agentWorkspaces })
 
-    expect(footerOf(await screen.frame())).toContain('o agents')
+    expect(footerHints(await screen.frame())).toContain('agents o')
   })
 
   test('standard footer omits vim-only direct keys', async () => {
@@ -181,10 +177,10 @@ describe('footer follows the live screen context', () => {
       { keybindMode: 'standard', workspaces: agentWorkspaces }
     )
 
-    const footer = footerOf(await screen.frame())
-    expect(footer).toContain('ctrl+p commands')
-    expect(footer).not.toContain('i search')
-    expect(footer).not.toMatch(/(^|\s)o agents/)
+    const frame = await screen.frame()
+    expect(footerHints(frame)).toContain('commands ctrl+p')
+    expect(labelsOf(frame)).not.toContain('search')
+    expect(labelsOf(frame)).not.toContain('agents')
   })
 })
 
@@ -196,10 +192,10 @@ describe('actions on a targeted Herdr agent', () => {
     )
     await enterAgents(screen, keybindMode)
 
-    const footer = footerOf(await screen.frame())
-    expect(footer).toContain('esc back')
-    expect(footer).not.toContain('close')
-    expect(footer).not.toContain('rename')
+    const frame = await screen.frame()
+    expect(footerHints(frame)).toContain('back esc')
+    expect(labelsOf(frame)).not.toContain('close')
+    expect(labelsOf(frame)).not.toContain('rename')
 
     await screen.pressKey('p', { ctrl: true })
     const palette = await screen.frame()
@@ -269,11 +265,11 @@ describe('actions on a live tmux session', () => {
       { keybindMode, backend: createTmuxBackend(mutations) }
     )
 
-    const footer = footerOf(await screen.frame())
-    expect(footer).toContain('enter select')
-    expect(footer).not.toContain('o agents')
+    const frame = await screen.frame()
+    expect(footerHints(frame)).toContain('select enter')
+    expect(labelsOf(frame)).not.toContain('agents')
 
-    if (keybindMode === 'vim') expect(footer).toContain('d close')
+    if (keybindMode === 'vim') expect(footerHints(frame)).toContain('close d')
 
     await screen.pressKey('p', { ctrl: true })
     const palette = await screen.frame()

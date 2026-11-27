@@ -3,6 +3,7 @@ import { TextareaRenderable } from '@opentui/core'
 import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import { MultiplexerError } from '../src/multiplexer/types'
 import type { Item, KeybindMode } from '../src/types'
+import { footerGroups, hints } from './fixtures/footer'
 import { renderSessionScreen } from './fixtures/session-screen'
 import { selectedRow } from './fixtures/selection'
 
@@ -82,12 +83,22 @@ async function openNew(fixture: Screen): Promise<void> {
   await fixture.settle()
 }
 
-function footerOf(frame: string): string {
-  const line = frame.split('\n').findLast(row => row.includes('esc cancel'))
+// New's steps and cancel sit on the left; what Enter does to the planned row sits on the right.
+const STEPS = hints(
+  ['name', 'ctrl+n'],
+  ['startup', 'ctrl+t'],
+  ['here', 'ctrl+g'],
+  ['file', 'ctrl+o']
+)
 
-  if (line === undefined) throw new Error(`No New footer was rendered:\n${frame}`)
+const CANCEL = hints(['cancel', 'esc'])
 
-  return line.replace(/\s+v\d+\.\d+\.\d+\S*\s*$/, '').trim()
+function newFooter(enter: string, global = `${STEPS}  ${CANCEL}`) {
+  return { global, target: enter ? hints([enter, 'enter']) : '' }
+}
+
+function footerOf(frame: string) {
+  return footerGroups(frame)
 }
 
 function searchText(fixture: Screen): string {
@@ -118,9 +129,7 @@ describe('project-first New', () => {
 
       const frame = await screen.frame()
       expect(frame).toContain("Create 'api' in /fixture/api, then run: bun dev")
-      expect(footerOf(frame)).toBe(
-        'enter create  ctrl+n name  ctrl+t startup  ctrl+g here  ctrl+o file  esc cancel'
-      )
+      expect(footerOf(frame)).toEqual(newFooter('create'))
 
       await screen.pressKey('RETURN')
       await screen.settle()
@@ -161,9 +170,7 @@ describe('project-first New', () => {
     const frame = await screen.frame()
     expect(frame).toContain("Focus existing 'alpha' in /fixture/alpha")
     expect(frame).toMatch(selectedRow('P alpha\\s+focus'))
-    expect(footerOf(frame)).toBe(
-      'enter focus  ctrl+n name  ctrl+t startup  ctrl+g here  ctrl+o file  esc cancel'
-    )
+    expect(footerOf(frame)).toEqual(newFooter('focus'))
 
     await screen.pressKey('RETURN')
     await screen.settle()
@@ -181,7 +188,9 @@ describe('project-first New', () => {
     const frame = await screen.frame()
     expect(frame).toContain('New Workspace')
     expect(frame).toContain('No projects yet. Type a path to open one.')
-    expect(footerOf(frame)).toBe('ctrl+g here  ctrl+o file  esc cancel')
+    expect(footerOf(frame)).toEqual(
+      newFooter('', hints(['here', 'ctrl+g'], ['file', 'ctrl+o'], ['cancel', 'esc']))
+    )
 
     await screen.pressKey('RETURN')
     await screen.settle()
@@ -204,7 +213,9 @@ describe('project-first New', () => {
     const frame = await screen.frame()
     expect(frame).not.toContain('Create session: scratch')
     expect(frame).toContain("No project matches 'scratch'")
-    expect(footerOf(frame)).toBe('ctrl+g here  ctrl+o file  esc cancel')
+    expect(footerOf(frame)).toEqual(
+      newFooter('', hints(['here', 'ctrl+g'], ['file', 'ctrl+o'], ['cancel', 'esc']))
+    )
 
     await screen.pressKey('RETURN')
     await screen.settle()

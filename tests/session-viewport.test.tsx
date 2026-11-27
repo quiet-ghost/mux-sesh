@@ -78,7 +78,7 @@ function expectViewport(frame: string, height: number): void {
   const header = lineIndex(frame, /mux-sesh/)
   const sessions = lineIndex(frame, /^\s*H Live(\s\s|\s*$)/)
   const agents = lineIndex(frame, /^\s*A Agents(\s\s|\s*$)/)
-  const footer = lineIndex(frame, /^ (enter select|esc back) /)
+  const footer = lineIndex(frame, /^ .*(select enter|back esc)/)
   const lastRow = rows.findLastIndex(line => /[●○] /.test(line))
 
   expect(rows).toHaveLength(height)

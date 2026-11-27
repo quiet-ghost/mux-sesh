@@ -4,9 +4,12 @@
 Secondary actions sit behind `prefix_key`, which defaults to `ctrl+x`. The tables below use the
 default prefix; replace `ctrl+x` with your own `prefix_key` if you changed it.
 
-Keys are written the way the footer and the command palette show them. The footer lists only
-actions that are available for the selected row right now, and an unavailable key says why
-instead of doing something else. Every action is also in the command palette (`ctrl+p`).
+Keys are written the way the footer and the command palette show them. The footer shows each
+action before its key, such as `search i` or `commands ctrl+p`. Screen actions sit on the left
+and actions on the selected row sit on the right, next to the version. The footer lists only
+actions that are available right now, and an unavailable key says why instead of doing
+something else. Every action is also in the command palette (`ctrl+p`). While the prefix key
+waits for its second key, the footer shows `prefix ctrl+x …`.
 
 The action tables on this page are checked against the action catalog by the test suite.
 
@@ -93,7 +96,7 @@ themes, switching to projects, and editing a configured target are in the comman
 
 `n` (vim) or `ctrl+x n` (standard) opens the project-first launcher with the first project
 selected. A summary row above the list names exactly what `enter` will do, and the footer shows
-it as `enter create`, `enter focus`, or `enter clone`.
+it as `create enter`, `focus enter`, or `clone enter`.
 
 <!-- keys: vim new -->
 

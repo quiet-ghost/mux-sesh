@@ -78,8 +78,8 @@ esc to clear
 
 `n` opens New, a project-first launcher, with the first project selected. Type to narrow the
 list. A summary row above the list says exactly what `enter` will do, for example
-`Create 'api' in ~/dev/api, then run: bun dev`, and the footer shows `enter create`,
-`enter focus`, or `enter clone`. `enter` runs that plan and nothing else.
+`Create 'api' in ~/dev/api, then run: bun dev`, and the footer shows `create enter`,
+`focus enter`, or `clone enter`. `enter` runs that plan and nothing else.
 
 ```text
 n
@@ -170,7 +170,7 @@ runs, the summary row says what will happen:
 
 - A URL that contains a username or token is refused and the token is not shown. Use the plain
   URL and let git's credential helper sign in.
-- If the destination does not exist, `enter clone` clones it.
+- If the destination does not exist, `enter` clones it, and the footer shows `clone enter`.
 - If it exists, it is reused only after it is verified as a complete checkout of the same
   repository inside `repos_path`. Anything else (another repository, a plain directory, a link
   outside `repos_path`, a checkout with no commits) is refused and left as it is.

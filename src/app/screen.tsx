@@ -23,14 +23,14 @@ import SearchInput from '../ui/SearchInput'
 import SessionList from '../ui/SessionList'
 import AgentSessionGroup from '../ui/AgentSessionGroup'
 import ItemList from '../ui/ItemList'
-import { truncateDialogText } from '../ui/dialog-layout'
 import { getListRowWidth, getSessionViewport } from '../ui/session-viewport'
 import SessionDetailsPanel from '../ui/SessionDetailsPanel'
 import { BusySpinner } from '../ui/Spinner'
 import NewSessionSummary from '../ui/NewSessionSummary'
 import { getSelectedRowAction } from '../ui/launch-preview'
+import Footer from '../ui/Footer'
 import Toast from '../ui/Toast'
-import VersionBadge, { formatVersionBadge } from '../ui/VersionBadge'
+import { formatVersionBadge } from '../ui/VersionBadge'
 import { CURRENT_VERSION } from '../update/version'
 import type { MultiplexerBackend } from '../multiplexer'
 import type { LaunchPreview } from '../sessions/launch-plan'
@@ -125,7 +125,7 @@ export function AppScreen({
     process.env.MUX_SESH_DEV === '1'
   )
 
-  const footerHint = getActionFooter(
+  const footer = getActionFooter(
     actionContext,
     getNewSessionEnterAction(step, launchPreview),
     newSessionActive ? newSession.keys : []
@@ -141,7 +141,6 @@ export function AppScreen({
     showDetailPanel,
     showLaunchSummary,
     message,
-    versionLabel,
   })
 
   const rowWidth = getListRowWidth(layout.listContentWidth)
@@ -291,25 +290,23 @@ export function AppScreen({
         <box
           style={{
             backgroundColor: theme.surface,
-            paddingLeft: 1,
-            paddingRight: versionLabel.length + 3,
             width: '100%',
             flexDirection: 'column',
             flexShrink: 0,
           }}
         >
-          {message && <text style={{ fg: theme.action }}>{message}</text>}
-          <text style={{ fg: theme.textSubtle, wrapMode: 'none' }}>
-            {truncateDialogText(footerHint, layout.footerWidth)}
-          </text>
+          {message && (
+            <text style={{ fg: theme.action, paddingLeft: 1, paddingRight: 1 }}>{message}</text>
+          )}
+          <Footer
+            footer={footer}
+            width={columns}
+            version={versionLabel}
+            prefixActive={prefixActive}
+          />
         </box>
 
         <Toast message={toastMessage} visible={toastVisible} />
-        <VersionBadge
-          currentVersion={CURRENT_VERSION}
-          updatedVersion={updatedVersion}
-          isDev={process.env.MUX_SESH_DEV === '1'}
-        />
       </box>
     </>
   )

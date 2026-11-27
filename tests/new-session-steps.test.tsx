@@ -9,6 +9,7 @@ import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import { MultiplexerError, type BackendKind } from '../src/multiplexer/types'
 import { FileSearchUnavailableError, type FileSearchOutcome } from '../src/search/fff'
 import type { Item, KeybindMode } from '../src/types'
+import { footerGroups, hints } from './fixtures/footer'
 import { renderSessionScreen } from './fixtures/session-screen'
 import { selectedRow } from './fixtures/selection'
 
@@ -128,12 +129,22 @@ async function replaceField(fixture: Screen, text: string): Promise<string> {
   return plannedFrame(fixture)
 }
 
-function footerOf(frame: string): string {
-  const line = frame.split('\n').findLast(row => row.includes('esc cancel'))
+// New's steps and cancel sit on the left; what Enter does to the planned row sits on the right.
+const STEPS = hints(
+  ['name', 'ctrl+n'],
+  ['startup', 'ctrl+t'],
+  ['here', 'ctrl+g'],
+  ['file', 'ctrl+o']
+)
 
-  if (line === undefined) throw new Error(`No New footer was rendered:\n${frame}`)
+const CANCEL = hints(['cancel', 'esc'])
 
-  return line.replace(/\s+v\d+\.\d+\.\d+\S*\s*$/, '').trim()
+function newFooter(enter: string, global = `${STEPS}  ${CANCEL}`) {
+  return { global, target: enter ? hints([enter, 'enter']) : '' }
+}
+
+function footerOf(frame: string) {
+  return footerGroups(frame)
 }
 
 function fieldText(fixture: Screen): string {
@@ -157,9 +168,7 @@ describe('New secondary steps', () => {
     )
     await openNew(screen)
 
-    expect(footerOf(await screen.frame())).toBe(
-      'enter create  ctrl+n name  ctrl+t startup  ctrl+g here  ctrl+o file  esc cancel'
-    )
+    expect(footerOf(await screen.frame())).toEqual(newFooter('create'))
   })
 
   test.each(MODES)(
@@ -215,7 +224,7 @@ describe('New secondary steps', () => {
     const editing = await press(screen, 'n', true)
     expect(fieldText(screen)).toBe('api')
     expect(editing).toContain('Name')
-    expect(footerOf(editing)).toBe('enter apply  esc cancel')
+    expect(footerOf(editing)).toEqual(newFooter('apply', CANCEL))
 
     const drafted = await replaceField(screen, 'api-two')
     expect(drafted).toContain("Create 'api-two' in /fixture/api, then run: bun dev")
@@ -225,9 +234,7 @@ describe('New secondary steps', () => {
     expect(fieldText(screen)).toBe('')
     expect(calls).toEqual([])
     expect(applied).toContain("Create 'api-two' in /fixture/api, then run: bun dev")
-    expect(footerOf(applied)).toBe(
-      'enter create  ctrl+n name  ctrl+t startup  ctrl+g here  ctrl+o file  esc cancel'
-    )
+    expect(footerOf(applied)).toEqual(newFooter('create'))
 
     await press(screen, 'RETURN')
     expect(calls).toEqual(['create api-two /fixture/api', 'start w9:p1 bun dev', 'open w9'])
@@ -286,7 +293,7 @@ describe('New secondary steps', () => {
 
     const empty = await replaceField(screen, '  ')
     expect(empty).toContain('cannot be empty')
-    expect(footerOf(empty)).toBe('esc cancel')
+    expect(footerOf(empty)).toEqual(newFooter('', CANCEL))
     await press(screen, 'RETURN')
     expect(fieldText(screen)).toBe('  ')
 
@@ -319,12 +326,12 @@ describe('named session here', () => {
     const prompt = await press(screen, 'g', true)
     expect(fieldText(screen)).toBe('')
     expect(prompt).toContain(`Type a name; Enter creates it in ${cwd}`)
-    expect(footerOf(prompt)).toBe('esc cancel')
+    expect(footerOf(prompt)).toEqual(newFooter('', CANCEL))
 
     const named = await replaceField(screen, 'scratch')
     expect(named).toContain(`Create 'scratch' in ${cwd}`)
     expect(named).not.toMatch(selectedRow('P api\\s+create'))
-    expect(footerOf(named)).toBe('enter create  esc cancel')
+    expect(footerOf(named)).toEqual(newFooter('create', CANCEL))
 
     await press(screen, 'RETURN')
     expect(calls).toEqual([`create scratch ${cwd}`, 'open w9'])
@@ -406,7 +413,7 @@ describe('open file step', () => {
     expect(found).not.toContain('apps')
     expect(found).not.toMatch(/P api\s/)
     expect(found).toContain("Create 'api_alpha_md' in /fixture/api")
-    expect(footerOf(found)).toBe('enter create  esc cancel')
+    expect(footerOf(found)).toEqual(newFooter('create', CANCEL))
 
     await press(screen, 'RETURN')
     expect(calls).toEqual([
@@ -449,7 +456,7 @@ describe('open file step', () => {
       const frame = await replaceField(screen, 'api')
       expect(frame).toContain(text)
       expect(frame).not.toMatch(/P api\s+create/)
-      expect(footerOf(frame)).toBe('esc cancel')
+      expect(footerOf(frame)).toEqual(newFooter('', CANCEL))
 
       await press(screen, 'RETURN')
       expect(calls).toEqual([])

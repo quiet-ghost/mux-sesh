@@ -6,6 +6,7 @@ import { CommandTimeoutError, type CommandResult } from '../src/multiplexer/comm
 import { MultiplexerError } from '../src/multiplexer/types'
 import type { KeybindMode } from '../src/types'
 import { createLocalGitHub, type LocalGitHub } from './fixtures/local-github'
+import { footerGroups, hints } from './fixtures/footer'
 import { renderSessionScreen } from './fixtures/session-screen'
 import { createFakeSpinnerMotion } from './fixtures/spinner-motion'
 
@@ -118,12 +119,8 @@ async function openNewWith(fixture: Screen, query: string): Promise<void> {
   await fixture.settle()
 }
 
-function footerOf(frame: string): string {
-  const line = frame.split('\n').findLast(row => row.includes('esc cancel'))
-
-  if (line === undefined) throw new Error(`No New footer was rendered:\n${frame}`)
-
-  return line.replace(/\s+v\d+\.\d+\.\d+\S*\s*$/, '').trim()
+function footerOf(frame: string) {
+  return footerGroups(frame)
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -181,7 +178,7 @@ describe('clone from New', () => {
         planned,
         `Clone acme/widget into ${destination}, then create 'widget', then run: bun dev`
       )
-      expect(footerOf(await fixture.frame())).toMatch(/^enter clone /)
+      expect(footerOf(await fixture.frame())).toMatchObject({ target: hints(['clone', 'enter']) })
       expect(github.clones).toEqual([])
 
       await fixture.pressKey('RETURN')
@@ -214,7 +211,7 @@ describe('clone from New', () => {
 
     const planned = await waitForFrame(fixture, 'Reuse')
     expectShown(planned, `Reuse the acme/widget checkout at ${destination}, then create 'widget'`)
-    expect(footerOf(await fixture.frame())).toMatch(/^enter create /)
+    expect(footerOf(await fixture.frame())).toMatchObject({ target: hints(['create', 'enter']) })
 
     await fixture.pressKey('RETURN')
     const outcome = await waitForFrame(fixture, 'not opened')
@@ -233,7 +230,7 @@ describe('clone from New', () => {
 
     const refused = await waitForFrame(fixture, 'username or token')
     expectShown(refused, 'https://github.com/acme/widget.git')
-    expect(footerOf(await fixture.frame())).not.toContain('enter')
+    expect(footerOf(await fixture.frame())).toMatchObject({ target: '' })
 
     await fixture.pressKey('RETURN')
     await fixture.settle()

@@ -9,8 +9,9 @@ import {
   type ActionContext,
   type ActionId,
   type ActionTarget,
+  type FooterHint,
 } from '../src/app/action-catalog'
-import { workspaceToItem } from '../src/multiplexer/items'
+import { getItemKey, workspaceToItem } from '../src/multiplexer/items'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../src/types'
 
 const tmux: ActionBackend = { kind: 'tmux', capabilities: { previousWorkspace: true } }
@@ -194,15 +195,13 @@ describe('action catalog key hints', () => {
   })
 })
 
-const FOOTER_ACTIONS: ReadonlyArray<readonly [ActionId, string]> = [
-  ['select', 'select'],
-  ['select', 'focus'],
-  ['search', 'search'],
-  ['new-session', 'new'],
-  ['open-agents', 'agents'],
-  ['kill-session', 'close'],
-  ['back', 'back'],
-]
+const CANCEL: FooterHint = { id: 'cancel', label: 'cancel', key: 'esc' }
+const COMMANDS: FooterHint = { id: 'open-commands', label: 'commands', key: 'ctrl+p' }
+const PREFIX: FooterHint = { id: 'prefix', label: 'prefix', key: 'ctrl+x' }
+
+function enter(label: string): FooterHint {
+  return { id: 'select', label, key: 'enter' }
+}
 
 const TARGETS: ActionTarget[] = [session, agent, project, configured, file, undefined].map(
   getActionTarget
@@ -231,14 +230,11 @@ describe('action catalog footer', () => {
 
                 const footer = getActionFooter(ctx)
 
-                for (const [id, label] of FOOTER_ACTIONS) {
-                  const hint = getActionKeyHint(ctx, id)
+                for (const hint of [...footer.global, ...footer.target]) {
+                  if (hint.id === 'prefix' || hint.id === 'cancel') continue
 
-                  if (!hint || !footer.split('  ').includes(`${hint} ${label}`)) continue
-
-                  expect({ footer, id, availability: availabilityOf(ctx, id) }).toEqual({
-                    footer,
-                    id,
+                  expect({ hint, availability: availabilityOf(ctx, hint.id) }).toEqual({
+                    hint,
                     availability: 'available',
                   })
                 }
@@ -253,11 +249,12 @@ describe('action catalog footer', () => {
   test.each(MODES)('%s New footer names the frozen plan action, never a guess', keybindMode => {
     const ctx = context({ appMode: AppMode.NewSession, keybindMode })
 
-    expect(getActionFooter(ctx, 'create')).toBe('enter create  esc cancel')
-    expect(getActionFooter(ctx, 'focus')).toBe('enter focus  esc cancel')
-    expect(getActionFooter(ctx, 'clone')).toBe('enter clone  esc cancel')
-    expect(getActionFooter(ctx, 'none')).toBe('esc cancel')
-    expect(getActionFooter(ctx)).toBe('esc cancel')
+    for (const action of ['create', 'focus', 'clone'] as const) {
+      expect(getActionFooter(ctx, action)).toEqual({ global: [CANCEL], target: [enter(action)] })
+    }
+
+    expect(getActionFooter(ctx, 'none')).toEqual({ global: [CANCEL], target: [] })
+    expect(getActionFooter(ctx)).toEqual({ global: [CANCEL], target: [] })
   })
 
   test.each(MODES)('%s Projects footer names the frozen plan action for Enter', keybindMode => {
@@ -271,27 +268,66 @@ describe('action catalog footer', () => {
 
       const rest = getActionFooter(ctx, 'none')
 
-      expect(getActionFooter(ctx, 'create')).toBe(`enter create  ${rest}`)
-      expect(getActionFooter(ctx, 'focus')).toBe(`enter focus  ${rest}`)
-      expect(rest).not.toContain('enter')
-      expect(getActionFooter({ ...ctx, target: { kind: 'none' } }, 'create')).toBe(
+      expect(getActionFooter(ctx, 'create')).toEqual({
+        ...rest,
+        target: [enter('create'), ...rest.target],
+      })
+      expect(getActionFooter(ctx, 'focus')).toEqual({
+        ...rest,
+        target: [enter('focus'), ...rest.target],
+      })
+      expect(rest.target.map(hint => hint.id)).not.toContain('select')
+      expect(getActionFooter({ ...ctx, target: { kind: 'none' } }, 'create')).toEqual(
         getActionFooter({ ...ctx, target: { kind: 'none' } })
       )
-      expect(getActionFooter({ ...ctx, viewMode: ViewMode.Sessions }, 'create')).toStartWith(
-        'enter select  '
+      expect(getActionFooter({ ...ctx, viewMode: ViewMode.Sessions }, 'create').target[0]).toEqual(
+        enter('select')
       )
     }
   })
 
-  test('advertises available keys for a live session', () => {
+  test('advertises screen keys on the left and row keys on the right', () => {
     const ctx = context({ agentCount: 1, target: getActionTarget(session) })
 
-    expect(getActionFooter(ctx)).toBe(
-      'enter select  i search  n new  o agents  d close  ctrl+p commands  ctrl+x ...'
-    )
-    expect(getActionFooter(context())).toBe('i search  n new  ctrl+p commands  ctrl+x ...')
+    expect(getActionFooter(ctx)).toEqual({
+      global: [
+        { id: 'search', label: 'search', key: 'i' },
+        { id: 'new-session', label: 'new', key: 'n' },
+        { id: 'open-agents', label: 'agents', key: 'o' },
+        COMMANDS,
+        PREFIX,
+      ],
+      target: [enter('select'), { id: 'kill-session', label: 'close', key: 'd' }],
+    })
+    expect(getActionFooter(context())).toEqual({
+      global: [
+        { id: 'search', label: 'search', key: 'i' },
+        { id: 'new-session', label: 'new', key: 'n' },
+        COMMANDS,
+        PREFIX,
+      ],
+      target: [],
+    })
     expect(
       getActionFooter(context({ appMode: AppMode.AgentsManage, target: getActionTarget(agent) }))
-    ).toBe('esc back  enter focus  ctrl+p commands  ctrl+x ...')
+    ).toEqual({
+      global: [{ id: 'back', label: 'back', key: 'esc' }, COMMANDS, PREFIX],
+      target: [enter('focus')],
+    })
+    expect(getActionFooter(context({ prefixKey: undefined })).global.at(-1)).toEqual({
+      id: 'prefix',
+      label: 'direct keys',
+      key: '',
+    })
+  })
+
+  test('a batch close names the marked count on the right', () => {
+    const marked = new Map([[getItemKey(session), session]])
+    const ctx = context({ target: getActionTarget(session), marked })
+
+    expect(getActionFooter(ctx).target).toEqual([
+      enter('select'),
+      { id: 'kill-session', label: 'close 1 marked', key: 'd' },
+    ])
   })
 })
