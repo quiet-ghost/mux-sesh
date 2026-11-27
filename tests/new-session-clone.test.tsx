@@ -1,13 +1,16 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { lstat, mkdir, readdir, writeFile } from 'fs/promises'
 import { join } from 'path'
+import { RGBA } from '@opentui/core'
 import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import { CommandTimeoutError, type CommandResult } from '../src/multiplexer/command'
 import { MultiplexerError } from '../src/multiplexer/types'
+import { resolveTheme } from '../src/styles/theme'
 import type { KeybindMode } from '../src/types'
 import { createLocalGitHub, type LocalGitHub } from './fixtures/local-github'
 import { footerGroups, hints } from './fixtures/footer'
 import { renderSessionScreen } from './fixtures/session-screen'
+import { readToast } from './fixtures/toast'
 import { createFakeSpinnerMotion } from './fixtures/spinner-motion'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
@@ -152,6 +155,34 @@ async function waitForFrame(fixture: Screen, text: string): Promise<string> {
   throw new Error(`The screen never showed '${text}':\n${await fixture.frame()}`)
 }
 
+const colors = resolveTheme('catppuccin', {}, 'dark').colors
+
+// The toast card's right border: the last `┃` on a row with two, since a selected row starts with one.
+function cardBorderColor(fixture: Screen): number[] | undefined {
+  for (const line of fixture.captureSpans().lines) {
+    const borders = line.spans.filter(span => span.text.includes('┃'))
+    const right = borders.at(-1)
+
+    if (borders.length >= 2 && right) return right.fg.toInts()
+  }
+
+  return undefined
+}
+
+async function waitForToast(fixture: Screen, text: string): Promise<string> {
+  const deadline = Date.now() + FRAME_WAIT_MS
+
+  while (Date.now() < deadline) {
+    const toast = readToast(await fixture.frame())
+
+    if (toast?.includes(text)) return toast
+    await fixture.settle()
+    await Bun.sleep(5)
+  }
+
+  throw new Error(`No toast showed '${text}':\n${await fixture.frame()}`)
+}
+
 function expectShown(frame: string, text: string): void {
   expect(frame).toContain(squashed(text))
 }
@@ -273,6 +304,26 @@ describe('clone from New', () => {
     expect(github.clones).toEqual([])
     expect(calls).toEqual([])
     expect(await readdir(join(github.reposPath, 'notes'))).toEqual(['todo.txt'])
+  })
+
+  test('a destination that appears after the plan was shown is refused with a warning', async () => {
+    await github.publish('acme', 'widget')
+    const { backend, calls } = recordingBackend()
+    const fixture = await mount(backend)
+    const destination = join(github.reposPath, 'widget')
+
+    await openNewWith(fixture, 'https://github.com/acme/widget')
+    await waitForFrame(fixture, 'Clone acme/widget')
+
+    await mkdir(destination, { recursive: true })
+    await writeFile(join(destination, 'todo.txt'), 'mine')
+    await fixture.pressKey('RETURN')
+
+    expect(await waitForToast(fixture, 'not a git checkout')).toStartWith(destination)
+    expect(cardBorderColor(fixture)).toEqual(RGBA.fromHex(colors.key).toInts())
+    expect(github.clones).toEqual([])
+    expect(calls).toEqual([])
+    expect(await readdir(destination)).toEqual(['todo.txt'])
   })
 
   test('a second Enter, or leaving and coming back, while a clone runs never starts another clone', async () => {

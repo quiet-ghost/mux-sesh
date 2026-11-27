@@ -175,7 +175,7 @@ describe('opens that are not confirmed record nothing', () => {
       recording.history
     )
 
-    expect(refused.kind).toBe('failed')
+    expect(refused.kind).toBe('refused')
     expect(await failureOf(() => handleLastSession([beta], quiet, recording.history))).toContain(
       'Previous workspace is unavailable'
     )

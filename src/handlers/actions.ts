@@ -151,8 +151,8 @@ export async function handleKillSession(
 
   if (target.backend !== backend.kind) {
     return {
-      kind: 'failed',
-      message: `Did not close ${noun} '${target.title}': it belongs to ${target.backend}, but mux-sesh is using ${backend.kind}. Nothing was closed.`,
+      kind: 'refused',
+      reason: `Did not close ${noun} '${target.title}': it belongs to ${target.backend}, but mux-sesh is using ${backend.kind}. Nothing was closed.`,
     }
   }
 
@@ -484,7 +484,7 @@ function launchFailureOutcome(
   if (plan.kind === 'focus') {
     return {
       kind: 'failed',
-      message: `Could not open ${noun} '${plan.target.title}': ${cause.message} Nothing was created.`,
+      message: `Could not open ${noun} '${plan.target.title}': ${sentence(cause.message)} Nothing was created.`,
     }
   }
 
@@ -513,8 +513,8 @@ async function runPlannedLaunch(
   clone: CloneServices,
   history: OpenHistory
 ): Promise<ActionOutcome> {
-  // Plan failures are expected and local; nothing was opened or created.
-  if (Result.isFailure(plan)) return { kind: 'failed', message: plan.failure.message }
+  // Plan failures are refusals: nothing was attempted, opened or created.
+  if (Result.isFailure(plan)) return { kind: 'refused', reason: plan.failure.message }
 
   return runLaunchPlan(plan.success, backend, clone, history)
 }
@@ -583,10 +583,11 @@ function checkoutFailureOutcome(plan: ClonePlan, failure: CheckoutFailure): Acti
   const at = toHomeRelativePath(plan.destination)
 
   switch (failure.kind) {
+    // The destination changed before git ran, so the clone was refused and nothing was attempted.
     case 'changed':
       return {
-        kind: 'failed',
-        message:
+        kind: 'refused',
+        reason:
           failure.destination.kind === 'refused'
             ? new CloneDestinationRefused({
                 repository: plan.repository,
@@ -634,6 +635,7 @@ function afterCheckout(receipt: CheckoutReceipt, outcome: ActionOutcome): Action
   switch (outcome.kind) {
     case 'completed':
       return outcome
+    case 'refused':
     case 'failed':
       return ActionOutcome.after(
         fact,
@@ -674,47 +676,47 @@ export async function handleNewSessionSubmit(
 ): Promise<ActionOutcome> {
   switch (preview.kind) {
     case 'inactive':
-      return { kind: 'failed', message: 'New session is still loading; nothing was opened.' }
+      return { kind: 'refused', reason: 'New session is still loading; nothing was opened.' }
     case 'no-candidates':
       return {
-        kind: 'failed',
-        message:
+        kind: 'refused',
+        reason:
           'Nothing to open: no projects are configured or discovered yet. Type a path to open one.',
       }
     case 'no-match':
       return {
-        kind: 'failed',
-        message: `Nothing to open: no project matches '${preview.query}', and nothing was created. Type a path, or clear the query to pick a project.`,
+        kind: 'refused',
+        reason: `Nothing to open: no project matches '${preview.query}', and nothing was created. Type a path, or clear the query to pick a project.`,
       }
     case 'name-required':
       return {
-        kind: 'failed',
-        message: `Nothing was created: type a name for the new session in ${preview.directory} first, or press esc to go back.`,
+        kind: 'refused',
+        reason: `Nothing was created: type a name for the new session in ${preview.directory} first, or press esc to go back.`,
       }
     case 'file-prompt':
       return {
-        kind: 'failed',
-        message: 'Nothing to open: type a file name or a file path first, or press esc to go back.',
+        kind: 'refused',
+        reason: 'Nothing to open: type a file name or a file path first, or press esc to go back.',
       }
     case 'file-searching':
       return {
-        kind: 'failed',
-        message: `Nothing was opened: files matching '${preview.query}' are still being searched. Press Enter again once a file is highlighted.`,
+        kind: 'refused',
+        reason: `Nothing was opened: files matching '${preview.query}' are still being searched. Press Enter again once a file is highlighted.`,
       }
     case 'file-unavailable':
       return {
-        kind: 'failed',
-        message: `${preview.reason} Nothing was opened; type a file path, or press esc to pick a project.`,
+        kind: 'refused',
+        reason: `${preview.reason} Nothing was opened; type a file path, or press esc to pick a project.`,
       }
     case 'no-file-match':
       return {
-        kind: 'failed',
-        message: `Nothing to open: no file matches '${preview.query}', and nothing was created.`,
+        kind: 'refused',
+        reason: `Nothing to open: no file matches '${preview.query}', and nothing was created.`,
       }
     case 'planning':
       return runPlannedLaunch((await preview.prepared).result, backend, clone, history)
     case 'refused':
-      return { kind: 'failed', message: preview.failure.message }
+      return { kind: 'refused', reason: preview.failure.message }
     case 'ready':
       return runLaunchPlan(preview.plan, backend, clone, history)
   }

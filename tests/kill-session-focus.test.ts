@@ -391,6 +391,26 @@ describe('close outcomes (DEV-341)', () => {
     })
   })
 
+  test('a target from another backend is refused before anything is closed', async () => {
+    const backend = createFakeBackend({
+      kind: 'tmux',
+      workspaces: [{ id: 'a', title: 'alpha' }],
+      focusedId: 'a',
+    })
+
+    const { callbacks, refreshItems } = createCallbacks(sessions())
+
+    const outcome = await handleKillSession(planOf(liveItem('a', 'alpha')), backend, callbacks)
+
+    expect(outcome).toEqual({
+      kind: 'refused',
+      reason:
+        "Did not close workspace 'alpha': it belongs to herdr, but mux-sesh is using tmux. Nothing was closed.",
+    })
+    expect(refreshItems).not.toHaveBeenCalled()
+    expect(backend.commands).toEqual([])
+  })
+
   test('a refused close says nothing was closed and does not refresh or move focus', async () => {
     const backend = createFakeBackend({ workspaces: [{ id: 'a', title: 'alpha' }], focusedId: 'a' })
 

@@ -64,9 +64,11 @@ export type OperationReport =
       readonly next: string
     }
 
-// Completed and failed outcomes are local messages; a failed one changed nothing.
+// Completed, refused and failed outcomes are local messages. A refused one attempted nothing (the
+// user can fix the input); a failed one tried and changed nothing.
 export type ActionOutcome =
   | { readonly kind: 'completed'; readonly message: string }
+  | { readonly kind: 'refused'; readonly reason: string }
   | { readonly kind: 'failed'; readonly message: string }
   | OperationReport
 
@@ -84,6 +86,10 @@ function present(outcome: ActionOutcome, presenter: OutcomePresenter): void {
   switch (outcome.kind) {
     case 'completed':
       presenter.showToast({ kind: 'success', message: outcome.message })
+
+      return
+    case 'refused':
+      presenter.showToast({ kind: 'warning', message: outcome.reason })
 
       return
     case 'failed':
@@ -114,12 +120,13 @@ function after(fact: string, outcome: ActionOutcome, title: string, next: string
   switch (outcome.kind) {
     case 'completed':
       return outcome
+    case 'refused':
     case 'failed':
       return {
         kind: 'partial',
         title,
         completed: [fact],
-        failed: outcome.message,
+        failed: outcome.kind === 'refused' ? outcome.reason : outcome.message,
         next,
         retry: { kind: 'none' },
       }

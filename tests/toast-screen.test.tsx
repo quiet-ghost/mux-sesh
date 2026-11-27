@@ -165,6 +165,92 @@ describe('toasts by kind', () => {
   })
 })
 
+// The card's right border: the last `┃` on the first card row, since a selected row starts with one.
+function cardBorderColor(fixture: Screen): number[] | undefined {
+  for (const line of fixture.captureSpans().lines) {
+    const borders = line.spans.filter(span => span.text.includes('┃'))
+    const right = borders.at(-1)
+
+    if (borders.length >= 2 && right) return right.fg.toInts()
+  }
+
+  return undefined
+}
+
+async function openNew(fixture: Screen): Promise<void> {
+  await fixture.pressKey('p', { ctrl: true })
+  await fixture.replaceQuery('New session')
+  await fixture.pressKey('RETURN')
+  await fixture.settle()
+}
+
+async function toastAfterEnter(fixture: Screen, text: string): Promise<string> {
+  await fixture.pressKey('RETURN')
+  const deadline = Date.now() + 10_000
+
+  while (Date.now() < deadline) {
+    await fixture.settle()
+    const toast = readToast(await fixture.frame())
+
+    if (toast?.includes(text)) return toast
+    await Bun.sleep(5)
+  }
+
+  throw new Error(`No toast containing '${text}' appeared after Enter`)
+}
+
+describe('refusals warn instead of failing', () => {
+  const project = {
+    title: 'api',
+    desc: '',
+    path: '/fixture/api',
+    isSession: false,
+    itemKind: 'project' as const,
+  }
+
+  test('Enter on New with nothing to open', async () => {
+    screen = await renderSessionScreen({ width: 120, height: 32 })
+    await openNew(screen)
+
+    expect(await toastAfterEnter(screen, 'Nothing to open')).toStartWith(
+      'Nothing to open: no projects'
+    )
+    expect(cardBorderColor(screen)).toEqual(hex(colors.key))
+  })
+
+  test('Enter on a query no project matches', async () => {
+    screen = await renderSessionScreen({ width: 120, height: 32 }, { projects: [project] })
+    await openNew(screen)
+    await screen.replaceQuery('zzz')
+    await screen.settle()
+
+    expect(await toastAfterEnter(screen, "no project matches 'zzz'")).toStartWith('Nothing to open')
+    expect(cardBorderColor(screen)).toEqual(hex(colors.key))
+  })
+
+  test('Enter on a named session here without a name', async () => {
+    screen = await renderSessionScreen({ width: 120, height: 32 }, { projects: [project] })
+    await openNew(screen)
+    await screen.pressKey('g', { ctrl: true })
+    await screen.settle()
+
+    expect(await toastAfterEnter(screen, 'type a name')).toStartWith('Nothing was created')
+    expect(cardBorderColor(screen)).toEqual(hex(colors.key))
+  })
+
+  test('Enter on a GitHub URL with credentials', async () => {
+    screen = await renderSessionScreen({ width: 120, height: 32 }, { projects: [project] })
+    await openNew(screen)
+    await screen.replaceQuery('https://x-access-token:ghp_s3cret@github.com/acme/widget')
+    await screen.settle()
+
+    const toast = await toastAfterEnter(screen, 'username or token')
+
+    expect(toast).not.toContain('ghp_s3cret')
+    expect(cardBorderColor(screen)).toEqual(hex(colors.key))
+  })
+})
+
 describe('toast card', () => {
   test('shows a bold title, the message, and how many more wait', async () => {
     const setup = await testRender(

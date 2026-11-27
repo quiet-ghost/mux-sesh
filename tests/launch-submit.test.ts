@@ -152,19 +152,21 @@ test('Enter executes the shown plan as frozen: a focus plan only opens its exact
 
   expect(calls).toEqual(['open w4'])
   expect(messages[0]).toStartWith('error: ')
-  expect(messages[0]).toContain("Could not open workspace 'api'")
+  expect(messages[0]).toBe(
+    "error: Could not open workspace 'api': fixture client unavailable. Nothing was created."
+  )
 })
 
 test.each<{ preview: LaunchPreview; message: string }>([
   { preview: { kind: 'no-candidates' }, message: 'Nothing to open: no projects' },
   { preview: { kind: 'no-match', query: 'scratch' }, message: "no project matches 'scratch'" },
-])('$preview.kind creates nothing and explains why', async ({ preview, message }) => {
+])('$preview.kind creates nothing and warns why', async ({ preview, message }) => {
   const { calls, messages, options } = recording()
 
   await handleNewSessionSubmitWithPreview(preview, options)
 
   expect(calls).toEqual([])
   expect(messages).toHaveLength(1)
-  expect(messages[0]).toStartWith('error: ')
+  expect(messages[0]).toStartWith('warning: ')
   expect(messages[0]).toContain(message)
 })
