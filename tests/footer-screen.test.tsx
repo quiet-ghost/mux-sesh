@@ -5,6 +5,7 @@ import { resolveTheme } from '../src/styles/theme'
 import type { Item, KeybindMode } from '../src/types'
 import { CURRENT_VERSION } from '../src/update/version'
 import { footerHints, footerLineOf, hints, readFooter } from './fixtures/footer'
+import { cellsOf, contrastRatio, sameColor } from './fixtures/selection'
 import { renderSessionScreen } from './fixtures/session-screen'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
@@ -72,18 +73,57 @@ describe('main footer', () => {
     })
   })
 
-  test('labels use the text color and keys the muted color', async () => {
-    screen = await renderSessionScreen({ width: 110, height: 30 })
-    await screen.frame()
+  test.each([
+    { theme: 'github', colorScheme: 'light' as const },
+    { theme: 'rosepine', colorScheme: 'dark' as const },
+  ])(
+    'screen hints are muted; row actions keep text labels and muted keys ($theme $colorScheme)',
+    async ({ theme, colorScheme }) => {
+      screen = await renderSessionScreen(
+        { width: 110, height: 30 },
+        { theme, config: { colorScheme } }
+      )
+      await screen.frame()
 
-    const colors = resolveTheme('catppuccin', {}, 'dark').colors
-    const footer = screen.captureSpans().lines.at(-1)?.spans ?? []
-    const label = footer.find(span => span.text.includes('search'))
-    const key = footer.find(span => span.text.includes('ctrl+p'))
+      const colors = resolveTheme(theme, {}, colorScheme).colors
+      const line = screen.captureSpans().lines.at(-1)
+      const cells = line ? cellsOf(line) : []
+      const text = cells.map(cell => cell.char).join('')
 
-    expect(label?.fg.toInts()).toEqual(RGBA.fromHex(colors.text).toInts())
-    expect(key?.fg.toInts()).toEqual(RGBA.fromHex(colors.textMuted).toInts())
-  })
+      // Every cell of `part`, within the first `whole` on the footer, is painted in `hex`.
+      const painted = (whole: string, part: string, hex: string) => {
+        const at = text.indexOf(whole) + whole.indexOf(part)
+        const span = cells.slice(at, at + part.length)
+
+        return text.includes(whole) && span.every(cell => sameColor(cell.fg, hex))
+      }
+
+      for (const [label, key] of [
+        ['search', 'i'],
+        ['new', 'n'],
+        ['commands', 'ctrl+p'],
+        ['prefix', 'ctrl+x'],
+      ] as const) {
+        expect(painted(`${label} ${key}`, label, colors.textMuted)).toBe(true)
+        expect(painted(`${label} ${key}`, ` ${key}`, colors.textSubtle)).toBe(true)
+      }
+
+      for (const [label, key] of [
+        ['select', 'enter'],
+        ['close', 'd'],
+      ] as const) {
+        expect(painted(`${label} ${key}`, label, colors.text)).toBe(true)
+        expect(painted(`${label} ${key}`, ` ${key}`, colors.textMuted)).toBe(true)
+      }
+
+      expect(painted(VERSION, VERSION, colors.textSubtle)).toBe(true)
+      expect(cells.every(cell => sameColor(cell.bg, colors.surface))).toBe(true)
+
+      // The muted hints stay readable on the footer: at least the 3:1 large-text minimum.
+      expect(contrastRatio(colors.textMuted, colors.surface)).toBeGreaterThanOrEqual(3)
+      expect(contrastRatio(colors.textSubtle, colors.surface)).toBeGreaterThanOrEqual(3)
+    }
+  )
 
   test('an active prefix is shown on its hint until the next key', async () => {
     screen = await renderSessionScreen({ width: 110, height: 30 })

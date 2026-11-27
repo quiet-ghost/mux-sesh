@@ -109,12 +109,20 @@ function sameProps(previous: FooterProps, next: FooterProps): boolean {
   )
 }
 
+// Screen hints are always there, so they recede; row actions keep a text label and a muted key.
+interface HintTone {
+  label: string
+  key: string
+}
+
 function FooterHints({
   hints,
   prefixActive,
+  tone,
 }: {
   hints: readonly FooterHint[]
   prefixActive: boolean
+  tone: HintTone
 }) {
   const theme = useTheme()
 
@@ -122,6 +130,7 @@ function FooterHints({
     const gap = index > 0 ? HINT_GAP : ''
     const key = hint.key ? ` ${hint.key}` : ''
 
+    // A waiting prefix takes the next key, so it stands out from the muted hints until then.
     if (prefixActive && hint.id === 'prefix') {
       return (
         <b key={hint.id} style={{ fg: theme.primary }}>
@@ -132,8 +141,8 @@ function FooterHints({
 
     return (
       <span key={`${hint.id}:${hint.label}`}>
-        <span style={{ fg: theme.text }}>{`${gap}${hint.label}`}</span>
-        {key && <span style={{ fg: theme.textMuted }}>{key}</span>}
+        <span style={{ fg: tone.label }}>{`${gap}${hint.label}`}</span>
+        {key && <span style={{ fg: tone.key }}>{key}</span>}
       </span>
     )
   })
@@ -155,10 +164,18 @@ function FooterRow({ footer, width, version, prefixActive }: FooterProps) {
       }}
     >
       <text style={{ wrapMode: 'none', flexGrow: 1, flexShrink: 1 }}>
-        <FooterHints hints={fitted.global} prefixActive={prefixActive} />
+        <FooterHints
+          hints={fitted.global}
+          prefixActive={prefixActive}
+          tone={{ label: theme.textMuted, key: theme.textSubtle }}
+        />
       </text>
       <text style={{ wrapMode: 'none', flexShrink: 0 }}>
-        <FooterHints hints={fitted.target} prefixActive={prefixActive} />
+        <FooterHints
+          hints={fitted.target}
+          prefixActive={prefixActive}
+          tone={{ label: theme.text, key: theme.textMuted }}
+        />
         <span style={{ fg: theme.textSubtle }}>{`${versionGap}${version}`}</span>
       </text>
     </box>
