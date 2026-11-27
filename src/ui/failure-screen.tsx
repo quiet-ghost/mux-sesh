@@ -5,7 +5,7 @@ import type { ThemeColors } from '../types'
 import { truncateDialogText } from './dialog-layout'
 import { KeyHint, KeyHints } from './key-hints'
 import { Pane, PaneRule } from './pane'
-import { toastColor } from './Toast'
+import { toastColor } from './notice-kind'
 
 // Below this many rows the body drops the blank rows between its blocks.
 const ROOMY_ROWS = 24
