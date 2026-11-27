@@ -37,6 +37,7 @@ export default function CloseReviewBatch({ batch, columns }: Props) {
 
   return (
     <Modal
+      tone="danger"
       title={plain(CleanupBatch.title(batch))}
       hints={[
         { label: `close ${ready.length}`, key: 'enter' },

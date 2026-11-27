@@ -247,7 +247,7 @@ describe('selected dialog row', () => {
       if (!before) throw new Error('The selected dialog row was not rendered')
 
       // The highlight starts at the row's first cell, right after the dialog's inset.
-      expect(sameColor(before.bg, colors.surfaceModal)).toBe(true)
+      expect(sameColor(before.bg, colors.background)).toBe(true)
       expect(
         cells.slice(rowStart, label + 11).every(cell => sameColor(cell.bg, colors.selection))
       ).toBe(true)

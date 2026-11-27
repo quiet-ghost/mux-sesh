@@ -11,6 +11,15 @@ interface DialogFilterProps {
   onContentChange: () => void
 }
 
+interface DialogFieldProps {
+  initialValue: string
+  textareaRef: { current: TextareaRenderable | null }
+  onContentChange: () => void
+  placeholder?: string
+  // One row scrolls sideways; more rows wrap words.
+  height?: number
+}
+
 interface DialogRowProps {
   label: string
   value: string
@@ -36,30 +45,49 @@ export function DialogSectionHeader({ text }: { text: string }) {
   )
 }
 
+// The main search field's prompt, on the dialog background; the prompt sits in the rows' mark cell.
+const PROMPT = '›'
+
+export function DialogField({
+  initialValue,
+  textareaRef,
+  onContentChange,
+  placeholder,
+  height = 1,
+}: DialogFieldProps) {
+  const theme = useTheme()
+
+  return (
+    <box style={{ flexDirection: 'row', flexShrink: 0, height }}>
+      <text style={{ fg: theme.primary, flexShrink: 0, wrapMode: 'none' }}>{`${PROMPT} `}</text>
+      <textarea
+        ref={textareaRef}
+        style={{ flexGrow: 1, flexShrink: 1, height }}
+        placeholder={placeholder}
+        placeholderColor={theme.textMuted}
+        textColor={theme.text}
+        focusedTextColor={theme.text}
+        initialValue={initialValue}
+        onContentChange={onContentChange}
+        focused
+        wrapMode={height > 1 ? 'word' : 'none'}
+      />
+    </box>
+  )
+}
+
 export function DialogFilter({
   placeholder,
   searchQuery,
   textareaRef,
   onContentChange,
 }: DialogFilterProps) {
-  const theme = useTheme()
-
   return (
-    <box
-      style={{
-        height: 1,
-        backgroundColor: theme.surfaceAlt,
-        paddingLeft: 1,
-        paddingRight: 1,
-        marginBottom: 1,
-      }}
-    >
-      <textarea
-        ref={textareaRef}
+    <box style={{ flexDirection: 'column', marginBottom: 1 }}>
+      <DialogField
         initialValue={searchQuery}
+        textareaRef={textareaRef}
         onContentChange={onContentChange}
-        focused
-        wrapMode="none"
         placeholder={placeholder}
       />
     </box>

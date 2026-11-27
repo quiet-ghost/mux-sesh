@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 
 export interface PaneSize {
   width: number
-  height: number
+  // Without a height the pane is as tall as its content.
+  height?: number
 }
 
 interface PaneProps {
@@ -11,12 +12,21 @@ interface PaneProps {
   borderColor: string
   // Without a size the pane fills its parent's free space.
   size?: PaneSize
+  // Without one the pane shows whatever is drawn beneath it.
+  backgroundColor?: string
   children: ReactNode
 }
 
 // A tmux-style pane: a single-line border with the title set into its top edge, like
 // `pane-border-format`. Children sit directly inside the border and lay out in a column.
-export function Pane({ title, titleColor, borderColor, size, children }: PaneProps) {
+export function Pane({
+  title,
+  titleColor,
+  borderColor,
+  size,
+  backgroundColor,
+  children,
+}: PaneProps) {
   return (
     <box
       title={` ${title} `}
@@ -26,6 +36,7 @@ export function Pane({ title, titleColor, borderColor, size, children }: PanePro
         borderStyle: 'single',
         borderColor,
         flexDirection: 'column',
+        backgroundColor: backgroundColor ?? 'transparent',
         ...(size ?? { flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: 3 }),
       }}
     >

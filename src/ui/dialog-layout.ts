@@ -1,8 +1,11 @@
 const DIALOG_MARGIN_COLUMNS = 2
 const DIALOG_MARGIN_ROWS = 1
 
-// Two cells, not OpenCode's three: at 60 columns the dialog is 56 wide and every cell is a label cell.
+// The side border and one space: at 60 columns the dialog is 56 wide and its body 52.
 export const DIALOG_INSET_COLUMNS = 2
+
+// `┌─ ` before the title and ` ─┐` after it.
+const DIALOG_TITLE_CHROME_COLUMNS = 6
 
 // A row is the current-value mark, a space before the label and a right pad.
 const DIALOG_ROW_CHROME_COLUMNS = 3
@@ -35,14 +38,19 @@ export function getDialogRowWidth(dialogWidth: number): number {
   return Math.max(1, getDialogContentWidth(dialogWidth) - DIALOG_ROW_CHROME_COLUMNS)
 }
 
-// Top pad, title, optional description, a blank row above and below the body, and the footer band.
+// The title fits in the top border with at least one rule cell before the corner.
+export function getDialogTitleWidth(dialogWidth: number): number {
+  return Math.max(1, dialogWidth - DIALOG_TITLE_CHROME_COLUMNS)
+}
+
+// The titled top border, an optional description, the rule above the footer, the footer and the
+// bottom border.
 export function getDialogChromeRows({ description }: DialogChrome): number {
-  const padding = 1
-  const title = 1
-  const gaps = 2
+  const borders = 2
+  const rule = 1
   const footer = 1
 
-  return padding + title + (description ? 1 : 0) + gaps + footer
+  return borders + (description ? 1 : 0) + rule + footer
 }
 
 export function getDialogListRows(rows: number, reservedRows: number): number {

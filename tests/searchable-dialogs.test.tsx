@@ -44,32 +44,19 @@ async function expectHighlighted(fixture: Screen, themeId: string, text: string)
   expect(rows[0]).toContain(text)
 }
 
-async function dialogBounds(fixture: Screen, themeId: string, title: string) {
-  await fixture.frame()
-  const modal = RGBA.fromHex(resolveTheme(themeId, {}, 'dark').colors.surfaceModal)
-
-  const line = fixture
-    .captureSpans()
-    .lines.find(row => row.spans.some(span => span.text.includes(title)))
+// The dialog's border columns on its titled top row, inclusive.
+async function dialogBounds(fixture: Screen, title: string) {
+  const line = (await fixture.frame()).split('\n').find(row => row.includes(`┌─ ${title} `))
 
   if (!line) throw new Error(`Dialog title ${title} was not rendered`)
 
-  let column = 0
-  let left = -1
-  let right = -1
+  const left = line.indexOf(`┌─ ${title} `)
 
-  for (const span of line.spans) {
-    if (sameColor(span.bg, modal)) {
-      if (left < 0) left = column
-      right = column + span.width
-    }
-
-    column += span.width
-  }
-
-  return { left, right }
+  return { left, right: line.indexOf('┐', left) }
 }
 
+// The titled top border, then the prompt filter, then the hints between the footer rule and the
+// bottom border.
 async function expectDialogFits(
   fixture: Screen,
   title: string,
@@ -77,17 +64,19 @@ async function expectDialogFits(
   hint: string
 ) {
   const lines = (await fixture.frame()).split('\n')
-  const titleRow = lines.findIndex(line => line.includes(title) && line.includes('esc'))
+  const titleRow = lines.findIndex(line => line.includes(`┌─ ${title} ─`))
 
   const inputRow = lines.findIndex(
-    (line, index) => index > titleRow && line.includes(placeholderOrQuery)
+    (line, index) => index > titleRow && line.includes(`│ › ${placeholderOrQuery}`)
   )
 
-  const hintRow = lines.findIndex(line => line.includes(hint))
+  const hintRow = lines.findIndex(line => line.includes(`│ ${hint} `))
 
   expect(titleRow).toBeGreaterThanOrEqual(0)
   expect(inputRow).toBeGreaterThan(titleRow)
   expect(hintRow).toBeGreaterThan(inputRow)
+  expect(lines[hintRow - 1]).toMatch(/├─+┤/)
+  expect(lines[hintRow + 1]).toMatch(/└─+┘/)
 }
 
 async function openCommands(fixture: Screen): Promise<void> {
@@ -218,9 +207,9 @@ describe('searchable dialog viewports', () => {
     screen = await renderSessionScreen({ width, height: 18 })
     await openCommands(screen)
 
-    const bounds = await dialogBounds(screen, 'catppuccin', 'Commands')
+    const bounds = await dialogBounds(screen, 'Commands')
     expect(bounds.left).toBeGreaterThan(0)
-    expect(bounds.right).toBeLessThan(width)
+    expect(bounds.right).toBeLessThan(width - 1)
     await expectDialogFits(screen, 'Commands', 'Search', 'navigate ↑/↓')
   })
 })

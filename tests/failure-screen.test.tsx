@@ -8,14 +8,23 @@ import { ErrorScreen } from '../src/ui/ErrorScreen'
 import { FailurePalette } from '../src/ui/failure-screen'
 import { StartupErrorScreen } from '../src/ui/StartupErrorScreen'
 import { DiagnosticReport } from '../src/util/errors'
+import {
+  cellAt,
+  expectBorderCell,
+  expectPane,
+  expectPaneFooter,
+  findPane,
+  PANE_INSET,
+  rowAt,
+  textOf,
+  type PaneHint,
+} from './fixtures/pane'
 import { cellsOf, sameColor, type Cell } from './fixtures/selection'
 
-// Body text sits one space inside the pane's left border.
-const INSET = 2
+const INSET = PANE_INSET
 
 // A nested pane's text sits one space inside its own border, which starts at the body inset.
 const NESTED_INSET = INSET + 2
-const ACCENT_BARS = /[┃▌▐]/
 
 const SIZES = [
   { width: 100, height: 26 },
@@ -75,10 +84,6 @@ async function render(
   return capture()
 }
 
-function textOf(row: Cell[]): string {
-  return row.map(cell => cell.char).join('')
-}
-
 function rowWith(rows: Cell[][], text: string): number {
   const index = rows.findIndex(row => textOf(row).includes(text))
 
@@ -86,22 +91,6 @@ function rowWith(rows: Cell[][], text: string): number {
     throw new Error(`No rendered row contains ${text}:\n${rows.map(textOf).join('\n')}`)
 
   return index
-}
-
-function rowAt(rows: Cell[][], index: number): Cell[] {
-  const row = rows[index]
-
-  if (!row) throw new Error(`Row ${index} was not rendered`)
-
-  return row
-}
-
-function cellAt(row: Cell[], column: number): Cell {
-  const cell = row[column]
-
-  if (!cell) throw new Error(`Column ${column} was not rendered`)
-
-  return cell
 }
 
 function crashReport(): DiagnosticReport {
@@ -152,76 +141,44 @@ function startupScreen(kind: 'failed' | 'retrying'): ReactNode {
   return <StartupErrorScreen startup={startup} onRetry={() => {}} onQuit={() => {}} />
 }
 
-function expectBorderCell(cell: Cell, char: string, colors: ThemeColors) {
-  expect(cell.char).toBe(char)
-  expect(sameColor(cell.fg, colors.border)).toBe(true)
-}
-
-// One full-screen pane on the theme background: a muted single-line border with the title set into
-// its top edge in the danger color, a muted description as the first body row, and every other
-// row closed by the side borders, so nothing wraps through them. No accent bars, no rounded card.
-function expectPane(screen: Rendered, colors: ThemeColors, title: string, description: string) {
-  const top = rowAt(screen.rows, 0)
-  const bottom = rowAt(screen.rows, screen.rows.length - 1)
-  const width = top.length
-
-  expect(textOf(top)).toMatch(new RegExp(`^┌─ ${title} ─+┐$`))
-  expectBorderCell(cellAt(top, 0), '┌', colors)
-  expectBorderCell(cellAt(top, 1), '─', colors)
-  expectBorderCell(cellAt(top, width - 1), '┐', colors)
-
-  for (let column = 3; column < 3 + title.length; column++)
-    expect(sameColor(cellAt(top, column).fg, colors.danger)).toBe(true)
-
-  expect(textOf(bottom)).toMatch(/^└─+┘$/)
-  expectBorderCell(cellAt(bottom, 0), '└', colors)
-  expectBorderCell(cellAt(bottom, width - 1), '┘', colors)
-
-  for (const row of screen.rows.slice(1, -1)) {
-    const rule = cellAt(row, 0).char === '├'
-
-    expectBorderCell(cellAt(row, 0), rule ? '├' : '│', colors)
-    expectBorderCell(cellAt(row, width - 1), rule ? '┤' : '│', colors)
-  }
-
-  expect(screen.rows.every(row => row.every(cell => sameColor(cell.bg, colors.background)))).toBe(
-    true
-  )
-
-  expect(screen.frame).not.toMatch(ACCENT_BARS)
-  expect(screen.frame).not.toMatch(/[╭╮╰╯]/)
-
-  const below = rowAt(screen.rows, 1)
-  expect(textOf(below).indexOf(description)).toBe(INSET)
-  expect(sameColor(cellAt(below, INSET).fg, colors.textMuted)).toBe(true)
-}
-
-// The footer is the row above the bottom border, under a rule joined to both side borders. Each
-// label is text-colored and its key muted; the end group sits one space inside the right border.
-function expectFooter(
+// One full-screen pane on the theme background with the title in the danger color.
+function expectFailurePane(
   screen: Rendered,
   colors: ThemeColors,
-  left: ReadonlyArray<readonly [string, string]>,
+  title: string,
+  description: string
+) {
+  const pane = findPane(screen.rows, title)
+
+  expect(pane).toMatchObject({
+    top: 0,
+    left: 0,
+    bottom: screen.rows.length - 1,
+    right: rowAt(screen.rows, 0).length - 1,
+  })
+  expectPane(pane, colors, {
+    title,
+    titleColor: colors.danger,
+    background: colors.background,
+    description,
+  })
+}
+
+function expectFailureFooter(
+  screen: Rendered,
+  colors: ThemeColors,
+  left: readonly PaneHint[],
   right: string | undefined
 ) {
-  const footer = rowAt(screen.rows, screen.rows.length - 2)
-  const rule = rowAt(screen.rows, screen.rows.length - 3)
-  const text = textOf(footer)
-  const leftText = left.map(([label, key]) => `${label} ${key}`).join('  ')
+  expectPaneFooter(findPane(screen.rows, screenTitle(screen)), colors, left, right)
+}
 
-  expect(textOf(rule)).toMatch(/^├─+┤$/)
-  expect(rule.every(cell => sameColor(cell.fg, colors.border))).toBe(true)
-  expect(text.indexOf(leftText)).toBe(INSET)
+function screenTitle(screen: Rendered): string {
+  const title = /^┌─ (.+?) ─/.exec(textOf(rowAt(screen.rows, 0)))?.[1]
 
-  if (right) expect(text.endsWith(` ${right} │`)).toBe(true)
-  else expect(text.slice(1, -1).trim()).toBe(leftText)
+  if (!title) throw new Error('The failure screen has no titled pane')
 
-  for (const [label, key] of left) {
-    const at = text.indexOf(`${label} ${key}`)
-
-    expect(sameColor(cellAt(footer, at).fg, colors.text)).toBe(true)
-    expect(sameColor(cellAt(footer, at + label.length + 1).fg, colors.textMuted)).toBe(true)
-  }
+  return title
 }
 
 const STATUS_COLOR = {
@@ -265,8 +222,13 @@ describe('crash screen', () => {
       test(`matches the app chrome in ${theme} ${colorScheme} at ${size.width} x ${size.height}`, async () => {
         const screen = await render(crashScreen(crashReport()), colors, size)
 
-        expectPane(screen, colors, 'mux-sesh crashed', 'An unexpected error stopped the picker')
-        expectFooter(
+        expectFailurePane(
+          screen,
+          colors,
+          'mux-sesh crashed',
+          'An unexpected error stopped the picker'
+        )
+        expectFailureFooter(
           screen,
           colors,
           [
@@ -354,7 +316,7 @@ describe('crash screen', () => {
     const screen = await render(crashScreen(crashReport()), colors, { width: 60, height: 18 })
     const confirming = await screen.press('o')
 
-    expectFooter(
+    expectFailureFooter(
       confirming,
       colors,
       [
@@ -365,7 +327,12 @@ describe('crash screen', () => {
       'review ↑/↓'
     )
 
-    expectPane(confirming, colors, 'mux-sesh crashed', 'An unexpected error stopped the picker')
+    expectFailurePane(
+      confirming,
+      colors,
+      'mux-sesh crashed',
+      'An unexpected error stopped the picker'
+    )
     expectStatusLine(confirming, colors, 'warning', 'Send the report below', 'report.')
   })
 
@@ -374,7 +341,7 @@ describe('crash screen', () => {
     const screen = await render(crashScreen(crashReport()), colors, { width: 100, height: 26 })
     const copied = await screen.press('c')
 
-    expectPane(copied, colors, 'mux-sesh crashed', 'An unexpected error stopped the picker')
+    expectFailurePane(copied, colors, 'mux-sesh crashed', 'An unexpected error stopped the picker')
     expectStatusLine(copied, colors, 'done', 'Diagnostics copied to the clipboard', 'clipboard')
   })
 
@@ -410,8 +377,13 @@ describe('startup failure screen', () => {
       test(`matches the app chrome in ${theme} ${colorScheme} at ${size.width} x ${size.height}`, async () => {
         const screen = await render(startupScreen('failed'), colors, size)
 
-        expectPane(screen, colors, 'mux-sesh could not start', 'Multiplexer backend is unavailable')
-        expectFooter(
+        expectFailurePane(
+          screen,
+          colors,
+          'mux-sesh could not start',
+          'Multiplexer backend is unavailable'
+        )
+        expectFailureFooter(
           screen,
           colors,
           [
@@ -447,8 +419,13 @@ describe('startup failure screen', () => {
       { width: 60, height: 18 }
     )
 
-    expectPane(screen, colors, 'mux-sesh could not start', 'Multiplexer backend is unavailable')
-    expectFooter(
+    expectFailurePane(
+      screen,
+      colors,
+      'mux-sesh could not start',
+      'Multiplexer backend is unavailable'
+    )
+    expectFailureFooter(
       screen,
       colors,
       [
@@ -471,8 +448,13 @@ describe('startup failure screen', () => {
     const colors = resolveTheme('rosepine', {}, 'dark').colors
     const screen = await render(startupScreen('retrying'), colors, { width: 60, height: 18 })
 
-    expectPane(screen, colors, 'mux-sesh could not start', 'Multiplexer backend is unavailable')
-    expectFooter(screen, colors, [['quit', 'q']], 'Retrying…')
+    expectFailurePane(
+      screen,
+      colors,
+      'mux-sesh could not start',
+      'Multiplexer backend is unavailable'
+    )
+    expectFailureFooter(screen, colors, [['quit', 'q']], 'Retrying…')
     expect(screen.frame).not.toContain('retry r')
   })
 })

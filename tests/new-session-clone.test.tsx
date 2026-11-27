@@ -9,6 +9,7 @@ import { resolveTheme } from '../src/styles/theme'
 import type { KeybindMode } from '../src/types'
 import { createLocalGitHub, type LocalGitHub } from './fixtures/local-github'
 import { footerGroups, hints } from './fixtures/footer'
+import { withoutSideBorders } from './fixtures/pane'
 import { renderSessionScreen } from './fixtures/session-screen'
 import { noticeOf, statusWordColor, type Notice } from './fixtures/status-line'
 import { createFakeSpinnerMotion } from './fixtures/spinner-motion'
@@ -135,9 +136,10 @@ async function exists(path: string): Promise<boolean> {
 
 const FRAME_WAIT_MS = 10_000
 
-// Dialogs wrap long temp paths, so frames are compared with all whitespace removed.
+// Dialogs wrap long temp paths inside their borders, so frames are compared with all whitespace
+// and side borders removed.
 function squashed(text: string): string {
-  return text.replace(/\s+/g, '')
+  return withoutSideBorders(text).replace(/\s+/g, '')
 }
 
 // Bounded by time, not ticks: a real local git clone can outlast many settles on a slow runner.

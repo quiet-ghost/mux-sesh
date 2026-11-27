@@ -3,6 +3,7 @@ import { CommandTimeoutError } from '../src/multiplexer/command'
 import { MultiplexerError } from '../src/multiplexer/types'
 import type { LiveWorkspace, MultiplexerBackend, WorkspaceRef } from '../src/multiplexer'
 import { footerHints } from './fixtures/footer'
+import { withoutSideBorders } from './fixtures/pane'
 import { renderSessionScreen } from './fixtures/session-screen'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
@@ -98,7 +99,7 @@ function recordingBackend(initial: LiveWorkspace[], options: BackendOptions = {}
 }
 
 function flat(frame: string): string {
-  return frame.replace(/\s+/g, ' ')
+  return withoutSideBorders(frame).replace(/\s+/g, ' ')
 }
 
 function ids(refs: readonly WorkspaceRef[]): string[] {

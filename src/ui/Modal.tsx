@@ -3,17 +3,22 @@ import { RGBA } from '@opentui/core'
 import { useTheme } from '../styles/theme'
 import {
   DEFAULT_DIALOG_WIDTH,
-  DIALOG_INSET_COLUMNS,
   getDialogContentWidth,
+  getDialogTitleWidth,
   getDialogWidth,
   truncateDialogText,
 } from './dialog-layout'
 import { KeyHint, KeyHints } from './key-hints'
+import { Pane, PaneRule } from './pane'
 
-const CLOSE_HINT = 'esc'
+// A danger title marks a dialog whose enter destroys something, like the close reviews.
+export type ModalTone = 'neutral' | 'danger'
+
+const BACKDROP = RGBA.fromInts(0, 0, 0, 150)
 
 interface Props {
   title: string
+  tone?: ModalTone
   description?: string
   hints: readonly KeyHint[]
   columns: number
@@ -21,10 +26,12 @@ interface Props {
   children: ReactNode
 }
 
-// Every dialog: title with a muted esc, an optional muted description, the body between blank
-// rows, and its own key hints on a raised band that runs edge to edge.
+// Every dialog is a tmux-style popup pane over the dimmed screen: the title in the top border, an
+// optional muted description as the first body row, the body, then its key hints under a rule.
+// Esc is always one of the hints, so the border carries only the title.
 export default function Modal({
   title,
+  tone = 'neutral',
   description,
   hints,
   columns,
@@ -45,47 +52,29 @@ export default function Modal({
         height: '100%',
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: RGBA.fromInts(0, 0, 0, 150),
+        backgroundColor: BACKDROP,
       }}
     >
-      <box
-        style={{
-          backgroundColor: theme.surfaceModal,
-          width,
-          paddingTop: 1,
-          flexDirection: 'column',
-        }}
+      <Pane
+        title={truncateDialogText(title, getDialogTitleWidth(width))}
+        titleColor={tone === 'danger' ? theme.danger : theme.text}
+        borderColor={theme.border}
+        backgroundColor={theme.background}
+        size={{ width }}
       >
-        <box
-          style={{
-            flexDirection: 'column',
-            paddingLeft: DIALOG_INSET_COLUMNS,
-            paddingRight: DIALOG_INSET_COLUMNS,
-          }}
-        >
-          <box style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <text style={{ fg: theme.text, wrapMode: 'none' }}>
-              {truncateDialogText(title, contentWidth - CLOSE_HINT.length - 1)}
-            </text>
-            <text style={{ fg: theme.textMuted, wrapMode: 'none' }}>{CLOSE_HINT}</text>
-          </box>
+        <box style={{ flexDirection: 'column', paddingLeft: 1, paddingRight: 1 }}>
           {description && (
             <text style={{ fg: theme.textMuted, wrapMode: 'none' }}>
               {truncateDialogText(description, contentWidth)}
             </text>
           )}
-          <box style={{ flexDirection: 'column', marginTop: 1, marginBottom: 1 }}>{children}</box>
+          {children}
         </box>
-        <box
-          style={{
-            backgroundColor: theme.surfaceAlt,
-            paddingLeft: DIALOG_INSET_COLUMNS,
-            paddingRight: DIALOG_INSET_COLUMNS,
-          }}
-        >
+        <PaneRule color={theme.border} />
+        <box style={{ paddingLeft: 1, paddingRight: 1 }}>
           <KeyHints hints={KeyHint.fit(hints, contentWidth)} />
         </box>
-      </box>
+      </Pane>
     </box>
   )
 }

@@ -27,6 +27,7 @@ export default function CloseReviewModal({ plan, columns }: Props) {
 
   return (
     <Modal
+      tone="danger"
       title={plain(CleanupPlan.title(plan))}
       description={fitPath(
         plain(plan.path),

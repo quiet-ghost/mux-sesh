@@ -2,7 +2,9 @@ import { describe, expect, test } from 'bun:test'
 import {
   fitDialogRow,
   fitsOptionalDialogRows,
+  getDialogChromeRows,
   getDialogListRows,
+  getDialogTitleWidth,
   getDialogWidth,
   truncateDialogText,
 } from '../src/ui/dialog-layout'
@@ -14,6 +16,16 @@ describe('dialog layout', () => {
     expect(getDialogWidth(60, 68)).toBe(56)
     expect(getDialogWidth(40, 68)).toBe(36)
     expect(getDialogWidth(3, 68)).toBe(1)
+  })
+
+  test('budgets both borders, the footer rule and the footer as chrome rows', () => {
+    expect(getDialogChromeRows({})).toBe(4)
+    expect(getDialogChromeRows({ description: 'catppuccin' })).toBe(5)
+  })
+
+  test('fits the title between `┌─ ` and ` ─┐` in the top border', () => {
+    expect(getDialogTitleWidth(56)).toBe(50)
+    expect(getDialogTitleWidth(4)).toBe(1)
   })
 
   test('keeps at least one list row in tiny terminals', () => {

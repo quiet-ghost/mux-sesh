@@ -1,5 +1,6 @@
 import type { TextareaRenderable } from '@opentui/core'
 import { useTheme } from '../styles/theme'
+import { DialogField } from './DialogList'
 import type { KeyHint } from './key-hints'
 import Modal from './Modal'
 import { useTextareaFocus } from './use-textarea-focus'
@@ -43,19 +44,12 @@ export default function SettingEditorModal({
     >
       {error && <text style={{ fg: theme.danger, marginBottom: 1 }}>{error}</text>}
 
-      <box
-        style={{
-          backgroundColor: theme.surfaceAlt,
-          height: Math.max(6, rows - 16),
-        }}
-      >
-        <textarea
-          ref={textareaRef}
-          initialValue={value}
-          onContentChange={onContentChange}
-          focused
-        />
-      </box>
+      <DialogField
+        initialValue={value}
+        textareaRef={textareaRef}
+        onContentChange={onContentChange}
+        height={Math.max(6, rows - 16)}
+      />
     </Modal>
   )
 }
