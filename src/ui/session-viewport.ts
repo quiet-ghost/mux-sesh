@@ -1,7 +1,7 @@
 import { getSessionSection } from '../items/order'
-import type { Item } from '../types'
-import { truncateMiddle } from '../util/truncate'
-import { truncateDialogText } from './dialog-layout'
+import type { Item, SearchMatchMetadata } from '../types'
+import { mapMiddleCutIndices, truncateMiddleCut } from '../util/truncate'
+import { fitDialogLabelMatches, truncateDialogText } from './dialog-layout'
 import { getVisibleWindow, type VisibleWindow } from './list-window'
 
 const AGENTS_CHROME_ROWS = 2
@@ -128,20 +128,63 @@ export function getTitleColumnWidth(items: Item[], getContext: (item: Item) => s
   )
 }
 
+// Match positions into the fitted title and context; positions under an ellipsis are dropped.
+export interface ListRowMatches extends ListRowText {
+  titleMatches: readonly number[]
+  contextMatches: readonly number[]
+}
+
+const NO_MATCHES: readonly number[] = []
+
+export function fitListRowWithMatches(
+  title: string,
+  context: string,
+  width: number,
+  titleColumn: number,
+  match: SearchMatchMetadata | undefined
+): ListRowMatches {
+  if (!context) {
+    const fitted = truncateDialogText(title, width)
+
+    return {
+      title: fitted,
+      spacer: '',
+      context: '',
+      titleMatches: fitDialogLabelMatches(title, fitted, match?.titleIndices),
+      contextMatches: NO_MATCHES,
+    }
+  }
+
+  const column = Math.max(1, Math.min(titleColumn, Math.floor(width * TITLE_COLUMN_SHARE)))
+  const fittedTitle = truncateDialogText(title, column)
+  const spacer = ' '.repeat(Math.max(MIN_COLUMN_GAP, column - fittedTitle.length + MIN_COLUMN_GAP))
+  const contextWidth = width - fittedTitle.length - spacer.length
+  const titleMatches = fitDialogLabelMatches(title, fittedTitle, match?.titleIndices)
+
+  if (contextWidth <= 0) {
+    return { title: fittedTitle, spacer: '', context: '', titleMatches, contextMatches: NO_MATCHES }
+  }
+
+  const cut = truncateMiddleCut(context, contextWidth)
+  const descIndices = match?.descIndices
+
+  return {
+    title: fittedTitle,
+    spacer,
+    context: cut.text,
+    titleMatches,
+    contextMatches:
+      descIndices && descIndices.length > 0 ? mapMiddleCutIndices(cut, descIndices) : NO_MATCHES,
+  }
+}
+
 export function fitListRow(
   title: string,
   context: string,
   width: number,
   titleColumn: number
 ): ListRowText {
-  if (!context) return { title: truncateDialogText(title, width), spacer: '', context: '' }
+  const row = fitListRowWithMatches(title, context, width, titleColumn, undefined)
 
-  const column = Math.max(1, Math.min(titleColumn, Math.floor(width * TITLE_COLUMN_SHARE)))
-  const fittedTitle = truncateDialogText(title, column)
-  const spacer = ' '.repeat(Math.max(MIN_COLUMN_GAP, column - fittedTitle.length + MIN_COLUMN_GAP))
-  const contextWidth = width - fittedTitle.length - spacer.length
-
-  return contextWidth > 0
-    ? { title: fittedTitle, spacer, context: truncateMiddle(context, contextWidth) }
-    : { title: fittedTitle, spacer: '', context: '' }
+  return { title: row.title, spacer: row.spacer, context: row.context }
 }

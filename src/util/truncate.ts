@@ -50,18 +50,48 @@ function join(cells: readonly Cell[]): string {
   return cells.map(cell => cell.text).join('')
 }
 
-// Keeps the start, then the end, never splitting a grapheme.
-export function truncateMiddle(text: string, width: number): string {
-  if (displayWidth(text) <= width) return text
+// `text` is `source[0, head)`, then `…`, then `source[tailStart, end)`; uncut, both equal the length.
+export interface MiddleCut {
+  readonly text: string
+  readonly head: number
+  readonly tailStart: number
+}
 
-  if (width <= 0) return ''
+// Keeps the start, then the end, never splitting a grapheme.
+export function truncateMiddleCut(text: string, width: number): MiddleCut {
+  if (displayWidth(text) <= width) return { text, head: text.length, tailStart: text.length }
+
+  if (width <= 0) return { text: '', head: 0, tailStart: text.length }
 
   const cells = cellsOf(text)
   const budget = width - 1
   const head = fitCount(cells, Math.ceil(budget / 2), false)
   const tail = fitCount(cells.slice(head.count), budget - head.width, true)
+  const headText = join(cells.slice(0, head.count))
+  const tailText = join(cells.slice(cells.length - tail.count))
 
-  return `${join(cells.slice(0, head.count))}${ELLIPSIS}${join(cells.slice(cells.length - tail.count))}`
+  return {
+    text: `${headText}${ELLIPSIS}${tailText}`,
+    head: headText.length,
+    tailStart: text.length - tailText.length,
+  }
+}
+
+export function truncateMiddle(text: string, width: number): string {
+  return truncateMiddleCut(text, width).text
+}
+
+// Positions into the source, moved to where they sit in a middle cut; elided ones are dropped.
+export function mapMiddleCutIndices(cut: MiddleCut, indices: readonly number[]): number[] {
+  const shift = cut.head + ELLIPSIS.length - cut.tailStart
+  const mapped: number[] = []
+
+  for (const index of indices) {
+    if (index < cut.head) mapped.push(index)
+    else if (index >= cut.tailStart && cut.head < cut.tailStart) mapped.push(index + shift)
+  }
+
+  return mapped
 }
 
 export function truncateEnd(text: string, width: number): string {

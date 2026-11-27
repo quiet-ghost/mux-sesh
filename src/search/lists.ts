@@ -1,6 +1,12 @@
 import type { CommandEntry } from '../app/action-catalog'
 import type { SettingsEntry, SettingsOption } from '../settings'
-import { createSearchSchema, parseQuery, rankValues, type SearchKey } from './matcher'
+import {
+  createSearchSchema,
+  parseQuery,
+  rankValues,
+  type SearchKey,
+  type SearchSchema,
+} from './matcher'
 
 // Title ×1 and keywords ×0.6 are names; category ×0.5 and keybind ×0.25 are context, so a
 // category or keybind match ranks below every title or keyword match.
@@ -56,4 +62,27 @@ export function rankSettingsOptions(options: SettingsOption[], query: string): S
   if (parseQuery(query).terms.length === 0) return options
 
   return rankValues(SETTINGS_OPTION_SCHEMA, options, query).map(hit => hit.value)
+}
+
+// Label match positions for one visible row, from the same schema and query that ranked it.
+function labelMatches<T extends object>(
+  schema: SearchSchema<T>,
+  value: T,
+  query: string
+): readonly number[] {
+  if (parseQuery(query).terms.length === 0) return []
+
+  return rankValues(schema, [value], query)[0]?.positions[0] ?? []
+}
+
+export function getCommandLabelMatches(entry: CommandEntry, query: string): readonly number[] {
+  return labelMatches(COMMAND_SCHEMA, entry, query)
+}
+
+export function getSettingsLabelMatches(entry: SettingsEntry, query: string): readonly number[] {
+  return labelMatches(SETTINGS_ENTRY_SCHEMA, entry, query)
+}
+
+export function getOptionLabelMatches(option: SettingsOption, query: string): readonly number[] {
+  return labelMatches(SETTINGS_OPTION_SCHEMA, option, query)
 }

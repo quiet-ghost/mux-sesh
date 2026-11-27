@@ -7,7 +7,9 @@ import {
   getListStyle,
   getNewSessionPlaceholder,
   getNewSessionStepTitle,
+  getResultCount,
   getScreenLayout,
+  getSearchNoMatchHint,
   getStatusLabel,
 } from './view'
 import { syncTextareaValue } from './textarea'
@@ -23,7 +25,7 @@ import { shouldShowDetailPanel } from '../util/terminal'
 import SearchInput from '../ui/SearchInput'
 import SessionList from '../ui/SessionList'
 import AgentSessionGroup from '../ui/AgentSessionGroup'
-import ItemList from '../ui/ItemList'
+import ResultList from '../ui/ResultList'
 import { getListRowWidth, getSessionViewport } from '../ui/session-viewport'
 import SessionDetailsPanel from '../ui/SessionDetailsPanel'
 import { BusySpinner } from '../ui/Spinner'
@@ -45,6 +47,8 @@ interface Props {
   config: Config | null
   backend: MultiplexerBackend | null
   items: Item[]
+  // The unfiltered rows Search filters; the field counts matches against them.
+  allItems: Item[]
   regularSessions: Item[]
   agentSessions: Item[]
   selectedPrimaryItem?: Item
@@ -87,6 +91,7 @@ export function AppScreen({
   config,
   backend,
   items,
+  allItems,
   regularSessions,
   agentSessions,
   selectedPrimaryItem,
@@ -119,7 +124,10 @@ export function AppScreen({
   const listCursor = fileStep ? fileStep.cursor : cursor
   const listQuery = fileStep ? fileStep.query : searchQuery
   const totalSessions = sessionItems.filter(item => item.isSession).length
-  const activeSessions = items.filter(item => item.isSession && item.isAttached).length
+  // Unfiltered, so a search never changes the header; the field shows the result count.
+  const activeSessions = sessionItems.filter(item => item.isSession && item.isAttached).length
+  const searchActive = appMode === AppMode.Search
+  const noMatch = searchActive && listItems.length === 0 && searchQuery.trim().length > 0
 
   const versionLabel = formatVersionBadge(
     CURRENT_VERSION,
@@ -208,8 +216,12 @@ export function AppScreen({
                 searchQuery={newSessionActive ? newSession.field : searchQuery}
                 textareaRef={textareaRef}
                 focused={focusOwner.kind === 'search-field'}
-                prefixActive={prefixActive}
                 placeholder={newSessionActive ? getNewSessionPlaceholder(step) : undefined}
+                count={
+                  searchActive
+                    ? getResultCount(searchQuery, items.length, allItems.length)
+                    : undefined
+                }
                 onContentChange={() =>
                   newSessionActive
                     ? syncNewSessionField(textareaRef, newSession.setField)
@@ -231,11 +243,18 @@ export function AppScreen({
               }}
             >
               {listItems.length === 0 ? (
-                <text style={{ fg: theme.inactive }}>
-                  {fileStep
-                    ? getFileStepEmptyMessage(fileStep.query)
-                    : getEmptyStateMessage(appMode, searchQuery, isGitHubURL(searchQuery))}
-                </text>
+                <>
+                  <text style={{ fg: theme.inactive }}>
+                    {fileStep
+                      ? getFileStepEmptyMessage(fileStep.query)
+                      : getEmptyStateMessage(appMode, searchQuery, isGitHubURL(searchQuery))}
+                  </text>
+                  {noMatch && (
+                    <text style={{ fg: theme.textMuted }}>
+                      {getSearchNoMatchHint(actionContext)}
+                    </text>
+                  )}
+                </>
               ) : showSections ? (
                 <>
                   <SessionList
@@ -263,14 +282,17 @@ export function AppScreen({
                   )}
                 </>
               ) : (
-                <ItemList
+                <ResultList
                   items={listItems}
                   cursor={listCursor}
-                  appMode={appMode}
                   maxItems={layout.sectionRows}
                   width={rowWidth}
                   searchQuery={listQuery}
-                  selectedAction={getSelectedRowAction(launchPreview)}
+                  actions={
+                    newSessionActive
+                      ? { kind: 'launch', selected: getSelectedRowAction(launchPreview) }
+                      : { kind: 'none' }
+                  }
                   icons={config?.icons}
                   marked={markedItems}
                 />

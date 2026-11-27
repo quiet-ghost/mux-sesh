@@ -155,7 +155,7 @@ describe('project-first New', () => {
     expect(frame).toContain('Type a project name, path, or GitHub URL...')
     expect(frame).not.toContain('custom session name')
     expect(frame).toContain("Create 'api' in /fixture/api")
-    expect(frame).toMatch(selectedRow('P api\\s+create'))
+    expect(frame).toMatch(selectedRow('  P api\\s+create'))
   })
 
   test('a project with a live workspace in the same directory is focused, not created', async () => {
@@ -169,7 +169,7 @@ describe('project-first New', () => {
 
     const frame = await screen.frame()
     expect(frame).toContain("Focus existing 'alpha' in /fixture/alpha")
-    expect(frame).toMatch(selectedRow('P alpha\\s+focus'))
+    expect(frame).toMatch(selectedRow('  P alpha\\s+focus'))
     expect(footerOf(frame)).toEqual(newFooter('focus'))
 
     await screen.pressKey('RETURN')

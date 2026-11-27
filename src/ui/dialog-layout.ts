@@ -65,6 +65,28 @@ export function truncateDialogText(text: string, width: number): string {
   return width <= 0 ? '' : `${text.slice(0, width - 1)}${ELLIPSIS}`
 }
 
+// A filtered list with no rows names the query; an empty list keeps its own message.
+export function getNoMatchMessage(query: string, empty: string): string {
+  const trimmed = query.trim()
+
+  return trimmed ? `No matches for "${trimmed}"` : empty
+}
+
+const NO_MATCHES: readonly number[] = []
+
+// Text cut at the end keeps only the positions before its ellipsis.
+export function fitDialogLabelMatches(
+  source: string,
+  fitted: string,
+  indices: readonly number[] | undefined
+): readonly number[] {
+  if (!indices || indices.length === 0) return NO_MATCHES
+
+  const kept = fitted.length < source.length ? Math.max(0, fitted.length - 1) : fitted.length
+
+  return indices.every(index => index < kept) ? indices : indices.filter(index => index < kept)
+}
+
 export function fitDialogRow(label: string, value: string, width: number): DialogRowText {
   const fittedLabel = truncateDialogText(label, width)
   const valueWidth = width - fittedLabel.length - 2

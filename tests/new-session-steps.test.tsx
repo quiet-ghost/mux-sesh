@@ -200,7 +200,7 @@ describe('New secondary steps', () => {
         expect(fieldText(screen)).toBe('b')
         expect(back).toContain('New Workspace')
         expect(back).toContain("Create 'bravo' in /fixture/bravo")
-        expect(back).toMatch(selectedRow('P bravo\\s+create'))
+        expect(back).toMatch(selectedRow('  P bravo\\s+create'))
       }
 
       expect(calls).toEqual([])
@@ -330,7 +330,7 @@ describe('named session here', () => {
 
     const named = await replaceField(screen, 'scratch')
     expect(named).toContain(`Create 'scratch' in ${cwd}`)
-    expect(named).not.toMatch(selectedRow('P api\\s+create'))
+    expect(named).not.toMatch(selectedRow('  P api\\s+create'))
     expect(footerOf(named)).toEqual(newFooter('create', CANCEL))
 
     await press(screen, 'RETURN')
@@ -405,7 +405,7 @@ describe('open file step', () => {
 
     const prompt = await press(screen, 'o', true)
     expect(prompt).toContain('Open file')
-    expect(prompt).not.toMatch(selectedRow('P api'))
+    expect(prompt).not.toMatch(selectedRow('  P api'))
 
     const found = await replaceField(screen, 'a')
     expect(searches).toEqual(['a'])

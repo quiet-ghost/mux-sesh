@@ -1,7 +1,8 @@
 import { TextAttributes, type TextareaRenderable } from '@opentui/core'
 import { useTheme } from '../styles/theme'
-import { fitDialogRow } from './dialog-layout'
-import { rowForeground, rowGutter } from './row-mark'
+import { fitDialogLabelMatches, fitDialogRow } from './dialog-layout'
+import HighlightedText from './HighlightedText'
+import { rowForeground, rowGutter, SELECTED_MATCH_ATTRIBUTES } from './row-mark'
 
 interface DialogFilterProps {
   placeholder: string
@@ -18,6 +19,8 @@ interface DialogRowProps {
   disabled?: boolean
   // Option pickers mark the saved value; lists without one leave the cell blank.
   current?: boolean
+  // Search match positions into `label`.
+  matches?: readonly number[]
 }
 
 // The saved value's mark, in the cell between the selection gutter and the label.
@@ -70,9 +73,11 @@ export function DialogRow({
   width,
   disabled = false,
   current = false,
+  matches,
 }: DialogRowProps) {
   const theme = useTheme()
   const text = fitDialogRow(label, value, width)
+  const labelColor = rowForeground(theme, selected, disabled ? theme.textMuted : theme.text)
 
   return (
     <box
@@ -88,13 +93,14 @@ export function DialogRow({
         <span style={{ fg: rowForeground(theme, selected, theme.primary) }}>
           {current ? CURRENT_MARK : ' '}
         </span>
-        <span
-          style={{
-            fg: rowForeground(theme, selected, disabled ? theme.textMuted : theme.text),
-          }}
-        >
-          {` ${text.label}`}
-        </span>
+        <span style={{ fg: labelColor }}> </span>
+        <HighlightedText
+          text={text.label}
+          matchIndices={fitDialogLabelMatches(label, text.label, matches)}
+          color={labelColor}
+          highlightColor={selected ? theme.selectionText : undefined}
+          highlightAttributes={selected ? SELECTED_MATCH_ATTRIBUTES : undefined}
+        />
       </text>
       <text style={{ fg: rowForeground(theme, selected, theme.textMuted), wrapMode: 'none' }}>
         {text.value}

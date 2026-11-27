@@ -155,7 +155,7 @@ describe('selected session row', () => {
     await screen.pressKey('i')
     await screen.typeText('bt')
 
-    expect(await screen.frame()).toMatch(selectedRow('○ beta'))
+    expect(await screen.frame()).toMatch(selectedRow('○ T beta'))
 
     const cells = cellsOf(await lineWith(screen, 'beta'))
 

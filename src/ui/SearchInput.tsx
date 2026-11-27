@@ -4,14 +4,18 @@ import { reconcileTextareaValue } from '../app/textarea'
 import { useTheme } from '../styles/theme'
 import { AppMode } from '../types'
 
+const PROMPT = '›'
+
 interface Props {
   appMode: AppMode
   searchQuery: string
   textareaRef: { current: TextareaRenderable | null }
   onContentChange: () => void
+  // False while a pending prefix or a dialog owns the keys; the field then drops its focused look.
   focused: boolean
-  prefixActive?: boolean
   placeholder?: string
+  // Right-aligned and muted, e.g. `3 of 7`; omitted when the field is not a result filter.
+  count?: string
 }
 
 export default function SearchInput({
@@ -20,10 +24,10 @@ export default function SearchInput({
   textareaRef,
   onContentChange,
   focused,
-  prefixActive = false,
   placeholder = appMode === AppMode.NewSession
     ? 'Type a project name, path, or GitHub URL...'
     : 'Type to search...',
+  count,
 }: Props) {
   const theme = useTheme()
 
@@ -35,18 +39,37 @@ export default function SearchInput({
   return (
     <box
       style={{
+        flexDirection: 'row',
+        flexShrink: 0,
+        height: 1,
         marginBottom: 1,
-        height: 3,
-        backgroundColor: prefixActive ? theme.surfaceAlt : theme.surface,
+        paddingLeft: 1,
+        paddingRight: 1,
+        backgroundColor: focused ? theme.surfaceAlt : 'transparent',
       }}
     >
+      <text
+        style={{ fg: focused ? theme.primary : theme.textMuted, flexShrink: 0, wrapMode: 'none' }}
+      >
+        {`${PROMPT} `}
+      </text>
       <textarea
         ref={textareaRef}
+        style={{ flexGrow: 1, flexShrink: 1, height: 1 }}
         placeholder={placeholder}
+        placeholderColor={theme.textMuted}
+        textColor={theme.text}
+        focusedTextColor={theme.text}
         initialValue={searchQuery}
         onContentChange={onContentChange}
         focused={focused}
+        wrapMode="none"
       />
+      {count ? (
+        <text style={{ fg: theme.textMuted, flexShrink: 0, wrapMode: 'none', marginLeft: 1 }}>
+          {count}
+        </text>
+      ) : null}
     </box>
   )
 }

@@ -1,6 +1,6 @@
 import type { TextareaRenderable } from '@opentui/core'
 import type { CommandEntry } from '../app/action-catalog'
-import { rankCommandEntries } from '../search/lists'
+import { getCommandLabelMatches, rankCommandEntries } from '../search/lists'
 import { useTheme } from '../styles/theme'
 import { useTextareaFocus } from './use-textarea-focus'
 import {
@@ -10,6 +10,7 @@ import {
   getDialogListRows,
   getDialogRowWidth,
   getDialogWidth,
+  getNoMatchMessage,
   truncateDialogText,
 } from './dialog-layout'
 import { DialogFilter, DialogRow, DialogSectionHeader } from './DialogList'
@@ -115,7 +116,9 @@ export default function CommandsModal({
 
       <box style={{ flexDirection: 'column' }}>
         {entries.length === 0 ? (
-          <text style={{ fg: theme.textMuted }}>No commands found</text>
+          <text style={{ fg: theme.textMuted }}>
+            {getNoMatchMessage(searchQuery, 'No commands found')}
+          </text>
         ) : (
           visibleRows.map((row, index) => {
             if (row.kind === 'gap') {
@@ -143,6 +146,7 @@ export default function CommandsModal({
                 selected={row.index === cursor}
                 disabled={row.entry.availability.kind === 'unavailable'}
                 width={rowWidth}
+                matches={getCommandLabelMatches(row.entry, searchQuery)}
               />
             )
           })

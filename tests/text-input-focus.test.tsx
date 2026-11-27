@@ -72,7 +72,7 @@ describe('text fields own printable keys', () => {
 
     const settings = await screen.frame()
     expect(settings).toContain(SETTINGS_HINT)
-    expect(settings).toContain('No settings found')
+    expect(settings).toContain('No matches for "jkeq"')
     expect(filter.plainText).toBe('jkeq')
   })
 

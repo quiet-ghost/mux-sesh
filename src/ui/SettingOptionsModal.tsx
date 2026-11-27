@@ -1,6 +1,7 @@
 import type { TextareaRenderable } from '@opentui/core'
 import { OptionPicker } from '../app/option-picker'
 import { useTheme } from '../styles/theme'
+import { getOptionLabelMatches } from '../search/lists'
 import type { SettingsOption } from '../settings'
 import {
   DIALOG_FILTER_ROWS,
@@ -10,6 +11,7 @@ import {
   getDialogListRows,
   getDialogRowWidth,
   getDialogWidth,
+  getNoMatchMessage,
   truncateDialogText,
 } from './dialog-layout'
 import { DialogFilter, DialogRow } from './DialogList'
@@ -111,7 +113,9 @@ export default function SettingOptionsModal({
 
       <box style={{ flexDirection: 'column' }}>
         {options.length === 0 ? (
-          <text style={{ fg: theme.textMuted }}>No options found</text>
+          <text style={{ fg: theme.textMuted }}>
+            {getNoMatchMessage(searchQuery, 'No options found')}
+          </text>
         ) : (
           visibleWindow.items.map((option, index) => (
             <DialogRow
@@ -121,6 +125,7 @@ export default function SettingOptionsModal({
               selected={visibleWindow.startIndex + index === cursor}
               current={option.value === savedValue}
               width={rowWidth}
+              matches={getOptionLabelMatches(option, searchQuery)}
             />
           ))
         )}

@@ -1,7 +1,9 @@
 import { isAgentSessionItem } from '../agents/session-name'
 import { getPanelStyle } from '../styles/theme'
+import { getNoMatchMessage } from '../ui/dialog-layout'
 import { getWrappedRowCount } from '../ui/session-viewport'
 import { AppMode, ViewMode, type BackendKind, type ThemeColors } from '../types'
+import { getActionFooter, getActionKeyHint, type ActionContext } from './action-catalog'
 import type { NewSessionStepKind } from './new-session-step'
 
 export function splitVisibleSessions<T extends { isSession: boolean; title: string }>(
@@ -40,7 +42,7 @@ export function getAppTitle(
 const DETAIL_PANEL_SHARE = 0.4
 const DETAIL_PANEL_GAP_COLUMNS = 1
 const HEADER_ROWS = 2
-const SEARCH_INPUT_ROWS = 4
+const SEARCH_INPUT_ROWS = 2
 const LAUNCH_SUMMARY_ROWS = 2
 const FOOTER_HINT_ROWS = 1
 const FOOTER_PADDING_COLUMNS = 2
@@ -129,7 +131,25 @@ export function getEmptyStateMessage(
     return searchQuery ? 'No matching projects' : 'No projects found'
   }
 
-  return 'No items found'
+  return getNoMatchMessage(searchQuery, 'No items found')
+}
+
+// Search's next step when nothing matches: New, under the key that reaches it from here.
+export function getSearchNoMatchHint(context: ActionContext): string {
+  const noun = context.backend?.kind === 'herdr' ? 'workspace' : 'session'
+  const direct = getActionKeyHint(context, 'new-session')
+
+  if (direct) return `${direct} to start a new ${noun}`
+
+  const cancel = getActionFooter(context).global.find(hint => hint.id === 'cancel')?.key
+  const fromNormal = getActionKeyHint({ ...context, appMode: AppMode.Normal }, 'new-session')
+
+  return cancel && fromNormal ? `${cancel}, then ${fromNormal} to start a new ${noun}` : ''
+}
+
+// The search field's count: every row while the query is blank, else matches of every row.
+export function getResultCount(query: string, matches: number, total: number): string {
+  return query.trim() ? `${matches} of ${total}` : `${total}`
 }
 
 // Names the New step in the header so the shared text field never looks like the project query.

@@ -463,6 +463,7 @@ export function useAppController(invocationCwd: string) {
       config,
       backend,
       items,
+      allItems,
       regularSessions,
       agentSessions,
       selectedPrimaryItem,
