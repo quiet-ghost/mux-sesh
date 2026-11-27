@@ -20,6 +20,8 @@ const decodeSchemaFile = Schema.decodeUnknownSync(
   Schema.Struct({ properties: Schema.Record(Schema.String, Schema.Unknown) })
 )
 
+const decodeSchemaId = Schema.decodeUnknownSync(Schema.Struct({ $id: Schema.String }))
+
 async function read(path: string): Promise<string> {
   return Bun.file(join(ROOT, path)).text()
 }
@@ -53,6 +55,14 @@ function documentedOptions(markdown: string): string[] {
 describe('config schema', () => {
   test('the committed schema is the generated one; run `bun run schema` to refresh it', async () => {
     expect(await Bun.file(SCHEMA_PATH).text()).toBe(await renderConfigSchema())
+  })
+
+  test('the schema is published from the default branch', async () => {
+    const schema = decodeSchemaId(parseJson(await Bun.file(SCHEMA_PATH).text()))
+
+    expect(schema.$id).toBe(
+      'https://github.com/quiet-ghost/mux-sesh/raw/master/mux-sesh.schema.json'
+    )
   })
 
   test('the schema lists exactly the fields the runtime contract accepts', async () => {

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/quiet-ghost/mux-sesh/raw/main/mux-sesh.schema.json",
+  "$id": "https://github.com/quiet-ghost/mux-sesh/raw/master/mux-sesh.schema.json",
   "title": "mux-sesh configuration",
   "type": "object",
   "properties": {

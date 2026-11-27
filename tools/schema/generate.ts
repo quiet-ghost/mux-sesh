@@ -8,7 +8,7 @@ export const SCHEMA_PATH = join(import.meta.dir, '..', '..', 'mux-sesh.schema.js
 // Published identity of the schema; users and editors may already point at these.
 const HEADER = {
   $schema: JsonSchema.META_SCHEMA_URI_DRAFT_07,
-  $id: 'https://github.com/quiet-ghost/mux-sesh/raw/main/mux-sesh.schema.json',
+  $id: 'https://github.com/quiet-ghost/mux-sesh/raw/master/mux-sesh.schema.json',
   title: 'mux-sesh configuration',
 } as const
 
