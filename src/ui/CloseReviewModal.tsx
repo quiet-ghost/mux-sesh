@@ -1,6 +1,8 @@
 import { CleanupPlan } from '../sessions/cleanup-plan'
 import { useTheme } from '../styles/theme'
 import { stripAnsi } from '../util/ansi'
+import { fitPath } from '../util/path-display'
+import { DEFAULT_DIALOG_WIDTH, getDialogContentWidth, getDialogWidth } from './dialog-layout'
 import type { KeyHint } from './key-hints'
 import Modal from './Modal'
 
@@ -26,7 +28,10 @@ export default function CloseReviewModal({ plan, columns }: Props) {
   return (
     <Modal
       title={plain(CleanupPlan.title(plan))}
-      description={plain(plan.path)}
+      description={fitPath(
+        plain(plan.path),
+        getDialogContentWidth(getDialogWidth(columns, DEFAULT_DIALOG_WIDTH))
+      )}
       hints={CLOSE_REVIEW_HINTS}
       columns={columns}
     >

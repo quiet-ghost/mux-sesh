@@ -8,6 +8,8 @@ export const DIALOG_INSET_COLUMNS = 2
 const DIALOG_ROW_CHROME_COLUMNS = 4
 
 const MIN_LIST_ROWS = 4
+
+export const DEFAULT_DIALOG_WIDTH = 76
 const ELLIPSIS = '…'
 
 export const DIALOG_FILTER_ROWS = 2

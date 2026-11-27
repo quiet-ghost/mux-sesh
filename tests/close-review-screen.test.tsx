@@ -199,3 +199,26 @@ test('a reviewed session that vanished before confirm is not replaced by another
   expect(closed).toEqual([])
   expect(await screen.frame()).toContain("'beta' is no longer listed")
 })
+
+test('a long path keeps its start and end in the single and batch reviews', async () => {
+  const deep = workspace('$4', 'deep', {
+    path: '/fixture/worktrees/projects/an-extremely-long-parent-directory/deep',
+  })
+
+  const { backend } = recordingBackend([alpha, deep])
+  screen = await renderSessionScreen({ width: 60, height: 24 }, { workspaces: [], backend })
+  await screen.settle()
+  await screen.pressKey('j')
+  await screen.pressKey('d')
+
+  const single = await screen.frame()
+  expect(single).toMatch(/\/fixture\/.*….*\/deep/)
+  await screen.pressKey('ESCAPE')
+
+  await screen.pressKey('m')
+  await screen.pressKey('k')
+  await screen.pressKey('m')
+  await screen.pressKey('d')
+
+  expect(await screen.frame()).toMatch(/'deep' {2}\/fixture\/.*….*\/deep {2}/)
+})

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { RGBA } from '@opentui/core'
 import { useTheme } from '../styles/theme'
 import {
+  DEFAULT_DIALOG_WIDTH,
   DIALOG_INSET_COLUMNS,
   getDialogContentWidth,
   getDialogWidth,
@@ -10,7 +11,6 @@ import {
 import { KeyHint, KeyHints } from './key-hints'
 
 const CLOSE_HINT = 'esc'
-const DEFAULT_PREFERRED_WIDTH = 76
 
 interface Props {
   title: string
@@ -28,7 +28,7 @@ export default function Modal({
   description,
   hints,
   columns,
-  preferredWidth = DEFAULT_PREFERRED_WIDTH,
+  preferredWidth = DEFAULT_DIALOG_WIDTH,
   children,
 }: Props) {
   const theme = useTheme()
