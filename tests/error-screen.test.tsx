@@ -68,14 +68,14 @@ async function pressBareEscape(current: Screen): Promise<void> {
   })
 }
 
-// Notices render as cards with a `┃` border on each wrapped line; read the text without it.
+// Notices wrap inside the pane's `│` borders; read the text without them.
 async function shownText(current: Screen): Promise<string> {
   await current.renderOnce()
 
   return current
     .captureCharFrame()
     .split('\n')
-    .map(line => line.replace(/^\s*┃ ?/, '').replace(/ ?┃\s*$/, ''))
+    .map(line => line.replace(/^[\s│]+/, '').replace(/[\s│]+$/, ''))
     .join(' ')
     .replace(/\s+/g, ' ')
 }
@@ -234,20 +234,25 @@ test('q quits from the confirmation and escape quits outside it', async () => {
 })
 
 test.each([
-  { result: { kind: 'copied' } as const, message: 'Diagnostics copied to the clipboard' },
+  {
+    result: { kind: 'copied' } as const,
+    word: 'done',
+    message: 'Diagnostics copied to the clipboard',
+  },
   {
     result: { kind: 'sent-unconfirmed' } as const,
+    word: 'warning',
     message: 'Diagnostics sent to the terminal clipboard; the terminal may not support it',
   },
-  { result: { kind: 'unavailable' } as const, message: 'Clipboard unavailable' },
-])('copy reports $result.kind truthfully', async ({ result, message }) => {
+  { result: { kind: 'unavailable' } as const, word: 'error', message: 'Clipboard unavailable' },
+])('copy reports $result.kind truthfully', async ({ result, word, message }) => {
   const report = DiagnosticReport.capture(new Error('launch failed'))
   const { current, fixture } = await renderScreen(report, result)
   await act(async () => current.mockInput.pressKey('c'))
   const frame = await shownText(current)
 
   expect(fixture.copied).toEqual([report.text])
-  expect(frame).toContain(message)
+  expect(frame).toContain(`${word} ${message}`)
 
   if (result.kind !== 'copied') expect(frame).not.toContain('copied')
 })

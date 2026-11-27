@@ -1,14 +1,17 @@
 import type { ScrollBoxRenderable } from '@opentui/core'
 import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import { useRef, useState } from 'react'
-import type { ToastKind } from '../app/notifications'
 import { openBrowser } from '../util/browser'
 import { type ClipboardResult, writeClipboard } from '../util/clipboard'
 import type { DiagnosticReport } from '../util/errors'
 import { requestShutdown } from '../util/shutdown'
-import { FailureScreen, isRoomyFailureScreen, useFailurePalette } from './failure-screen'
+import {
+  FailureScreen,
+  FailureSection,
+  type FailureStatus,
+  useFailurePalette,
+} from './failure-screen'
 import type { KeyHint } from './key-hints'
-import { toastColor } from './Toast'
 
 interface ErrorScreenActions {
   copy: (text: string) => ClipboardResult
@@ -30,12 +33,6 @@ type ShareState =
   | { readonly kind: 'opened' }
   | { readonly kind: 'open-failed'; readonly urlCopy: ClipboardResult }
   | { readonly kind: 'report-copied'; readonly result: ClipboardResult }
-
-// Share and copy outcomes read like toasts: a card whose side border is colored by kind.
-interface Notice {
-  readonly text: string
-  readonly kind: ToastKind
-}
 
 const DEFAULT_ACTIONS: ErrorScreenActions = { copy: writeClipboard, open: openBrowser }
 const IDLE: ShareState = { kind: 'idle' }
@@ -67,7 +64,7 @@ const quitApp = () => {
   requestShutdown(1)
 }
 
-function reportCopyNotice(result: ClipboardResult): Notice {
+function reportCopyNotice(result: ClipboardResult): FailureStatus {
   if (result.kind === 'copied')
     return { text: 'Diagnostics copied to the clipboard', kind: 'success' }
 
@@ -95,7 +92,7 @@ function openFailedNotice(urlCopy: ClipboardResult, report: DiagnosticReport): s
     : 'Could not open the browser; press c to copy the report.'
 }
 
-function shareNotice(state: ShareState, report: DiagnosticReport): Notice | undefined {
+function shareNotice(state: ShareState, report: DiagnosticReport): FailureStatus | undefined {
   switch (state.kind) {
     case 'idle':
       return undefined
@@ -184,7 +181,6 @@ export function ErrorScreen({
 
   const notice = shareNotice(share, report)
   const confirming = share.kind === 'confirming'
-  const roomy = isRoomyFailureScreen(height)
 
   return (
     <FailureScreen
@@ -192,39 +188,28 @@ export function ErrorScreen({
       description={DESCRIPTION}
       hints={confirming ? CONFIRM_HINTS : share.kind === 'opening' ? OPENING_HINTS : HINTS}
       end={{ kind: 'hints', hints: confirming ? REVIEW_HINTS : SCROLL_HINTS }}
+      status={notice}
       columns={width}
       rows={height}
     >
       <text style={{ fg: theme.text, flexShrink: 0 }}>{report.screen.summary}</text>
-      {notice ? <NoticeCard notice={notice} /> : null}
       <box
         style={{ flexDirection: 'column', flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: 4 }}
       >
-        <text style={{ fg: theme.textMuted, flexShrink: 0 }}>
-          <b>Diagnostics</b>
-        </text>
-        <box
-          style={{
-            flexGrow: 1,
-            flexShrink: 1,
-            flexBasis: 0,
-            minHeight: 3,
-            backgroundColor: theme.surface,
-            paddingLeft: 1,
-            paddingTop: roomy ? 1 : 0,
-            paddingBottom: roomy ? 1 : 0,
-          }}
-        >
+        <FailureSection title="diagnostics">
           <scrollbox
             ref={scrollRef}
-            style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: 0 }}
+            style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: 0, paddingLeft: 1 }}
             verticalScrollbarOptions={{
-              trackOptions: { foregroundColor: theme.textSubtle, backgroundColor: theme.surface },
+              trackOptions: {
+                foregroundColor: theme.textSubtle,
+                backgroundColor: theme.background,
+              },
             }}
           >
             <text style={{ fg: theme.text, paddingRight: 1 }}>{report.screen.text}</text>
           </scrollbox>
-        </box>
+        </FailureSection>
         {report.issueUrlTruncated && !confirming && (
           <text style={{ fg: theme.textMuted, flexShrink: 0 }}>
             Browser report shortened; c copies the full captured report.
@@ -232,25 +217,5 @@ export function ErrorScreen({
         )}
       </box>
     </FailureScreen>
-  )
-}
-
-function NoticeCard({ notice }: { notice: Notice }) {
-  const theme = useFailurePalette()
-
-  return (
-    <box
-      style={{
-        flexShrink: 0,
-        paddingLeft: 1,
-        paddingRight: 1,
-        backgroundColor: theme.surfaceAlt,
-        border: ['left', 'right'],
-        borderStyle: 'heavy',
-        borderColor: toastColor(theme, notice.kind),
-      }}
-    >
-      <text style={{ fg: theme.text, wrapMode: 'word', width: '100%' }}>{notice.text}</text>
-    </box>
   )
 }

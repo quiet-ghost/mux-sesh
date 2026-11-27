@@ -1,14 +1,17 @@
 import { useMemo, type ReactNode } from 'react'
+import type { ToastKind } from '../app/notifications'
 import { ThemeProvider, useTheme } from '../styles/theme'
 import type { ThemeColors } from '../types'
-import { DIALOG_INSET_COLUMNS, truncateDialogText } from './dialog-layout'
+import { truncateDialogText } from './dialog-layout'
 import { KeyHint, KeyHints } from './key-hints'
+import { Pane, PaneRule } from './pane'
+import { toastColor } from './Toast'
 
 // Below this many rows the body drops the blank rows between its blocks.
 const ROOMY_ROWS = 24
 
-// The header text sits after the accent bar and one space.
-const ACCENT_COLUMNS = 2
+// Body text sits one space inside each side border.
+const PANE_INSET_COLUMNS = 2
 
 // Wider than the gap between hints, so the two footer groups never read as one list.
 const GROUP_GAP_COLUMNS = 3
@@ -91,7 +94,7 @@ export function useFailurePalette(): ThemeColors {
   return useMemo(() => FailurePalette.from(theme), [theme])
 }
 
-export function isRoomyFailureScreen(rows: number): boolean {
+function isRoomyFailureScreen(rows: number): boolean {
   return rows >= ROOMY_ROWS
 }
 
@@ -99,11 +102,25 @@ export type FailureFooterEnd =
   | { readonly kind: 'hints'; readonly hints: readonly KeyHint[] }
   | { readonly kind: 'status'; readonly text: string }
 
+// A copy or share outcome, shown as one status line above the footer rule.
+export interface FailureStatus {
+  readonly kind: ToastKind
+  readonly text: string
+}
+
+const STATUS_WORD: Record<ToastKind, string> = {
+  success: 'done',
+  warning: 'warning',
+  error: 'error',
+  info: 'info',
+}
+
 interface Props {
   title: string
   description: string
   hints: readonly KeyHint[]
   end?: FailureFooterEnd
+  status?: FailureStatus
   columns: number
   rows: number
   children: ReactNode
@@ -115,57 +132,33 @@ function endWidth(end: FailureFooterEnd | undefined): number {
   return end.kind === 'hints' ? KeyHint.text(end.hints).length : end.text.length
 }
 
-// Full-screen chrome for crash and startup failures: a danger accent beside the title and its
-// muted description, the body at the dialog inset, and a raised key-hint band at the bottom.
-// Children read the guarded palette through the theme context.
-export function FailureScreen({ title, description, hints, end, columns, rows, children }: Props) {
+// Full-screen chrome for crash and startup failures: one pane with the title in its top border
+// in the danger color, a muted description as the first body row, an optional status line, and a
+// footer row of key hints under a rule. Children read the guarded palette through the theme context.
+export function FailureScreen({
+  title,
+  description,
+  hints,
+  end,
+  status,
+  columns,
+  rows,
+  children,
+}: Props) {
   const palette = useFailurePalette()
-  const contentWidth = Math.max(1, columns - DIALOG_INSET_COLUMNS * 2)
-  const headerWidth = Math.max(1, contentWidth - ACCENT_COLUMNS)
+  const contentWidth = Math.max(1, columns - PANE_INSET_COLUMNS * 2)
   const trailing = endWidth(end)
   const hintBudget = trailing > 0 ? contentWidth - trailing - GROUP_GAP_COLUMNS : contentWidth
 
   return (
     <ThemeProvider theme={palette}>
-      <box
-        style={{
-          width: columns,
-          height: rows,
-          backgroundColor: palette.background,
-          flexDirection: 'column',
-        }}
-      >
-        <box
-          style={{
-            flexDirection: 'column',
-            flexGrow: 1,
-            flexShrink: 1,
-            flexBasis: 0,
-            minHeight: 0,
-            paddingTop: 1,
-            paddingBottom: 1,
-            paddingLeft: DIALOG_INSET_COLUMNS,
-            paddingRight: DIALOG_INSET_COLUMNS,
-          }}
+      <box style={{ width: columns, height: rows, backgroundColor: palette.background }}>
+        <Pane
+          title={title}
+          titleColor={palette.danger}
+          borderColor={palette.border}
+          size={{ width: columns, height: rows }}
         >
-          <box
-            style={{
-              flexDirection: 'column',
-              flexShrink: 0,
-              marginBottom: 1,
-              paddingLeft: 1,
-              border: ['left'],
-              borderStyle: 'heavy',
-              borderColor: palette.danger,
-            }}
-          >
-            <text style={{ fg: palette.text, wrapMode: 'none' }}>
-              <b>{truncateDialogText(title, headerWidth)}</b>
-            </text>
-            <text style={{ fg: palette.textMuted, wrapMode: 'none' }}>
-              {truncateDialogText(description, headerWidth)}
-            </text>
-          </box>
           <box
             style={{
               flexDirection: 'column',
@@ -173,29 +166,59 @@ export function FailureScreen({ title, description, hints, end, columns, rows, c
               flexShrink: 1,
               flexBasis: 0,
               minHeight: 0,
+              paddingLeft: 1,
+              paddingRight: 1,
               gap: isRoomyFailureScreen(rows) ? 1 : 0,
             }}
           >
+            <text style={{ fg: palette.textMuted, wrapMode: 'none', flexShrink: 0 }}>
+              {truncateDialogText(description, contentWidth)}
+            </text>
             {children}
           </box>
-        </box>
-        <box
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            flexShrink: 0,
-            backgroundColor: palette.surfaceAlt,
-            paddingLeft: DIALOG_INSET_COLUMNS,
-            paddingRight: DIALOG_INSET_COLUMNS,
-          }}
-        >
-          <KeyHints hints={KeyHint.fit(hints, hintBudget)} />
-          {end?.kind === 'hints' && <KeyHints hints={end.hints} />}
-          {end?.kind === 'status' && (
-            <text style={{ fg: palette.textMuted, wrapMode: 'none' }}>{end.text}</text>
-          )}
-        </box>
+          {status && <StatusLine status={status} />}
+          <PaneRule color={palette.border} />
+          <box
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              flexShrink: 0,
+              paddingLeft: 1,
+              paddingRight: 1,
+            }}
+          >
+            <KeyHints hints={KeyHint.fit(hints, hintBudget)} />
+            {end?.kind === 'hints' && <KeyHints hints={end.hints} />}
+            {end?.kind === 'status' && (
+              <text style={{ fg: palette.textMuted, wrapMode: 'none' }}>{end.text}</text>
+            )}
+          </box>
+        </Pane>
       </box>
     </ThemeProvider>
+  )
+}
+
+function StatusLine({ status }: { status: FailureStatus }) {
+  const palette = useFailurePalette()
+
+  return (
+    <box style={{ flexShrink: 0, paddingLeft: 1, paddingRight: 1 }}>
+      <text style={{ fg: palette.text, wrapMode: 'word', width: '100%' }}>
+        <span style={{ fg: toastColor(palette, status.kind) }}>{STATUS_WORD[status.kind]}</span>
+        {` ${status.text}`}
+      </text>
+    </box>
+  )
+}
+
+// The diagnostics report: a nested pane titled in muted text whose body scrolls.
+export function FailureSection({ title, children }: { title: string; children: ReactNode }) {
+  const palette = useFailurePalette()
+
+  return (
+    <Pane title={title} titleColor={palette.textMuted} borderColor={palette.border}>
+      {children}
+    </Pane>
   )
 }

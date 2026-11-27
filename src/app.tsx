@@ -1,12 +1,21 @@
 import { CliRenderEvents, type CliRenderer, type CliRendererHandlerErrorEvent } from '@opentui/core'
 import { useRenderer } from '@opentui/react'
-import { Component, type ReactElement, type ReactNode } from 'react'
+import {
+  Component,
+  createContext,
+  useContext,
+  useLayoutEffect,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
 import { useAppController } from './app/controller'
 import { AppModalsLayer } from './app/modals-layer'
 import { AppScreen } from './app/screen'
 import { ThemeProvider } from './styles/theme'
+import type { ThemeColors } from './types'
 import { BusyContext } from './ui/Spinner'
 import { ErrorScreen } from './ui/ErrorScreen'
+import { FailurePalette } from './ui/failure-screen'
 import { StartupErrorScreen } from './ui/StartupErrorScreen'
 import { requestFatalShutdown, requestShutdown } from './util/shutdown'
 import { DiagnosticReport } from './util/errors'
@@ -39,6 +48,19 @@ type RendererFailureEvent = Pick<CliRendererHandlerErrorEvent, 'error'>
 
 const RENDERER_FAILURE_EVENTS = [CliRenderEvents.RENDER_ERROR, CliRenderEvents.HANDLER_ERROR]
 
+type RecordRecoveryTheme = (theme: ThemeColors) => void
+
+const RecoveryThemeContext = createContext<RecordRecoveryTheme>(() => {})
+
+// Hands the app's resolved theme to the recovery boundary so the crash screen keeps the user's
+// colors. Only a committed render records it: a theme that failed to resolve never arrives, and
+// the crash screen then falls back to the built-in colors.
+export function useRecoveryTheme(theme: ThemeColors): void {
+  const record = useContext(RecoveryThemeContext)
+
+  useLayoutEffect(() => record(theme), [record, theme])
+}
+
 // If the error screen itself cannot render, the only safe recovery left is a restored terminal.
 class EscalateToFatal extends Component<{ children: ReactNode }, EscalationState> {
   state: EscalationState = { failed: false }
@@ -62,6 +84,8 @@ class RecoveryBoundary extends Component<
 > {
   state: ErrorBoundaryState = { report: null, retryKey: 0 }
   private errorScreenShown = false
+  // Read only when the error screen renders, so recording it never re-renders the app.
+  private lastTheme: ThemeColors | undefined
 
   static getDerivedStateFromError(cause: unknown): Partial<ErrorBoundaryState> {
     return { report: DiagnosticReport.capture(cause) }
@@ -93,6 +117,10 @@ class RecoveryBoundary extends Component<
     )
   }
 
+  private recordTheme: RecordRecoveryTheme = theme => {
+    this.lastTheme = theme
+  }
+
   private retry = () => {
     this.setState(state => ({ report: null, retryKey: state.retryKey + 1 }))
   }
@@ -102,13 +130,19 @@ class RecoveryBoundary extends Component<
       const ErrorView = this.props.ErrorView ?? ErrorScreen
 
       return (
-        <EscalateToFatal>
-          <ErrorView report={this.state.report} onRetry={this.retry} />
-        </EscalateToFatal>
+        <ThemeProvider theme={this.lastTheme ?? FailurePalette.fallback}>
+          <EscalateToFatal>
+            <ErrorView report={this.state.report} onRetry={this.retry} />
+          </EscalateToFatal>
+        </ThemeProvider>
       )
     }
 
-    return this.props.children(this.state.retryKey)
+    return (
+      <RecoveryThemeContext value={this.recordTheme}>
+        {this.props.children(this.state.retryKey)}
+      </RecoveryThemeContext>
+    )
   }
 }
 
@@ -125,6 +159,8 @@ function quitAfterStartupFailure(): void {
 function AppTree({ invocationCwd }: AppProps) {
   const { startup, retryStartup, theme, busy, screenProps, modalProps } =
     useAppController(invocationCwd)
+
+  useRecoveryTheme(theme)
 
   return (
     <ThemeProvider theme={theme}>

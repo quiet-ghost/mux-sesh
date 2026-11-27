@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { join } from 'path'
 import { testRender } from '@opentui/react/test-utils'
-import { act } from 'react'
-import { AppRecoveryBoundary } from '../src/app'
+import { act, useState } from 'react'
+import { AppRecoveryBoundary, useRecoveryTheme } from '../src/app'
+import { useLiveResolvedTheme } from '../src/app/resolved-theme'
+import { resolveTheme, type ThemeResolver } from '../src/styles/theme'
+import { FailurePalette } from '../src/ui/failure-screen'
+import { cellsOf, sameColor, type Cell } from './fixtures/selection'
 
 let setup: Awaited<ReturnType<typeof testRender>> | undefined
 
@@ -88,6 +92,97 @@ describe('app recovery', () => {
     const failed = await frame()
     expect(failed).toContain('mux-sesh crashed')
     expect(failed).toContain('fixture mouse failure')
+  })
+})
+
+describe('app recovery theme', () => {
+  interface FailureTrigger {
+    fail?: () => void
+  }
+
+  interface ThemedAppProps {
+    trigger: FailureTrigger
+    resolve?: ThemeResolver
+  }
+
+  function ThemedApp({ trigger, resolve = resolveTheme }: ThemedAppProps) {
+    const [failing, setFailing] = useState(false)
+    trigger.fail = () => setFailing(true)
+
+    const { colors } = useLiveResolvedTheme(
+      { themeId: 'github', customThemes: undefined, colorScheme: 'light', homeDir: '/fixture' },
+      { resolve }
+    )
+
+    useRecoveryTheme(colors)
+
+    if (failing) throw new Error('fixture themed app failure')
+
+    return <text>healthy app</text>
+  }
+
+  async function topRow(): Promise<Cell[]> {
+    if (!setup) throw new Error('Recovery fixture was not rendered')
+    await frame()
+    const row = setup.captureSpans().lines[0]
+
+    if (!row) throw new Error('The error screen rendered no rows')
+
+    return cellsOf(row)
+  }
+
+  function cell(row: Cell[], column: number): Cell {
+    const found = row[column]
+
+    if (!found) throw new Error(`Column ${column} was not rendered`)
+
+    return found
+  }
+
+  test('a crash after the app rendered keeps the theme the user set', async () => {
+    const trigger: FailureTrigger = {}
+    const github = resolveTheme('github', {}, 'light').colors
+
+    setup = await testRender(
+      <AppRecoveryBoundary>{() => <ThemedApp trigger={trigger} />}</AppRecoveryBoundary>,
+      {
+        width: 80,
+        height: 24,
+        consoleMode: 'disabled',
+      }
+    )
+
+    expect(await frame()).toContain('healthy app')
+    await act(async () => trigger.fail?.())
+
+    expect(await frame()).toContain('mux-sesh crashed')
+    const top = await topRow()
+    expect(sameColor(cell(top, 0).fg, github.border)).toBe(true)
+    expect(sameColor(cell(top, 3).fg, github.danger)).toBe(true)
+    expect(sameColor(cell(top, 0).bg, github.background)).toBe(true)
+  })
+
+  test('a crash thrown from theme resolution falls back to the built-in colors', async () => {
+    const fallback = FailurePalette.fallback
+
+    const resolve: ThemeResolver = () => {
+      throw new Error('fixture theme resolution failure')
+    }
+
+    setup = await testRender(
+      <AppRecoveryBoundary>
+        {() => <ThemedApp trigger={{}} resolve={resolve} />}
+      </AppRecoveryBoundary>,
+      { width: 80, height: 24, consoleMode: 'disabled' }
+    )
+
+    const failed = await frame()
+    expect(failed).toContain('mux-sesh crashed')
+    expect(failed).toContain('fixture theme resolution failure')
+    const top = await topRow()
+    expect(sameColor(cell(top, 0).fg, fallback.border)).toBe(true)
+    expect(sameColor(cell(top, 3).fg, fallback.danger)).toBe(true)
+    expect(sameColor(cell(top, 0).bg, fallback.background)).toBe(true)
   })
 })
 
