@@ -123,6 +123,24 @@ async function render(dependencies: StartupDependencies, onQuit: () => void = ()
 
       return current.captureCharFrame()
     },
+    // Startup runs through async effects; wait on the wall clock, bounded, rather than a fixed
+    // number of flushes, so a slower machine sees the same frame.
+    async frameContaining(text: string, timeoutMs = 10_000) {
+      const deadline = performance.now() + timeoutMs
+      let frame = ''
+
+      while (performance.now() < deadline) {
+        await act(async () => {})
+        await current.renderOnce()
+        frame = current.captureCharFrame()
+
+        if (frame.includes(text)) return frame
+
+        await Bun.sleep(10)
+      }
+
+      return frame
+    },
     async press(key: string) {
       await act(async () => current.mockInput.pressKey(key))
     },
@@ -151,7 +169,7 @@ test('a stopped backend shows a startup screen that retries into a working picke
 
   await screen.press('r')
 
-  expect(await screen.frame()).toContain('ready sessions=alpha')
+  expect(await screen.frameContaining('ready sessions=alpha')).toContain('ready sessions=alpha')
   expect(attempts).toBe(2)
 })
 
@@ -195,7 +213,7 @@ test('pressing retry repeatedly while a retry runs starts only one attempt', asy
 
   expect(await screen.frame()).toContain('Retrying')
   second.resolve(backend)
-  expect(await screen.frame()).toContain('ready sessions=alpha')
+  expect(await screen.frameContaining('ready sessions=alpha')).toContain('ready sessions=alpha')
   expect(attempts).toBe(2)
 })
 
