@@ -163,6 +163,7 @@ native crash or `SIGKILL` cannot show either. Details: [Crash Recovery](docs/wor
 - [Themes](docs/themes.md)
 - [Keybindings](docs/keybindings.md)
 - [Workflows](docs/workflows.md)
+- [Changelog](CHANGELOG.md)
 
 ## Development
 
