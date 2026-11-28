@@ -19,7 +19,6 @@ interface Props {
   columns: number
   rows: number
   configPath: string
-  themeId: string
   filteredCommandEntries: CommandEntry[]
   commandsCursor: number
   commandsSearchQuery: string
@@ -62,7 +61,6 @@ export function AppModalsLayer({
   columns,
   rows,
   configPath,
-  themeId,
   filteredCommandEntries,
   commandsCursor,
   commandsSearchQuery,
@@ -128,7 +126,6 @@ export function AppModalsLayer({
         <CommandsModal
           columns={columns}
           rows={rows}
-          themeId={themeId}
           entries={filteredCommandEntries}
           cursor={commandsCursor}
           searchQuery={commandsSearchQuery}

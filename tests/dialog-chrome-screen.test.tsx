@@ -183,7 +183,6 @@ const DIALOGS: readonly DialogCase[] = [
     },
     title: 'Commands',
     tone: 'text',
-    description: 'catppuccin',
     hints: [
       ['navigate', '↑/↓'],
       ['run', 'enter'],
@@ -401,7 +400,7 @@ describe('dialogs are titled panes', () => {
 
 describe('dialog contents', () => {
   test.each(THEMES)(
-    'Commands keeps muted bold sections and a prompt filter ($theme $colorScheme)',
+    'Commands headers match the main list and the filter is the first row ($theme $colorScheme)',
     async ({ theme, colorScheme }) => {
       const colors = colorsOf(theme, colorScheme)
       screen = await renderSessionScreen(
@@ -415,15 +414,16 @@ describe('dialog contents', () => {
       // The filter is the main search field's prompt on the dialog background, at the body inset.
       const filterRow = paneRowWith(pane, 'Search')
       const filter = rowAt(pane.rows, filterRow)
-      expect(filterRow).toBe(pane.top + 2)
+      expect(filterRow).toBe(pane.top + 1)
       expect(paneRowText(pane, filterRow)).toMatch(/^ › Search +$/)
       expect(sameColor(cellAt(filter, pane.left + PANE_INSET).fg, colors.primary)).toBe(true)
       expect(paneRowText(pane, filterRow + 1).trim()).toBe('')
 
       const sectionRow = rowAt(pane.rows, paneRowWith(pane, 'Direct'))
       const section = cellAt(sectionRow, textOf(sectionRow).indexOf('Direct'))
-      expect(sameColor(section.fg, colors.textMuted)).toBe(true)
-      expect(section.attributes & TextAttributes.BOLD).toBe(TextAttributes.BOLD)
+      // Section headers look like the main list's (Live, Configured): the theme's action color.
+      expect(sameColor(section.fg, colors.action)).toBe(true)
+      expect(section.attributes & TextAttributes.BOLD).toBe(0)
 
       // Body text and hint labels meet WCAG AA on the dialog background.
       expect(contrastRatio(colors.text, colors.surface)).toBeGreaterThanOrEqual(4.5)

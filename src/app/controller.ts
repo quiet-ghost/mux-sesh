@@ -517,7 +517,6 @@ export function useAppController(invocationCwd: string) {
       columns,
       rows,
       configPath,
-      themeId: resolvedTheme.id,
       filteredCommandEntries,
       commandsCursor,
       commandsSearchQuery,

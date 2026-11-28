@@ -1,4 +1,4 @@
-import { TextAttributes, type TextareaRenderable } from '@opentui/core'
+import type { TextareaRenderable } from '@opentui/core'
 import { useTheme } from '../styles/theme'
 import { fitDialogLabelMatches, fitDialogRow } from './dialog-layout'
 import HighlightedText from './HighlightedText'
@@ -36,14 +36,11 @@ interface DialogRowProps {
 // The saved value's mark, in the row's first cell before the label.
 const CURRENT_MARK = '●'
 
+// Styled like the main list's section headers (Live, Configured), so dialogs read as the same app.
 export function DialogSectionHeader({ text }: { text: string }) {
   const theme = useTheme()
 
-  return (
-    <text style={{ fg: theme.textMuted, attributes: TextAttributes.BOLD, wrapMode: 'none' }}>
-      {text}
-    </text>
-  )
+  return <text style={{ fg: theme.action, wrapMode: 'none' }}>{text}</text>
 }
 
 // The main search field's prompt, on the dialog background; the prompt sits in the rows' mark cell.

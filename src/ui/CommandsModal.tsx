@@ -36,7 +36,6 @@ type CommandRow =
 interface Props {
   columns: number
   rows: number
-  themeId: string
   entries: CommandEntry[]
   cursor: number
   searchQuery: string
@@ -77,7 +76,6 @@ function dropTrailingHeadings(rows: CommandRow[]): CommandRow[] {
 export default function CommandsModal({
   columns,
   rows,
-  themeId,
   entries,
   cursor,
   searchQuery,
@@ -90,10 +88,7 @@ export default function CommandsModal({
   const width = getDialogWidth(columns, COMMANDS_PREFERRED_WIDTH)
   const rowWidth = getDialogRowWidth(width)
 
-  const listRows = getDialogListRows(
-    rows,
-    getDialogChromeRows({ description: themeId }) + DIALOG_FILTER_ROWS
-  )
+  const listRows = getDialogListRows(rows, getDialogChromeRows({}) + DIALOG_FILTER_ROWS)
 
   const commandRows = getCommandRows(entries)
   const cursorRow = commandRows.findIndex(row => row.kind === 'entry' && row.index === cursor)
@@ -102,7 +97,6 @@ export default function CommandsModal({
   return (
     <Modal
       title="Commands"
-      description={themeId}
       hints={COMMANDS_HINTS}
       columns={columns}
       preferredWidth={COMMANDS_PREFERRED_WIDTH}
