@@ -147,6 +147,9 @@ const DIALOG_ROWS = [
   ['Settings', 'settings-'],
   ['Setting picker', 'option-'],
   ['Setting editor', 'editor-'],
+  ['Setting list', 'list-'],
+  ['Remove confirmation', 'confirm-'],
+  ['List field', 'field-'],
 ] as const
 
 function dialogRowKeys(markdown: string, title: string): string[] {

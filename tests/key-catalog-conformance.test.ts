@@ -9,12 +9,16 @@ import {
   type ActionContext,
   type ActionId,
   type DialogActionId,
+  type DialogKey,
   type DialogView,
+  type ListRowKind,
+  type ListStepKind,
 } from '../src/app/action-catalog'
 import { handleModalKeyboard } from '../src/app/modal-keyboard'
 import type { ModalState } from '../src/app/modals'
 import { OptionPicker } from '../src/app/option-picker'
 import { PendingClose } from '../src/app/pending-close'
+import { SettingPane } from '../src/app/setting-panes'
 import type { NewSessionStepControls } from '../src/app/new-session-step'
 import {
   handleAgentsManageMode,
@@ -317,7 +321,7 @@ type DialogKeyboardContext = Parameters<typeof handleModalKeyboard>[1]
 
 interface DialogPress {
   readonly label: string
-  readonly input: { name: string; ctrl?: boolean }
+  readonly input: { name: string; ctrl?: boolean; shift?: boolean }
 }
 
 const DIALOG_LETTER_PRESSES: readonly DialogPress[] = LETTERS.map(name => ({
@@ -334,6 +338,8 @@ const DIALOG_PRESSES: readonly DialogPress[] = [
   { label: '↓', input: { name: 'down' } },
   { label: '←', input: { name: 'left' } },
   { label: '→', input: { name: 'right' } },
+  { label: 'shift+↑', input: { name: 'up', shift: true } },
+  { label: 'shift+↓', input: { name: 'down', shift: true } },
   { label: 'enter', input: { name: 'return' } },
   { label: 'esc', input: { name: 'escape' } },
 ]
@@ -343,6 +349,8 @@ interface DialogCase {
   readonly view: DialogView
   readonly modalState: ModalState
   readonly entry: SettingsEntry | undefined
+  // A focused text field takes every letter; a list pane without one acts on letters.
+  readonly focus: 'field' | 'none'
 }
 
 function settingsRow(control: SettingsControl, reset: SettingsReset): SettingsEntry {
@@ -360,6 +368,9 @@ function settingsRow(control: SettingsControl, reset: SettingsReset): SettingsEn
 
 const SETTINGS_CONTROLS: readonly SettingsControl[] = ['toggle', 'cycle', 'step', 'open']
 const SETTINGS_RESETS: readonly SettingsReset[] = ['default', 'available', 'unavailable']
+const LIST_ROWS: readonly ListRowKind[] = ['item', 'add', 'json']
+const LIST_STEPS: readonly ListStepKind[] = ['browsing', 'confirming', 'editing', 'adding']
+const KEYBIND_MODES: readonly KeybindMode[] = ['vim', 'standard']
 
 const DIALOG_CASES: readonly DialogCase[] = [
   ...SETTINGS_CONTROLS.flatMap(control =>
@@ -372,6 +383,7 @@ const DIALOG_CASES: readonly DialogCase[] = [
           view: { kind: 'settings', entry: row, query },
           modalState: { type: 'settings', picker: OptionPicker.browsing },
           entry: row,
+          focus: 'field',
         } satisfies DialogCase
       })
     )
@@ -381,6 +393,7 @@ const DIALOG_CASES: readonly DialogCase[] = [
     view: { kind: 'settings', entry: undefined, query: 'zzz' },
     modalState: { type: 'settings', picker: OptionPicker.browsing },
     entry: undefined,
+    focus: 'field',
   },
   {
     name: 'setting picker',
@@ -392,13 +405,26 @@ const DIALOG_CASES: readonly DialogCase[] = [
       picker: OptionPicker.browsing,
     },
     entry: undefined,
+    focus: 'field',
   },
   {
     name: 'setting editor',
     view: { kind: 'setting-editor' },
     modalState: { type: 'setting-editor', field: 'startupCommand' },
     entry: undefined,
+    focus: 'field',
   },
+  ...LIST_ROWS.flatMap(row =>
+    LIST_STEPS.flatMap(step =>
+      KEYBIND_MODES.map((keybindMode): DialogCase => ({
+        name: `list pane ${row} ${step} ${keybindMode}`,
+        view: { kind: 'setting-list', row, step, keybindMode },
+        modalState: SettingPane.open('hiddenSessions'),
+        entry: undefined,
+        focus: step === 'editing' || step === 'adding' ? 'field' : 'none',
+      }))
+    )
+  ),
 ]
 
 function notADialogAction(): never {
@@ -460,6 +486,11 @@ function pressDialog(dialog: DialogCase, input: DialogPress['input']): DialogOut
     handleOutcomeRetry: notADialogAction,
     confirmBatchClose: notADialogAction,
     retryBatchClose: notADialogAction,
+    settingPaneView: dialog.view.kind === 'setting-list' ? dialog.view : undefined,
+    openSettingPane: record('settings-open'),
+    handleSettingPaneAction: async id => {
+      actions.push(id)
+    },
   }
 
   const consumed = handleModalKeyboard(input, ctx)
@@ -475,9 +506,18 @@ function dialogHandlerBindings(dialog: DialogCase): string[] {
   ).sort()
 }
 
+// Keys for vim only are offered only while a list pane is in vim mode.
+function offeredIn(view: DialogView, key: DialogKey): boolean {
+  return key.modes === 'any' || (view.kind === 'setting-list' && view.keybindMode === 'vim')
+}
+
 function dialogCatalogBindings(view: DialogView): string[] {
   return getDialogActions(view)
-    .flatMap(id => getDialogActionKeys(id).map(key => `${key.label} => ${id}`))
+    .flatMap(id =>
+      getDialogActionKeys(id)
+        .filter(key => offeredIn(view, key))
+        .map(key => `${key.label} => ${id}`)
+    )
     .sort()
 }
 
@@ -496,6 +536,8 @@ describe('the action catalog lists exactly the keys the settings dialogs run', (
   test.each(DIALOG_CASES.map(dialog => [dialog.name, dialog] as const))(
     '%s: letters type into the field',
     (_name, dialog) => {
+      if (dialog.focus === 'none') return
+
       for (const key of DIALOG_LETTER_PRESSES)
         expect(pressDialog(dialog, key.input).consumed).toBe(false)
     }

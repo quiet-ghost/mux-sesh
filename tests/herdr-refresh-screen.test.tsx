@@ -24,6 +24,7 @@ function RefreshScreen({ effects, backend, initialItems }: Props) {
   const [allItems, setAllItems] = useState(initialItems)
   const [items, setItems] = useState(initialItems)
   const [, setProjectSourceItems] = useState<Item[]>([])
+  const [, setLiveSessions] = useState<Item[]>([])
   const [viewMode, setViewMode] = useState(ViewMode.Sessions)
   const [sessionCursor, setSessionCursor] = useState(0)
   const [cursor, setCursor] = useState(0)
@@ -42,6 +43,7 @@ function RefreshScreen({ effects, backend, initialItems }: Props) {
     lastProjectSelectionRef,
     setViewMode,
     setSessionItems,
+    setLiveSessions,
     setProjectSourceItems,
     setAllItems,
     setItems,

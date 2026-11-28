@@ -117,7 +117,7 @@ function asPositiveInteger(value: DocumentValue): number | undefined {
   return isPositiveInteger(value) ? value : undefined
 }
 
-function expandHomePath(value: string, homeDir: string): string {
+export function expandHomePath(value: string, homeDir: string): string {
   if (!value.startsWith('~')) {
     return value
   }

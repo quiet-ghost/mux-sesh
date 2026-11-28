@@ -66,7 +66,7 @@ export async function loadSessionItems(
   measure: Measure,
   backend: MultiplexerBackend,
   labelPrefix = 'sessions'
-): Promise<{ visibleSessions: Item[]; sessionItems: Item[] }> {
+): Promise<{ liveSessions: Item[]; visibleSessions: Item[]; sessionItems: Item[] }> {
   const sessions = await measure(`${labelPrefix}:listWorkspaces`, async () =>
     (await backend.list()).map(workspaceToItem)
   )
@@ -86,6 +86,7 @@ export async function loadSessionItems(
   )
 
   return {
+    liveSessions: sessions,
     visibleSessions,
     sessionItems,
   }

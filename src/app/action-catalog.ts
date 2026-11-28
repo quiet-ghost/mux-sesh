@@ -601,7 +601,35 @@ export type OptionActionId = 'option-move' | 'option-apply' | 'option-back'
 
 export type EditorActionId = 'editor-apply' | 'editor-back'
 
-export type DialogActionId = SettingsActionId | OptionActionId | EditorActionId
+// A list or rule list pane: no text field has focus, so single letters act.
+export type ListActionId =
+  | 'list-move'
+  | 'list-edit'
+  | 'list-open'
+  | 'list-add'
+  | 'list-remove'
+  | 'list-reorder'
+  | 'list-back'
+
+// The inline remove confirmation.
+export type ConfirmActionId = 'confirm-remove' | 'confirm-keep'
+
+// An inline text field in a list, rule list or rule form.
+export type FieldActionId = 'field-apply' | 'field-add' | 'field-cancel'
+
+export type DialogActionId =
+  | SettingsActionId
+  | OptionActionId
+  | EditorActionId
+  | ListActionId
+  | ConfirmActionId
+  | FieldActionId
+
+// The selected row of a list pane: an entry, the add row, or the "Edit as JSON…" row.
+export type ListRowKind = 'item' | 'add' | 'json'
+
+// What a list pane is doing: browsing rows, confirming a removal, or typing into a field.
+export type ListStepKind = 'browsing' | 'confirming' | 'editing' | 'adding'
 
 // The dialog on screen, with what the selected Settings row offers.
 export type DialogView =
@@ -612,10 +640,14 @@ export type DialogView =
     }
   | { kind: 'setting-options' }
   | { kind: 'setting-editor' }
+  | { kind: 'setting-list'; row: ListRowKind; step: ListStepKind; keybindMode: KeybindMode }
 
 export interface DialogKey {
   readonly name: string
   readonly ctrl: boolean
+  readonly shift: boolean
+  // j and k move only in vim keybind mode.
+  readonly modes: 'any' | 'vim'
   // As the footer and the docs write it.
   readonly label: string
 }
@@ -625,6 +657,8 @@ export interface DialogAction {
   readonly keys: readonly DialogKey[]
   // Settings moves without saying so; its footer is about the selected row.
   readonly footer: boolean
+  // The footer's key text when joining the key labels would be too long.
+  readonly hint?: string
 }
 
 // Shown as `label key`, like the main footer's hints.
@@ -634,7 +668,15 @@ export interface DialogHint {
 }
 
 function dialogKey(name: string, label: string, ctrl = false): DialogKey {
-  return { name, ctrl, label }
+  return { name, ctrl, shift: false, modes: 'any', label }
+}
+
+function shifted(key: DialogKey): DialogKey {
+  return { ...key, shift: true, label: `shift+${key.label}` }
+}
+
+function vimKey(name: string): DialogKey {
+  return { ...dialogKey(name, name), modes: 'vim' }
 }
 
 const UP = dialogKey('up', '↑')
@@ -644,6 +686,10 @@ const RIGHT = dialogKey('right', '→')
 const ENTER = dialogKey('return', 'enter')
 const ESC = dialogKey('escape', 'esc')
 const CTRL_R = dialogKey('r', 'ctrl+r', true)
+const KEY_A = dialogKey('a', 'a')
+const KEY_D = dialogKey('d', 'd')
+const KEY_J = vimKey('j')
+const KEY_K = vimKey('k')
 
 export const DIALOG_ACTIONS = {
   'settings-move': { label: 'navigate', keys: [UP, DOWN], footer: false },
@@ -658,6 +704,23 @@ export const DIALOG_ACTIONS = {
   'option-back': { label: 'back', keys: [ESC], footer: true },
   'editor-apply': { label: 'apply', keys: [ENTER], footer: true },
   'editor-back': { label: 'back', keys: [ESC], footer: true },
+  'list-move': { label: 'navigate', keys: [UP, DOWN, KEY_K, KEY_J], footer: false },
+  'list-edit': { label: 'edit', keys: [ENTER], footer: true },
+  'list-open': { label: 'open', keys: [ENTER], footer: true },
+  'list-add': { label: 'add', keys: [KEY_A], footer: true },
+  'list-remove': { label: 'remove', keys: [KEY_D], footer: true },
+  'list-reorder': {
+    label: 'move',
+    keys: [shifted(UP), shifted(DOWN)],
+    footer: true,
+    hint: 'shift+↑↓',
+  },
+  'list-back': { label: 'back', keys: [ESC], footer: true },
+  'confirm-remove': { label: 'remove', keys: [ENTER], footer: true },
+  'confirm-keep': { label: 'keep', keys: [ESC], footer: true },
+  'field-apply': { label: 'apply', keys: [ENTER], footer: true },
+  'field-add': { label: 'add', keys: [ENTER], footer: true },
+  'field-cancel': { label: 'cancel', keys: [ESC], footer: true },
 } as const satisfies Record<DialogActionId, DialogAction>
 
 // In footer order. A Settings row offers ←/→ only where they change it, Enter only where it opens
@@ -692,6 +755,35 @@ function settingsActions(
 
 const OPTION_ACTIONS: readonly OptionActionId[] = ['option-move', 'option-apply', 'option-back']
 const EDITOR_ACTIONS: readonly EditorActionId[] = ['editor-apply', 'editor-back']
+const CONFIRM_ACTIONS: readonly ConfirmActionId[] = ['confirm-remove', 'confirm-keep']
+const APPLY_ACTIONS: readonly FieldActionId[] = ['field-apply', 'field-cancel']
+const ADD_ACTIONS: readonly FieldActionId[] = ['field-add', 'field-cancel']
+
+// An entry is edited, removed and moved; the add and JSON rows only open.
+function listRowActions(row: ListRowKind): ListActionId[] {
+  switch (row) {
+    case 'item':
+      return ['list-move', 'list-edit', 'list-add', 'list-remove', 'list-reorder', 'list-back']
+    case 'add':
+    case 'json':
+      return ['list-move', 'list-open', 'list-add', 'list-back']
+  }
+}
+
+export type ListPaneActionId = ListActionId | ConfirmActionId | FieldActionId
+
+function listActions(row: ListRowKind, step: ListStepKind): readonly ListPaneActionId[] {
+  switch (step) {
+    case 'browsing':
+      return listRowActions(row)
+    case 'confirming':
+      return CONFIRM_ACTIONS
+    case 'editing':
+      return APPLY_ACTIONS
+    case 'adding':
+      return ADD_ACTIONS
+  }
+}
 
 export function getDialogActions(view: DialogView): readonly DialogActionId[] {
   switch (view.kind) {
@@ -701,6 +793,8 @@ export function getDialogActions(view: DialogView): readonly DialogActionId[] {
       return OPTION_ACTIONS
     case 'setting-editor':
       return EDITOR_ACTIONS
+    case 'setting-list':
+      return listActions(view.row, view.step)
   }
 }
 
@@ -713,7 +807,7 @@ export function getDialogHints(view: DialogView): DialogHint[] {
     const action: DialogAction = DIALOG_ACTIONS[id]
 
     return action.footer
-      ? [{ label: action.label, key: action.keys.map(key => key.label).join('/') }]
+      ? [{ label: action.label, key: action.hint ?? action.keys.map(key => key.label).join('/') }]
       : []
   })
 }
@@ -721,15 +815,26 @@ export function getDialogHints(view: DialogView): DialogHint[] {
 export interface DialogKeyInput {
   name?: string
   ctrl?: boolean
+  shift?: boolean
 }
 
-// The offered action this key runs, or 'none'.
+function keyMatches(key: DialogKey, input: DialogKeyInput, keybindMode: KeybindMode): boolean {
+  return (
+    key.name === input.name &&
+    key.ctrl === Boolean(input.ctrl) &&
+    key.shift === Boolean(input.shift) &&
+    (key.modes === 'any' || keybindMode === 'vim')
+  )
+}
+
+// The offered action this key runs, or 'none'. Keys for vim only are offered only in vim mode.
 function firstMatch<Id extends DialogActionId>(
   ids: readonly Id[],
-  input: DialogKeyInput
+  input: DialogKeyInput,
+  keybindMode: KeybindMode = 'standard'
 ): Id | 'none' {
   const matched = ids.find(id =>
-    getDialogActionKeys(id).some(key => key.name === input.name && key.ctrl === Boolean(input.ctrl))
+    getDialogActionKeys(id).some(key => keyMatches(key, input, keybindMode))
   )
 
   return matched ?? 'none'
@@ -749,4 +854,11 @@ export function matchOptionAction(input: DialogKeyInput): OptionActionId | 'none
 
 export function matchEditorAction(input: DialogKeyInput): EditorActionId | 'none' {
   return firstMatch(EDITOR_ACTIONS, input)
+}
+
+export function matchListAction(
+  view: Extract<DialogView, { kind: 'setting-list' }>,
+  input: DialogKeyInput
+): ListPaneActionId | 'none' {
+  return firstMatch(listActions(view.row, view.step), input, view.keybindMode)
 }

@@ -3,6 +3,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { SettingsEntry, SettingsOption, SettingsFieldId } from '../settings'
 import type { CommandEntry } from '../ui/CommandsModal'
 import type { ModalState } from './modals'
+import type { SettingPaneState } from './setting-panes'
 import { syncTextareaValue } from './textarea'
 import CloseReviewBatch from '../ui/CloseReviewBatch'
 import CloseReviewResults from '../ui/CloseReviewResults'
@@ -10,6 +11,7 @@ import CommandsModal, { getCommandEntryKey } from '../ui/CommandsModal'
 import OperationOutcomeModal from '../ui/OperationOutcomeModal'
 import RenameModal from '../ui/RenameModal'
 import SettingEditorModal from '../ui/SettingEditorModal'
+import SettingListModal from '../ui/SettingListModal'
 import SettingOptionsModal from '../ui/SettingOptionsModal'
 import SettingsModal from '../ui/SettingsModal'
 import { useItemSelection } from '../ui/use-item-selection'
@@ -38,6 +40,10 @@ interface Props {
   settingEditorValue: string
   settingEditorError: string
   setSettingEditorValue: Dispatch<SetStateAction<string>>
+  settingPane: SettingPaneState
+  settingFieldDraft: string
+  setSettingFieldDraft: Dispatch<SetStateAction<string>>
+  settingFieldTextareaRef: MutableRefObject<TextareaRenderable | null>
   modalInputValue: string
   setModalInputValue: Dispatch<SetStateAction<string>>
   commandsSearchTextareaRef: MutableRefObject<TextareaRenderable | null>
@@ -80,6 +86,10 @@ export function AppModalsLayer({
   settingEditorValue,
   settingEditorError,
   setSettingEditorValue,
+  settingPane,
+  settingFieldDraft,
+  setSettingFieldDraft,
+  settingFieldTextareaRef,
   modalInputValue,
   setModalInputValue,
   commandsSearchTextareaRef,
@@ -180,6 +190,17 @@ export function AppModalsLayer({
           rows={rows}
           textareaRef={settingEditorTextareaRef}
           onContentChange={() => syncTextareaValue(settingEditorTextareaRef, setSettingEditorValue)}
+        />
+      )}
+
+      {modalState?.type === 'setting-list' && settingPane.model && (
+        <SettingListModal
+          model={settingPane.model}
+          columns={columns}
+          rows={rows}
+          draft={settingFieldDraft}
+          textareaRef={settingFieldTextareaRef}
+          onContentChange={() => syncTextareaValue(settingFieldTextareaRef, setSettingFieldDraft)}
         />
       )}
     </>

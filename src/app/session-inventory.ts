@@ -45,10 +45,16 @@ export interface InventoryScope {
   readonly backend: MultiplexerBackend | null
 }
 
+// `liveSessions` is every live session, hidden ones included; Settings counts what each hides.
 export type InventorySnapshot =
-  | { readonly viewMode: ViewMode.Sessions; readonly sessionItems: Item[] }
+  | {
+      readonly viewMode: ViewMode.Sessions
+      readonly liveSessions: Item[]
+      readonly sessionItems: Item[]
+    }
   | {
       readonly viewMode: ViewMode.Projects
+      readonly liveSessions: Item[]
       readonly sessionItems: Item[]
       readonly projectSourceItems: Item[]
       readonly projectItems: Item[]
@@ -128,7 +134,7 @@ async function loadSnapshot(
   { config, backend }: InventoryContext,
   measure: Measure
 ): Promise<InventorySnapshot> {
-  const { visibleSessions, sessionItems } = await loadSessionItems(
+  const { liveSessions, visibleSessions, sessionItems } = await loadSessionItems(
     config,
     measure,
     backend,
@@ -140,7 +146,7 @@ async function loadSnapshot(
       ? ViewMode.Projects
       : requestViewMode(request)
 
-  if (viewMode === ViewMode.Sessions) return { viewMode, sessionItems }
+  if (viewMode === ViewMode.Sessions) return { viewMode, liveSessions, sessionItems }
 
   const { projectSourceItems, projectItems } = await loadProjectItemsWithLinks(
     config,
@@ -148,7 +154,7 @@ async function loadSnapshot(
     measure
   )
 
-  return { viewMode, sessionItems, projectSourceItems, projectItems }
+  return { viewMode, liveSessions, sessionItems, projectSourceItems, projectItems }
 }
 
 // One owner per app: loads run one at a time, overlapping requests share a single follow-up, and
@@ -336,6 +342,7 @@ export interface InventorySink {
   readonly lastSessionSelectionRef: MutableRefObject<string | null>
   readonly lastProjectSelectionRef: MutableRefObject<string | null>
   readonly setSessionItems: Dispatch<SetStateAction<Item[]>>
+  readonly setLiveSessions: Dispatch<SetStateAction<Item[]>>
   readonly setProjectSourceItems: Dispatch<SetStateAction<Item[]>>
   readonly setAllItems: Dispatch<SetStateAction<Item[]>>
   readonly setItems: Dispatch<SetStateAction<Item[]>>
@@ -352,6 +359,7 @@ export function publishInventory(
 ): void {
   const { sessionItems } = snapshot
   sink.setSessionItems(current => reuseSessionItemIdentities(current, sessionItems))
+  sink.setLiveSessions(snapshot.liveSessions)
 
   if (snapshot.viewMode === ViewMode.Projects) {
     sink.setProjectSourceItems(snapshot.projectSourceItems)

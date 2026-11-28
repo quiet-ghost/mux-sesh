@@ -43,6 +43,18 @@ export const DIALOG_ACTION_IDS = [
   'option-back',
   'editor-apply',
   'editor-back',
+  'list-move',
+  'list-edit',
+  'list-open',
+  'list-add',
+  'list-remove',
+  'list-reorder',
+  'list-back',
+  'confirm-remove',
+  'confirm-keep',
+  'field-apply',
+  'field-add',
+  'field-cancel',
 ] as const satisfies readonly DialogActionId[]
 
 type UnlistedDialogActionId = Exclude<DialogActionId, (typeof DIALOG_ACTION_IDS)[number]>

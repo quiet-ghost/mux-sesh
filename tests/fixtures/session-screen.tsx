@@ -35,6 +35,8 @@ import { getNewSessionStepControls, useNewSessionSteps } from '../../src/app/new
 import { openOutcomeModal } from '../../src/app/modals'
 import { AppModalsLayer } from '../../src/app/modals-layer'
 import { OptionPicker } from '../../src/app/option-picker'
+import { createSettingPaneActions } from '../../src/app/setting-pane-actions'
+import { getSettingPaneState } from '../../src/app/setting-panes'
 import { useLiveResolvedTheme } from '../../src/app/resolved-theme'
 import { createAppRuntime } from '../../src/app/runtime'
 import { AppScreen } from '../../src/app/screen'
@@ -94,6 +96,8 @@ interface SessionFixture {
   saveConfig: (config: Config) => Promise<void>
   backend: MultiplexerBackend
   items: Item[]
+  // Every live session, hidden ones included.
+  liveSessions: Item[]
   projects: Item[]
   filterItems: typeof filterAndSortItems
   lifecycle: string[]
@@ -176,7 +180,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
   const modal = useAppModalState()
   const dimensions = useTerminalSize()
   const [config, setConfig] = useState(fixture.config)
-  const { backend, items, projects, filterItems, lifecycle, homeDir } = fixture
+  const { backend, items, liveSessions, projects, filterItems, lifecycle, homeDir } = fixture
 
   const settings = getSettingsState(
     config,
@@ -254,6 +258,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     setItems,
     setAllItems,
     setSessionItems,
+    setLiveSessions,
     setProjectSourceItems,
     setSessionCandidateItems,
     prefixTimeoutRef,
@@ -274,6 +279,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     setItems(items)
     setAllItems(items)
     setSessionItems(items)
+    setLiveSessions(liveSessions)
     setProjectSourceItems(projects)
     setSessionCandidateItems(projects)
     lifecycle.push('mounted')
@@ -285,12 +291,14 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
   }, [
     config.keybindMode,
     items,
+    liveSessions,
     projects,
     lifecycle,
     prefixTimeoutRef,
     setAppMode,
     setAllItems,
     setItems,
+    setLiveSessions,
     setProjectSourceItems,
     setSessionCandidateItems,
     setSessionItems,
@@ -416,6 +424,32 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     inventoryRevision: () => inventory.revision(),
   })
 
+  const settingPane = getSettingPaneState({
+    config,
+    modalState: modal.modalState,
+    draft: modal.settingFieldDraft,
+    homeDir: process.env.HOME ?? homeDir,
+    liveSessions: core.liveSessions,
+    projects: core.projectSourceItems,
+  })
+
+  const settingPaneActions = createSettingPaneActions({
+    config,
+    homeDir: process.env.HOME ?? homeDir,
+    modalState: modal.modalState,
+    setModalState: modal.setModalState,
+    readDraft: () => modal.settingFieldTextareaRef.current?.plainText ?? modal.settingFieldDraft,
+    setDraft: modal.setSettingFieldDraft,
+    openJsonEditor: controls.openSettingEditor,
+    returnToSettings: () =>
+      modal.setModalState({ type: 'settings', picker: OptionPicker.browsing }),
+    saveConfig: fixture.saveConfig,
+    setConfig,
+    refreshItems,
+    showToast: core.showToast,
+    showOutcome: report => openOutcomeModal(report, modal.setModalState),
+  })
+
   useAppKeyboard({
     active: true,
     toggleDetails: details.toggle,
@@ -447,6 +481,8 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     handleSettingsEditorSubmit: handlers.handleSettingsEditorSubmit,
     handleSettingStep: handlers.handleSettingStep,
     handleSettingReset: handlers.handleSettingReset,
+    settingPaneView: settingPane.view,
+    ...settingPaneActions,
     handleRenameSubmit: unsupportedFixtureAction,
     newSession: getNewSessionStepControls(
       newSession,
@@ -493,6 +529,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
             {...dimensions}
             configPath="/fixture/config.json"
             themeId={resolvedTheme.id}
+            settingPane={settingPane}
             getSettingEditorTitle={getSettingEditorTitle}
           />
         </BusyContext>
@@ -572,7 +609,12 @@ export async function renderSessionScreen(
     openEditor: unsupportedFixtureAction,
   }
 
-  const { sessionItems } = await loadSessionItems(config, async (_name, run) => run(), backend)
+  const { sessionItems, liveSessions } = await loadSessionItems(
+    config,
+    async (_name, run) => run(),
+    backend
+  )
+
   const history = data.openHistory
 
   const filterItems: typeof filterAndSortItems =
@@ -616,6 +658,7 @@ export async function renderSessionScreen(
             saveConfig: data.saveConfig ?? unsupportedFixtureAction,
             backend,
             items: sessionItems,
+            liveSessions,
             projects,
             filterItems,
             lifecycle,

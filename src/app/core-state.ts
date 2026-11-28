@@ -16,6 +16,8 @@ export function useAppCoreState() {
   const [projectSourceItems, setProjectSourceItems] = useState<Item[]>([])
   const [sessionCandidateItems, setSessionCandidateItems] = useState<Item[]>([])
   const [sessionItems, setSessionItems] = useState<Item[]>([])
+  // Every live session, hidden ones included.
+  const [liveSessions, setLiveSessions] = useState<Item[]>([])
   const [cursor, setCursor] = useState(0)
   const [agentCursor, setAgentCursor] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
@@ -62,6 +64,8 @@ export function useAppCoreState() {
     setSessionCandidateItems,
     sessionItems,
     setSessionItems,
+    liveSessions,
+    setLiveSessions,
     cursor,
     setCursor,
     agentCursor,

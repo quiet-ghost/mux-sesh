@@ -1,15 +1,23 @@
 import {
   describeUnavailableAction,
   matchEditorAction,
+  matchListAction,
   matchOptionAction,
   matchSettingsAction,
+  type ListPaneActionId,
 } from './action-catalog'
 import type { OperationReport } from './action-outcome'
 import type { ModalState } from './modals'
 import { OptionPicker } from './option-picker'
 import type { ShowToast } from './notifications'
+import type { SettingPaneView } from './setting-panes'
 import { CloseReceipt, type CleanupBatch } from '../sessions/cleanup-batch'
-import type { SettingsEntry, SettingsOption } from '../settings'
+import {
+  getSettingCollection,
+  type ListSettingId,
+  type SettingsEntry,
+  type SettingsOption,
+} from '../settings'
 import type { CommandEntry } from '../ui/CommandsModal'
 import { clampCursorIndex } from '../ui/list-window'
 
@@ -43,16 +51,29 @@ interface ModalKeyboardContext {
   handleOutcomeRetry: (report: OperationReport) => Promise<void>
   confirmBatchClose: (batch: CleanupBatch) => Promise<void>
   retryBatchClose: (receipt: CloseReceipt) => Promise<void>
+  // The list pane on screen and the keys it offers; undefined while none is open.
+  settingPaneView: SettingPaneView | undefined
+  openSettingPane: (field: ListSettingId) => void
+  handleSettingPaneAction: (action: ListPaneActionId, direction: 1 | -1) => Promise<void>
 }
 
 interface KeyboardInput {
   name?: string
   ctrl?: boolean
+  shift?: boolean
 }
 
 function openSetting(ctx: ModalKeyboardContext, entry: SettingsEntry) {
   if (ctx.isOptionSetting(entry.id)) {
     ctx.openSettingOptions(entry.id)
+
+    return
+  }
+
+  const collection = getSettingCollection(entry.id)
+
+  if (collection?.kind === 'list') {
+    ctx.openSettingPane(collection.id)
 
     return
   }
@@ -71,7 +92,7 @@ function changeSetting(
 
 // Settings keeps its filter focused: letters type, and ←/→ belong to the list, not the query.
 function cursorStep(key: KeyboardInput): 1 | -1 {
-  return key.name === 'up' || key.name === 'left' ? -1 : 1
+  return key.name === 'up' || key.name === 'left' || key.name === 'k' ? -1 : 1
 }
 
 function handleSettingsKey(
@@ -240,6 +261,21 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
       case 'none':
         return false
     }
+  }
+
+  // A list pane has no text field unless one is open, so single letters act while browsing.
+  if (ctx.modalState?.type === 'setting-list') {
+    const view = ctx.settingPaneView
+
+    if (!view) return false
+
+    const action = matchListAction(view, key)
+
+    if (action === 'none') return false
+
+    ctx.runAction(() => ctx.handleSettingPaneAction(action, cursorStep(key)))
+
+    return true
   }
 
   if (ctx.modalState?.type === 'setting-editor') {

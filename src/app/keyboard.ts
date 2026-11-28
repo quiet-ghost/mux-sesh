@@ -20,7 +20,9 @@ import {
 } from '../handlers/keyboard'
 import { getItemKey } from '../multiplexer/items'
 import { resolvePrefixKey } from '../config'
-import type { SettingsEntry, SettingsFieldId, SettingsOption } from '../settings'
+import type { ListSettingId, SettingsEntry, SettingsFieldId, SettingsOption } from '../settings'
+import type { SettingPaneView } from './setting-panes'
+import type { ListPaneActionId } from './action-catalog'
 import type { Config, Item } from '../types'
 import type { CommandEntry } from '../ui/CommandsModal'
 import { getActionTargetItem, type ActionContext } from './action-catalog'
@@ -78,6 +80,9 @@ interface UseAppKeyboardOptions {
   isOptionSetting: (field: SettingsFieldId) => boolean
   openSettingOptions: (field: SettingsFieldId) => void
   openSettingEditor: (field: SettingsFieldId) => void
+  settingPaneView: SettingPaneView | undefined
+  openSettingPane: (field: ListSettingId) => void
+  handleSettingPaneAction: (action: ListPaneActionId, direction: 1 | -1) => Promise<void>
   closeModal: () => void
   requestKillSession: (item: Item) => void
   requestMarkedClose: () => Promise<void>
@@ -250,6 +255,9 @@ function handleKey(
       handleOutcomeRetry: options.handleOutcomeRetry,
       confirmBatchClose: options.confirmBatchClose,
       retryBatchClose: options.retryBatchClose,
+      settingPaneView: options.settingPaneView,
+      openSettingPane: options.openSettingPane,
+      handleSettingPaneAction: options.handleSettingPaneAction,
     })
 
     if (consumed) key.preventDefault()

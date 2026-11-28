@@ -11,6 +11,8 @@ import { openOutcomeModal } from './modals'
 import { OptionPicker } from './option-picker'
 import { createAppRuntime } from './runtime'
 import { createAppHandlers } from './handlers'
+import { createSettingPaneActions } from './setting-pane-actions'
+import { getSettingPaneState } from './setting-panes'
 import { useSessionInventory } from './session-inventory'
 import { useAppStartup } from './state'
 import { useEffectRuntime } from './use-effect-runtime'
@@ -51,6 +53,8 @@ export function useAppController(invocationCwd: string) {
     setSessionCandidateItems,
     sessionItems,
     setSessionItems,
+    liveSessions,
+    setLiveSessions,
     cursor,
     setCursor,
     agentCursor,
@@ -105,11 +109,14 @@ export function useAppController(invocationCwd: string) {
     setSettingEditorValue,
     settingEditorError,
     setSettingEditorError,
+    settingFieldDraft,
+    setSettingFieldDraft,
     modalTextareaRef,
     commandsSearchTextareaRef,
     settingsSearchTextareaRef,
     settingOptionsSearchTextareaRef,
     settingEditorTextareaRef,
+    settingFieldTextareaRef,
   } = useAppModalState()
 
   const { columns, rows } = useTerminalSize()
@@ -171,6 +178,7 @@ export function useAppController(invocationCwd: string) {
     lastProjectSelectionRef,
     setViewMode,
     setSessionItems,
+    setLiveSessions,
     setProjectSourceItems,
     setAllItems,
     setItems,
@@ -362,6 +370,31 @@ export function useAppController(invocationCwd: string) {
     refreshList,
   })
 
+  const settingPane = getSettingPaneState({
+    config,
+    modalState,
+    draft: settingFieldDraft,
+    homeDir,
+    liveSessions,
+    projects: projectSourceItems,
+  })
+
+  const { openSettingPane, handleSettingPaneAction } = createSettingPaneActions({
+    config,
+    homeDir,
+    modalState,
+    setModalState,
+    readDraft: () => settingFieldTextareaRef.current?.plainText ?? settingFieldDraft,
+    setDraft: setSettingFieldDraft,
+    openJsonEditor: openSettingEditor,
+    returnToSettings: () => setModalState({ type: 'settings', picker: OptionPicker.browsing }),
+    saveConfig,
+    setConfig,
+    refreshItems,
+    showToast,
+    showOutcome: report => openOutcomeModal(report, setModalState),
+  })
+
   useAppKeyboard({
     active: startup.kind === 'loading' || startup.kind === 'ready',
     toggleDetails: details.toggle,
@@ -415,6 +448,9 @@ export function useAppController(invocationCwd: string) {
     isOptionSetting,
     openSettingOptions,
     openSettingEditor,
+    settingPaneView: settingPane.view,
+    openSettingPane,
+    handleSettingPaneAction,
     closeModal,
     requestKillSession,
     requestMarkedClose,
@@ -536,6 +572,10 @@ export function useAppController(invocationCwd: string) {
       settingEditorValue,
       settingEditorError,
       setSettingEditorValue,
+      settingPane,
+      settingFieldDraft,
+      setSettingFieldDraft,
+      settingFieldTextareaRef,
       modalInputValue,
       setModalInputValue,
       commandsSearchTextareaRef,

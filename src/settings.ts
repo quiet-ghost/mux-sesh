@@ -112,7 +112,35 @@ interface JsonSetting extends SettingInfo {
   patch: (value: Schema.Json) => SerializedConfigPatch
 }
 
-type SettingDefinition = ChoiceSetting | PickerSetting | NumberSetting | TextSetting | JsonSetting
+export type ListSettingId = 'projectPaths' | 'hiddenSessions' | 'pinnedSessions'
+
+export type RulesSettingId = 'projects' | 'wildcards'
+
+// A list of strings, edited row by row; its "Edit as JSON…" row opens the JSON editor.
+interface ListSetting extends Omit<JsonSetting, 'kind' | 'id'> {
+  kind: 'list'
+  id: ListSettingId
+}
+
+// Project or wildcard rules, edited in a rule list and a form per rule.
+interface RulesSetting extends Omit<JsonSetting, 'kind' | 'id'> {
+  kind: 'rules'
+  id: RulesSettingId
+}
+
+type SettingDefinition =
+  | ChoiceSetting
+  | PickerSetting
+  | NumberSetting
+  | TextSetting
+  | JsonSetting
+  | ListSetting
+  | RulesSetting
+
+// The editor a list or rules setting opens instead of the JSON editor.
+export type SettingCollection =
+  | { readonly kind: 'list'; readonly id: ListSettingId }
+  | { readonly kind: 'rules'; readonly id: RulesSettingId }
 
 interface SerializedSessionDefaults {
   startup_command: string | undefined
@@ -355,7 +383,7 @@ const SETTINGS = {
   },
   pinnedSessions: {
     id: 'pinnedSessions',
-    kind: 'json',
+    kind: 'list',
     title: 'Pinned sessions',
     category: 'Sessions',
     description: 'Kept at the top in every order; ctrl+f pins the selected session',
@@ -366,7 +394,7 @@ const SETTINGS = {
   },
   hiddenSessions: {
     id: 'hiddenSessions',
-    kind: 'json',
+    kind: 'list',
     title: 'Hidden sessions',
     category: 'Sessions',
     description: 'Live sessions whose names match these globs are not listed',
@@ -429,7 +457,7 @@ const SETTINGS = {
   },
   projectPaths: {
     id: 'projectPaths',
-    kind: 'json',
+    kind: 'list',
     title: 'Project folders',
     category: 'Projects',
     description: "Scanned for projects and searched by New's file step",
@@ -440,7 +468,7 @@ const SETTINGS = {
   },
   projects: {
     id: 'projects',
-    kind: 'json',
+    kind: 'rules',
     title: 'Project rules',
     category: 'Projects',
     description: 'Exact folders with their own name, commands, icon or listing',
@@ -451,7 +479,7 @@ const SETTINGS = {
   },
   wildcards: {
     id: 'wildcards',
-    kind: 'json',
+    kind: 'rules',
     title: 'Wildcard rules',
     category: 'Projects',
     description: 'Defaults for folders matching a pattern; the first match wins',
@@ -557,6 +585,30 @@ function getSetting(field: SettingsFieldId): SettingDefinition {
   return SETTINGS[field]
 }
 
+// Lists and rules are JSON underneath: the JSON editor reads and writes them as one document.
+function isJsonEdited(
+  setting: SettingDefinition
+): setting is JsonSetting | ListSetting | RulesSetting {
+  return setting.kind === 'json' || setting.kind === 'list' || setting.kind === 'rules'
+}
+
+export function getSettingCollection(field: SettingsFieldId): SettingCollection | undefined {
+  const setting = getSetting(field)
+
+  switch (setting.kind) {
+    case 'list':
+      return { kind: 'list', id: setting.id }
+    case 'rules':
+      return { kind: 'rules', id: setting.id }
+    case 'choice':
+    case 'picker':
+    case 'number':
+    case 'text':
+    case 'json':
+      return undefined
+  }
+}
+
 function optionLabel(options: readonly SettingsOption[], value: string): string {
   return options.find(option => option.value === value)?.label ?? value
 }
@@ -571,6 +623,8 @@ function displayValue(setting: SettingDefinition, config: Config): string {
     case 'text':
       return setting.display(config)
     case 'json':
+    case 'list':
+    case 'rules':
       return setting.summary(config)
   }
 }
@@ -585,6 +639,8 @@ function storedValue(setting: SettingDefinition, config: Config): string {
     case 'number':
       return String(setting.read(config))
     case 'json':
+    case 'list':
+    case 'rules':
       return JSON.stringify(setting.read(config))
   }
 }
@@ -598,6 +654,8 @@ function controlOf(setting: SettingDefinition, config: Config): SettingsControl 
     case 'picker':
     case 'text':
     case 'json':
+    case 'list':
+    case 'rules':
       return 'open'
   }
 }
@@ -605,7 +663,7 @@ function controlOf(setting: SettingDefinition, config: Config): SettingsControl 
 function resetOf(setting: SettingDefinition, config: Config, defaults: Config): SettingsReset {
   if (storedValue(setting, config) === storedValue(setting, defaults)) return 'default'
 
-  return setting.kind === 'json' ? 'unavailable' : 'available'
+  return isJsonEdited(setting) ? 'unavailable' : 'available'
 }
 
 export function getSettingsEntries(config: Config, homeDir: string): SettingsEntry[] {
@@ -630,6 +688,8 @@ export function getSettingEditorValue(config: Config, field: SettingsFieldId): s
     case 'text':
       return setting.read(config)
     case 'json':
+    case 'list':
+    case 'rules':
       return formatJSON(setting.read(config))
     case 'choice':
     case 'picker':
@@ -648,7 +708,7 @@ export function getSettingOptions(config: Config, field: SettingsFieldId): Setti
 export function getSettingValue(config: Config, field: SettingsFieldId): string {
   const setting = getSetting(field)
 
-  return setting.kind === 'json' ? setting.summary(config) : storedValue(setting, config)
+  return isJsonEdited(setting) ? setting.summary(config) : storedValue(setting, config)
 }
 
 // The value as the Settings row shows it.
@@ -688,6 +748,8 @@ function editorPatch(
     case 'text':
       return setting.patch(config, value)
     case 'json':
+    case 'list':
+    case 'rules':
       return setting.patch(parseJSON(value))
     case 'choice':
     case 'picker':
@@ -744,6 +806,8 @@ export function stepSetting(
     case 'picker':
     case 'text':
     case 'json':
+    case 'list':
+    case 'rules':
       return undefined
   }
 }
@@ -769,6 +833,8 @@ export function resetSetting(
     case 'text':
       return applyEditorSetting(config, field, setting.read(defaults), homeDir)
     case 'json':
+    case 'list':
+    case 'rules':
       return undefined
   }
 }
@@ -780,6 +846,10 @@ export function isSettingsChange(before: Config, after: Config): boolean {
 
 export function getSettingEditorTitle(field: SettingsFieldId): string {
   return getSetting(field).title
+}
+
+export function getSettingDescription(field: SettingsFieldId): string {
+  return getSetting(field).description
 }
 
 export function filterSettingsEntries(entries: SettingsEntry[], query: string): SettingsEntry[] {

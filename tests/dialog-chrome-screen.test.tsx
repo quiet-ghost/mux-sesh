@@ -226,6 +226,32 @@ const DIALOGS: readonly DialogCase[] = [
     ],
   },
   {
+    name: 'a list setting',
+    open: async size => {
+      const fixture = await renderSessionScreen(size, {
+        workspaces: [],
+        backend: closingBackend(SESSIONS),
+        config: { hiddenSessions: ['scratch-*'] },
+      })
+
+      await runCommand(fixture, 'Open settings')
+      await fixture.replaceQuery('Hidden sessions')
+      await fixture.pressKey('RETURN')
+
+      return fixture
+    },
+    title: 'Hidden sessions',
+    tone: 'text',
+    description: 'Live sessions whose names match',
+    hints: [
+      ['edit', 'enter'],
+      ['add', 'a'],
+      ['remove', 'd'],
+      ['move', 'shift+↑↓'],
+      ['back', 'esc'],
+    ],
+  },
+  {
     name: 'the theme picker',
     open: async size => {
       const fixture = await sessions(size)

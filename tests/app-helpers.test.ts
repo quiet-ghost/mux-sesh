@@ -456,6 +456,7 @@ describe('app state helpers', () => {
       lastSessionSelectionRef: { current: lastSessionSelection },
       lastProjectSelectionRef: { current: lastProjectSelection },
       setSessionItems: mock(() => {}),
+      setLiveSessions: mock(() => {}),
       setProjectSourceItems: mock(() => {}),
       setAllItems: mock(() => {}),
       setItems: mock(() => {}),
@@ -476,6 +477,7 @@ describe('app state helpers', () => {
     publishInventory(
       {
         viewMode: ViewMode.Projects,
+        liveSessions: refreshedItems,
         sessionItems: refreshedItems,
         projectSourceItems: refreshedProjects,
         projectItems: refreshedProjects,
@@ -485,6 +487,7 @@ describe('app state helpers', () => {
     )
 
     expect(sink.setSessionItems).toHaveBeenCalledTimes(1)
+    expect(sink.setLiveSessions).toHaveBeenCalledWith(refreshedItems)
     expect(sink.setProjectSourceItems).toHaveBeenCalledWith(refreshedProjects)
     expect(sink.setAllItems).toHaveBeenCalledWith(refreshedProjects)
     expect(sink.setItems).toHaveBeenCalledWith(refreshedProjects)
@@ -508,7 +511,7 @@ describe('app state helpers', () => {
     const sessions = [session('alpha'), session('beta'), delta]
 
     publishInventory(
-      { viewMode: ViewMode.Sessions, sessionItems: sessions },
+      { viewMode: ViewMode.Sessions, liveSessions: sessions, sessionItems: sessions },
       { sessionCursor: 5, agentKey: undefined, agentCursor: 0 },
       sink
     )
@@ -673,7 +676,7 @@ describe('app runtime helpers', () => {
         published: {
           kind: 'published',
           generation: 1,
-          snapshot: { viewMode: ViewMode.Sessions, sessionItems: [] },
+          snapshot: { viewMode: ViewMode.Sessions, liveSessions: [], sessionItems: [] },
         },
         failed: { kind: 'failed', failure: new MultiplexerError('server-stopped', 'stopped') },
         superseded: { kind: 'superseded' },

@@ -184,15 +184,18 @@ With rows marked, `d` opens the batch close review instead, even for one marked 
 
 The settings rows are checked against the action catalog by the test suite.
 
-| Dialog             | Keys                                                                                                                                                                                             |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Command palette    | Type to filter, `↑` / `↓` move, `enter` runs, `esc` closes                                                                                                                                       |
-| Settings           | Type to filter, `↑` / `↓` move, `←` / `→` change the value in place, `enter` opens it (or switches a two-value setting), `ctrl+r` resets it to the default, `esc` clears the filter, then closes |
-| Setting picker     | `↑` / `↓` move (Theme previews each one), `enter` saves, `esc` goes back (Theme restores the saved theme)                                                                                        |
-| Setting editor     | Type the value, `enter` applies and saves, `esc` goes back                                                                                                                                       |
-| Rename             | Type the name, `enter` renames, `esc` cancels                                                                                                                                                    |
-| Batch close review | `enter` closes exactly the marked set shown, `esc` keeps it                                                                                                                                      |
-| Close results      | `enter` retries what is still open (or closes the dialog), `esc` closes                                                                                                                          |
-| Operation report   | `enter` retries when the footer offers it (otherwise closes), `esc` closes                                                                                                                       |
-| Startup failure    | `r` retries, `q` / `esc` / `ctrl+c` quit                                                                                                                                                         |
-| Crash recovery     | See [Crash Recovery](workflows.md#crash-recovery)                                                                                                                                                |
+| Dialog              | Keys                                                                                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Command palette     | Type to filter, `↑` / `↓` move, `enter` runs, `esc` closes                                                                                                                                       |
+| Settings            | Type to filter, `↑` / `↓` move, `←` / `→` change the value in place, `enter` opens it (or switches a two-value setting), `ctrl+r` resets it to the default, `esc` clears the filter, then closes |
+| Setting picker      | `↑` / `↓` move (Theme previews each one), `enter` saves, `esc` goes back (Theme restores the saved theme)                                                                                        |
+| Setting editor      | Type the value, `enter` applies and saves, `esc` goes back                                                                                                                                       |
+| Setting list        | `↑` / `↓` move (`j` / `k` in vim mode), `enter` edits the entry (or opens the add or JSON row), `a` adds, `d` removes, `shift+↑` / `shift+↓` move the entry, `esc` goes back to Settings         |
+| Remove confirmation | `enter` removes, `esc` keeps                                                                                                                                                                     |
+| List field          | Type the value, `enter` applies or adds it and saves, `esc` cancels                                                                                                                              |
+| Rename              | Type the name, `enter` renames, `esc` cancels                                                                                                                                                    |
+| Batch close review  | `enter` closes exactly the marked set shown, `esc` keeps it                                                                                                                                      |
+| Close results       | `enter` retries what is still open (or closes the dialog), `esc` closes                                                                                                                          |
+| Operation report    | `enter` retries when the footer offers it (otherwise closes), `esc` closes                                                                                                                       |
+| Startup failure     | `r` retries, `q` / `esc` / `ctrl+c` quit                                                                                                                                                         |
+| Crash recovery      | See [Crash Recovery](workflows.md#crash-recovery)                                                                                                                                                |

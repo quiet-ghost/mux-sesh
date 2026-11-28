@@ -81,6 +81,12 @@ soon as they change; the value is muted while it is the default. `←` / `→` c
 number in place, `enter` opens a picker or editor, and `ctrl+r` puts back the default (lists and
 rules are not reset this way). See [keybindings.md](keybindings.md#dialogs).
 
+Project folders, Hidden sessions and Pinned sessions open as a list with one row per entry. Each
+row shows what the entry does now: a folder's project count (or `missing`), how many live sessions
+a pattern hides (`hides 2`), or `not running` for a pin with no session. Add, edit, remove and
+reorder entries in place; each change saves at once, `~` is expanded, and an empty or duplicate
+entry is refused inline. `Edit as JSON…` opens the whole list as JSON.
+
 | Category   | Setting         | Option                                            |
 | ---------- | --------------- | ------------------------------------------------- |
 | Appearance | Theme           | `theme`                                           |
