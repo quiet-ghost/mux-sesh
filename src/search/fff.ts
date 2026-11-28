@@ -225,7 +225,7 @@ export interface FileSearchScopeDependencies {
   readonly scanWaitMs: number
 }
 
-export const FILE_SEARCH_SCOPE_DEPENDENCIES: FileSearchScopeDependencies = {
+const FILE_SEARCH_SCOPE_DEPENDENCIES: FileSearchScopeDependencies = {
   load: loadNativeFileSearch,
   roots: config => getExistingProjectRoots(uniqueNormalizedPaths(config.projectPaths)),
   limit: DEFAULT_RESULT_LIMIT,

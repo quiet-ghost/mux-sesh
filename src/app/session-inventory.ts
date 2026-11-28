@@ -388,7 +388,7 @@ export function publishInventory(
   )
 }
 
-export function formatStaleInventoryMessage(failure: ReadFailure): string {
+function formatStaleInventoryMessage(failure: ReadFailure): string {
   return `${failure.message} Existing sessions are unchanged; refresh will retry.`
 }
 

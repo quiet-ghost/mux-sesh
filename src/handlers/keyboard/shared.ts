@@ -121,7 +121,7 @@ export function openSelectedItem(ctx: KeyboardHandlerContext, item: Item | undef
   ctx.runAction(() => ctx.handleSelect(item))
 }
 
-export function getQuickSelectItem(ctx: KeyboardHandlerContext, index: number): Item | undefined {
+function getQuickSelectItem(ctx: KeyboardHandlerContext, index: number): Item | undefined {
   return ctx.viewMode === ViewMode.Sessions ? ctx.regularSessions[index] : ctx.items[index]
 }
 
@@ -153,7 +153,7 @@ export function enterNewSessionMode(ctx: KeyboardHandlerContext) {
 }
 
 // Keys run an action only when the catalog allows it, and explain a refusal instead.
-export function runAvailableAction(
+function runAvailableAction(
   ctx: KeyboardHandlerContext,
   id: CommandId,
   run: (target: Item | undefined) => void

@@ -94,7 +94,7 @@ export function mapMiddleCutIndices(cut: MiddleCut, indices: readonly number[]):
   return mapped
 }
 
-export function truncateEnd(text: string, width: number): string {
+function truncateEnd(text: string, width: number): string {
   if (displayWidth(text) <= width) return text
 
   if (width <= 0) return ''

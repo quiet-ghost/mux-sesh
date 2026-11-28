@@ -96,7 +96,7 @@ interface SettingsHandlerOptions {
 
 // The caller drops the waiting close first, so another d cannot confirm it twice. The stored ref
 // is closed only if the inventory on screen still shows the target as it was reviewed.
-export async function handleReviewedCloseWithFeedback(
+async function handleReviewedCloseWithFeedback(
   plan: CleanupPlan,
   options: ReviewedCloseOptions
 ): Promise<void> {
@@ -146,7 +146,7 @@ function presentBatch(outcome: BatchCloseOutcome, options: BatchCloseOptions): v
 }
 
 // The review and the marks close first, so a second Enter cannot confirm the batch twice.
-export async function handleReviewedBatchCloseWithFeedback(
+async function handleReviewedBatchCloseWithFeedback(
   batch: CleanupBatch,
   options: BatchCloseOptions
 ): Promise<void> {
@@ -164,7 +164,7 @@ export async function handleReviewedBatchCloseWithFeedback(
   presentBatch(outcome, options)
 }
 
-export async function handleBatchRetryWithFeedback(
+async function handleBatchRetryWithFeedback(
   receipt: CloseReceipt,
   options: BatchCloseOptions
 ): Promise<void> {
@@ -192,7 +192,7 @@ export async function handleSelectItem(
   await actionHandleSelect(item, config, backend)
 }
 
-export async function handleLastSessionWithFeedback(options: SharedHandlerOptions): Promise<void> {
+async function handleLastSessionWithFeedback(options: SharedHandlerOptions): Promise<void> {
   if (!options.backend) return
   const backend = options.backend
   await runWithErrorToast(
@@ -201,7 +201,7 @@ export async function handleLastSessionWithFeedback(options: SharedHandlerOption
   )
 }
 
-export async function handleRootSessionWithFeedback(
+async function handleRootSessionWithFeedback(
   item: Item | undefined,
   options: SharedHandlerOptions
 ): Promise<void> {
@@ -213,7 +213,7 @@ export async function handleRootSessionWithFeedback(
   )
 }
 
-export async function handleEditTargetWithFeedback(
+async function handleEditTargetWithFeedback(
   item: Item | undefined,
   options: SharedHandlerOptions
 ): Promise<void> {
@@ -529,7 +529,7 @@ async function saveSettingsRowChange(
 }
 
 // ←/→ on a Settings row saves the next value at once; at a limit nothing is saved or said.
-export async function handleSettingStepWithFeedback(
+async function handleSettingStepWithFeedback(
   field: SettingsFieldId,
   direction: 1 | -1,
   options: SettingsHandlerOptions,
@@ -544,7 +544,7 @@ export async function handleSettingStepWithFeedback(
 }
 
 // ctrl+r puts the default back; a value that already is the default saves nothing.
-export async function handleSettingResetWithFeedback(
+async function handleSettingResetWithFeedback(
   field: SettingsFieldId,
   options: SettingsHandlerOptions,
   trackSave: (picker: OptionPicker) => void = () => {}
@@ -559,7 +559,7 @@ export async function handleSettingResetWithFeedback(
 
 // A form change saves at once, one at a time. A glyph that fails to save goes back into its field
 // with the reason, so it can be retried or cancelled.
-export async function handleIconsChangeWithFeedback(
+async function handleIconsChangeWithFeedback(
   action: IconsFormAction,
   options: SettingsHandlerOptions,
   trackForm: (mode: IconsFormMode) => void

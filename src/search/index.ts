@@ -48,12 +48,12 @@ const ITEM_KEYS: readonly SearchKey<Item>[] = [
   { role: 'context', weight: 0.25, text: item => item.desc },
 ]
 
-export const PINNED_LIFT = 1.15
-export const LIVE_LIFT = 1.05
-export const ATTACHED_LIFT = 1.05
+const PINNED_LIFT = 1.15
+const LIVE_LIFT = 1.05
+const ATTACHED_LIFT = 1.05
 
 // A native file result loses an equal match to a project or session.
-export const FILE_LIFT = 0.9
+const FILE_LIFT = 0.9
 
 function itemLift(item: Item): number {
   const live = item.isSession || item.linkedSessionName !== undefined

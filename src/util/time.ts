@@ -1,4 +1,4 @@
-export function formatDuration(seconds: number): string {
+function formatDuration(seconds: number): string {
   if (seconds < 60) {
     return 'just now'
   }

@@ -49,7 +49,7 @@ function getSessionSectionRows(sessions: Item[]): number {
   return sessions.length === 0 ? 1 : getSessionWindowRows({ items: sessions, startIndex: 0 })
 }
 
-export function getSessionSectionWindow(
+function getSessionSectionWindow(
   sessions: Item[],
   cursor: number,
   rows: number

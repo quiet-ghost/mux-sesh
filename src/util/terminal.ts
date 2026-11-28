@@ -14,7 +14,7 @@ export function useTerminalSize(): TerminalSize {
   }
 }
 
-export const DETAIL_PANEL_MIN_COLUMNS = 120
+const DETAIL_PANEL_MIN_COLUMNS = 120
 
 export function shouldShowDetailPanel(columns: number, isNewSessionMode: boolean): boolean {
   if (isNewSessionMode) return false

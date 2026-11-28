@@ -68,7 +68,7 @@ function messageColumns(width: number, word: string): number {
   return width - STATUS_PADDING_COLUMNS * 2 - word.length - STATUS_WORD_GAP.length
 }
 
-export function noticeText(notice: QueuedToast): string {
+function noticeText(notice: QueuedToast): string {
   return notice.title ? `${notice.title}: ${notice.message}` : notice.message
 }
 

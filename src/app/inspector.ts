@@ -180,7 +180,7 @@ function linkedWorkspaceOf(item: Item): WorkspaceRef | undefined {
   }
 }
 
-export async function loadDetails(
+async function loadDetails(
   request: DetailsRequest,
   previewRunner: CommandRunner,
   signal: AbortSignal

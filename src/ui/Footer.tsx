@@ -66,7 +66,7 @@ function priority(hint: FooterHint, prefixActive: boolean): number {
 
 // The row actions and the version never shrink. Screen hints are kept by priority while they
 // fit, then shown in their own order.
-export function fitFooter(
+function fitFooter(
   footer: ActionFooter,
   width: number,
   version: string,

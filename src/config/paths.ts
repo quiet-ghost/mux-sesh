@@ -12,7 +12,7 @@ export function getConfigPath(homeDir = getHomeDir()): string {
   return join(getConfigDir(homeDir), 'mux-sesh', 'config.json')
 }
 
-export function getStateDir(homeDir = getHomeDir()): string {
+function getStateDir(homeDir = getHomeDir()): string {
   return process.env.XDG_STATE_HOME || join(homeDir, '.local', 'state')
 }
 

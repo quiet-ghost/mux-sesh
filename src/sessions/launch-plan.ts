@@ -73,7 +73,7 @@ export function parseStartupOverride(draft: string): StartupOverride {
   return command ? { kind: 'command', command } : { kind: 'none' }
 }
 
-export class LaunchPathNotFound extends Data.TaggedError('LaunchPathNotFound')<{
+class LaunchPathNotFound extends Data.TaggedError('LaunchPathNotFound')<{
   readonly input: string
   readonly path: string
 }> {
@@ -82,7 +82,7 @@ export class LaunchPathNotFound extends Data.TaggedError('LaunchPathNotFound')<{
   }
 }
 
-export class LaunchPathNotFile extends Data.TaggedError('LaunchPathNotFile')<{
+class LaunchPathNotFile extends Data.TaggedError('LaunchPathNotFile')<{
   readonly input: string
   readonly path: string
 }> {
@@ -91,7 +91,7 @@ export class LaunchPathNotFile extends Data.TaggedError('LaunchPathNotFile')<{
   }
 }
 
-export class LaunchDirectoryMissing extends Data.TaggedError('LaunchDirectoryMissing')<{
+class LaunchDirectoryMissing extends Data.TaggedError('LaunchDirectoryMissing')<{
   readonly path: string
 }> {
   override get message(): string {
@@ -99,7 +99,7 @@ export class LaunchDirectoryMissing extends Data.TaggedError('LaunchDirectoryMis
   }
 }
 
-export class InvalidSessionName extends Data.TaggedError('InvalidSessionName')<{
+class InvalidSessionName extends Data.TaggedError('InvalidSessionName')<{
   readonly name: string
   readonly reason: string
 }> {
@@ -108,7 +108,7 @@ export class InvalidSessionName extends Data.TaggedError('InvalidSessionName')<{
   }
 }
 
-export class SessionNameCollision extends Data.TaggedError('SessionNameCollision')<{
+class SessionNameCollision extends Data.TaggedError('SessionNameCollision')<{
   readonly name: string
   readonly existingPath: string
   readonly requestedPath: string
@@ -174,7 +174,7 @@ function hasControlCharacter(value: string): boolean {
 }
 
 // A typed name is checked before planning; tmux still replaces '.' and spaces, visibly in the plan.
-export function parseSessionName(
+function parseSessionName(
   draft: string,
   backend: BackendKind
 ): Result.Result<string, InvalidSessionName> {

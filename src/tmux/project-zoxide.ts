@@ -37,7 +37,7 @@ export function parseZoxideOutput(output: string): ZoxideEntry[] {
     })
 }
 
-export function isWithinProjectRoots(projectPath: string, projectRoots: string[]): boolean {
+function isWithinProjectRoots(projectPath: string, projectRoots: string[]): boolean {
   const normalizedProjectPath = normalizePathForMatching(projectPath)
 
   return projectRoots.some(projectRoot => {

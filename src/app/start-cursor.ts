@@ -13,7 +13,7 @@ type StartCursor =
 const SETTLED: StartCursor = { kind: 'settled' }
 
 // The session's own row; agent rows inside the same Herdr workspace are never the start.
-export function findCurrentSessionIndex(rows: readonly Item[], ref: WorkspaceRef): number {
+function findCurrentSessionIndex(rows: readonly Item[], ref: WorkspaceRef): number {
   return rows.findIndex(
     item =>
       isLiveSessionItem(item) &&

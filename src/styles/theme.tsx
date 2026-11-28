@@ -18,7 +18,7 @@ import {
 } from './terminal-palette'
 
 export const DEFAULT_THEME_ID = 'rosepine'
-export const DEFAULT_COLOR_SCHEME: ThemeColorScheme = 'system'
+const DEFAULT_COLOR_SCHEME: ThemeColorScheme = 'system'
 export const SYSTEM_THEME_ID = 'system'
 
 export interface ResolveThemeOptions {

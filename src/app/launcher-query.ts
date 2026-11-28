@@ -107,7 +107,7 @@ export function openNewSession(entry: NewSessionEntry, seed: Item[]): void {
   entry.setSearchQuery('')
 }
 
-export function formatFileSearchFailure(failure: Error): string {
+function formatFileSearchFailure(failure: Error): string {
   return failure instanceof FileSearchUnavailableError
     ? `File search is unavailable: ${failure.message}. Showing project matches only.`
     : `File search failed: ${failure.message}. Showing project matches only; the next query retries.`

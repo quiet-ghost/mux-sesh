@@ -265,7 +265,7 @@ function findChoice<T extends string>(choices: readonly T[], value: string): T |
   return choices.find(choice => choice === value)
 }
 
-export function getThemeOptions(config?: Config): string[] {
+function getThemeOptions(config?: Config): string[] {
   const builtin = Object.keys(BUILTIN_THEMES).sort((left, right) => {
     if (left === DEFAULT_THEME_ID) return -1
 

@@ -42,9 +42,9 @@ export interface SearchRanking<T> {
 
 export type PrepareTarget = (text: string) => Prepared
 
-export const EXACT_NAME_LIFT = 2
-export const NAME_PREFIX_LIFT = 1.5
-export const MIN_CONTEXT_QUERY_LENGTH = 3
+const EXACT_NAME_LIFT = 2
+const NAME_PREFIX_LIFT = 1.5
+const MIN_CONTEXT_QUERY_LENGTH = 3
 
 interface PreparedEntry {
   readonly texts: string[]

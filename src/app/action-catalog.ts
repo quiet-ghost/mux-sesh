@@ -728,7 +728,7 @@ const KEY_J = vimKey('j')
 const KEY_K = vimKey('k')
 const CTRL_S = dialogKey('s', 'ctrl+s', true)
 
-export const DIALOG_ACTIONS = {
+const DIALOG_ACTIONS = {
   'settings-move': { label: 'navigate', keys: [UP, DOWN], footer: false },
   'settings-change': { label: 'change', keys: [LEFT, RIGHT], footer: true },
   'settings-toggle': { label: 'change', keys: [LEFT, RIGHT, ENTER], footer: true },

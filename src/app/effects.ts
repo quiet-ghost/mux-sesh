@@ -119,7 +119,7 @@ export function useAutoUpdateScheduler(
   }, [config, scheduler])
 }
 
-export function useUpdateEventToasts(
+function useUpdateEventToasts(
   setUpdatedVersion: Dispatch<SetStateAction<string | null>>,
   showToast: ShowToast
 ) {
@@ -155,7 +155,7 @@ export function useNormalModeSessionReset(
   }, [appMode, lastSessionSelectionRef, sessionItems, setAllItems, setCursor, setItems, viewMode])
 }
 
-export function useProjectDiscoveryFailureToasts(showToast: ShowToast) {
+function useProjectDiscoveryFailureToasts(showToast: ShowToast) {
   useEffect(
     () =>
       subscribeProjectDiscoveryFailures(failures => {
@@ -165,7 +165,7 @@ export function useProjectDiscoveryFailureToasts(showToast: ShowToast) {
   )
 }
 
-export function useBoundedCursor(length: number, setCursor: Dispatch<SetStateAction<number>>) {
+function useBoundedCursor(length: number, setCursor: Dispatch<SetStateAction<number>>) {
   useEffect(() => {
     if (length === 0) {
       setCursor(0)

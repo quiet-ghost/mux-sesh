@@ -8,7 +8,7 @@ import { FrecencyHistory, OpenKey } from './frecency'
 
 // An open is recorded before the picker hands the terminal over, so a slow disk can delay it by
 // this much at most; the open itself never waits on, or fails because of, its record.
-export const OPEN_HISTORY_TIMEOUT_MS = 250
+const OPEN_HISTORY_TIMEOUT_MS = 250
 
 export type RecordOutcome =
   | { readonly kind: 'recorded' }

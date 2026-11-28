@@ -2,7 +2,7 @@ const DIALOG_MARGIN_COLUMNS = 2
 const DIALOG_MARGIN_ROWS = 1
 
 // The side border and one space: at 60 columns the dialog is 56 wide and its body 52.
-export const DIALOG_INSET_COLUMNS = 2
+const DIALOG_INSET_COLUMNS = 2
 
 // `┌─ ` before the title and ` ─┐` after it.
 const DIALOG_TITLE_CHROME_COLUMNS = 6

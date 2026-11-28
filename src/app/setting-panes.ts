@@ -138,7 +138,7 @@ const JSON_ROW = 'Edit as JSON…'
 const BROWSING = { kind: 'browsing' } as const
 
 // An unreadable folder is treated as missing: it is not scanned either way.
-export function folderExists(path: string): boolean {
+function folderExists(path: string): boolean {
   try {
     return statSync(path).isDirectory()
   } catch {
