@@ -170,6 +170,12 @@ bun test
 
 A checkout runs from source with Bun (`bun run dev`, or `bin/mux-sesh`).
 
+To see the failure screens from source:
+
+- `bun run dev:config-error` opens with an invalid config, in a throwaway config folder.
+- `bun run dev:backend-error` opens with tmux and Herdr hidden, so no backend is found.
+- `bun run dev:crash` uses your real config and crashes once after the first screen; `r` recovers.
+
 - `bun run build` compiles this machine's binary to `dist/npm/mux-sesh-<target>/bin/mux-sesh`.
 - `bun run smoke:binary` checks that binary without tmux, Herdr, or your config.
   `MUX_SESH_BINARY_SMOKE=1 bun test tests/compiled-binary.test.ts` runs the same check.

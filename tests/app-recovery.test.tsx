@@ -3,6 +3,7 @@ import { join } from 'path'
 import { testRender } from '@opentui/react/test-utils'
 import { act, useState } from 'react'
 import { AppRecoveryBoundary, useRecoveryTheme } from '../src/app'
+import { createSimulatedCrash, SIMULATED_CRASH_MESSAGE } from '../src/app/dev-crash'
 import { useLiveResolvedTheme } from '../src/app/resolved-theme'
 import { resolveTheme, type ThemeResolver } from '../src/styles/theme'
 import { FailurePalette } from '../src/ui/failure-screen'
@@ -92,6 +93,49 @@ describe('app recovery', () => {
     const failed = await frame()
     expect(failed).toContain('mux-sesh crashed')
     expect(failed).toContain('fixture mouse failure')
+  })
+})
+
+describe('simulated crash for development', () => {
+  function CrashingApp({ useCrash }: { useCrash: () => void }) {
+    useCrash()
+
+    return <text>healthy app</text>
+  }
+
+  async function renderWith(useCrash: () => void) {
+    setup = await testRender(
+      <AppRecoveryBoundary>
+        {retryKey => <CrashingApp key={retryKey} useCrash={useCrash} />}
+      </AppRecoveryBoundary>,
+      { width: 80, height: 24, consoleMode: 'disabled' }
+    )
+  }
+
+  test('with dev mode and the crash flag, the app crashes once after it rendered', async () => {
+    await renderWith(createSimulatedCrash({ MUX_SESH_DEV: '1', MUX_SESH_DEV_CRASH: '1' }))
+
+    const failed = await frame()
+    expect(failed).toContain('mux-sesh crashed')
+    expect(failed).toContain(SIMULATED_CRASH_MESSAGE)
+
+    const current = setup
+
+    if (!current) throw new Error('Recovery fixture was not rendered')
+    await act(async () => current.mockInput.pressKey('r'))
+
+    expect(await frame()).toContain('healthy app')
+  })
+
+  test.each([
+    ['without dev mode', { MUX_SESH_DEV_CRASH: '1' }],
+    ['without the crash flag', { MUX_SESH_DEV: '1' }],
+  ])('%s nothing crashes', async (_name, env) => {
+    await renderWith(createSimulatedCrash(env))
+
+    const shown = await frame()
+    expect(shown).toContain('healthy app')
+    expect(shown).not.toContain('mux-sesh crashed')
   })
 })
 

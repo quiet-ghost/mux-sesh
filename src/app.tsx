@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useAppController } from './app/controller'
+import { createSimulatedCrash } from './app/dev-crash'
 import { AppModalsLayer } from './app/modals-layer'
 import { AppScreen } from './app/screen'
 import { ThemeProvider } from './styles/theme'
@@ -156,11 +157,15 @@ function quitAfterStartupFailure(): void {
   requestShutdown(1)
 }
 
+// Development only: MUX_SESH_DEV=1 MUX_SESH_DEV_CRASH=1 (bun run dev:crash) shows the crash screen.
+const useSimulatedCrash = createSimulatedCrash(process.env)
+
 function AppTree({ invocationCwd }: AppProps) {
   const { startup, retryStartup, theme, busy, screenProps, modalProps } =
     useAppController(invocationCwd)
 
   useRecoveryTheme(theme)
+  useSimulatedCrash()
 
   return (
     <ThemeProvider theme={theme}>

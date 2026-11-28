@@ -16,6 +16,9 @@
   ],
   "scripts": {
     "dev": "MUX_SESH_DEV=1 bun run src/index.tsx",
+    "dev:config-error": "bun tools/dev/screens.ts config-error",
+    "dev:backend-error": "bun tools/dev/screens.ts backend-error",
+    "dev:crash": "bun tools/dev/screens.ts crash",
     "build": "bun tools/build/build.ts --single",
     "build:all": "bun tools/build/build.ts",
     "pack": "bun tools/build/pack.ts",
