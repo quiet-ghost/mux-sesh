@@ -16,10 +16,7 @@ import {
   terminalPaletteToThemeColors,
   type TerminalPalette,
 } from './terminal-palette'
-
-export const DEFAULT_THEME_ID = 'rosepine'
-const DEFAULT_COLOR_SCHEME: ThemeColorScheme = 'system'
-export const SYSTEM_THEME_ID = 'system'
+import { aliasThemeID, DEFAULT_COLOR_SCHEME, DEFAULT_THEME_ID, SYSTEM_THEME_ID } from './theme-ids'
 
 export interface ResolveThemeOptions {
   homeDir?: string
@@ -92,18 +89,6 @@ function mix(colorA: string, colorB: string, ratio: number) {
     from.g + (to.g - from.g) * ratio,
     from.b + (to.b - from.b) * ratio
   )
-}
-
-function aliasThemeID(themeId?: string) {
-  if (themeId === 'rose-pine') {
-    return 'rosepine'
-  }
-
-  if (themeId === 'opencode-dark' || themeId === 'opencode-light') {
-    return 'opencode'
-  }
-
-  return themeId
 }
 
 export function getSystemColorScheme(): 'light' | 'dark' {

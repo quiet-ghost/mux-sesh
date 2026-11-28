@@ -1,11 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useSystemThemeFollow, useTerminalPalette } from './app-hooks'
-import {
-  resolveTheme,
-  SYSTEM_THEME_ID,
-  type ResolvedTheme,
-  type ThemeResolver,
-} from '../styles/theme'
+import { resolveTheme, type ResolvedTheme, type ThemeResolver } from '../styles/theme'
+import { SYSTEM_THEME_ID } from '../styles/theme-ids'
 import type { SubscribeThemeFollowOptions } from '../styles/theme-follow'
 import type { TerminalPalette } from '../styles/terminal-palette'
 import type { ThemeColorScheme, ThemeDefinition } from '../types'

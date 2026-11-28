@@ -1,7 +1,8 @@
 import * as Schema from 'effect/Schema'
-import { getDefaultConfig, serializeConfig } from '../config'
+import { getDefaultConfig, resolvePrefixKey, serializeConfig } from '../config'
 import { PrefixKey } from '../config/prefix-key'
-import { BUILTIN_THEMES, DEFAULT_THEME_ID, SYSTEM_THEME_ID, getBuiltinTheme } from '../styles/theme'
+import { BUILTIN_THEMES, getBuiltinTheme } from '../styles/theme'
+import { DEFAULT_COLOR_SCHEME, DEFAULT_THEME_ID, SYSTEM_THEME_ID } from '../styles/theme-ids'
 import type { Config, KeybindMode, SortOrder, ThemeColorScheme, ZoxideMode } from '../types'
 import { toHomeRelativePath } from '../util/path-display'
 
@@ -351,7 +352,7 @@ const SETTINGS = {
         dark: 'Force dark mode',
         light: 'Force light mode',
       }),
-    read: config => config.colorScheme ?? 'system',
+    read: config => config.colorScheme ?? DEFAULT_COLOR_SCHEME,
     apply: (config, value) => {
       const colorScheme = findChoice(COLOR_SCHEME_OPTIONS, value)
 
@@ -395,7 +396,7 @@ const SETTINGS = {
     description: 'Starts secondary actions, such as ctrl+x r to rename',
     keywords: ['leader', 'shortcut'],
     options: prefixOptions,
-    read: config => config.prefixKey ?? 'ctrl+x',
+    read: config => resolvePrefixKey(config),
     apply: (config, prefixKey) => ({ ...config, prefixKey }),
     custom: {
       description:

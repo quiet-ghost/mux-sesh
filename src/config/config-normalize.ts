@@ -6,7 +6,6 @@ import type {
   ProjectProfile,
   ProjectWildcard,
   SessionDefaults,
-  ThemeColorScheme,
   ThemeDefinition,
   ThemePalette,
   ThemeVariant,
@@ -22,10 +21,9 @@ import {
   ZoxideChoice,
 } from './config-document'
 import { getHomeDir } from './paths'
+import { aliasThemeID, DEFAULT_COLOR_SCHEME, DEFAULT_THEME_ID } from '../styles/theme-ids'
 
 const DEFAULT_EDITOR = 'nvim'
-const DEFAULT_THEME = 'rosepine'
-const DEFAULT_COLOR_SCHEME: ThemeColorScheme = 'system'
 const DEFAULT_PREFIX_KEY = 'ctrl+x'
 
 // A loaded config always carries a prefix (an empty `prefix_key` means the default); this covers
@@ -322,12 +320,7 @@ export function normalizeConfig(rawConfig: Schema.Json, homeDir = getHomeDir()):
   const defaultConfig = getDefaultConfig(homeDir)
   const requestedTheme = asString(raw.theme)
 
-  const normalizedTheme =
-    requestedTheme === 'rose-pine'
-      ? 'rosepine'
-      : requestedTheme === 'opencode-dark' || requestedTheme === 'opencode-light'
-        ? 'opencode'
-        : requestedTheme
+  const normalizedTheme = aliasThemeID(requestedTheme)
 
   const implicitColorScheme =
     requestedTheme === 'opencode-light'
@@ -433,7 +426,7 @@ export function getDefaultConfig(homeDir = getHomeDir()): Config {
     prefixKey: DEFAULT_PREFIX_KEY,
     zoxideMode: 'off',
     sortOrder: 'live-first',
-    theme: DEFAULT_THEME,
+    theme: DEFAULT_THEME_ID,
     colorScheme: DEFAULT_COLOR_SCHEME,
     themes: {},
     autoUpdate: true,
