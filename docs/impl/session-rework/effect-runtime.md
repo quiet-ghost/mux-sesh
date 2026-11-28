@@ -18,6 +18,22 @@ DEV-312 pins Effect 4.0.5, checked against the installed types and the
   and multiplexer/protocol errors leave inventory and selection intact and show a retry notice.
   Defects go to the existing sanitized fatal handler. Interruption publishes nothing.
 
+## Decision: Effect at the boundaries, not a full migration
+
+Effect is used in two ways, on purpose:
+
+- **As a data library everywhere.** `Schema` decodes external input at the boundary: the config
+  document, the Herdr protocol, frecency history entries, package manifests, the npm registry
+  response, and filesystem and spawn error codes.
+  `Data` defines tagged errors and values, and `Result` / `Option` carry expected outcomes.
+- **As a runtime only at the `CommandRunner` bridge.** `Effect`, `Layer`, `Context`,
+  `ManagedRuntime`, `Exit` and `Cause` appear only in `src/app/effect-runtime.ts`, which wraps the
+  injectable `CommandRunner` so runs are interruptible and report success, expected failure,
+  defect or interruption. Everything else is ordinary async TypeScript and React.
+
+No wider migration to Effect services or layers is planned. Don't convert modules to `Effect.gen`
+or add layers just for consistency; a change to this boundary needs its own design decision.
+
 ## Command results
 
 A nonzero process exit is ordinary `CommandResult` data, including a real exit 127. Spawn,
