@@ -40,7 +40,7 @@
                     "block_id": "block:01a22053-383d-71d8-b91d-7fd9dacc2418",
                     "creator_name": "com.superlogical.terminal",
                     "flavor": "com.superlogical.terminal.shell",
-                    "host_id": "c6c20b44-4877-4ac5-b997-e720caa72763",
+                    "host_id": "00000000-0000-4000-8000-000000000001",
                     "label": "shell"
                   }
                 ],
@@ -65,7 +65,7 @@
                     "block_id": "block:01a2205a-a693-7f02-bf50-b4cbd5a142d1",
                     "creator_name": "com.superlogical.terminal",
                     "flavor": "com.superlogical.terminal.shell",
-                    "host_id": "c6c20b44-4877-4ac5-b997-e720caa72763",
+                    "host_id": "00000000-0000-4000-8000-000000000001",
                     "label": "shell"
                   }
                 ],
@@ -90,7 +90,7 @@
                     "block_id": "block:01a2205a-a6aa-7940-b349-190a64b4b159",
                     "creator_name": "com.superlogical.terminal",
                     "flavor": "com.superlogical.terminal.shell",
-                    "host_id": "c6c20b44-4877-4ac5-b997-e720caa72763",
+                    "host_id": "00000000-0000-4000-8000-000000000001",
                     "label": "agent"
                   }
                 ],
@@ -148,7 +148,7 @@
                     "block_id": "block:01a22053-3861-78de-97d9-65ff724642ea",
                     "creator_name": "com.superlogical.terminal",
                     "flavor": "com.superlogical.terminal.shell",
-                    "host_id": "c6c20b44-4877-4ac5-b997-e720caa72763",
+                    "host_id": "00000000-0000-4000-8000-000000000001",
                     "label": "shell"
                   }
                 ],
@@ -206,7 +206,7 @@
                     "block_id": "block:01a22053-3878-7533-8bcf-100c6c8b029c",
                     "creator_name": "com.superlogical.terminal",
                     "flavor": "com.superlogical.terminal.shell",
-                    "host_id": "c6c20b44-4877-4ac5-b997-e720caa72763",
+                    "host_id": "00000000-0000-4000-8000-000000000001",
                     "label": "shell"
                   }
                 ],
@@ -264,7 +264,7 @@
                     "block_id": "block:01a2205a-a67d-72a8-9055-644e4d7e6ac4",
                     "creator_name": "com.superlogical.terminal",
                     "flavor": "com.superlogical.terminal.shell",
-                    "host_id": "c6c20b44-4877-4ac5-b997-e720caa72763",
+                    "host_id": "00000000-0000-4000-8000-000000000001",
                     "label": "shell"
                   }
                 ],
