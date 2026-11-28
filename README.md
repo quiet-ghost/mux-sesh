@@ -35,6 +35,10 @@ arm64), so running mux-sesh needs neither Bun nor Node. x64 CPUs without AVX2 ge
 build. If mux-sesh reports a missing prebuilt binary, reinstall without `--omit=optional`: the
 binary ships as an optional dependency.
 
+With `auto_update` on (the default), npm and Bun installs update themselves in the background.
+Installs managed by mise (`npm:mux-sesh`) or Homebrew are left to that tool: mux-sesh shows the
+command to run instead, for example `mise upgrade npm:mux-sesh`.
+
 Run it:
 
 ```bash

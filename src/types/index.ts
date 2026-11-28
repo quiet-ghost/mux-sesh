@@ -165,7 +165,7 @@ export interface Config {
   wildcards?: ProjectWildcard[]
 }
 
-export type InstallMethod = 'npm' | 'bun' | 'brew' | 'source' | 'unknown'
+export type InstallMethod = 'npm' | 'bun' | 'brew' | 'mise' | 'source' | 'unknown'
 
 export type UpdateEvent =
   | {

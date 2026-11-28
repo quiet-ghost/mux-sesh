@@ -14,6 +14,10 @@ const BUN_GLOBAL_PACKAGE_PATH = new RegExp(
 
 const NODE_MODULES_PACKAGE_PATH = new RegExp(String.raw`/node_modules/${PACKAGE_DIRECTORY}/`)
 
+// mise installs each version under <data dir>/installs/npm-mux-sesh/<version>/. It looks like npm
+// from inside, but a global npm install would land beside it, hidden behind mise's own command.
+const MISE_INSTALL_PATH = new RegExp(String.raw`/installs/npm-${PACKAGE_NAME}/`)
+
 const isMuxSeshPackage = Schema.is(
   Schema.Struct({
     name: Schema.Union([
@@ -84,6 +88,10 @@ async function findPackageRoot(startPath: string): Promise<string | null> {
 async function detectInstallMethodFromPath(runtimePath: string): Promise<InstallMethod> {
   const normalizedPath = normalizePath(runtimePath)
 
+  if (MISE_INSTALL_PATH.test(normalizedPath)) {
+    return 'mise'
+  }
+
   if (BUN_GLOBAL_PACKAGE_PATH.test(normalizedPath)) {
     return 'bun'
   }
@@ -143,6 +151,21 @@ export function canAutoUpdate(method: InstallMethod): boolean {
   return method === 'npm' || method === 'bun'
 }
 
+// The command to tell the user when mux-sesh leaves the upgrade to the tool that installed it.
+export function upgradeCommand(method: InstallMethod): string | undefined {
+  switch (method) {
+    case 'mise':
+      return `mise upgrade npm:${PACKAGE_NAME}`
+    case 'brew':
+      return `brew upgrade ${PACKAGE_NAME}`
+    case 'npm':
+    case 'bun':
+    case 'source':
+    case 'unknown':
+      return undefined
+  }
+}
+
 export async function getInstalledVersion(
   runtimePath = getDefaultRuntimePath()
 ): Promise<string | null> {
@@ -167,7 +190,7 @@ export async function performUpgrade(
   method: InstallMethod,
   targetVersion: string
 ): Promise<boolean> {
-  if (method === 'unknown' || method === 'source') {
+  if (method === 'unknown' || method === 'source' || method === 'mise') {
     return false
   }
 

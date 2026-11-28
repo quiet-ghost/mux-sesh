@@ -8,7 +8,7 @@ import {
 } from 'react'
 import { useRenderer } from '@opentui/react'
 import type { TerminalColors } from '@opentui/core'
-import { checkAndUpdate, updateEvents } from '../update'
+import { checkAndUpdate, describeUpdateEvent, updateEvents } from '../update'
 import { createAutoUpdateScheduler, type AutoUpdateScheduler } from '../update/scheduler'
 import type { ShowToast } from './notifications'
 import { useHerdrAgentPolling } from './herdr-refresh'
@@ -123,17 +123,9 @@ export function useUpdateEventToasts(
 ) {
   useEffect(() => {
     const unsubscribe = updateEvents.on(event => {
-      if (event.kind === 'updated') {
-        setUpdatedVersion(event.version)
-        showToast({
-          kind: 'success',
-          message: `Updated in background to v${event.version}. Restart mux-sesh to use it.`,
-        })
-      } else if (event.kind === 'available') {
-        showToast({ kind: 'info', message: `Update available: v${event.version}` })
-      } else {
-        showToast({ kind: 'error', message: `Background update to v${event.version} failed.` })
-      }
+      if (event.kind === 'updated') setUpdatedVersion(event.version)
+
+      showToast(describeUpdateEvent(event))
     })
 
     return unsubscribe
