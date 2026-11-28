@@ -8,23 +8,23 @@ import {
   matchOptionAction,
   matchRuleAction,
   matchSettingsAction,
-} from './action-catalog'
-import type { OperationReport } from './action-outcome'
-import { leaveJsonEditor, type IconsFormMode, type ModalState } from './modals'
-import { OptionPicker } from './option-picker'
-import type { ShowToast } from './notifications'
-import type { SettingPaneAction } from './setting-pane-actions'
-import type { SettingPaneView } from './setting-panes'
-import { CloseReceipt, type CleanupBatch } from '../sessions/cleanup-batch'
+} from '../action-catalog'
+import type { OperationReport } from '../action-outcome'
+import { leaveJsonEditor, type IconsFormMode, type ModalState } from '../modals'
+import { OptionPicker } from '../option-picker'
+import type { ShowToast } from '../notifications'
+import type { SettingPaneAction } from '../setting-pane-actions'
+import type { SettingPaneView } from '../setting-panes'
+import { CloseReceipt, type CleanupBatch } from '../../sessions/cleanup-batch'
 import {
   getSettingCollection,
   type SettingCollection,
   type SettingsEntry,
   type SettingsOption,
-} from '../settings/settings-catalog'
-import type { IconsFormAction, IconsFormEntry, IconsFormRow } from '../settings/settings-icons'
-import type { CommandEntry } from '../ui/CommandsModal'
-import { clampCursorIndex } from '../ui/list-window'
+} from '../../settings/settings-catalog'
+import type { IconsFormAction, IconsFormEntry, IconsFormRow } from '../../settings/settings-icons'
+import type { CommandEntry } from '../../ui/CommandsModal'
+import { clampCursorIndex } from '../../ui/list-window'
 
 interface ModalKeyboardContext {
   modalState: ModalState

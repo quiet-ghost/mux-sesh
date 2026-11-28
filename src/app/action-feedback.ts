@@ -34,18 +34,7 @@ import {
   stepSetting,
 } from '../settings/settings-catalog'
 import { IconsForm, type IconsChange, type IconsFormAction } from '../settings/settings-icons'
-import {
-  handleCloseBatch,
-  handleRetryCloseBatch,
-  type BatchCloseOutcome,
-  handleEditTarget as actionHandleEditTarget,
-  handleKillSession as actionHandleKillSession,
-  handleLastSession as actionHandleLastSession,
-  handleNewSessionSubmit as actionHandleNewSessionSubmit,
-  handleRenameSubmit as actionHandleRenameSubmit,
-  handleRootSession as actionHandleRootSession,
-  handleSelect as actionHandleSelect,
-} from '../handlers/actions'
+import * as SessionActions from './session-actions'
 
 interface SharedHandlerOptions {
   backend: MultiplexerBackend | null
@@ -110,7 +99,7 @@ async function handleReviewedCloseWithFeedback(
     return
   }
 
-  const outcome = await actionHandleKillSession(check.plan, options.backend, {
+  const outcome = await SessionActions.handleKillSession(check.plan, options.backend, {
     refreshItems: options.refreshItems,
     regularSessions: options.regularSessions,
     rememberedSessions: options.rememberedSessions,
@@ -130,7 +119,7 @@ interface BatchCloseOptions {
   showReceipt: (receipt: CloseReceipt) => void
 }
 
-function presentBatch(outcome: BatchCloseOutcome, options: BatchCloseOptions): void {
+function presentBatch(outcome: SessionActions.BatchCloseOutcome, options: BatchCloseOptions): void {
   switch (outcome.kind) {
     case 'completed':
       options.showToast({ kind: 'success', message: outcome.message })
@@ -155,7 +144,7 @@ async function handleReviewedBatchCloseWithFeedback(
 
   if (!options.backend) return
 
-  const outcome = await handleCloseBatch(batch, options.backend, {
+  const outcome = await SessionActions.handleCloseBatch(batch, options.backend, {
     sessionItems: options.sessionItems,
     revision: options.inventoryRevision(),
     reloadSessions: options.reloadSessions,
@@ -172,7 +161,7 @@ async function handleBatchRetryWithFeedback(
 
   if (!options.backend) return
 
-  const outcome = await handleRetryCloseBatch(receipt, options.backend, {
+  const outcome = await SessionActions.handleRetryCloseBatch(receipt, options.backend, {
     revision: options.inventoryRevision(),
     reloadSessions: options.reloadSessions,
   })
@@ -189,14 +178,14 @@ export async function handleSelectItem(
   backend: MultiplexerBackend | null
 ): Promise<void> {
   if (!backend) return
-  await actionHandleSelect(item, config, backend)
+  await SessionActions.handleSelect(item, config, backend)
 }
 
 async function handleLastSessionWithFeedback(options: SharedHandlerOptions): Promise<void> {
   if (!options.backend) return
   const backend = options.backend
   await runWithErrorToast(
-    () => actionHandleLastSession(options.sessionItems, backend),
+    () => SessionActions.handleLastSession(options.sessionItems, backend),
     options.showToast
   )
 }
@@ -208,7 +197,7 @@ async function handleRootSessionWithFeedback(
   if (!options.backend) return
   const backend = options.backend
   await runWithErrorToast(
-    () => actionHandleRootSession(item, options.config, backend),
+    () => SessionActions.handleRootSession(item, options.config, backend),
     options.showToast
   )
 }
@@ -220,7 +209,7 @@ async function handleEditTargetWithFeedback(
   if (!options.backend) return
   const backend = options.backend
   await runWithErrorToast(
-    () => actionHandleEditTarget(item, options.config, backend),
+    () => SessionActions.handleEditTarget(item, options.config, backend),
     options.showToast
   )
 }
@@ -246,7 +235,7 @@ export async function handleRenameSubmitWithFeedback(
     return
   }
 
-  const outcome = await actionHandleRenameSubmit(renameTarget, newName, options.backend)
+  const outcome = await SessionActions.handleRenameSubmit(renameTarget, newName, options.backend)
 
   if (outcome.kind === 'unchanged') {
     closeModal()
@@ -316,7 +305,11 @@ export async function handleNewSessionSubmitWithPreview(
   options.launchGuard.active = true
 
   try {
-    const outcome = await actionHandleNewSessionSubmit(preview, options.backend, options.clone)
+    const outcome = await SessionActions.handleNewSessionSubmit(
+      preview,
+      options.backend,
+      options.clone
+    )
 
     ActionOutcome.present(outcome, options)
 

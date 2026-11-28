@@ -1,41 +1,37 @@
 import type { TextareaRenderable } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
-import { ActionOwner } from './action-owner'
-import type { OperationReport } from './action-outcome'
-import { FocusOwner } from './focus-owner'
+import { ActionOwner } from '../action-owner'
+import type { OperationReport } from '../action-outcome'
+import { FocusOwner } from '../focus-owner'
 import { handleModalKeyboard } from './modal-keyboard'
-import type { NewSessionStepControls } from './new-session-step'
-import type { ModalState } from './modals'
-import type { CleanupBatch, CloseReceipt } from '../sessions/cleanup-batch'
-import type { CleanupPlan } from '../sessions/cleanup-plan'
-import { PendingClose } from './pending-close'
-import {
-  clearPrefix,
-  handleNewSessionMode,
-  handleNormalMode,
-  handleAgentsManageMode,
-  handleSearchMode,
-  matchesPrefixKey,
-  type KeyboardHandlerContext,
-} from '../handlers/keyboard'
-import { getItemKey } from '../multiplexer/items'
-import { resolvePrefixKey } from '../config'
+import type { NewSessionStepControls } from '../new-session-step'
+import type { ModalState } from '../modals'
+import type { CleanupBatch, CloseReceipt } from '../../sessions/cleanup-batch'
+import type { CleanupPlan } from '../../sessions/cleanup-plan'
+import { PendingClose } from '../pending-close'
+import { handleAgentsManageMode } from './agents'
+import { handleNewSessionMode } from './new-session'
+import { handleNormalMode } from './normal'
+import { handleSearchMode } from './search'
+import { clearPrefix, matchesPrefixKey, type KeyboardHandlerContext } from './shared'
+import { getItemKey } from '../../multiplexer/items'
+import { resolvePrefixKey } from '../../config'
 import type {
   SettingCollection,
   SettingsEntry,
   SettingsFieldId,
   SettingsOption,
-} from '../settings/settings-catalog'
-import type { SettingPaneAction } from './setting-pane-actions'
-import type { SettingPaneView } from './setting-panes'
-import type { IconsFormAction, IconsFormEntry } from '../settings/settings-icons'
-import type { Config, Item } from '../types'
-import type { CommandEntry } from '../ui/CommandsModal'
-import { getActionTargetItem, type ActionContext } from './action-catalog'
-import { failureKind } from './action-outcome'
-import type { ShowToast } from './notifications'
-import { AppMode, ViewMode } from '../types'
+} from '../../settings/settings-catalog'
+import type { SettingPaneAction } from '../setting-pane-actions'
+import type { SettingPaneView } from '../setting-panes'
+import type { IconsFormAction, IconsFormEntry } from '../../settings/settings-icons'
+import type { Config, Item } from '../../types'
+import type { CommandEntry } from '../../ui/CommandsModal'
+import { getActionTargetItem, type ActionContext } from '../action-catalog'
+import { failureKind } from '../action-outcome'
+import type { ShowToast } from '../notifications'
+import { AppMode, ViewMode } from '../../types'
 
 interface UseAppKeyboardOptions {
   // False while another screen (e.g. startup failure) owns the keyboard.

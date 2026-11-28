@@ -5,9 +5,9 @@ import {
   getCommandEntry,
   type ActionContext,
   type CommandId,
-} from '../../app/action-catalog'
-import { openNewSession } from '../../app/launcher-query'
-import type { ShowToast } from '../../app/notifications'
+} from '../action-catalog'
+import { openNewSession } from '../launcher-query'
+import type { ShowToast } from '../notifications'
 import { refreshProjectDiscovery } from '../../projects/project-items'
 import { AppMode, ViewMode, type Config, type Item } from '../../types'
 

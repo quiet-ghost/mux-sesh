@@ -10,7 +10,7 @@ import {
   getRootSessionPath,
   requireConfig,
   requireConfiguredItem,
-} from '../src/handlers/action-helpers'
+} from '../src/app/session-action-helpers'
 import { quoteShellArg } from '../src/util/shell'
 
 describe('action helpers', () => {

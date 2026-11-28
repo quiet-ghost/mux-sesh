@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { handleCloseBatch } from '../src/handlers/actions'
+import { handleCloseBatch } from '../src/app/session-actions'
 import { CommandInterrupted } from '../src/multiplexer/command'
 import { workspaceToItem } from '../src/multiplexer/items'
 import type { LiveWorkspace, MultiplexerBackend, WorkspaceRef } from '../src/multiplexer/types'

@@ -16,9 +16,9 @@ import {
   useSelectionMemory,
 } from '../../src/app/effects'
 import { FocusOwner } from '../../src/app/focus-owner'
-import { createAppHandlers, handleSelectItem } from '../../src/app/handlers'
+import { createAppHandlers, handleSelectItem } from '../../src/app/action-feedback'
 import { useDetailsInspector } from '../../src/app/inspector'
-import { useAppKeyboard } from '../../src/app/keyboard'
+import { useAppKeyboard } from '../../src/app/keyboard/use-app-keyboard'
 import {
   getLaunchScope,
   planProjectRow,

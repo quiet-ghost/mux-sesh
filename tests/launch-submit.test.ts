@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 import type { OperationReport } from '../src/app/action-outcome'
-import { handleNewSessionSubmitWithPreview, type LaunchGuard } from '../src/app/handlers'
+import { handleNewSessionSubmitWithPreview, type LaunchGuard } from '../src/app/action-feedback'
 import {
   MultiplexerError,
   type CreatedSessionReceipt,

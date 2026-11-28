@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'bun:test'
-import { createAppHandlers } from '../src/app/handlers'
+import { createAppHandlers } from '../src/app/action-feedback'
 import { getDefaultConfig } from '../src/config'
 import { createHerdrBackend } from '../src/herdr/backend'
 import type { CommandRunner } from '../src/multiplexer/command'

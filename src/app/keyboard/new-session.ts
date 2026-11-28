@@ -1,5 +1,5 @@
-import { getActionKeyHint } from '../../app/action-catalog'
-import type { NewSessionStepControls } from '../../app/new-session-step'
+import { getActionKeyHint } from '../action-catalog'
+import type { NewSessionStepControls } from '../new-session-step'
 import { AppMode, ViewMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
 import {

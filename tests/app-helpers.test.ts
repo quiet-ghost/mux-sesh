@@ -16,7 +16,7 @@ import {
   reuseSessionItemIdentities,
 } from '../src/app/data'
 import { getSessionCommandState, getSettingsState } from '../src/app/derived'
-import { createAppHandlers, getPinnedSessionsAfterToggle } from '../src/app/handlers'
+import { createAppHandlers, getPinnedSessionsAfterToggle } from '../src/app/action-feedback'
 import { persistConfigUpdate, runWithErrorToast } from '../src/app/operations'
 import type { ToastInput } from '../src/app/notifications'
 import { OptionPicker } from '../src/app/option-picker'

@@ -15,20 +15,17 @@ import {
   type ListStepKind,
   type RuleRowControl,
 } from '../src/app/action-catalog'
-import { handleModalKeyboard } from '../src/app/modal-keyboard'
+import { handleModalKeyboard } from '../src/app/keyboard/modal-keyboard'
 import type { ModalState } from '../src/app/modals'
 import { OptionPicker } from '../src/app/option-picker'
 import { PendingClose } from '../src/app/pending-close'
 import { SettingPane } from '../src/app/setting-panes'
 import type { NewSessionStepControls } from '../src/app/new-session-step'
-import {
-  handleAgentsManageMode,
-  handleNewSessionMode,
-  handleNormalMode,
-  handleSearchMode,
-  type KeyboardHandlerContext,
-  type KeyboardInput,
-} from '../src/handlers/keyboard'
+import { handleAgentsManageMode } from '../src/app/keyboard/agents'
+import { handleNewSessionMode } from '../src/app/keyboard/new-session'
+import { handleNormalMode } from '../src/app/keyboard/normal'
+import { handleSearchMode } from '../src/app/keyboard/search'
+import type { KeyboardHandlerContext, KeyboardInput } from '../src/app/keyboard/shared'
 import type {
   SettingsControl,
   SettingsEntry,

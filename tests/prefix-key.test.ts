@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { PrefixKey } from '../src/config/prefix-key'
-import { matchesPrefixKey } from '../src/handlers/keyboard/shared'
+import { matchesPrefixKey } from '../src/app/keyboard/shared'
 
 describe('PrefixKey.parse', () => {
   test.each([

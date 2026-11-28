@@ -1,11 +1,8 @@
 import { describe, expect, mock, test } from 'bun:test'
-import {
-  handleNormalMode,
-  handleAgentsManageMode,
-  handleSearchMode,
-  type KeyboardHandlerContext,
-  type KeyboardInput,
-} from '../src/handlers/keyboard'
+import { handleAgentsManageMode } from '../src/app/keyboard/agents'
+import { handleNormalMode } from '../src/app/keyboard/normal'
+import { handleSearchMode } from '../src/app/keyboard/search'
+import type { KeyboardHandlerContext, KeyboardInput } from '../src/app/keyboard/shared'
 import { getActionTarget, type ActionContext } from '../src/app/action-catalog'
 import { PendingClose } from '../src/app/pending-close'
 import { AppMode, ViewMode, type Item } from '../src/types'

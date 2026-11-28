@@ -11,7 +11,7 @@ import {
   isExpectedActionFailure,
   isUncertainMutationFailure,
   reasonOf,
-} from '../app/action-outcome'
+} from './action-outcome'
 import { handoffOf } from '../multiplexer/focus-outcome'
 import {
   workspaceNoun,
@@ -57,7 +57,7 @@ import {
   openProjectSession,
   requireConfig,
   requireConfiguredItem,
-} from './action-helpers'
+} from './session-action-helpers'
 
 // What an open records, so search ranks it next time: the session it landed in and its directory.
 function launchKeys(backend: BackendKind, input: OpenWorkspaceInput): OpenKey[] {

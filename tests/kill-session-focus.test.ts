@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from 'bun:test'
-import { handleKillSession } from '../src/handlers/actions'
+import { handleKillSession } from '../src/app/session-actions'
 import { getItemKey } from '../src/multiplexer/items'
 import type { LiveWorkspace, MultiplexerBackend, WorkspaceRef } from '../src/multiplexer'
 import { CommandTimeoutError } from '../src/multiplexer/command'

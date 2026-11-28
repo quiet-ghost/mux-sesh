@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { handleRenameSubmitWithFeedback } from '../src/app/handlers'
+import { handleRenameSubmitWithFeedback } from '../src/app/action-feedback'
 import { getDefaultConfig } from '../src/config'
 import { workspaceToItem } from '../src/multiplexer/items'
 import { MultiplexerError } from '../src/multiplexer/types'

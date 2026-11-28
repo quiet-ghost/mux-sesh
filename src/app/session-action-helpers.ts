@@ -1,5 +1,5 @@
 import { dirname } from 'path'
-import { ActionRefused } from '../app/action-outcome'
+import { ActionRefused } from './action-outcome'
 import type { Config, Item } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 import type { OpenWorkspaceInput } from '../multiplexer/types'

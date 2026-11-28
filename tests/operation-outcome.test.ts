@@ -8,7 +8,7 @@ import {
   handleSettingsEditorSubmitWithFeedback,
   handleTogglePinnedSessionWithFeedback,
   type LaunchGuard,
-} from '../src/app/handlers'
+} from '../src/app/action-feedback'
 import { getDefaultConfig } from '../src/config'
 import { CommandTimeoutError } from '../src/multiplexer/command'
 import {
