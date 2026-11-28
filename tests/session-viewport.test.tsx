@@ -174,6 +174,7 @@ describe('responsive session viewport', () => {
     await screen.pressKey('o')
 
     expect(await selectedRowText(screen)).toMatch(listRow('.*agent-one .*session-03'))
-    expect(screen.calls).toEqual([{ operation: 'list' }])
+    // Startup lists once and the Herdr agent poll lists again on entry; no details are read.
+    expect(screen.calls).toEqual([{ operation: 'list' }, { operation: 'list' }])
   })
 })

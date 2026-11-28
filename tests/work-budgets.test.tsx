@@ -252,13 +252,15 @@ describe('navigation and query work budget at the baseline corpus', () => {
 
     await screen.settle()
     const spinnerStartsAtStartup = spinner.starts()
+    // Startup's own load spins the header; navigation below is measured from here.
+    const spinnerFrameReadsAtStartup = spinner.frameReads()
     expect(spinner.active()).toBe(0)
 
     for (let step = 1; step <= 10; step++) await screen.pressKey('ARROW_DOWN')
     expect(await selectedRowText(screen)).toMatch(listRow('.*session-010'))
     // Idle navigation starts no spinner timer and draws no spinner frame.
     expect(spinner.starts()).toBe(spinnerStartsAtStartup)
-    expect(spinner.frameReads()).toBe(0)
+    expect(spinner.frameReads()).toBe(spinnerFrameReadsAtStartup)
 
     await screen.pressKey('n')
     expect(await selectedRowText(screen)).toMatch(listRow('.*project-00000'))
@@ -329,6 +331,8 @@ describe('the header spinner runs only while work is pending', () => {
     const header = async () => (await screen.frame()).split('\n')[0] ?? ''
     expect(await header()).not.toMatch(/[⠋⠙⠹]/)
     expect(spinner.active()).toBe(0)
+    // Startup's own load spun the header once; the refresh below starts one more timer.
+    const startsAtStartup = spinner.starts()
 
     await screen.pressKey('x', { ctrl: true })
     await screen.pressKey('R', { shift: true })
@@ -345,7 +349,7 @@ describe('the header spinner runs only while work is pending', () => {
 
     expect(await header()).not.toMatch(/[⠋⠙⠹]/)
     expect(spinner.active()).toBe(0)
-    expect(spinner.starts()).toBe(1)
+    expect(spinner.starts()).toBe(startsAtStartup + 1)
   })
 })
 

@@ -183,11 +183,8 @@ describe('Projects view Enter', () => {
       const frame = await waitForText(screen, `Focus existing 'alpha' in ${join(root, 'alpha')}`)
       expect(readFooter(frame)).toMatchObject({
         global: screenHints(keybindMode),
-        // The live workspace is also a session row, which vim can close directly.
-        target:
-          keybindMode === 'vim'
-            ? hints(['focus', 'enter'], ['close', 'd'])
-            : hints(['focus', 'enter']),
+        // A project row linked to a live workspace focuses it; closing needs the session row.
+        target: hints(['focus', 'enter']),
       })
 
       await screen.pressKey('RETURN')

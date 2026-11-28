@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import type { LiveWorkspace, WorkspaceRef } from '../src/multiplexer'
 import { renderSessionScreen } from './fixtures/session-screen'
 import { listRow, selectedRowText } from './fixtures/selection'
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 function workspace(id: string, title: string): LiveWorkspace {
   return { backend: 'herdr', id, title, path: `/fixture/${title}`, isActive: false, unitCount: 1 }
@@ -52,15 +53,29 @@ describe('the picker starts on the current session', () => {
   })
 
   test('a current session known before the first list waits for that list', async () => {
-    const listed: LiveWorkspace[] = []
+    // The first list lands only after the current session has been read.
+    const currentRead = Promise.withResolvers<void>()
 
-    screen = await renderSessionScreen(
-      { width: 80, height: 20 },
-      { workspaces: listed, current: async () => GAMMA }
-    )
+    const backend = unsupportedBackend({
+      kind: 'herdr',
+      capabilities: { previousWorkspace: false },
+      async list() {
+        await currentRead.promise
+
+        return workspaces
+      },
+      async details(workspace) {
+        return { workspace, isActive: false, unitLabel: 'Tabs', units: [], agents: [] }
+      },
+      async current() {
+        currentRead.resolve()
+
+        return GAMMA
+      },
+    })
+
+    screen = await renderSessionScreen({ width: 80, height: 20 }, { backend })
     await screen.settle()
-    listed.push(...workspaces)
-    await screen.refresh()
 
     expect(await selectedRowText(screen)).toMatch(listRow('. gamma'))
   })

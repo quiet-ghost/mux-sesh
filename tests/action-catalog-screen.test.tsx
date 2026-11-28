@@ -112,6 +112,9 @@ async function enterAgents(fixture: Screen, keybindMode: KeybindMode): Promise<v
 describe('actions on an empty session list', () => {
   test.each(MODES)('%s palette runs global actions', async keybindMode => {
     screen = await renderSessionScreen({ width: 120, height: 36 }, { keybindMode, workspaces: [] })
+    // Startup with no sessions lands on Projects; these actions belong to the empty Sessions view.
+    await runPaletteCommand(screen, 'Show sessions')
+    await screen.settle()
 
     await screen.pressKey('p', { ctrl: true })
     const palette = await screen.frame()

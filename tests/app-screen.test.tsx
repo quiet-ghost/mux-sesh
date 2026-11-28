@@ -4,7 +4,7 @@ import { RGBA, TextareaRenderable } from '@opentui/core'
 import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import { MultiplexerError } from '../src/multiplexer/types'
 import { resolveTheme } from '../src/styles/theme'
-import { renderControllerScreen, renderSessionScreen } from './fixtures/session-screen'
+import { renderSessionScreen } from './fixtures/session-screen'
 import { listRow, selectedRowText } from './fixtures/selection'
 import { unsupportedBackend } from './fixtures/fake-backend'
 
@@ -27,7 +27,7 @@ describe('production session screen', () => {
     { width: 80, height: 24 },
     { width: 120, height: 36 },
   ])('moves the selected row at $width x $height', async dimensions => {
-    screen = await renderControllerScreen(dimensions)
+    screen = await renderSessionScreen(dimensions)
 
     expect(await selectedRowText(screen)).toMatch(listRow('.*alpha'))
     expect(screen.captureSpans()).toMatchObject({ cols: dimensions.width, rows: dimensions.height })

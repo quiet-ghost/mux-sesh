@@ -125,11 +125,14 @@ test('a defect while selecting reaches crash recovery instead of escaping as an 
 test('a synchronous defect inside a key handler reaches crash recovery', async () => {
   screen = await renderSessionScreen({ width: 120, height: 36 }, { workspaces: [alpha] })
 
-  // The fixture's rename submit throws synchronously, so confirming a rename throws inside the key
-  // callback. (Before DEV-343 this used d d, which no longer closes anything without a review.)
+  // The fixture backend's rename throws synchronously, so confirming a new name throws a defect
+  // from the key's action. (Before DEV-343 this used d d, which no longer closes anything without
+  // a review.) ActionOwner's own tests cover a task that throws before returning a promise.
   await screen.pressKey('x', { ctrl: true })
   await screen.pressKey('r')
+  await screen.typeText('-renamed')
   await screen.pressKey('RETURN')
+  await screen.settle()
 
   expect(screen.defects).toHaveLength(1)
   expect(String(screen.defects[0])).toContain('does not implement that action')
