@@ -35,6 +35,23 @@ herdr status
 mux-sesh
 ```
 
+To open it as a popup, add a custom command to Herdr's `config.toml`, then run
+`herdr server reload-config`:
+
+```toml
+[[keys.command]]
+key = "prefix+alt+w"
+type = "popup"
+command = "mux-sesh"
+description = "mux-sesh"
+width = "70%"
+height = "70%"
+```
+
+A popup doesn't receive `HERDR_ENV`, so mux-sesh finds the running Herdr server through
+[Backend Selection](configuration.md#backend-selection), unless your config sets
+`"backend": "tmux"`. The cursor starts on the workspace under the popup.
+
 Herdr workspaces, tabs, and panes appear as sessions, windows, and panes. See
 [Backend Selection](configuration.md#backend-selection) for how mux-sesh picks a backend.
 
@@ -289,18 +306,25 @@ terminal, so run `reset` if it is left in a bad state.
 
 ## Install From Source
 
-If you want the compiled standalone binary, build from source.
-
-Prerequisites:
-
-- [Bun](https://bun.sh) 1.3.14 or newer
-- [Zig](https://ziglang.org) for compiling OpenTUI
+A checkout runs from source with Bun, or compiles the same standalone binary the npm packages ship.
+Use the Bun version in `package.json`'s `packageManager` field.
 
 ```bash
 git clone https://github.com/quiet-ghost/mux-sesh.git
 cd mux-sesh
 bun install
-bun run build
+bun run dev
 ```
 
-The compiled binary is written to `dist/mux-sesh`.
+`bun run dev` (or `bin/mux-sesh`) runs from source with your real config.
+
+- `bun run build` compiles this machine's binary to `dist/npm/mux-sesh-<target>/bin/mux-sesh`.
+- `bun run smoke:binary` checks that binary without tmux, Herdr or your config.
+  `MUX_SESH_BINARY_SMOKE=1 bun test tests/compiled-binary.test.ts` runs the same check.
+- `bun run build:all` cross-compiles every target. It needs every platform's native packages:
+  `bun install --frozen-lockfile --os='*' --cpu='*' --libc='*'`.
+- `bun run pack` writes the npm packages to `dist/npm`. `build` and `pack` take
+  `--version <semver>` to stamp a version other than `package.json`'s.
+- `bun run check:upgrade` is a pre-release check. It installs the published 1.10.0 with npm and
+  with Bun into a temporary prefix and runs 1.10's own updater, and also installs fresh and over
+  1.10 by hand. The new version comes from a registry on 127.0.0.1, so nothing is published.

@@ -1,128 +1,110 @@
 # mux-sesh
 
-Keyboard-driven tmux session and Herdr workspace switching from a terminal UI.
+A keyboard-driven picker for tmux sessions and Herdr workspaces. Switch to what's running, start a
+session from any project, and close what you're done with, all from one popup.
 
 <p align="center">
   <img src="screenshot.png" alt="mux-sesh screenshot" width="800">
 </p>
 
-## Why mux-sesh
+- **Switch fast:** live sessions, pinned sessions and agent panes in one list, with fuzzy search
+  that learns what you open.
+- **Start from a project:** pick a folder, a file or a GitHub URL. mux-sesh shows exactly what
+  Enter will do (focus, create or clone) before it does it.
+- **Close safely:** every close is confirmed, and nothing but the session itself is ever removed.
+- **Configure in the app:** a settings screen with real editors, saved to one JSON file.
 
-- Switch between live tmux sessions or Herdr workspaces without leaving the keyboard.
-- Launch local projects from a single, searchable picker.
-- Keep reusable project rules in config instead of shell scripts.
-- See what Enter will do before it runs, and confirm every close before anything is closed.
+## Install
 
-## Quick Start
-
-`mux-sesh` talks directly to tmux or Herdr. Herdr needs no mux-sesh plugin.
-
-Prerequisites:
-
-- [tmux](https://github.com/tmux/tmux/wiki) or Herdr 0.7.5 or newer
-- [git](https://git-scm.com) for cloning GitHub repositories from the new-session flow
-
-Install globally:
+You need **tmux** or **Herdr 0.7.5 or newer**, and **git** if you want to clone repositories from
+mux-sesh. Pick one:
 
 ```bash
 npm install -g mux-sesh
-# or
+```
+
+```bash
 bun install -g mux-sesh
 ```
 
-The package installs a prebuilt binary for Linux (x64 or arm64, glibc or musl) or macOS (x64 or
-arm64), so running mux-sesh needs neither Bun nor Node. x64 CPUs without AVX2 get a baseline
-build. If mux-sesh reports a missing prebuilt binary, reinstall without `--omit=optional`: the
-binary ships as an optional dependency.
+```bash
+mise use -g npm:mux-sesh
+```
 
-With `auto_update` on (the default), npm and Bun installs update themselves in the background.
-Installs managed by mise (`npm:mux-sesh`) or Homebrew are left to that tool: mux-sesh shows the
-command to run instead, for example `mise upgrade npm:mux-sesh`.
+The package installs a prebuilt binary, so mux-sesh doesn't need Bun or Node at runtime. Supported
+platforms are Linux (x64 and arm64, glibc and musl) and macOS (x64 and arm64), with a baseline
+build for x64 CPUs without AVX2. The binary ships as an optional dependency, so don't install with
+`--omit=optional`.
 
-Run it:
+Check it works:
 
 ```bash
 mux-sesh
 ```
 
-Recommended tmux binding:
+### Updating
+
+With `auto_update` on (the default), npm and Bun installs update themselves in the background;
+the status line tells you to restart when a new version is ready. mise and Homebrew installs are
+left to their own tool, and mux-sesh shows the command to run, such as `mise upgrade npm:mux-sesh`.
+
+Upgrading from 1.x? Read the [CHANGELOG](CHANGELOG.md) first: 2.0 validates your config and
+changes a few defaults.
+
+To uninstall, use the same tool: `npm uninstall -g mux-sesh`, `bun remove -g mux-sesh` or
+`mise uninstall npm:mux-sesh`.
+
+## Open it from a key
+
+mux-sesh works best as a popup over your current work.
+
+**tmux:** add this to `~/.tmux.conf`, then reload with `tmux source-file ~/.tmux.conf`:
 
 ```tmux
 bind-key -n M-w popup -E -w 62% -h 70% "mux-sesh"
 ```
 
-Reload tmux after adding the binding:
+`Alt+W` now opens the picker. To start new sessions in the current pane's directory, add
+`-d "#{pane_current_path}"` before `"mux-sesh"`.
 
-```bash
-tmux source-file ~/.tmux.conf
+**Herdr:** add a popup command to Herdr's `config.toml`, then run `herdr server reload-config`:
+
+```toml
+[[keys.command]]
+key = "prefix+alt+w"
+type = "popup"
+command = "mux-sesh"
+description = "mux-sesh"
+width = "70%"
+height = "70%"
 ```
 
-## How It Works
+You can also run `mux-sesh` from any shell. Without tmux or Herdr around it, mux-sesh uses a
+running Herdr server first, then tmux (see [Backend Selection](docs/configuration.md#backend-selection)).
 
-- Sessions view shows live tmux sessions or Herdr workspaces, plus listed configured targets.
-- Projects view shows scanned or configured directories.
-- New is project-first: a summary row names exactly what Enter will do (create, focus, or
-  clone), and Enter runs that plan. A project already open in the same directory is focused.
-- New's steps rename the planned session (`ctrl+n`), change its startup command (`ctrl+t`),
-  create a named session in the directory you started from (`ctrl+g`), or open a file found with
-  [fff](https://github.com/dmtrKovalenko/fff) (`ctrl+o`).
-- Pasting a GitHub URL into New clones it into `repos_path`. URLs with credentials are refused,
-  an existing destination is reused only after it is verified, and nothing is ever deleted.
-- Closing is confirmed: `d` tints the row and a second `d` closes it, and `m` marks rows for a
-  reviewed batch close. Only tmux sessions or Herdr workspaces are closed; no files, worktrees, or
-  branches are deleted.
-- The details panel is compact by default; Toggle details (`v`) inspects the selected row.
-- The Agents section lists tmux agent sessions and each Herdr agent pane; Herdr agent panes are
-  read-only here.
-- Searches rank what you open often a little higher. Session names, directories, open counts and
-  times are kept in `~/.local/state/mux-sesh/frecency.jsonl` and never leave your machine; delete
-  the file to clear it, or set `"search_history": false`. See
-  [Search History](docs/configuration.md#search-history).
+## Use it
 
-Full walkthroughs: [docs/workflows.md](docs/workflows.md)
+The picker opens on the session you're in. Type to search (in `vim` mode, press `i` first), move
+with `j`/`k` or the arrows, and press `enter` to switch.
 
-Herdr concepts map directly into the UI:
+| To…                                     | Do this                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------- |
+| Switch to a session                     | Select it and press `enter`, or press `1`–`9` for a visible row           |
+| Start a session from a project          | Press `n`, pick a project or folder (or paste a GitHub URL), then `enter` |
+| Open a file in a new session            | In New: `ctrl+o`, type a file name or path, then `enter`                  |
+| Change the new session before it starts | In New: `ctrl+n` renames it, `ctrl+t` changes its startup command         |
+| Start a session in the current folder   | In New: `ctrl+g`                                                          |
+| Close a session                         | Press `d`, then `d` again to confirm; any other key cancels               |
+| Close several sessions                  | Mark each with `m`, then press `d` to review and confirm them together    |
+| See details about the selected row      | `v`                                                                       |
+| Run any command, change the theme       | `ctrl+p`, then type, such as `theme` or `settings`                        |
 
-| mux-sesh | Herdr     |
-| -------- | --------- |
-| Session  | Workspace |
-| Window   | Tab       |
-| Pane     | Pane      |
+New shows a summary line that says exactly what `enter` will do, for example
+`Focus existing 'api' in ~/dev/api`. Cloning a GitHub URL goes into your `repos_path` and never
+deletes anything. Closing only ever closes the tmux session or Herdr workspace: files, worktrees
+and branches are never touched.
 
-Backend detection uses `HERDR_ENV=1`, then `TMUX`, then an explicit `backend`. Without one,
-auto detection prefers a running, protocol-compatible Herdr, then installed tmux (whether or not
-its server is running). An explicit `backend` checks only that backend and never falls back.
-
-```json
-{ "backend": "herdr" }
-```
-
-Explicit Herdr selection is strict: its server must already run, and mux-sesh never starts it.
-If a backend is unusable, a startup screen says why and `r` retries. Config changes apply on the
-next mux-sesh launch.
-
-## Minimal Configuration
-
-Config lives at `~/.config/mux-sesh/config.json`.
-
-```json
-{
-  "project_paths": ["~/dev"],
-  "repos_path": "~/dev/repos",
-  "keybind_mode": "vim",
-  "prefix_key": "ctrl+x",
-  "theme": "rosepine",
-  "default_session": {
-    "startup_command": "nvim"
-  }
-}
-```
-
-Full configuration reference: [docs/configuration.md](docs/configuration.md). For editor
-completion, [`mux-sesh.schema.json`](mux-sesh.schema.json) is generated from the same contract
-that validates the config at startup.
-
-## Essential Keys
+### Essential keys
 
 Default mode is `vim`, with `ctrl+x` as the prefix for secondary actions.
 
@@ -141,28 +123,63 @@ Default mode is `vim`, with `ctrl+x` as the prefix for secondary actions.
 | `ctrl+x r` | Rename session                                                         |
 | `ctrl+p`   | Command palette; type `theme` for the theme picker                     |
 
-Move with `j` / `k`, open a visible row with `1`–`9`, and quit with `q` or `esc`. In text fields,
-letters type; only arrows, `enter`, `esc`, and `ctrl+…` keys act.
+Quit with `q` or `esc`. In text fields, letters type; only arrows, `enter`, `esc` and `ctrl+…`
+keys act. Prefer typing straight into search? Set `"keybind_mode": "standard"`. Every key for both
+modes: [docs/keybindings.md](docs/keybindings.md).
 
-Full keybinding reference, including standard mode: [docs/keybindings.md](docs/keybindings.md)
+## Set it up
 
-## Crash recovery
+mux-sesh runs with no config. To tell it where your projects live, open **Settings**
+(`ctrl+p`, then `settings`) or edit `~/.config/mux-sesh/config.json`:
 
-mux-sesh disables OpenTUI's automatic error console so a crash cannot trap the terminal. When the
-UI fails, a recovery screen shows a diagnostics report: `c` copies it, `o` reviews sharing it as
-a prefilled GitHub issue (nothing is sent unless you confirm), `r` retries, and `q` quits.
-Redaction is pattern-based, so read the report before sharing. Opening the prefilled issue sends
-it to github.com and your browser history even if you never submit it.
+```json
+{
+  "project_paths": ["~/dev"],
+  "repos_path": "~/dev/repos",
+  "theme": "rosepine",
+  "default_session": {
+    "startup_command": "nvim"
+  }
+}
+```
 
-Uncaught errors outside the UI restore the terminal, print the report, and exit with status 1. A
-native crash or `SIGKILL` cannot show either. Details: [Crash Recovery](docs/workflows.md#crash-recovery)
+- `project_paths`: folders scanned for projects and searched by New.
+- `repos_path`: where GitHub URLs are cloned.
+- `default_session.startup_command`: what runs in a new session.
+- `theme`: any built-in theme, or `system` to follow Omarchy or your terminal.
+
+Changes from Settings save immediately. Edits to the file apply the next time mux-sesh starts. If
+the file has an invalid value, mux-sesh shows which field is wrong instead of starting, and never
+changes the file; fix it and press `r`. For completion and validation in your editor, point it at
+[`mux-sesh.schema.json`](mux-sesh.schema.json).
+
+Project rules (a fixed session name, a startup command or an icon per project), wildcard rules,
+pinned and hidden sessions, sorting, zoxide and themes are all covered in
+[docs/configuration.md](docs/configuration.md).
+
+### Search history
+
+Searches rank what you open often a little higher. Names, folders and open counts are kept in
+`~/.local/state/mux-sesh/frecency.jsonl` and never leave your machine. Delete the file to clear it,
+or set `"search_history": false`. See [Search History](docs/configuration.md#search-history).
+
+## When something goes wrong
+
+- **mux-sesh won't start:** a startup screen names the problem (an invalid config field, or no
+  usable tmux or Herdr) and what to do. Press `r` to retry after fixing it.
+- **"no prebuilt binary":** reinstall without `--omit=optional`.
+- **A crash:** a recovery screen shows a diagnostics report. `c` copies it, `o` asks before opening
+  a prefilled GitHub issue (opening it sends the report to GitHub), `r` recovers and `q` quits. The
+  report is redacted, but read it before sharing.
+
+More: [Crash Recovery](docs/workflows.md#crash-recovery).
 
 ## Docs
 
-- [Configuration](docs/configuration.md)
-- [Themes](docs/themes.md)
-- [Keybindings](docs/keybindings.md)
-- [Workflows](docs/workflows.md)
+- [Workflows](docs/workflows.md): step-by-step guides for every task
+- [Configuration](docs/configuration.md): every option and rule
+- [Keybindings](docs/keybindings.md): every key, in vim and standard mode
+- [Themes](docs/themes.md): built-in themes, custom themes and Omarchy
 - [Changelog](CHANGELOG.md)
 
 ## Development
@@ -171,26 +188,14 @@ native crash or `SIGKILL` cannot show either. Details: [Crash Recovery](docs/wor
 bun install
 bun run typecheck
 bun test
+bun run dev
 ```
 
-A checkout runs from source with Bun (`bun run dev`, or `bin/mux-sesh`).
-
-To see the failure screens from source:
-
-- `bun run dev:config-error` opens with an invalid config, in a throwaway config folder.
-- `bun run dev:backend-error` opens with tmux and Herdr hidden, so no backend is found.
-- `bun run dev:crash` uses your real config and crashes once after the first screen; `r` recovers.
-
-- `bun run build` compiles this machine's binary to `dist/npm/mux-sesh-<target>/bin/mux-sesh`.
-- `bun run smoke:binary` checks that binary without tmux, Herdr, or your config.
-  `MUX_SESH_BINARY_SMOKE=1 bun test tests/compiled-binary.test.ts` runs the same check.
-- `bun run build:all` cross-compiles every target. It needs every platform's native packages:
-  `bun install --frozen-lockfile --os='*' --cpu='*' --libc='*'`.
-- `bun run pack` writes the npm packages to `dist/npm`. `build` and `pack` take `--version <semver>`
-  to stamp a version other than `package.json`'s.
-- `bun run check:upgrade` is a pre-release check. It installs the published 1.10.0 with npm and with Bun
-  into a temporary prefix and runs 1.10's own updater. It also installs fresh, and over 1.10 by hand.
-  The new version comes from a registry on 127.0.0.1, so nothing is published.
+`bun run dev` runs from source with your real config. `bun run dev:config-error`,
+`dev:backend-error` and `dev:crash` open each failure screen. [AGENTS.md](AGENTS.md) describes the
+source layout, every script, the test conventions and the rules for never touching a live tmux or
+Herdr session from tests. Builds, packing and release checks are in
+[Install From Source](docs/workflows.md#install-from-source).
 
 ## License
 
@@ -198,5 +203,6 @@ MIT. See [LICENSE](LICENSE).
 
 ## Related
 
-- [mux-manager](https://github.com/quiet-ghost/mux-manager) for Telescope-based tmux session management inside Neovim
+- [mux-manager](https://github.com/quiet-ghost/mux-manager) for Telescope-based tmux session
+  management inside Neovim
 - Built with [OpenTUI](https://github.com/anomalyco/opentui)
