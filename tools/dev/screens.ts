@@ -90,6 +90,26 @@ export function planDevScreen(
   }
 }
 
+export interface DevScreenExit {
+  readonly exitCode: number
+  readonly note?: string
+}
+
+// Quitting a failure screen exits mux-sesh with 1. Here that is the expected end, so the wrapper
+// says so instead of letting Bun report a failed script.
+export function devScreenExit(screen: DevScreen, code: number): DevScreenExit {
+  if (code === 0) return { exitCode: 0 }
+
+  if (code === 1) {
+    return {
+      exitCode: 0,
+      note: `dev:${screen}: closed the screen (mux-sesh exits 1 after a failure screen)`,
+    }
+  }
+
+  return { exitCode: code, note: `dev:${screen}: mux-sesh exited with code ${code}` }
+}
+
 async function main(): Promise<number> {
   const parsed = parseDevScreen(process.argv[2])
 
@@ -120,7 +140,11 @@ async function main(): Promise<number> {
       stdio: ['inherit', 'inherit', 'inherit'],
     })
 
-    return await child.exited
+    const exit = devScreenExit(parsed.screen, await child.exited)
+
+    if (exit.note) console.error(exit.note)
+
+    return exit.exitCode
   } finally {
     await rm(scratch, { recursive: true, force: true })
   }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { join } from 'path'
-import { DEV_SCREENS, parseDevScreen, planDevScreen } from '../tools/dev/screens'
+import { DEV_SCREENS, devScreenExit, parseDevScreen, planDevScreen } from '../tools/dev/screens'
 
 const base = {
   HOME: '/home/tester',
@@ -54,6 +54,18 @@ describe('dev failure screens', () => {
     expect(plan.env.XDG_CONFIG_HOME).toBe('/home/tester/.config')
     expect(plan.env.TMUX).toBe(base.TMUX)
     expect(plan.files).toEqual([])
+  })
+
+  test('closing a failure screen is a success for the dev command, so Bun prints no error', () => {
+    expect(devScreenExit('crash', 1)).toEqual({
+      exitCode: 0,
+      note: 'dev:crash: closed the screen (mux-sesh exits 1 after a failure screen)',
+    })
+    expect(devScreenExit('config-error', 0)).toEqual({ exitCode: 0 })
+    expect(devScreenExit('backend-error', 130)).toEqual({
+      exitCode: 130,
+      note: 'dev:backend-error: mux-sesh exited with code 130',
+    })
   })
 
   test('an unknown screen names the ones that exist', () => {
