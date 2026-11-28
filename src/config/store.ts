@@ -1,5 +1,6 @@
 import { mkdir, rename } from 'fs/promises'
 import { dirname } from 'path'
+import * as Data from 'effect/Data'
 import * as Option from 'effect/Option'
 import * as Result from 'effect/Result'
 import * as Schema from 'effect/Schema'
@@ -7,6 +8,36 @@ import type { Config } from '../types'
 import { CONFIG_DOCUMENT_KEYS, checkConfigDocument, ConfigInvalid } from './config-document'
 import { getConfigPath, getHomeDir } from './paths'
 import { getDefaultConfig, normalizeConfig, serializeConfig } from './config-normalize'
+
+// The config file is not valid JSON; it was left as it is.
+export class ConfigUnparseable extends Data.TaggedError('ConfigUnparseable')<{
+  readonly configPath: string
+  readonly message: string
+  readonly cause: Schema.SchemaError
+}> {
+  constructor(configPath: string, cause: Schema.SchemaError) {
+    super({
+      configPath,
+      cause,
+      message: `Failed to parse mux-sesh config at ${configPath}: it is not valid JSON. Fix the JSON or move the file aside; existing config was not overwritten.`,
+    })
+  }
+}
+
+// A save found the file no longer valid JSON, so it refused to overwrite it.
+export class ConfigSaveRefused extends Data.TaggedError('ConfigSaveRefused')<{
+  readonly configPath: string
+  readonly message: string
+  readonly cause: Schema.SchemaError
+}> {
+  constructor(configPath: string, cause: Schema.SchemaError) {
+    super({
+      configPath,
+      cause,
+      message: `The mux-sesh config at ${configPath} is no longer valid JSON, so the change was not saved. Fix the file, then try again.`,
+    })
+  }
+}
 
 type ReadDocument =
   | { readonly kind: 'missing' }
@@ -42,10 +73,7 @@ export async function loadConfig(): Promise<Config> {
 
   if (read.kind === 'unparseable') {
     // The parser's own message can quote file content, so it stays in the cause, not the text.
-    throw new Error(
-      `Failed to parse mux-sesh config at ${configPath}: it is not valid JSON. Fix the JSON or move the file aside; existing config was not overwritten.`,
-      { cause: read.cause }
-    )
+    throw new ConfigUnparseable(configPath, read.cause)
   }
 
   const issues = checkConfigDocument(read.document)
@@ -72,10 +100,7 @@ export async function saveConfig(config: Config, homeDir = getHomeDir()): Promis
   const existing = await readDocument(configPath)
 
   if (existing.kind === 'unparseable') {
-    throw new Error(
-      `The mux-sesh config at ${configPath} is no longer valid JSON, so the change was not saved. Fix the file, then try again.`,
-      { cause: existing.cause }
-    )
+    throw new ConfigSaveRefused(configPath, existing.cause)
   }
 
   const preserved: Readonly<Record<string, Schema.Json>> =

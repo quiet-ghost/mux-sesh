@@ -1,3 +1,4 @@
+import * as Data from 'effect/Data'
 import type { CommandOptions } from './command'
 
 export type BackendKind = 'tmux' | 'herdr'
@@ -120,12 +121,14 @@ export type MultiplexerErrorCode =
   | 'invalid-response'
   | 'unsupported'
 
-export class MultiplexerError extends Error {
-  constructor(
-    readonly code: MultiplexerErrorCode,
-    message: string
-  ) {
-    super(message)
-    this.name = 'MultiplexerError'
+// `name` is an own field so crash diagnostics name the error in its stack header.
+export class MultiplexerError extends Data.TaggedError('MultiplexerError')<{
+  readonly code: MultiplexerErrorCode
+  readonly message: string
+}> {
+  override readonly name = 'MultiplexerError'
+
+  constructor(code: MultiplexerErrorCode, message: string) {
+    super({ code, message })
   }
 }

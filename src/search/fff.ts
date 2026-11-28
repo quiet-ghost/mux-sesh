@@ -1,6 +1,7 @@
 import { basename, join } from 'path'
 import { homedir } from 'os'
 import type { MixedSearchResult } from '@ff-labs/fff-bun'
+import * as Data from 'effect/Data'
 import { rankItems } from './index'
 import type { Config, Item } from '../types'
 
@@ -22,12 +23,15 @@ interface ScoredItem {
 
 type FffModule = typeof import('@ff-labs/fff-bun')
 
-export class FileSearchUnavailableError extends Error {
-  readonly _tag = 'FileSearchUnavailableError'
+// `name` is an own field so crash diagnostics name the error in its stack header.
+export class FileSearchUnavailableError extends Data.TaggedError('FileSearchUnavailableError')<{
+  readonly message: string
+  readonly cause?: unknown
+}> {
+  override readonly name = 'FileSearchUnavailableError'
 
   constructor(reason: string, options?: ErrorOptions) {
-    super(reason, options)
-    this.name = 'FileSearchUnavailableError'
+    super(options === undefined ? { message: reason } : { message: reason, cause: options.cause })
   }
 }
 
@@ -196,12 +200,13 @@ export function combineFileSearchResults(
   return [...ranked.map(result => result.item), ...typoOnlyItems]
 }
 
-export class FileSearchFailedError extends Error {
-  readonly _tag = 'FileSearchFailedError'
+export class FileSearchFailedError extends Data.TaggedError('FileSearchFailedError')<{
+  readonly message: string
+}> {
+  override readonly name = 'FileSearchFailedError'
 
   constructor(reason: string) {
-    super(reason)
-    this.name = 'FileSearchFailedError'
+    super({ message: reason })
   }
 }
 
