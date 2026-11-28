@@ -16,9 +16,10 @@ on:
         required: false
         type: string
 
+# id-token lets npm trusted publishing (OIDC) authenticate this workflow and sign provenance.
 permissions:
   contents: write
-  packages: write
+  id-token: write
 
 jobs:
   publish:
@@ -32,6 +33,17 @@ jobs:
         uses: ./.github/actions/setup-bun
         with:
           all-platforms: true
+
+      # Trusted publishing needs npm 11.5.1 or newer.
+      - name: Setup Node and npm
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - name: Update npm
+        run: npm install -g npm@11
 
       - name: Type check
         run: bun run typecheck
@@ -58,6 +70,23 @@ jobs:
       - name: Pack npm packages
         run: bun tools/build/pack.ts > dist/packed.txt
 
+      # Trusted publishing and provenance require each package to name this exact repository.
+      - name: Check package repository URLs
+        run: |
+          expected="git+https://github.com/${{ github.repository }}.git"
+          failed=0
+
+          while read -r directory; do
+            actual="$(jq -r '.repository.url // ""' "$directory/package.json")"
+
+            if [ "$actual" != "$expected" ]; then
+              echo "::error::$directory/package.json repository.url is '$actual', expected '$expected'."
+              failed=1
+            fi
+          done < dist/packed.txt
+
+          exit "$failed"
+
       - name: Commit version bump
         run: |
           git config user.name "github-actions[bot]"
@@ -66,12 +95,11 @@ jobs:
           git commit -m "chore: release v${{ steps.version.outputs.version }}"
           git tag "v${{ steps.version.outputs.version }}"
 
-      - name: Setup npm auth
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-
       # pack lists the platform packages first, so mux-sesh is published once its binaries exist.
       # Versions already on the registry are skipped: retry a failed run with the same `version` input.
+      # npm authenticates with trusted publishing (OIDC) where a package has it configured, and falls
+      # back to NPM_TOKEN otherwise, e.g. for a platform package's first publish. Provenance is signed
+      # either way.
       - name: Publish to npm
         run: |
           while read -r directory; do
@@ -83,7 +111,7 @@ jobs:
               continue
             fi
 
-            npm publish "$directory"
+            npm publish "$directory" --provenance --access public
           done < dist/packed.txt
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
