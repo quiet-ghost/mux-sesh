@@ -4,19 +4,23 @@ import * as Schema from 'effect/Schema'
 import * as SchemaAST from 'effect/SchemaAST'
 import * as SchemaIssue from 'effect/SchemaIssue'
 
-// Validates the JSON document as written. The normalizer still maps aliases and applies defaults;
-// this only guarantees that every supplied field is usable, instead of silently dropping it.
+// Validates the JSON document as written. The normalizer maps aliases and applies defaults, reading
+// each field with the schemas below; this guarantees that every supplied field is usable, instead
+// of silently dropping it.
 
 const Text = Schema.String.annotate({ description: 'text' })
 
-const NonEmptyText = Schema.String.check(Schema.isMinLength(1)).annotate({
+export const NonEmptyText = Schema.String.check(Schema.isMinLength(1)).annotate({
   description: 'a non-empty string',
 })
 
 const TextList = Schema.Array(NonEmptyText).annotate({ description: 'a list of non-empty strings' })
-const Flag = Schema.Boolean.annotate({ description: 'true or false' })
+export const Flag = Schema.Boolean.annotate({ description: 'true or false' })
 
-const PositiveInteger = Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0)).annotate({
+export const PositiveInteger = Schema.Number.check(
+  Schema.isInt(),
+  Schema.isGreaterThan(0)
+).annotate({
   description: 'a whole number of at least 1',
 })
 
@@ -25,6 +29,14 @@ function oneOf<const L extends readonly [string, ...string[]]>(literals: L) {
     description: literals.map(literal => `"${literal}"`).join(' or '),
   })
 }
+
+export const BackendChoice = oneOf(['tmux', 'herdr'])
+export const KeybindChoice = oneOf(['vim', 'standard'])
+export const ZoxideChoice = oneOf(['off', 'rank', 'merge'])
+
+export const SortChoice = oneOf(['live-first', 'configured-first', 'zoxide-first', 'alphabetical'])
+
+export const ColorSchemeChoice = oneOf(['light', 'dark', 'system'])
 
 function aliased<S extends Schema.Top>(snake: string, camel: string, schema: S) {
   return { [snake]: Schema.optionalKey(schema), [camel]: Schema.optionalKey(schema) }
@@ -87,21 +99,17 @@ const SessionDefaults = Schema.Struct({
 }).annotate({ description: 'a default session object' })
 
 export const ConfigDocument = Schema.Struct({
-  backend: Schema.optionalKey(oneOf(['tmux', 'herdr'])),
+  backend: Schema.optionalKey(BackendChoice),
   ...aliased('project_paths', 'projectPaths', TextList),
   ...aliased('repos_path', 'reposPath', Text),
   editor: Schema.optionalKey(Text),
   ...aliased('editor_cmd', 'editorCmd', Text),
-  ...aliased('keybind_mode', 'keybindMode', oneOf(['vim', 'standard'])),
+  ...aliased('keybind_mode', 'keybindMode', KeybindChoice),
   ...aliased('prefix_key', 'prefixKey', Text),
-  ...aliased('zoxide_mode', 'zoxideMode', oneOf(['off', 'rank', 'merge'])),
-  ...aliased(
-    'sort_order',
-    'sortOrder',
-    oneOf(['live-first', 'configured-first', 'zoxide-first', 'alphabetical'])
-  ),
+  ...aliased('zoxide_mode', 'zoxideMode', ZoxideChoice),
+  ...aliased('sort_order', 'sortOrder', SortChoice),
   theme: Schema.optionalKey(Text),
-  ...aliased('color_scheme', 'colorScheme', oneOf(['light', 'dark', 'system'])),
+  ...aliased('color_scheme', 'colorScheme', ColorSchemeChoice),
   themes: Schema.optionalKey(Schema.Record(Schema.String, ThemeDefinition)),
   ...aliased('auto_update', 'autoUpdate', Flag),
   ...aliased('search_history', 'searchHistory', Flag),

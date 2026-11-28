@@ -2,19 +2,25 @@ import { join } from 'path'
 import * as Schema from 'effect/Schema'
 import type {
   Config,
-  BackendPreference,
   IconConfig,
-  KeybindMode,
   ProjectProfile,
   ProjectWildcard,
   SessionDefaults,
-  SortOrder,
   ThemeColorScheme,
   ThemeDefinition,
   ThemePalette,
   ThemeVariant,
-  ZoxideMode,
 } from '../types'
+import {
+  BackendChoice,
+  ColorSchemeChoice,
+  Flag,
+  KeybindChoice,
+  NonEmptyText,
+  PositiveInteger,
+  SortChoice,
+  ZoxideChoice,
+} from './config-document'
 
 const DEFAULT_EDITOR = 'nvim'
 const DEFAULT_THEME = 'rosepine'
@@ -46,18 +52,25 @@ type DocumentValue = Schema.Json | undefined
 
 const isRecord = Schema.is(Schema.JsonObject)
 const isJsonArray = Schema.is(Schema.Array(Schema.Json))
-const isNonEmptyText = Schema.is(Schema.String.check(Schema.isMinLength(1)))
-const isFlag = Schema.is(Schema.Boolean)
-const isPositiveInteger = Schema.is(Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0)))
+const isNonEmptyText = Schema.is(NonEmptyText)
 
-function asString(value: DocumentValue): string | undefined {
-  return isNonEmptyText(value) ? value : undefined
+// Reads a value the config schema accepts. The document may not have been checked (tests and
+// direct callers pass raw JSON), so a value the schema rejects reads as unset, not as an error.
+function reader<T extends DocumentValue>(accepts: (value: DocumentValue) => value is T) {
+  return (value: DocumentValue): T | undefined => (accepts(value) ? value : undefined)
 }
 
-function asBoolean(value: DocumentValue): boolean | undefined {
-  return isFlag(value) ? value : undefined
-}
+// Empty text reads as unset, so an empty field falls through to its alias or default.
+const asString = reader(isNonEmptyText)
+const asBoolean = reader(Schema.is(Flag))
+const asPositiveInteger = reader(Schema.is(PositiveInteger))
+const asBackendPreference = reader(Schema.is(BackendChoice))
+const asKeybindMode = reader(Schema.is(KeybindChoice))
+const asZoxideMode = reader(Schema.is(ZoxideChoice))
+const asSortOrder = reader(Schema.is(SortChoice))
+const asThemeColorScheme = reader(Schema.is(ColorSchemeChoice))
 
+// Keeps the non-empty strings; a list with none reads as unset.
 function asStringArray(value: DocumentValue): string[] | undefined {
   if (!isJsonArray(value)) {
     return undefined
@@ -66,6 +79,16 @@ function asStringArray(value: DocumentValue): string[] | undefined {
   const strings = value.filter(isNonEmptyText)
 
   return strings.length > 0 ? strings : undefined
+}
+
+// The snake_case key wins; the camelCase alias is read only when snake_case is absent or unusable.
+function aliased<T>(
+  fields: Schema.JsonObject,
+  snake: string,
+  camel: string,
+  read: (value: DocumentValue) => T | undefined
+): T | undefined {
+  return read(fields[snake]) ?? read(fields[camel])
 }
 
 function uniqueStrings(values?: string[]): string[] | undefined {
@@ -88,35 +111,6 @@ function uniqueStrings(values?: string[]): string[] | undefined {
   return unique.length > 0 ? unique : undefined
 }
 
-function asKeybindMode(value: DocumentValue): KeybindMode | undefined {
-  return value === 'vim' || value === 'standard' ? value : undefined
-}
-
-function asZoxideMode(value: DocumentValue): ZoxideMode | undefined {
-  return value === 'off' || value === 'rank' || value === 'merge' ? value : undefined
-}
-
-function asSortOrder(value: DocumentValue): SortOrder | undefined {
-  return value === 'live-first' ||
-    value === 'configured-first' ||
-    value === 'zoxide-first' ||
-    value === 'alphabetical'
-    ? value
-    : undefined
-}
-
-function asBackendPreference(value: DocumentValue): BackendPreference | undefined {
-  return value === 'tmux' || value === 'herdr' ? value : undefined
-}
-
-function asThemeColorScheme(value: DocumentValue): ThemeColorScheme | undefined {
-  return value === 'light' || value === 'dark' || value === 'system' ? value : undefined
-}
-
-function asPositiveInteger(value: DocumentValue): number | undefined {
-  return isPositiveInteger(value) ? value : undefined
-}
-
 export function expandHomePath(value: string, homeDir: string): string {
   if (!value.startsWith('~')) {
     return value
@@ -130,8 +124,8 @@ function normalizeSessionDefaults(value: DocumentValue): SessionDefaults | undef
     return undefined
   }
 
-  const startupCommand = asString(value.startup_command) ?? asString(value.startupCommand)
-  const previewCommand = asString(value.preview_command) ?? asString(value.previewCommand)
+  const startupCommand = aliased(value, 'startup_command', 'startupCommand', asString)
+  const previewCommand = aliased(value, 'preview_command', 'previewCommand', asString)
 
   if (!startupCommand && !previewCommand) {
     return undefined
@@ -151,7 +145,7 @@ function normalizeIcons(value: DocumentValue): IconConfig | undefined {
   return {
     tmux: asString(value.tmux) ?? DEFAULT_ICONS.tmux,
     herdr: asString(value.herdr) ?? DEFAULT_ICONS.herdr,
-    configured: asString(value.configured) ?? asString(value.config) ?? DEFAULT_ICONS.configured,
+    configured: aliased(value, 'configured', 'config', asString) ?? DEFAULT_ICONS.configured,
     project: asString(value.project) ?? DEFAULT_ICONS.project,
     opencode: asString(value.opencode) ?? DEFAULT_ICONS.opencode,
   }
@@ -281,9 +275,9 @@ function normalizeProjectProfiles(
     return [
       {
         path: expandHomePath(path, homeDir),
-        sessionName: asString(entry.session_name) ?? asString(entry.sessionName),
-        startupCommand: asString(entry.startup_command) ?? asString(entry.startupCommand),
-        previewCommand: asString(entry.preview_command) ?? asString(entry.previewCommand),
+        sessionName: aliased(entry, 'session_name', 'sessionName', asString),
+        startupCommand: aliased(entry, 'startup_command', 'startupCommand', asString),
+        previewCommand: aliased(entry, 'preview_command', 'previewCommand', asString),
         listed: asBoolean(entry.listed),
         icon: asString(entry.icon),
       },
@@ -312,9 +306,9 @@ function normalizeWildcards(value: DocumentValue, homeDir: string): ProjectWildc
     return [
       {
         pattern: expandHomePath(pattern, homeDir),
-        sessionName: asString(entry.session_name) ?? asString(entry.sessionName),
-        startupCommand: asString(entry.startup_command) ?? asString(entry.startupCommand),
-        previewCommand: asString(entry.preview_command) ?? asString(entry.previewCommand),
+        sessionName: aliased(entry, 'session_name', 'sessionName', asString),
+        startupCommand: aliased(entry, 'startup_command', 'startupCommand', asString),
+        previewCommand: aliased(entry, 'preview_command', 'previewCommand', asString),
       },
     ]
   })
@@ -342,63 +336,61 @@ export function normalizeConfig(rawConfig: Schema.Json, homeDir = process.env.HO
         : undefined
 
   const projectPaths = (
-    asStringArray(raw.project_paths) ??
-    asStringArray(raw.projectPaths) ??
-    defaultConfig.projectPaths
+    aliased(raw, 'project_paths', 'projectPaths', asStringArray) ?? defaultConfig.projectPaths
   ).map(projectPath => expandHomePath(projectPath, homeDir))
 
   const reposPath = expandHomePath(
-    asString(raw.repos_path) ?? asString(raw.reposPath) ?? defaultConfig.reposPath,
+    aliased(raw, 'repos_path', 'reposPath', asString) ?? defaultConfig.reposPath,
     homeDir
   )
 
   const editor = asString(raw.editor) ?? defaultConfig.editor
   const backend = asBackendPreference(raw.backend)
-  const editorCmd = asString(raw.editor_cmd) ?? asString(raw.editorCmd) ?? defaultConfig.editorCmd
+  const editorCmd = aliased(raw, 'editor_cmd', 'editorCmd', asString) ?? defaultConfig.editorCmd
 
   const keybindMode =
-    asKeybindMode(raw.keybind_mode) ?? asKeybindMode(raw.keybindMode) ?? defaultConfig.keybindMode
+    aliased(raw, 'keybind_mode', 'keybindMode', asKeybindMode) ?? defaultConfig.keybindMode
 
-  const prefixKey = asString(raw.prefix_key) ?? asString(raw.prefixKey) ?? defaultConfig.prefixKey
+  const prefixKey = aliased(raw, 'prefix_key', 'prefixKey', asString) ?? defaultConfig.prefixKey
 
   const zoxideMode =
-    asZoxideMode(raw.zoxide_mode) ?? asZoxideMode(raw.zoxideMode) ?? defaultConfig.zoxideMode
+    aliased(raw, 'zoxide_mode', 'zoxideMode', asZoxideMode) ?? defaultConfig.zoxideMode
 
-  const sortOrder =
-    asSortOrder(raw.sort_order) ?? asSortOrder(raw.sortOrder) ?? defaultConfig.sortOrder
+  const sortOrder = aliased(raw, 'sort_order', 'sortOrder', asSortOrder) ?? defaultConfig.sortOrder
 
   const theme = normalizedTheme ?? defaultConfig.theme
 
   const colorScheme =
-    asThemeColorScheme(raw.color_scheme) ??
-    asThemeColorScheme(raw.colorScheme) ??
+    aliased(raw, 'color_scheme', 'colorScheme', asThemeColorScheme) ??
     implicitColorScheme ??
     defaultConfig.colorScheme
 
   const themes = normalizeThemes(raw.themes) ?? defaultConfig.themes
 
   const autoUpdate =
-    asBoolean(raw.auto_update) ?? asBoolean(raw.autoUpdate) ?? defaultConfig.autoUpdate
+    aliased(raw, 'auto_update', 'autoUpdate', asBoolean) ?? defaultConfig.autoUpdate
 
   const searchHistory =
-    asBoolean(raw.search_history) ?? asBoolean(raw.searchHistory) ?? defaultConfig.searchHistory
+    aliased(raw, 'search_history', 'searchHistory', asBoolean) ?? defaultConfig.searchHistory
 
   const dirLength =
-    asPositiveInteger(raw.dir_length) ?? asPositiveInteger(raw.dirLength) ?? defaultConfig.dirLength
+    aliased(raw, 'dir_length', 'dirLength', asPositiveInteger) ?? defaultConfig.dirLength
 
   const hiddenSessions =
-    asStringArray(raw.hidden_sessions) ??
-    asStringArray(raw.hiddenSessions) ??
-    defaultConfig.hiddenSessions
+    aliased(raw, 'hidden_sessions', 'hiddenSessions', asStringArray) ?? defaultConfig.hiddenSessions
 
   const pinnedSessions =
-    uniqueStrings(asStringArray(raw.pinned_sessions) ?? asStringArray(raw.pinnedSessions)) ??
+    uniqueStrings(aliased(raw, 'pinned_sessions', 'pinnedSessions', asStringArray)) ??
     defaultConfig.pinnedSessions
 
   const icons = normalizeIcons(raw.icons) ?? defaultConfig.icons
 
-  const configuredDefaultSession =
-    normalizeSessionDefaults(raw.default_session) ?? normalizeSessionDefaults(raw.defaultSession)
+  const configuredDefaultSession = aliased(
+    raw,
+    'default_session',
+    'defaultSession',
+    normalizeSessionDefaults
+  )
 
   const defaultSession = {
     startupCommand: configuredDefaultSession?.startupCommand ?? editorCmd,
