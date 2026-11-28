@@ -1,0 +1,5 @@
+{
+  "argv": ["rex", "capture", "-b", "block:01a22053-3861-78de-97d9-65ff724642ea", "--trim"],
+  "exitCode": 0,
+  "stdoutLines": ["beta-started", "sh-5.3$"]
+}

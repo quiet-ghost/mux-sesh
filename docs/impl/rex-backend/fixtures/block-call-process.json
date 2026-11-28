@@ -1,0 +1,24 @@
+{
+  "last_exit": null,
+  "child": {
+    "pid": 3387356,
+    "user_id": 1000,
+    "user": "fixture",
+    "name": "zsh",
+    "path": "/usr/bin/zsh",
+    "invoked_path": "/usr/bin/zsh",
+    "argv0": "-zsh",
+    "cwd": "/fixture/work/alpha"
+  },
+  "foreground": {
+    "pid": 3387356,
+    "user_id": 1000,
+    "user": "fixture",
+    "name": "zsh",
+    "path": "/usr/bin/zsh",
+    "invoked_path": "/usr/bin/zsh",
+    "argv0": "-zsh",
+    "cwd": "/fixture/work/alpha"
+  },
+  "home": "/fixture/home"
+}

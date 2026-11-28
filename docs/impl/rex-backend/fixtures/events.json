@@ -1,0 +1,151 @@
+[
+  {
+    "type": "session_created",
+    "payload": {
+      "session": {
+        "session_id": "session:01a2205c-f039-7a05-9d5f-c92a66c35a14",
+        "label": "evt"
+      }
+    }
+  },
+  {
+    "type": "session_event",
+    "payload": {
+      "session_id": "session:01a2205c-f039-7a05-9d5f-c92a66c35a14",
+      "event": {
+        "type": "client_connected",
+        "payload": {
+          "client_id": "client:01a2205c-f051-7430-8dab-c909ddd36c6b",
+          "principal": {
+            "kind": "peer",
+            "transport": "unix",
+            "display": "uid 1000",
+            "remote_addr": "@",
+            "uid": 1000,
+            "gid": 1000,
+            "pid": 3447402
+          },
+          "connected_at": "2026-11-27T23:14:51.473652975-05:00"
+        }
+      }
+    }
+  },
+  {
+    "type": "session_event",
+    "payload": {
+      "session_id": "session:01a2205c-f039-7a05-9d5f-c92a66c35a14",
+      "event": {
+        "type": "session_label_changed",
+        "payload": {
+          "label": "evt2"
+        }
+      }
+    }
+  },
+  {
+    "type": "session_event",
+    "payload": {
+      "session_id": "session:01a2205c-f039-7a05-9d5f-c92a66c35a14",
+      "event": {
+        "type": "session_view_changed",
+        "payload": {
+          "revision": 2
+        }
+      }
+    }
+  },
+  {
+    "type": "session_event",
+    "payload": {
+      "session_id": "session:01a2205c-f039-7a05-9d5f-c92a66c35a14",
+      "event": {
+        "type": "client_disconnected",
+        "payload": {
+          "client_id": "client:01a2205c-f051-7430-8dab-c909ddd36c6b",
+          "principal": {
+            "kind": "peer",
+            "transport": "unix",
+            "display": "uid 1000",
+            "remote_addr": "@",
+            "uid": 1000,
+            "gid": 1000,
+            "pid": 3447402
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "session_event",
+    "payload": {
+      "session_id": "session:01a2205c-f039-7a05-9d5f-c92a66c35a14",
+      "event": {
+        "type": "client_connected",
+        "payload": {
+          "client_id": "client:01a2205c-f066-73f0-9185-f940b36cbecb",
+          "principal": {
+            "kind": "peer",
+            "transport": "unix",
+            "display": "uid 1000",
+            "remote_addr": "@",
+            "uid": 1000,
+            "gid": 1000,
+            "pid": 3447419
+          },
+          "connected_at": "2026-11-27T23:14:51.494711911-05:00"
+        }
+      }
+    }
+  },
+  {
+    "type": "session_event",
+    "payload": {
+      "session_id": "session:01a2205c-f039-7a05-9d5f-c92a66c35a14",
+      "event": {
+        "type": "client_disconnected",
+        "payload": {
+          "client_id": "client:01a2205c-f066-73f0-9185-f940b36cbecb",
+          "principal": {
+            "kind": "peer",
+            "transport": "unix",
+            "display": "uid 1000",
+            "remote_addr": "@",
+            "uid": 1000,
+            "gid": 1000,
+            "pid": 3447419
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "session_event",
+    "payload": {
+      "session_id": "session:01a2205c-f039-7a05-9d5f-c92a66c35a14",
+      "event": {
+        "type": "session_view_changed",
+        "payload": {
+          "revision": 3
+        }
+      }
+    }
+  },
+  {
+    "type": "session_event",
+    "payload": {
+      "session_id": "session:01a2205c-f039-7a05-9d5f-c92a66c35a14",
+      "event": {
+        "type": "block_closed",
+        "payload": {
+          "block_id": "block:01a2205c-f039-7ae0-a5ce-306bb0087de5"
+        }
+      }
+    }
+  },
+  {
+    "type": "session_destroyed",
+    "payload": {
+      "session_id": "session:01a2205c-f039-7a05-9d5f-c92a66c35a14"
+    }
+  }
+]

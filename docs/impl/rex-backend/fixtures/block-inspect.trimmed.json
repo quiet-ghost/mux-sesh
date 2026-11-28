@@ -1,0 +1,53 @@
+{
+  "session_id": "session:01a22053-383c-7e73-9628-4665f76bdacf",
+  "block": {
+    "block_id": "block:01a22053-383d-71d8-b91d-7fd9dacc2418",
+    "label": "shell",
+    "creator_name": "com.superlogical.terminal",
+    "flavor": "com.superlogical.terminal.shell",
+    "host_id": "c6c20b44-4877-4ac5-b997-e720caa72763",
+    "placement": "placed",
+    "window_id": "window:01a22053-384b-7a8c-b42e-1fd7bf8d364d"
+  },
+  "api": {
+    "methods": [
+      "blob_read",
+      "clear",
+      "clipboard_read",
+      "download_begin",
+      "format",
+      "input_mode",
+      "list_dir",
+      "modes",
+      "ports",
+      "process",
+      "program_resume_records",
+      "program_status",
+      "pwd",
+      "reset",
+      "resize",
+      "set_theme",
+      "size",
+      "title",
+      "upload_begin",
+      "write"
+    ],
+    "events": [
+      "bell",
+      "child_exited",
+      "clipboard_written",
+      "desktop_notification",
+      "ports_changed",
+      "process_changed",
+      "program_resume_changed",
+      "program_status_changed",
+      "program_status_removed",
+      "progress_report",
+      "pwd_changed",
+      "selection_copied",
+      "size_changed",
+      "title_changed",
+      "url_clicked"
+    ]
+  }
+}
