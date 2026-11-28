@@ -313,5 +313,4 @@ export const StringList = {
   addLabel,
   placeholder,
   typingHint,
-  required,
 } as const

@@ -11,7 +11,7 @@ import CommandsModal, { getCommandEntryKey } from '../ui/CommandsModal'
 import OperationOutcomeModal from '../ui/OperationOutcomeModal'
 import RenameModal from '../ui/RenameModal'
 import SettingEditorModal from '../ui/SettingEditorModal'
-import SettingListModal from '../ui/SettingListModal'
+import SettingPaneModal from '../ui/SettingPaneModal'
 import SettingOptionsModal from '../ui/SettingOptionsModal'
 import SettingsModal from '../ui/SettingsModal'
 import { useItemSelection } from '../ui/use-item-selection'
@@ -193,8 +193,8 @@ export function AppModalsLayer({
         />
       )}
 
-      {modalState?.type === 'setting-list' && settingPane.model && (
-        <SettingListModal
+      {settingPane.model && (
+        <SettingPaneModal
           model={settingPane.model}
           columns={columns}
           rows={rows}

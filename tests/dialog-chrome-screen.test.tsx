@@ -252,6 +252,49 @@ const DIALOGS: readonly DialogCase[] = [
     ],
   },
   {
+    name: 'a rule form',
+    open: async size => {
+      const fixture = await renderSessionScreen(size, {
+        workspaces: [],
+        backend: closingBackend(SESSIONS),
+        config: { projects: [{ path: '/fixture/api', sessionName: 'api' }] },
+      })
+
+      await runCommand(fixture, 'Open settings')
+      await fixture.replaceQuery('Project rules')
+      await fixture.pressKey('RETURN')
+      await fixture.pressKey('RETURN')
+
+      return fixture
+    },
+    title: 'Project rule · /fixture/api',
+    tone: 'text',
+    description: 'Changes save as you make them',
+    hints: [
+      ['edit', 'enter'],
+      ['back', 'esc'],
+    ],
+  },
+  {
+    name: 'adding a rule',
+    open: async size => {
+      const fixture = await sessions(size)
+      await runCommand(fixture, 'Open settings')
+      await fixture.replaceQuery('Wildcard rules')
+      await fixture.pressKey('RETURN')
+      await fixture.pressKey('a')
+
+      return fixture
+    },
+    title: 'Add wildcard rule',
+    tone: 'text',
+    description: 'The glob this rule matches',
+    hints: [
+      ['add', 'enter'],
+      ['cancel', 'esc'],
+    ],
+  },
+  {
     name: 'the theme picker',
     open: async size => {
       const fixture = await sessions(size)

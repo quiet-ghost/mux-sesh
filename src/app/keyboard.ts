@@ -20,9 +20,9 @@ import {
 } from '../handlers/keyboard'
 import { getItemKey } from '../multiplexer/items'
 import { resolvePrefixKey } from '../config'
-import type { ListSettingId, SettingsEntry, SettingsFieldId, SettingsOption } from '../settings'
+import type { SettingCollection, SettingsEntry, SettingsFieldId, SettingsOption } from '../settings'
+import type { SettingPaneAction } from './setting-pane-actions'
 import type { SettingPaneView } from './setting-panes'
-import type { ListPaneActionId } from './action-catalog'
 import type { Config, Item } from '../types'
 import type { CommandEntry } from '../ui/CommandsModal'
 import { getActionTargetItem, type ActionContext } from './action-catalog'
@@ -81,8 +81,8 @@ interface UseAppKeyboardOptions {
   openSettingOptions: (field: SettingsFieldId) => void
   openSettingEditor: (field: SettingsFieldId) => void
   settingPaneView: SettingPaneView | undefined
-  openSettingPane: (field: ListSettingId) => void
-  handleSettingPaneAction: (action: ListPaneActionId, direction: 1 | -1) => Promise<void>
+  openSettingPane: (collection: SettingCollection) => void
+  handleSettingPaneAction: (action: SettingPaneAction, direction: 1 | -1) => Promise<void>
   closeModal: () => void
   requestKillSession: (item: Item) => void
   requestMarkedClose: () => Promise<void>

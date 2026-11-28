@@ -3,18 +3,19 @@ import {
   matchEditorAction,
   matchListAction,
   matchOptionAction,
+  matchRuleAction,
   matchSettingsAction,
-  type ListPaneActionId,
 } from './action-catalog'
 import type { OperationReport } from './action-outcome'
 import type { ModalState } from './modals'
 import { OptionPicker } from './option-picker'
 import type { ShowToast } from './notifications'
+import type { SettingPaneAction } from './setting-pane-actions'
 import type { SettingPaneView } from './setting-panes'
 import { CloseReceipt, type CleanupBatch } from '../sessions/cleanup-batch'
 import {
   getSettingCollection,
-  type ListSettingId,
+  type SettingCollection,
   type SettingsEntry,
   type SettingsOption,
 } from '../settings'
@@ -51,10 +52,10 @@ interface ModalKeyboardContext {
   handleOutcomeRetry: (report: OperationReport) => Promise<void>
   confirmBatchClose: (batch: CleanupBatch) => Promise<void>
   retryBatchClose: (receipt: CloseReceipt) => Promise<void>
-  // The list pane on screen and the keys it offers; undefined while none is open.
+  // The list, rule list or rule form on screen and the keys it offers; undefined while none is.
   settingPaneView: SettingPaneView | undefined
-  openSettingPane: (field: ListSettingId) => void
-  handleSettingPaneAction: (action: ListPaneActionId, direction: 1 | -1) => Promise<void>
+  openSettingPane: (collection: SettingCollection) => void
+  handleSettingPaneAction: (action: SettingPaneAction, direction: 1 | -1) => Promise<void>
 }
 
 interface KeyboardInput {
@@ -72,8 +73,8 @@ function openSetting(ctx: ModalKeyboardContext, entry: SettingsEntry) {
 
   const collection = getSettingCollection(entry.id)
 
-  if (collection?.kind === 'list') {
-    ctx.openSettingPane(collection.id)
+  if (collection) {
+    ctx.openSettingPane(collection)
 
     return
   }
@@ -134,6 +135,23 @@ function handleSettingsKey(
       // ←/→ belong to the list, even on a row they do not change; the filter never gets them.
       return key.name === 'left' || key.name === 'right'
   }
+}
+
+function paneAction(
+  view: SettingPaneView | undefined,
+  key: KeyboardInput
+): SettingPaneAction | undefined {
+  if (!view) return undefined
+
+  if (view.kind === 'setting-list') {
+    const id = matchListAction(view, key)
+
+    return id === 'none' ? undefined : { pane: 'list', id }
+  }
+
+  const id = matchRuleAction(view, key)
+
+  return id === 'none' ? undefined : { pane: 'rule', id }
 }
 
 // Every modal is a focused text field, so only non-text keys act; letters stay in the field.
@@ -263,15 +281,15 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
     }
   }
 
-  // A list pane has no text field unless one is open, so single letters act while browsing.
-  if (ctx.modalState?.type === 'setting-list') {
-    const view = ctx.settingPaneView
+  // A list or rule pane has no text field unless one is open, so single letters act meanwhile.
+  if (
+    ctx.modalState?.type === 'setting-list' ||
+    ctx.modalState?.type === 'setting-rules' ||
+    ctx.modalState?.type === 'setting-rule'
+  ) {
+    const action = paneAction(ctx.settingPaneView, key)
 
-    if (!view) return false
-
-    const action = matchListAction(view, key)
-
-    if (action === 'none') return false
+    if (!action) return false
 
     ctx.runAction(() => ctx.handleSettingPaneAction(action, cursorStep(key)))
 

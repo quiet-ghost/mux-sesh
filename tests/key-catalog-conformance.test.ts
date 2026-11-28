@@ -13,6 +13,7 @@ import {
   type DialogView,
   type ListRowKind,
   type ListStepKind,
+  type RuleRowControl,
 } from '../src/app/action-catalog'
 import { handleModalKeyboard } from '../src/app/modal-keyboard'
 import type { ModalState } from '../src/app/modals'
@@ -371,6 +372,15 @@ const SETTINGS_RESETS: readonly SettingsReset[] = ['default', 'available', 'unav
 const LIST_ROWS: readonly ListRowKind[] = ['item', 'add', 'json']
 const LIST_STEPS: readonly ListStepKind[] = ['browsing', 'confirming', 'editing', 'adding']
 const KEYBIND_MODES: readonly KeybindMode[] = ['vim', 'standard']
+const RULE_STEPS = ['browsing', 'editing'] as const
+
+const RULE_ROWS: readonly (RuleRowControl | undefined)[] = [
+  undefined,
+  { control: 'edit', reset: 'none' },
+  { control: 'edit', reset: 'available' },
+  { control: 'toggle', reset: 'none' },
+  { control: 'toggle', reset: 'available' },
+]
 
 const DIALOG_CASES: readonly DialogCase[] = [
   ...SETTINGS_CONTROLS.flatMap(control =>
@@ -419,11 +429,20 @@ const DIALOG_CASES: readonly DialogCase[] = [
       KEYBIND_MODES.map((keybindMode): DialogCase => ({
         name: `list pane ${row} ${step} ${keybindMode}`,
         view: { kind: 'setting-list', row, step, keybindMode },
-        modalState: SettingPane.open('hiddenSessions'),
+        modalState: SettingPane.openList('hiddenSessions'),
         entry: undefined,
         focus: step === 'editing' || step === 'adding' ? 'field' : 'none',
       }))
     )
+  ),
+  ...RULE_ROWS.flatMap(row =>
+    RULE_STEPS.map((step): DialogCase => ({
+      name: `rule form ${row ? `${row.control} ${row.reset}` : 'no row'} ${step}`,
+      view: { kind: 'setting-rule', row, step },
+      modalState: SettingPane.openRule('projects', 0),
+      entry: undefined,
+      focus: step === 'editing' ? 'field' : 'none',
+    }))
   ),
 ]
 
@@ -486,10 +505,13 @@ function pressDialog(dialog: DialogCase, input: DialogPress['input']): DialogOut
     handleOutcomeRetry: notADialogAction,
     confirmBatchClose: notADialogAction,
     retryBatchClose: notADialogAction,
-    settingPaneView: dialog.view.kind === 'setting-list' ? dialog.view : undefined,
+    settingPaneView:
+      dialog.view.kind === 'setting-list' || dialog.view.kind === 'setting-rule'
+        ? dialog.view
+        : undefined,
     openSettingPane: record('settings-open'),
-    handleSettingPaneAction: async id => {
-      actions.push(id)
+    handleSettingPaneAction: async action => {
+      actions.push(action.id)
     },
   }
 

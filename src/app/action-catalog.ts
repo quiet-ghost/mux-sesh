@@ -617,6 +617,9 @@ export type ConfirmActionId = 'confirm-remove' | 'confirm-keep'
 // An inline text field in a list, rule list or rule form.
 export type FieldActionId = 'field-apply' | 'field-add' | 'field-cancel'
 
+// A rule form's rows.
+export type RuleActionId = 'rule-move' | 'rule-toggle' | 'rule-edit' | 'rule-reset' | 'rule-back'
+
 export type DialogActionId =
   | SettingsActionId
   | OptionActionId
@@ -624,12 +627,19 @@ export type DialogActionId =
   | ListActionId
   | ConfirmActionId
   | FieldActionId
+  | RuleActionId
 
 // The selected row of a list pane: an entry, the add row, or the "Edit as JSON…" row.
 export type ListRowKind = 'item' | 'add' | 'json'
 
 // What a list pane is doing: browsing rows, confirming a removal, or typing into a field.
 export type ListStepKind = 'browsing' | 'confirming' | 'editing' | 'adding'
+
+// The selected rule form row: edited as text or switched on and off, and whether it overrides.
+export interface RuleRowControl {
+  readonly control: 'edit' | 'toggle'
+  readonly reset: 'available' | 'none'
+}
 
 // The dialog on screen, with what the selected Settings row offers.
 export type DialogView =
@@ -641,6 +651,7 @@ export type DialogView =
   | { kind: 'setting-options' }
   | { kind: 'setting-editor' }
   | { kind: 'setting-list'; row: ListRowKind; step: ListStepKind; keybindMode: KeybindMode }
+  | { kind: 'setting-rule'; row: RuleRowControl | undefined; step: 'browsing' | 'editing' }
 
 export interface DialogKey {
   readonly name: string
@@ -721,6 +732,11 @@ export const DIALOG_ACTIONS = {
   'field-apply': { label: 'apply', keys: [ENTER], footer: true },
   'field-add': { label: 'add', keys: [ENTER], footer: true },
   'field-cancel': { label: 'cancel', keys: [ESC], footer: true },
+  'rule-move': { label: 'navigate', keys: [UP, DOWN], footer: false },
+  'rule-toggle': { label: 'change', keys: [LEFT, RIGHT, ENTER], footer: true },
+  'rule-edit': { label: 'edit', keys: [ENTER], footer: true },
+  'rule-reset': { label: 'reset', keys: [CTRL_R], footer: true },
+  'rule-back': { label: 'back', keys: [ESC], footer: true },
 } as const satisfies Record<DialogActionId, DialogAction>
 
 // In footer order. A Settings row offers ←/→ only where they change it, Enter only where it opens
@@ -785,6 +801,25 @@ function listActions(row: ListRowKind, step: ListStepKind): readonly ListPaneAct
   }
 }
 
+export type RulePaneActionId = RuleActionId | FieldActionId
+
+// A text row is edited inline and a switch toggles in place; ctrl+r only where there is an
+// override to clear.
+function ruleActions(
+  row: RuleRowControl | undefined,
+  step: 'browsing' | 'editing'
+): readonly RulePaneActionId[] {
+  if (step === 'editing') return APPLY_ACTIONS
+
+  const actions: RuleActionId[] = ['rule-move']
+
+  if (row) actions.push(row.control === 'toggle' ? 'rule-toggle' : 'rule-edit')
+
+  if (row?.reset === 'available') actions.push('rule-reset')
+
+  return [...actions, 'rule-back']
+}
+
 export function getDialogActions(view: DialogView): readonly DialogActionId[] {
   switch (view.kind) {
     case 'settings':
@@ -795,6 +830,8 @@ export function getDialogActions(view: DialogView): readonly DialogActionId[] {
       return EDITOR_ACTIONS
     case 'setting-list':
       return listActions(view.row, view.step)
+    case 'setting-rule':
+      return ruleActions(view.row, view.step)
   }
 }
 
@@ -861,4 +898,11 @@ export function matchListAction(
   input: DialogKeyInput
 ): ListPaneActionId | 'none' {
   return firstMatch(listActions(view.row, view.step), input, view.keybindMode)
+}
+
+export function matchRuleAction(
+  view: Extract<DialogView, { kind: 'setting-rule' }>,
+  input: DialogKeyInput
+): RulePaneActionId | 'none' {
+  return firstMatch(ruleActions(view.row, view.step), input)
 }

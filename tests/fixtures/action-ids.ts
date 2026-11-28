@@ -55,6 +55,11 @@ export const DIALOG_ACTION_IDS = [
   'field-apply',
   'field-add',
   'field-cancel',
+  'rule-move',
+  'rule-toggle',
+  'rule-edit',
+  'rule-reset',
+  'rule-back',
 ] as const satisfies readonly DialogActionId[]
 
 type UnlistedDialogActionId = Exclude<DialogActionId, (typeof DIALOG_ACTION_IDS)[number]>

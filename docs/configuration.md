@@ -87,6 +87,14 @@ a pattern hides (`hides 2`), or `not running` for a pin with no session. Add, ed
 reorder entries in place; each change saves at once, `~` is expanded, and an empty or duplicate
 entry is refused inline. `Edit as JSON…` opens the whole list as JSON.
 
+Project rules and Wildcard rules open as a rule list, each row summing up the rule's overrides
+(session name · startup command · listed). `Add rule…` asks for the path or pattern first and
+refuses an empty or duplicate one; a folder that does not exist yet is only a warning. The new rule
+then opens in its form, where every field saves as soon as it is applied. An unset field shows the
+value it inherits, muted, as `default · …`, and `ctrl+r` clears an override back to it. Rules are
+removed with `d` (after an inline confirmation) and reordered with `shift+↑` / `shift+↓`; for
+wildcards the first match wins.
+
 | Category   | Setting         | Option                                            |
 | ---------- | --------------- | ------------------------------------------------- |
 | Appearance | Theme           | `theme`                                           |
