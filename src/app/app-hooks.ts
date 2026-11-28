@@ -250,12 +250,22 @@ function useSearchFiltering(
   const [filter] = useState(createFilter)
 
   useEffect(() => {
+    const query = searchQuery.trim()
+
+    // Agents opened from a search keep the query, and refreshes republish the full inventory, so
+    // the list stays filtered. The search cursor is left where it was for the return to Search.
+    if (appMode === AppMode.AgentsManage && query) {
+      setItems(filter(allItems, searchQuery))
+
+      return
+    }
+
     // New-session rows belong to useLauncherQuery, which merges native file search in.
     if (appMode !== AppMode.Search) {
       return
     }
 
-    if (searchQuery.trim()) {
+    if (query) {
       setItems(filter(allItems, searchQuery))
       setCursor(0)
 

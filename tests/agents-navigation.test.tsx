@@ -167,9 +167,9 @@ describe('Agents navigation through production keyboard wiring', () => {
     }
   )
 
-  // Known bug: entering Agents starts the Herdr agent poll, whose first refresh republishes the
-  // whole inventory and drops the standard-mode search filter. Remove `.failing` once it is fixed.
-  test.failing('standard Agents entry keeps the search filter', async () => {
+  // Entering Agents starts the Herdr agent poll; its refreshes republish the whole inventory, and
+  // the search filter must still apply to what Agents shows.
+  test('standard Agents entry keeps the search filter through agent refreshes', async () => {
     screen = await renderSessionScreen(
       { width: 120, height: 36 },
       { keybindMode: 'standard', workspaces }
