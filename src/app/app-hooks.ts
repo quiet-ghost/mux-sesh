@@ -1,15 +1,12 @@
 import {
   useEffect,
-  useRef,
   useState,
   type Dispatch,
   type MutableRefObject,
   type SetStateAction,
 } from 'react'
-import { useRenderer } from '@opentui/react'
-import type { TerminalColors } from '@opentui/core'
-import { checkAndUpdate, describeUpdateEvent } from '../update'
-import { createAutoUpdateScheduler, type AutoUpdateScheduler } from '../update/scheduler'
+import { describeUpdateEvent } from '../update'
+import type { AutoUpdateScheduler } from '../update/scheduler'
 import type { ShowToast } from './notifications'
 import { PendingClose } from './pending-close'
 import { useHerdrAgentPolling } from './herdr-refresh'
@@ -17,9 +14,6 @@ import type { SessionInventory } from './session-inventory'
 import { clearMatchIndices, type ItemFilter } from '../search'
 import type { OpenHistory } from '../search/frecency-store'
 import { getSessionSelectionIndex } from './inventory-load'
-import { SYSTEM_THEME_ID } from '../styles/theme-ids'
-import { subscribeThemeFollow, type SubscribeThemeFollowOptions } from '../styles/theme-follow'
-import { terminalColorsToPalette, type TerminalPalette } from '../styles/terminal-palette'
 import { AppMode, ViewMode } from './app-mode'
 import type { Config } from '../config/config-model'
 import type { Item } from '../items/item'
@@ -35,89 +29,7 @@ type AppBehaviorServices = Pick<
   'openHistory' | 'createSearchFilter' | 'updates' | 'projects' | 'onDefect'
 >
 
-export function useSystemThemeFollow(
-  themeId: string | undefined,
-  homeDir: string,
-  onRefresh: () => void,
-  followOptions?: SubscribeThemeFollowOptions
-) {
-  const onRefreshRef = useRef(onRefresh)
-  onRefreshRef.current = onRefresh
-  const followOptionsRef = useRef(followOptions)
-  followOptionsRef.current = followOptions
-
-  useEffect(() => {
-    if (themeId !== SYSTEM_THEME_ID) {
-      return
-    }
-
-    const subscription = subscribeThemeFollow(
-      homeDir,
-      {
-        onRefresh: () => {
-          onRefreshRef.current()
-        },
-      },
-      followOptionsRef.current
-    )
-
-    return () => {
-      subscription.stop()
-    }
-  }, [homeDir, themeId])
-}
-
-export function useTerminalPalette(
-  themeId: string | undefined,
-  onPalette: (palette: TerminalPalette | null) => void
-) {
-  const renderer = useRenderer()
-  const onPaletteRef = useRef(onPalette)
-  onPaletteRef.current = onPalette
-
-  useEffect(() => {
-    if (themeId !== SYSTEM_THEME_ID) {
-      onPaletteRef.current(null)
-
-      return
-    }
-
-    let cancelled = false
-
-    const publish = (colors: TerminalColors): void => {
-      if (!cancelled) {
-        onPaletteRef.current(terminalColorsToPalette(colors))
-      }
-    }
-
-    // A terminal that cannot report its palette keeps the built-in colors.
-    renderer.getPalette().then(publish, () => {
-      if (!cancelled) onPaletteRef.current(null)
-    })
-
-    renderer.on('palette', publish)
-
-    return () => {
-      cancelled = true
-      renderer.off('palette', publish)
-    }
-  }, [renderer, themeId])
-}
-
-// Process-scoped so a retried or remounted app tree cannot start a second update check.
-export const AUTO_UPDATE_SCHEDULER = createAutoUpdateScheduler({
-  delayMs: 1000,
-  check: config => {
-    checkAndUpdate(config).catch(error => {
-      console.error('Auto-update check failed:', error)
-    })
-  },
-})
-
-export function useAutoUpdateScheduler(
-  config: Config | null,
-  scheduler: AutoUpdateScheduler = AUTO_UPDATE_SCHEDULER
-) {
+export function useAutoUpdateScheduler(config: Config | null, scheduler: AutoUpdateScheduler) {
   useEffect(() => {
     if (!config) return
 

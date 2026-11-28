@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState } from 'react'
-import { useSystemThemeFollow, useTerminalPalette } from './app-hooks'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useRenderer } from '@opentui/react'
+import type { TerminalColors } from '@opentui/core'
 import { resolveTheme, type ResolvedTheme, type ThemeResolver } from '../styles/theme'
 import { SYSTEM_THEME_ID } from '../styles/theme-ids'
-import type { SubscribeThemeFollowOptions } from '../styles/theme-follow'
-import type { TerminalPalette } from '../styles/terminal-palette'
+import { subscribeThemeFollow, type SubscribeThemeFollowOptions } from '../styles/theme-follow'
+import { terminalColorsToPalette, type TerminalPalette } from '../styles/terminal-palette'
 import type { ThemeColorScheme, ThemeDefinition } from '../styles/theme-model'
 
 export interface ThemeSource {
@@ -68,4 +69,73 @@ export function useLiveResolvedTheme(
   useTerminalPalette(source.themeId, setTerminalPalette)
 
   return resolvedTheme
+}
+
+export function useSystemThemeFollow(
+  themeId: string | undefined,
+  homeDir: string,
+  onRefresh: () => void,
+  followOptions?: SubscribeThemeFollowOptions
+) {
+  const onRefreshRef = useRef(onRefresh)
+  onRefreshRef.current = onRefresh
+  const followOptionsRef = useRef(followOptions)
+  followOptionsRef.current = followOptions
+
+  useEffect(() => {
+    if (themeId !== SYSTEM_THEME_ID) {
+      return
+    }
+
+    const subscription = subscribeThemeFollow(
+      homeDir,
+      {
+        onRefresh: () => {
+          onRefreshRef.current()
+        },
+      },
+      followOptionsRef.current
+    )
+
+    return () => {
+      subscription.stop()
+    }
+  }, [homeDir, themeId])
+}
+
+export function useTerminalPalette(
+  themeId: string | undefined,
+  onPalette: (palette: TerminalPalette | null) => void
+) {
+  const renderer = useRenderer()
+  const onPaletteRef = useRef(onPalette)
+  onPaletteRef.current = onPalette
+
+  useEffect(() => {
+    if (themeId !== SYSTEM_THEME_ID) {
+      onPaletteRef.current(null)
+
+      return
+    }
+
+    let cancelled = false
+
+    const publish = (colors: TerminalColors): void => {
+      if (!cancelled) {
+        onPaletteRef.current(terminalColorsToPalette(colors))
+      }
+    }
+
+    // A terminal that cannot report its palette keeps the built-in colors.
+    renderer.getPalette().then(publish, () => {
+      if (!cancelled) onPaletteRef.current(null)
+    })
+
+    renderer.on('palette', publish)
+
+    return () => {
+      cancelled = true
+      renderer.off('palette', publish)
+    }
+  }, [renderer, themeId])
 }

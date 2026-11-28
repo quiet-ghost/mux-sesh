@@ -7,9 +7,8 @@ import { OPEN_HISTORY, type OpenHistory } from '../search/frecency-store'
 import { CLONE_SERVICES, type CloneServices } from '../sessions/clone-plan'
 import type { Config } from '../config/config-model'
 import type { UpdateEventListener } from '../update/update-event'
-import { updateEvents } from '../update'
-import type { AutoUpdateScheduler } from '../update/scheduler'
-import { AUTO_UPDATE_SCHEDULER } from './app-hooks'
+import { checkAndUpdate, updateEvents } from '../update'
+import { createAutoUpdateScheduler, type AutoUpdateScheduler } from '../update/scheduler'
 import { LAUNCHER_QUERY_SERVICES, type LauncherQueryServices } from './launcher-query'
 import type { LiveThemeOptions } from './resolved-theme'
 import { DEFAULT_STARTUP_DEPENDENCIES, type StartupDependencies } from './startup'
@@ -35,6 +34,16 @@ export interface AppServices {
   readonly autoUpdate: AutoUpdateScheduler
   readonly onDefect: (cause: unknown) => void
 }
+
+// Process-scoped so a retried or remounted app tree cannot start a second update check.
+const AUTO_UPDATE_SCHEDULER = createAutoUpdateScheduler({
+  delayMs: 1000,
+  check: config => {
+    checkAndUpdate(config).catch(error => {
+      console.error('Auto-update check failed:', error)
+    })
+  },
+})
 
 export const APP_SERVICES: AppServices = {
   startup: DEFAULT_STARTUP_DEPENDENCIES,
