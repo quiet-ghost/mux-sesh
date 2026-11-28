@@ -8,7 +8,7 @@ import {
   createProjectDiscovery,
   describeDiscoveryFailures,
   type DiscoveryFailure,
-} from '../src/tmux/project-discovery-service'
+} from '../src/projects/discovery-service'
 import type { Config } from '../src/types'
 
 const realRunner = createCommandRunner()

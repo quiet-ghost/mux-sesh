@@ -8,7 +8,7 @@ import {
 } from '../../app/action-catalog'
 import { openNewSession } from '../../app/launcher-query'
 import type { ShowToast } from '../../app/notifications'
-import { refreshProjectDiscovery } from '../../tmux/projects'
+import { refreshProjectDiscovery } from '../../projects/project-items'
 import { AppMode, ViewMode, type Config, type Item } from '../../types'
 
 export interface KeyboardInput {

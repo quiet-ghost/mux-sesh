@@ -6,7 +6,7 @@ import {
   isIgnoredProjectDirectory,
   isInsideIgnoredDirectory,
   toProjectItem,
-} from './project-discovery'
+} from './discovery'
 
 export interface ZoxideEntry {
   score: number

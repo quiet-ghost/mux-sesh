@@ -24,8 +24,8 @@ import { terminalColorsToPalette, type TerminalPalette } from '../styles/termina
 import { AppMode, ViewMode, type Config, type Item } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey } from '../multiplexer/items'
-import { describeDiscoveryFailures } from '../tmux/project-discovery-service'
-import { subscribeProjectDiscoveryFailures } from '../tmux/projects'
+import { describeDiscoveryFailures } from '../projects/discovery-service'
+import { subscribeProjectDiscoveryFailures } from '../projects/project-items'
 import { clampCursorIndex } from '../ui/list-window'
 import { useStartOnCurrentSession } from './start-cursor'
 

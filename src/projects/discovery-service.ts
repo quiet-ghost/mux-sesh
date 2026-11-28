@@ -1,14 +1,14 @@
 import type { CommandRunner } from '../multiplexer/command'
 import type { Config } from '../types'
 import { toHomeRelativePath } from '../util/path-display'
-import { buildCacheKey, type DiscoveryScope } from './project-discovery'
+import { buildCacheKey, type DiscoveryScope } from './discovery'
 import {
   runProjectDiscovery,
   type DiscoveryFailure,
   type DiscoveryFailureReason,
   type DiscoveryResult,
   type DiscoveryRunReport,
-} from './project-loader'
+} from './loader'
 
 export type { DiscoveryFailure, DiscoveryFailureReason, DiscoveryResult, DiscoveryScope }
 

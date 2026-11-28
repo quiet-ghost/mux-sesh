@@ -1,4 +1,4 @@
-import { refreshProjectDiscovery } from '../tmux/projects'
+import { refreshProjectDiscovery } from '../projects/project-items'
 import { getActionTarget, type CommandId } from './action-catalog'
 import { getNewSessionSeed, openNewSession } from './launcher-query'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../types'

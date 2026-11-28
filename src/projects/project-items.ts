@@ -1,6 +1,6 @@
 import { createCommandRunner } from '../multiplexer/command'
 import type { Config, Item } from '../types'
-import { createProjectDiscovery, type DiscoveryFailureListener } from './project-discovery-service'
+import { createProjectDiscovery, type DiscoveryFailureListener } from './discovery-service'
 
 const DISCOVERY_CACHE_TTL_MS = 15000
 const DISCOVERY_COMMAND_TIMEOUT_MS = 10_000

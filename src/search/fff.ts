@@ -9,7 +9,7 @@ declare global {
   const FFF_LIBC: 'gnu' | 'musl'
 }
 
-import { getExistingProjectRoots, uniqueNormalizedPaths } from '../tmux/project-discovery'
+import { getExistingProjectRoots, uniqueNormalizedPaths } from '../projects/discovery'
 import { getPathContextLabel } from '../util/path-display'
 
 const DEFAULT_RESULT_LIMIT = 60

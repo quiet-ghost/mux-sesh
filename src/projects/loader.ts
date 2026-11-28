@@ -19,8 +19,8 @@ import {
   toProjectItem,
   uniqueNormalizedPaths,
   type DiscoveryScope,
-} from './project-discovery'
-import { applyZoxideMode, getZoxideEntries } from './project-zoxide'
+} from './discovery'
+import { applyZoxideMode, getZoxideEntries } from './zoxide'
 
 const ROOT_SCAN_CONCURRENCY = 4
 
