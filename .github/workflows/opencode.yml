@@ -21,9 +21,34 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Exchanges this job's GitHub OIDC token for a short-lived OpenCode key, so no long-lived
+      # API key is stored in the repo's secrets.
+      - name: Sign in to OpenCode
+        env:
+          AUDIENCE: https://opencode.ai/console
+          CLIENT_ID: ${{ secrets.OPENCODE_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CLIENT_ID" ]; then
+            echo "::error::The OPENCODE_CLIENT_ID repository secret is not set. Add the OpenCode service account's client ID under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          oidc=$(curl -sSf --oauth2-bearer "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE" | jq -r .value)
+          token=$(curl -sSf https://opencode.ai/console/auth/oauth/token \
+            -d grant_type=urn:ietf:params:oauth:grant-type:token-exchange \
+            -d subject_token_type=urn:ietf:params:oauth:token-type:jwt \
+            -d client_id="$CLIENT_ID" \
+            -d subject_token="$oidc" | jq -r .access_token)
+          if [ -z "$token" ] || [ "$token" = "null" ]; then
+            echo "::error::OpenCode sign-in returned no access token. Check that the OpenCode service account trusts this repository's workflow."
+            exit 1
+          fi
+          echo "::add-mask::$token"
+          echo "OPENCODE_API_KEY=$token" >> "$GITHUB_ENV"
+
+      # OPENCODE_API_KEY comes from the sign-in step; a step-level env here would override it.
       - name: Run opencode
         uses: anomalyco/opencode/github@latest
-        env:
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         with:
           model: opencode/claude-sonnet-4-5
