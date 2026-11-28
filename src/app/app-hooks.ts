@@ -139,7 +139,7 @@ function useUpdateEventToasts(
   }, [setUpdatedVersion, showToast, updates])
 }
 
-export function useNormalModeSessionReset(
+function useNormalModeSessionReset(
   appMode: AppMode,
   viewMode: ViewMode,
   sessionItems: Item[],
@@ -200,7 +200,7 @@ export function usePendingCloseReset(
   }, [armedKey, modalOpen, setPendingClose, targetKey])
 }
 
-export function useSelectionMemory(
+function useSelectionMemory(
   appMode: AppMode,
   viewMode: ViewMode,
   cursor: number,
@@ -238,7 +238,7 @@ export function useSelectionMemory(
   ])
 }
 
-export function useSearchFiltering(
+function useSearchFiltering(
   appMode: AppMode,
   searchQuery: string,
   allItems: Item[],
@@ -269,7 +269,7 @@ export function useSearchFiltering(
 
 // History follows config and loads on a later task, so its read never joins a frame. A query typed
 // before it finishes ranks without history; nothing is reordered under the user when it lands.
-export function useOpenHistory(
+function useOpenHistory(
   config: Config | null,
   history: OpenHistory,
   onDefect: (cause: unknown) => void

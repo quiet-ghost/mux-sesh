@@ -174,11 +174,11 @@ async function handleBatchRetryWithFeedback(
   presentBatch(outcome, options)
 }
 
-export async function handleSelectItem(
+async function handleSelectItem(
   item: Item,
   config: Config | null,
   backend: MultiplexerBackend | null,
-  history: OpenHistory = OPEN_HISTORY
+  history: OpenHistory
 ): Promise<void> {
   if (!backend) return
   await SessionActions.handleSelect(item, config, backend, history)
