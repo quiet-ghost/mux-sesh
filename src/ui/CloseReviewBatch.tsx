@@ -1,7 +1,7 @@
 import { CleanupBatch } from '../sessions/cleanup-batch'
 import { CleanupPlan } from '../sessions/cleanup-plan'
 import { useTheme } from '../styles/theme'
-import { stripAnsi } from '../util/ansi'
+import { toPlainText } from '../util/ansi'
 import { fitPath } from '../util/path-display'
 import { displayWidth } from '../util/truncate'
 import {
@@ -15,11 +15,6 @@ import Modal from './Modal'
 interface Props {
   batch: CleanupBatch
   columns: number
-}
-
-// Session names and paths come from the backend; the screen shows plain text.
-function plain(text: string): string {
-  return stripAnsi(text).replace(/\p{Cc}+/gu, ' ')
 }
 
 const COLUMN_GAP = '  '
@@ -47,7 +42,7 @@ function targetColumns(plans: readonly CleanupPlan[], width: number): TargetColu
   const units = widest(plans.map(CleanupPlan.unitsLabel))
 
   const name = Math.min(
-    widest(plans.map(plan => plain(plan.ref.title))),
+    widest(plans.map(plan => toPlainText(plan.ref.title))),
     Math.floor(width * MAX_NAME_SHARE)
   )
 
@@ -64,7 +59,7 @@ export default function CloseReviewBatch({ batch, columns }: Props) {
 
   return (
     <Modal
-      title={plain(CleanupBatch.title(batch))}
+      title={toPlainText(CleanupBatch.title(batch))}
       hints={[
         { label: `close ${ready.length}`, key: 'enter' },
         { label: 'keep', key: 'esc' },
@@ -75,10 +70,10 @@ export default function CloseReviewBatch({ batch, columns }: Props) {
         <box key={plan.key} style={{ flexDirection: 'column' }}>
           <text style={{ wrapMode: 'none' }}>
             <span style={{ fg: theme.text }}>
-              {padEnd(truncateDialogText(plain(plan.ref.title), widths.name), widths.name)}
+              {padEnd(truncateDialogText(toPlainText(plan.ref.title), widths.name), widths.name)}
             </span>
             <span style={{ fg: theme.textMuted }}>
-              {COLUMN_GAP + padEnd(fitPath(plain(plan.path), widths.path), widths.path)}
+              {COLUMN_GAP + padEnd(fitPath(toPlainText(plan.path), widths.path), widths.path)}
             </span>
             <span style={{ fg: theme.textMuted }}>
               {COLUMN_GAP + padStart(CleanupPlan.unitsLabel(plan), widths.units)}
@@ -86,17 +81,17 @@ export default function CloseReviewBatch({ batch, columns }: Props) {
           </text>
           {plan.warnings.map(warning => (
             <text key={CleanupPlan.describeWarning(warning)} style={{ fg: theme.key }}>
-              {`  ! ${plain(CleanupPlan.describeWarning(warning))}`}
+              {`  ! ${toPlainText(CleanupPlan.describeWarning(warning))}`}
             </text>
           ))}
         </box>
       ))}
       {CleanupBatch.refusedMembers(batch).map(member => (
         <text key={member.key} style={{ fg: theme.danger }}>
-          {plain(CleanupBatch.refusedLine(member))}
+          {toPlainText(CleanupBatch.refusedLine(member))}
         </text>
       ))}
-      {hostWarning && <text style={{ fg: theme.danger }}>{`! ${plain(hostWarning)}`}</text>}
+      {hostWarning && <text style={{ fg: theme.danger }}>{`! ${toPlainText(hostWarning)}`}</text>}
       <text style={{ fg: theme.textMuted, marginTop: 1 }}>
         No files, worktrees or branches are deleted.
       </text>

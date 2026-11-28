@@ -1,5 +1,5 @@
 import { CleanupPlan } from '../sessions/cleanup-plan'
-import { stripAnsi } from '../util/ansi'
+import { toPlainText } from '../util/ansi'
 import type { StatusLine } from '../ui/status-line'
 
 // A single close waits on its row for a second press of this key; it is not rebindable.
@@ -20,16 +20,13 @@ function keyOf(pending: PendingClose): string | undefined {
   return pending.kind === 'armed' ? pending.plan.key : undefined
 }
 
-// Session names come from the backend; the status line shows plain text.
-function plain(text: string): string {
-  return stripAnsi(text).replace(/\p{Cc}+/gu, ' ')
-}
-
 // What the review dialog used to warn about stays on screen while the close waits.
 function statusLines(pending: PendingClose): readonly StatusLine[] {
   if (pending.kind === 'none' || pending.plan.warnings.length === 0) return []
 
-  const text = pending.plan.warnings.map(warning => plain(CleanupPlan.describeWarning(warning)))
+  const text = pending.plan.warnings.map(warning =>
+    toPlainText(CleanupPlan.describeWarning(warning))
+  )
 
   return [{ kind: 'warn', text: text.join('. ') }]
 }
