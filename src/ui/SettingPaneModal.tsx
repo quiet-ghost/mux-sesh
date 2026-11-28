@@ -6,7 +6,7 @@ import type {
   RuleFormModel,
   SettingPaneModel,
 } from '../app/setting-panes'
-import type { RuleFormRow } from '../setting-rules'
+import type { RuleFormRow } from '../settings/setting-rules'
 import { useTheme } from '../styles/theme'
 import type { ThemeColors } from '../types'
 import {

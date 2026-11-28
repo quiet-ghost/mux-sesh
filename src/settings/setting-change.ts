@@ -1,8 +1,8 @@
 import * as Schema from 'effect/Schema'
-import { normalizeConfig, serializeConfig } from './config'
-import { checkConfigDocument } from './config/config-document'
-import { isSettingsChange } from './settings'
-import type { Config } from './types'
+import { normalizeConfig, serializeConfig } from '../config'
+import { checkConfigDocument } from '../config/config-document'
+import type { Config } from '../types'
+import { isSettingsChange } from './settings-catalog'
 
 // One edit to a list or rule setting: the config to save, nothing to save, or why it was refused.
 export type SettingChange =

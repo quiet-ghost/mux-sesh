@@ -8,8 +8,8 @@ import {
   getSettingValue,
   type SettingsEntry,
   type SettingsOption,
-} from '../settings'
-import { IconsForm, type IconsFormEntry } from '../settings-icons'
+} from '../settings/settings-catalog'
+import { IconsForm, type IconsFormEntry } from '../settings/settings-icons'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
 import {
   getActionTarget,

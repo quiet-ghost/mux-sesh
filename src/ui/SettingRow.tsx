@@ -1,4 +1,4 @@
-import type { SettingsEntry } from '../settings'
+import type { SettingsEntry } from '../settings/settings-catalog'
 import { useTheme } from '../styles/theme'
 import { fitDialogLabelMatches, truncateDialogText } from './dialog-layout'
 import HighlightedText from './HighlightedText'

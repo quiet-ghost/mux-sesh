@@ -15,7 +15,7 @@ import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey } from '../multiplexer/items'
 import { CleanupBatch, type PickerHost } from '../sessions/cleanup-batch'
 import { CleanupPlan } from '../sessions/cleanup-plan'
-import type { SettingsFieldId } from '../settings'
+import type { SettingsFieldId } from '../settings/settings-catalog'
 
 interface AppControlsOptions {
   config: Config | null

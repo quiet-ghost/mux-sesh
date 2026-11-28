@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { getDefaultConfig } from '../src/config'
-import type { SettingChange } from '../src/setting-change'
-import { Rules } from '../src/setting-rules'
+import type { SettingChange } from '../src/settings/setting-change'
+import { Rules } from '../src/settings/setting-rules'
 import type { Config } from '../src/types'
 
 const HOME = '/home/tester'

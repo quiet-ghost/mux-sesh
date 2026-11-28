@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import { NERD_FONT_ICONS } from '../src/settings-icons'
+import { NERD_FONT_ICONS } from '../src/settings/settings-icons'
 import type { Config } from '../src/types'
 import { selectedRows } from './fixtures/selection'
 import { renderSessionScreen } from './fixtures/session-screen'

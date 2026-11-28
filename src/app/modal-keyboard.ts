@@ -21,8 +21,8 @@ import {
   type SettingCollection,
   type SettingsEntry,
   type SettingsOption,
-} from '../settings'
-import type { IconsFormAction, IconsFormEntry, IconsFormRow } from '../settings-icons'
+} from '../settings/settings-catalog'
+import type { IconsFormAction, IconsFormEntry, IconsFormRow } from '../settings/settings-icons'
 import type { CommandEntry } from '../ui/CommandsModal'
 import { clampCursorIndex } from '../ui/list-window'
 

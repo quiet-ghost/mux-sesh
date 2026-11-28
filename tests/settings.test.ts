@@ -14,7 +14,7 @@ import {
   resetSetting,
   stepSetting,
   type SettingsEntry,
-} from '../src/settings'
+} from '../src/settings/settings-catalog'
 
 const decodeJsonText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Json))
 

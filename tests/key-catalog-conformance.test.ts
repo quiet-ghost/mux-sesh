@@ -29,8 +29,12 @@ import {
   type KeyboardHandlerContext,
   type KeyboardInput,
 } from '../src/handlers/keyboard'
-import type { SettingsControl, SettingsEntry, SettingsReset } from '../src/settings'
-import type { IconsFormAction, IconsFormEntry } from '../src/settings-icons'
+import type {
+  SettingsControl,
+  SettingsEntry,
+  SettingsReset,
+} from '../src/settings/settings-catalog'
+import type { IconsFormAction, IconsFormEntry } from '../src/settings/settings-icons'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../src/types'
 import {
   ACTION_IDS,

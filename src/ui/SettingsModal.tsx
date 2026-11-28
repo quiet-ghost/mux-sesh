@@ -5,7 +5,7 @@ import type { OptionPicker } from '../app/option-picker'
 import { reconcileTextareaValue } from '../app/textarea'
 import { useTheme } from '../styles/theme'
 import { getSettingsLabelMatches } from '../search/lists'
-import type { SettingsEntry } from '../settings'
+import type { SettingsEntry } from '../settings/settings-catalog'
 import { toHomeRelativePath } from '../util/path-display'
 import {
   DIALOG_FILTER_ROWS,

@@ -3,7 +3,7 @@ import { getDialogHints } from '../app/action-catalog'
 import { OptionPicker } from '../app/option-picker'
 import { useTheme } from '../styles/theme'
 import { getOptionLabelMatches } from '../search/lists'
-import type { SettingsOption } from '../settings'
+import type { SettingsOption } from '../settings/settings-catalog'
 import {
   DIALOG_FILTER_ROWS,
   fitsOptionalDialogRows,

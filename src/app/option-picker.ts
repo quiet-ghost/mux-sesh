@@ -5,7 +5,7 @@ import {
   getSettingOptions,
   type SettingsFieldId,
   type SettingsOption,
-} from '../settings'
+} from '../settings/settings-catalog'
 import type { Config } from '../types'
 
 // While an option picker is open, the highlighted option is the preview; the saved value lives

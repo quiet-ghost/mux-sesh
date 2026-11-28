@@ -1,9 +1,9 @@
-import { expandHomePath } from './config'
+import { expandHomePath } from '../config'
+import type { Config, Item } from '../types'
+import { matchesGlob, normalizePathForMatching } from '../util/glob'
+import { plural } from '../util/plural'
 import { DraftCheck, SettingChange } from './setting-change'
-import type { ListSettingId } from './settings'
-import type { Config, Item } from './types'
-import { matchesGlob, normalizePathForMatching } from './util/glob'
-import { plural } from './util/plural'
+import type { ListSettingId } from './settings-catalog'
 
 export type StringListField = ListSettingId
 

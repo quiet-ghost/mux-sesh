@@ -5,7 +5,7 @@ import {
   type LiveSessionItem,
 } from '../multiplexer/items'
 import type { MultiplexerBackend } from '../multiplexer/types'
-import type { SettingsEntry } from '../settings'
+import type { SettingsEntry } from '../settings/settings-catalog'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../types'
 import { CONFIRM_CLOSE_KEY, type PendingClose } from './pending-close'
 

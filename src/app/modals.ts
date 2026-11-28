@@ -8,8 +8,8 @@ import {
   isFormSetting,
   isJsonSetting,
   type SettingsFieldId,
-} from '../settings'
-import type { IconKind, IconsFormRow } from '../settings-icons'
+} from '../settings/settings-catalog'
+import type { IconKind, IconsFormRow } from '../settings/settings-icons'
 import type { Config, Item } from '../types'
 
 export type ModalState =

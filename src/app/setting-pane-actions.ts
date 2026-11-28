@@ -1,14 +1,14 @@
 import type { Dispatch, SetStateAction } from 'react'
-import type { SettingChange } from '../setting-change'
-import { StringList } from '../setting-lists'
-import { Rules } from '../setting-rules'
+import type { SettingChange } from '../settings/setting-change'
+import { StringList } from '../settings/setting-lists'
+import { Rules } from '../settings/setting-rules'
 import {
   getSettingEditorTitle,
   type ListSettingId,
   type RulesSettingId,
   type SettingCollection,
   type SettingsFieldId,
-} from '../settings'
+} from '../settings/settings-catalog'
 import type { Config, ViewMode } from '../types'
 import { clampCursorIndex } from '../ui/list-window'
 import type { ListPaneActionId, RulePaneActionId } from './action-catalog'

@@ -1,7 +1,7 @@
 import type { TextareaRenderable } from '@opentui/core'
 import { getDialogHints, type IconsFormView } from '../app/action-catalog'
 import type { IconsFormMode } from '../app/modals'
-import type { IconsFormEntry, IconsFormRow } from '../settings-icons'
+import type { IconsFormEntry, IconsFormRow } from '../settings/settings-icons'
 import { useTheme } from '../styles/theme'
 import {
   getDialogContentWidth,

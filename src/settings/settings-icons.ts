@@ -1,5 +1,5 @@
-import type { SettingsReset } from './settings'
-import type { Config, IconConfig } from './types'
+import type { Config, IconConfig } from '../types'
+import type { SettingsReset } from './settings-catalog'
 
 // The Icons form: an on/off row, then one glyph per icon kind in the config's `icons` object. The
 // file has no on/off key, so "on" is any glyph set: turning it on writes the Nerd Font set from the

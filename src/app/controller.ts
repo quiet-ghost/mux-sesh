@@ -23,7 +23,7 @@ import { AppMode } from '../types'
 import { anyPending, createPendingFlag } from '../util/pending'
 import { mark, measure } from '../util/perf'
 import { requestFatalShutdown } from '../lifecycle/shutdown'
-import { getSettingEditorTitle, isOptionSetting } from '../settings'
+import { getSettingEditorTitle, isOptionSetting } from '../settings/settings-catalog'
 import { useLaunchPreview } from '../ui/launch-preview'
 import { CLONE_SERVICES } from '../sessions/clone-plan'
 import {

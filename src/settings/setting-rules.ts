@@ -1,8 +1,8 @@
-import { expandHomePath } from './config'
+import { expandHomePath } from '../config'
+import type { Config, ProjectProfile, ProjectWildcard } from '../types'
+import { normalizePathForMatching } from '../util/glob'
 import { DraftCheck, SettingChange } from './setting-change'
-import { getSettingDisplayValue, type RulesSettingId } from './settings'
-import type { Config, ProjectProfile, ProjectWildcard } from './types'
-import { normalizePathForMatching } from './util/glob'
+import { getSettingDisplayValue, type RulesSettingId } from './settings-catalog'
 
 export type RuleField = RulesSettingId
 

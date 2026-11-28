@@ -1,12 +1,12 @@
 import { statSync } from 'fs'
-import { StringList, type ListContext } from '../setting-lists'
-import { Rules, type RuleFormRow, type RuleTextField } from '../setting-rules'
+import { StringList, type ListContext } from '../settings/setting-lists'
+import { Rules, type RuleFormRow, type RuleTextField } from '../settings/setting-rules'
 import {
   getSettingDescription,
   getSettingEditorTitle,
   type ListSettingId,
   type RulesSettingId,
-} from '../settings'
+} from '../settings/settings-catalog'
 import type { Config, Item, KeybindMode } from '../types'
 import { clampCursorIndex } from '../ui/list-window'
 import {

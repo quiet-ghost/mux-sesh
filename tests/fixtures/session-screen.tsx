@@ -49,7 +49,7 @@ import { filterAndSortItems } from '../../src/search'
 import type { FileSearchOutcome } from '../../src/search/fff'
 import type { OpenHistory } from '../../src/search/frecency-store'
 import type { CloneServices } from '../../src/sessions/clone-plan'
-import { getSettingEditorTitle, isOptionSetting } from '../../src/settings'
+import { getSettingEditorTitle, isOptionSetting } from '../../src/settings/settings-catalog'
 import { resolveTheme, ThemeProvider, type ThemeResolver } from '../../src/styles/theme'
 import type { SubscribeThemeFollowOptions } from '../../src/styles/theme-follow'
 import {

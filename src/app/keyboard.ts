@@ -21,10 +21,15 @@ import {
 } from '../handlers/keyboard'
 import { getItemKey } from '../multiplexer/items'
 import { resolvePrefixKey } from '../config'
-import type { SettingCollection, SettingsEntry, SettingsFieldId, SettingsOption } from '../settings'
+import type {
+  SettingCollection,
+  SettingsEntry,
+  SettingsFieldId,
+  SettingsOption,
+} from '../settings/settings-catalog'
 import type { SettingPaneAction } from './setting-pane-actions'
 import type { SettingPaneView } from './setting-panes'
-import type { IconsFormAction, IconsFormEntry } from '../settings-icons'
+import type { IconsFormAction, IconsFormEntry } from '../settings/settings-icons'
 import type { Config, Item } from '../types'
 import type { CommandEntry } from '../ui/CommandsModal'
 import { getActionTargetItem, type ActionContext } from './action-catalog'

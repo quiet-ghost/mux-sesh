@@ -12,7 +12,7 @@ import { persistConfigUpdate, runWithErrorToast } from './operations'
 import { OptionPicker } from './option-picker'
 import type { Dispatch, SetStateAction } from 'react'
 import { AppMode, type Config, type Item, type ViewMode } from '../types'
-import type { SettingsFieldId } from '../settings'
+import type { SettingsFieldId } from '../settings/settings-catalog'
 import type { MultiplexerBackend } from '../multiplexer'
 import { handoffOf } from '../multiplexer/focus-outcome'
 import { workspaceNoun, type FocusOutcome, type WorkspaceRef } from '../multiplexer/types'
@@ -32,8 +32,8 @@ import {
   isSettingsChange,
   resetSetting,
   stepSetting,
-} from '../settings'
-import { IconsForm, type IconsChange, type IconsFormAction } from '../settings-icons'
+} from '../settings/settings-catalog'
+import { IconsForm, type IconsChange, type IconsFormAction } from '../settings/settings-icons'
 import {
   handleCloseBatch,
   handleRetryCloseBatch,

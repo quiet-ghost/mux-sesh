@@ -5,7 +5,7 @@ import {
   type SettingsEntry,
   type SettingsOption,
   type SettingsFieldId,
-} from '../settings'
+} from '../settings/settings-catalog'
 import type { CommandEntry } from '../ui/CommandsModal'
 import type { ModalState } from './modals'
 import type { SettingPaneState } from './setting-panes'
@@ -19,7 +19,7 @@ import SettingEditorModal from '../ui/SettingEditorModal'
 import SettingPaneModal from '../ui/SettingPaneModal'
 import SettingJsonModal from '../ui/SettingJsonModal'
 import IconsFormModal from '../ui/IconsFormModal'
-import type { IconsFormEntry } from '../settings-icons'
+import type { IconsFormEntry } from '../settings/settings-icons'
 import SettingOptionsModal from '../ui/SettingOptionsModal'
 import SettingsModal from '../ui/SettingsModal'
 import { useItemSelection } from '../ui/use-item-selection'

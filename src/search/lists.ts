@@ -1,5 +1,5 @@
 import type { CommandEntry } from '../app/action-catalog'
-import type { SettingsEntry, SettingsOption } from '../settings'
+import type { SettingsEntry, SettingsOption } from '../settings/settings-catalog'
 import {
   createSearchSchema,
   parseQuery,

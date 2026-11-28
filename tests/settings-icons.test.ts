@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { getDefaultConfig } from '../src/config'
-import { IconsForm, NERD_FONT_ICONS } from '../src/settings-icons'
+import { IconsForm, NERD_FONT_ICONS } from '../src/settings/settings-icons'
 
 const config = getDefaultConfig('/home/tester')
 
