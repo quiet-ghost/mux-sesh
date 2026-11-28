@@ -528,7 +528,6 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
             {...settings}
             {...dimensions}
             configPath="/fixture/config.json"
-            themeId={resolvedTheme.id}
             settingPane={settingPane}
             getSettingEditorTitle={getSettingEditorTitle}
           />
