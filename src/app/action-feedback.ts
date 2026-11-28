@@ -34,11 +34,13 @@ import {
 } from '../settings/settings-edit'
 import { getSettingDisplayValue, getSettingEditorValue } from '../settings/settings-view'
 import { IconsForm, type IconsChange, type IconsFormAction } from '../settings/settings-icons'
+import { OPEN_HISTORY, type OpenHistory } from '../search/frecency-store'
 import * as SessionActions from './session-actions'
 
 interface SharedHandlerOptions {
   backend: MultiplexerBackend | null
   config: Config | null
+  history: OpenHistory
   items: Item[]
   sessionItems: Item[]
   cursor: number
@@ -175,17 +177,18 @@ async function handleBatchRetryWithFeedback(
 export async function handleSelectItem(
   item: Item,
   config: Config | null,
-  backend: MultiplexerBackend | null
+  backend: MultiplexerBackend | null,
+  history: OpenHistory = OPEN_HISTORY
 ): Promise<void> {
   if (!backend) return
-  await SessionActions.handleSelect(item, config, backend)
+  await SessionActions.handleSelect(item, config, backend, history)
 }
 
 async function handleLastSessionWithFeedback(options: SharedHandlerOptions): Promise<void> {
   if (!options.backend) return
   const backend = options.backend
   await runWithErrorToast(
-    () => SessionActions.handleLastSession(options.sessionItems, backend),
+    () => SessionActions.handleLastSession(options.sessionItems, backend, options.history),
     options.showToast
   )
 }
@@ -197,7 +200,7 @@ async function handleRootSessionWithFeedback(
   if (!options.backend) return
   const backend = options.backend
   await runWithErrorToast(
-    () => SessionActions.handleRootSession(item, options.config, backend),
+    () => SessionActions.handleRootSession(item, options.config, backend, options.history),
     options.showToast
   )
 }
@@ -289,7 +292,8 @@ export async function handleRenameSubmitWithFeedback(
 
 export async function handleNewSessionSubmitWithPreview(
   preview: LaunchPreview,
-  options: NewSessionHandlerOptions
+  options: NewSessionHandlerOptions,
+  history: OpenHistory = OPEN_HISTORY
 ): Promise<void> {
   if (!options.backend) return
 
@@ -308,7 +312,8 @@ export async function handleNewSessionSubmitWithPreview(
     const outcome = await SessionActions.handleNewSessionSubmit(
       preview,
       options.backend,
-      options.clone
+      options.clone,
+      history
     )
 
     ActionOutcome.present(outcome, options)
@@ -679,6 +684,7 @@ interface CreateAppHandlersOptions extends NewSessionHandlerOptions, SharedHandl
   setCursor: (cursor: number) => void
   setSearchQuery: (value: string) => void
   setAgentCursor: (cursor: number) => void
+  history: OpenHistory
   saveConfig: (config: Config) => Promise<void>
   setConfig: (config: Config) => void
   setSettingEditorError: (message: string) => void
@@ -697,6 +703,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
   const sharedOptions: SharedHandlerOptions = {
     backend: options.backend,
     config: options.config,
+    history: options.history,
     items: options.items,
     sessionItems: options.sessionItems,
     cursor: options.cursor,
@@ -738,7 +745,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
 
   async function handleSelectWrapper(item: Item) {
     try {
-      await handleSelectItem(item, options.config, options.backend)
+      await handleSelectItem(item, options.config, options.backend, options.history)
     } catch (cause) {
       // Expected failures leave the picker and its inventory usable; defects still crash.
       if (!isExpectedActionFailure(cause)) throw cause
@@ -770,12 +777,16 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
 
   // Runs the frozen preview, or a plan a Projects number key made for another row.
   async function handleNewSessionSubmit(preview: LaunchPreview = options.launchPreview) {
-    await handleNewSessionSubmitWithPreview(preview, {
-      ...sharedOptions,
-      clone: options.clone,
-      launchGuard: options.launchGuard,
-      showOutcome: options.showOutcome,
-    })
+    await handleNewSessionSubmitWithPreview(
+      preview,
+      {
+        ...sharedOptions,
+        clone: options.clone,
+        launchGuard: options.launchGuard,
+        showOutcome: options.showOutcome,
+      },
+      options.history
+    )
   }
 
   async function handleOutcomeRetry(report: OperationReport) {

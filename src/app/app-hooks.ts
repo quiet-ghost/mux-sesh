@@ -8,15 +8,14 @@ import {
 } from 'react'
 import { useRenderer } from '@opentui/react'
 import type { TerminalColors } from '@opentui/core'
-import { checkAndUpdate, describeUpdateEvent, updateEvents } from '../update'
+import { checkAndUpdate, describeUpdateEvent } from '../update'
 import { createAutoUpdateScheduler, type AutoUpdateScheduler } from '../update/scheduler'
 import type { ShowToast } from './notifications'
 import { PendingClose } from './pending-close'
 import { useHerdrAgentPolling } from './herdr-refresh'
 import type { SessionInventory } from './session-inventory'
-import { clearMatchIndices, createItemFilter, type ItemFilter } from '../search'
-import { OPEN_HISTORY, type OpenHistory } from '../search/frecency-store'
-import { requestFatalShutdown } from '../lifecycle/shutdown'
+import { clearMatchIndices, type ItemFilter } from '../search'
+import type { OpenHistory } from '../search/frecency-store'
 import { getSessionSelectionIndex } from './inventory-load'
 import { SYSTEM_THEME_ID } from '../styles/theme-ids'
 import { subscribeThemeFollow, type SubscribeThemeFollowOptions } from '../styles/theme-follow'
@@ -24,10 +23,15 @@ import { terminalColorsToPalette, type TerminalPalette } from '../styles/termina
 import { AppMode, ViewMode, type Config, type Item } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey } from '../multiplexer/items'
-import { describeDiscoveryFailures } from '../projects/discovery-service'
-import { subscribeProjectDiscoveryFailures } from '../projects/project-items'
+import { describeDiscoveryFailures, type ProjectDiscovery } from '../projects/discovery-service'
 import { clampCursorIndex } from '../ui/list-window'
 import { useStartOnCurrentSession } from './start-cursor'
+import type { AppServices, UpdateEventSource } from './app-services'
+
+type AppBehaviorServices = Pick<
+  AppServices,
+  'openHistory' | 'createSearchFilter' | 'updates' | 'projects' | 'onDefect'
+>
 
 export function useSystemThemeFollow(
   themeId: string | undefined,
@@ -99,7 +103,7 @@ export function useTerminalPalette(
 }
 
 // Process-scoped so a retried or remounted app tree cannot start a second update check.
-const AUTO_UPDATE_SCHEDULER = createAutoUpdateScheduler({
+export const AUTO_UPDATE_SCHEDULER = createAutoUpdateScheduler({
   delayMs: 1000,
   check: config => {
     checkAndUpdate(config).catch(error => {
@@ -121,17 +125,18 @@ export function useAutoUpdateScheduler(
 
 function useUpdateEventToasts(
   setUpdatedVersion: Dispatch<SetStateAction<string | null>>,
-  showToast: ShowToast
+  showToast: ShowToast,
+  updates: UpdateEventSource
 ) {
   useEffect(() => {
-    const unsubscribe = updateEvents.on(event => {
+    const unsubscribe = updates.on(event => {
       if (event.kind === 'updated') setUpdatedVersion(event.version)
 
       showToast(describeUpdateEvent(event))
     })
 
     return unsubscribe
-  }, [setUpdatedVersion, showToast])
+  }, [setUpdatedVersion, showToast, updates])
 }
 
 export function useNormalModeSessionReset(
@@ -155,13 +160,13 @@ export function useNormalModeSessionReset(
   }, [appMode, lastSessionSelectionRef, sessionItems, setAllItems, setCursor, setItems, viewMode])
 }
 
-function useProjectDiscoveryFailureToasts(showToast: ShowToast) {
+function useProjectDiscoveryFailureToasts(showToast: ShowToast, projects: ProjectDiscovery) {
   useEffect(
     () =>
-      subscribeProjectDiscoveryFailures(failures => {
+      projects.subscribeFailures(failures => {
         showToast({ kind: 'error', message: describeDiscoveryFailures(failures) })
       }),
-    [showToast]
+    [projects, showToast]
   )
 }
 
@@ -239,11 +244,10 @@ export function useSearchFiltering(
   allItems: Item[],
   setItems: Dispatch<SetStateAction<Item[]>>,
   setCursor: Dispatch<SetStateAction<number>>,
-  filterItems?: ItemFilter
+  createFilter: () => ItemFilter
 ) {
   // Owned per hook so typing refines the previous Search result instead of rescanning.
-  const [ownFilter] = useState(() => createItemFilter({ boost: item => OPEN_HISTORY.boost(item) }))
-  const filter = filterItems ?? ownFilter
+  const [filter] = useState(createFilter)
 
   useEffect(() => {
     // New-session rows belong to useLauncherQuery, which merges native file search in.
@@ -267,8 +271,8 @@ export function useSearchFiltering(
 // before it finishes ranks without history; nothing is reordered under the user when it lands.
 export function useOpenHistory(
   config: Config | null,
-  history: OpenHistory = OPEN_HISTORY,
-  onDefect: (cause: unknown) => void = requestFatalShutdown
+  history: OpenHistory,
+  onDefect: (cause: unknown) => void
 ) {
   const enabled = config ? config.searchHistory !== false : undefined
 
@@ -314,10 +318,11 @@ interface UseAppBehaviorsOptions {
   searchQuery: string
   allItems: Item[]
   setUpdatedVersion: Dispatch<SetStateAction<string | null>>
+  services: AppBehaviorServices
 }
 
 export function useAppBehaviors(options: UseAppBehaviorsOptions) {
-  useUpdateEventToasts(options.setUpdatedVersion, options.showToast)
+  useUpdateEventToasts(options.setUpdatedVersion, options.showToast, options.services.updates)
   useNormalModeSessionReset(
     options.appMode,
     options.viewMode,
@@ -327,7 +332,7 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.setItems,
     options.setCursor
   )
-  useProjectDiscoveryFailureToasts(options.showToast)
+  useProjectDiscoveryFailureToasts(options.showToast, options.services.projects)
   useBoundedCursor(options.filteredCommandEntriesLength, options.setCommandsCursor)
   useBoundedCursor(options.filteredSettingsEntriesLength, options.setSettingsCursor)
   useBoundedCursor(options.filteredSettingOptionsLength, options.setSettingOptionsCursor)
@@ -340,13 +345,14 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.lastProjectSelectionRef,
     options.lastSessionSelectionRef
   )
-  useOpenHistory(options.config)
+  useOpenHistory(options.config, options.services.openHistory, options.services.onDefect)
   useSearchFiltering(
     options.appMode,
     options.searchQuery,
     options.allItems,
     options.setItems,
-    options.setCursor
+    options.setCursor,
+    options.services.createSearchFilter
   )
   useHerdrAgentPolling(
     options.inventory,

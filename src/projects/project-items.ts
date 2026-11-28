@@ -1,27 +1,31 @@
 import { createCommandRunner } from '../multiplexer/command'
 import type { Config, Item } from '../types'
-import { createProjectDiscovery, type DiscoveryFailureListener } from './discovery-service'
+import {
+  createProjectDiscovery,
+  type DiscoveryFailureListener,
+  type ProjectDiscovery,
+} from './discovery-service'
 
 const DISCOVERY_CACHE_TTL_MS = 15000
 const DISCOVERY_COMMAND_TIMEOUT_MS = 10_000
 
-const projectDiscovery = createProjectDiscovery({
+export const PROJECT_DISCOVERY: ProjectDiscovery = createProjectDiscovery({
   runner: createCommandRunner({ timeoutMs: DISCOVERY_COMMAND_TIMEOUT_MS }),
   ttlMs: DISCOVERY_CACHE_TTL_MS,
 })
 
 export async function getProjectItems(config: Config): Promise<Item[]> {
-  return (await projectDiscovery.load(config, 'projects')).items
+  return (await PROJECT_DISCOVERY.load(config, 'projects')).items
 }
 
 export async function getSessionCandidateItems(config: Config): Promise<Item[]> {
-  return (await projectDiscovery.load(config, 'session-candidates')).items
+  return (await PROJECT_DISCOVERY.load(config, 'session-candidates')).items
 }
 
 export function refreshProjectDiscovery(): void {
-  projectDiscovery.refresh()
+  PROJECT_DISCOVERY.refresh()
 }
 
 export function subscribeProjectDiscoveryFailures(listener: DiscoveryFailureListener): () => void {
-  return projectDiscovery.subscribeFailures(listener)
+  return PROJECT_DISCOVERY.subscribeFailures(listener)
 }

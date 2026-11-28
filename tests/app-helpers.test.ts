@@ -36,6 +36,7 @@ import { filterHiddenSessions } from '../src/sessions/session-filters'
 import { INACTIVE_LAUNCH } from '../src/sessions/launch-plan'
 import { IDLE } from '../src/util/pending'
 import { NO_GIT } from './fixtures/local-github'
+import { OPEN_HISTORY } from '../src/search/frecency-store'
 
 function actionContext(overrides: Partial<ActionContext> = {}): ActionContext {
   return {
@@ -715,6 +716,7 @@ describe('app handler factory', () => {
 
     const handlers = createAppHandlers({
       clone: NO_GIT,
+      history: OPEN_HISTORY,
       launchGuard: { active: false },
       showOutcome: mock(() => {}),
       viewMode: ViewMode.Sessions,
@@ -790,6 +792,7 @@ describe('app handler factory', () => {
 
     const handlers = createAppHandlers({
       clone: NO_GIT,
+      history: OPEN_HISTORY,
       launchGuard: { active: false },
       showOutcome: mock(() => {}),
       viewMode: ViewMode.Sessions,

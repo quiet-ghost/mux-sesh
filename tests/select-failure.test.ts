@@ -8,6 +8,7 @@ import { INACTIVE_LAUNCH } from '../src/sessions/launch-plan'
 import { ViewMode } from '../src/types'
 import type { ShowToast } from '../src/app/notifications'
 import { NO_GIT } from './fixtures/local-github'
+import { OPEN_HISTORY } from '../src/search/frecency-store'
 
 const agent = workspaceToItem({
   backend: 'herdr',
@@ -22,6 +23,7 @@ const agent = workspaceToItem({
 function handlersFor(runner: CommandRunner, showToast: ShowToast) {
   return createAppHandlers({
     clone: NO_GIT,
+    history: OPEN_HISTORY,
     launchGuard: { active: false },
     viewMode: ViewMode.Sessions,
     config: getDefaultConfig('/fixture'),

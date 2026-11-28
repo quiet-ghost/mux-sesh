@@ -30,6 +30,7 @@ import { createFakeSpinnerMotion } from './fixtures/spinner-motion'
 import { createPickerCorpus, createPickerOpenHistory, PICKER_QUERIES } from './perf/picker-corpus'
 import { unsupportedBackend } from './fixtures/fake-backend'
 import { settleTicks } from './fixtures/wait'
+import { PROJECT_DISCOVERY } from '../src/projects/project-items'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -512,6 +513,7 @@ describe('owned resources are released', () => {
     const inventory = createSessionInventory({
       effects,
       measure: async (_name, run) => run(),
+      projects: PROJECT_DISCOVERY,
       publish: snapshot => published.push(snapshot),
       report: () => {},
       onDefect: cause => defects.push(cause),

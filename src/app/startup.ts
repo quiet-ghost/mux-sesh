@@ -6,6 +6,8 @@ import { resolveMultiplexerBackend, type MultiplexerBackend } from '../multiplex
 import { CommandInterrupted, type CommandRunner } from '../multiplexer/command'
 import { isBackendFailure } from '../multiplexer/failure'
 import { requestFatalShutdown } from '../lifecycle/shutdown'
+import type { ProjectDiscovery } from '../projects/discovery-service'
+import { PROJECT_DISCOVERY } from '../projects/project-items'
 import { loadProjectSourceItems, type Measure } from './inventory-load'
 import type { SessionInventory } from './session-inventory'
 
@@ -27,7 +29,7 @@ export interface StartupDependencies {
   readonly resolveBackend: (config: Config, runner: CommandRunner) => Promise<MultiplexerBackend>
 }
 
-const DEFAULT_STARTUP_DEPENDENCIES: StartupDependencies = {
+export const DEFAULT_STARTUP_DEPENDENCIES: StartupDependencies = {
   loadConfig,
   resolveBackend: (config, runner) =>
     resolveMultiplexerBackend({ preference: config.backend, runner }),
@@ -57,7 +59,8 @@ export function useAppStartup(
   setBackend: Dispatch<SetStateAction<MultiplexerBackend | null>>,
   setAppMode: Dispatch<SetStateAction<AppMode>>,
   setProjectSourceItems: Dispatch<SetStateAction<Item[]>>,
-  dependencies: StartupDependencies = DEFAULT_STARTUP_DEPENDENCIES
+  dependencies: StartupDependencies = DEFAULT_STARTUP_DEPENDENCIES,
+  projects: ProjectDiscovery = PROJECT_DISCOVERY
 ): AppStartup {
   const [startup, setStartup] = useState<StartupState>({ kind: 'loading' })
   const [attempt, setAttempt] = useState(0)
@@ -119,7 +122,7 @@ export function useAppStartup(
           mark('startup complete')
 
           if (outcome.snapshot.viewMode !== ViewMode.Projects) {
-            const projectSourceItems = await loadProjectSourceItems(config, measure)
+            const projectSourceItems = await loadProjectSourceItems(config, measure, projects)
 
             if (!cancelled) setProjectSourceItems(projectSourceItems)
           }
@@ -145,6 +148,7 @@ export function useAppStartup(
     inventory,
     mark,
     measure,
+    projects,
     setAppMode,
     setBackend,
     setConfig,

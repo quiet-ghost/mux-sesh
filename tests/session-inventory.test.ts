@@ -11,6 +11,7 @@ import { MultiplexerError } from '../src/multiplexer/types'
 import { ViewMode, type Config } from '../src/types'
 import { unsupportedBackend } from './fixtures/fake-backend'
 import { settleTicks } from './fixtures/wait'
+import { PROJECT_DISCOVERY } from '../src/projects/project-items'
 
 interface PendingList {
   readonly call: number
@@ -85,6 +86,7 @@ function createHarness() {
   const inventory = createSessionInventory({
     effects,
     measure: async (_name, run) => run(),
+    projects: PROJECT_DISCOVERY,
     publish: snapshot => published.push(snapshot),
     report: status => statuses.push(status),
     onDefect: cause => defects.push(cause),

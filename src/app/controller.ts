@@ -17,15 +17,12 @@ import { useSessionInventory } from './session-inventory'
 import { useAppStartup } from './startup'
 import { useEffectRuntime } from './use-effect-runtime'
 import { useLiveResolvedTheme } from './resolved-theme'
-import { getConfigPath, getHomeDir, saveConfig } from '../config'
 import { shouldShowDetailPanel, useTerminalSize } from '../ui/terminal-size'
 import { AppMode } from '../types'
 import { anyPending, createPendingFlag } from '../util/pending'
 import { mark, measure } from '../util/perf'
-import { requestFatalShutdown } from '../lifecycle/shutdown'
 import { getSettingEditorTitle, isOptionSetting } from '../settings/settings-catalog'
 import { useLaunchPreview } from '../ui/launch-preview'
-import { CLONE_SERVICES } from '../sessions/clone-plan'
 import {
   getLaunchScope,
   planProjectRow,
@@ -34,8 +31,9 @@ import {
 } from './launch-scope'
 import { useLauncherQuery } from './launcher-query'
 import { getNewSessionStepControls, useNewSessionSteps } from './new-session-step'
+import { APP_SERVICES, type AppServices } from './app-services'
 
-export function useAppController(invocationCwd: string) {
+export function useAppController(invocationCwd: string, services: AppServices = APP_SERVICES) {
   const effects = useEffectRuntime()
 
   const {
@@ -120,20 +118,23 @@ export function useAppController(invocationCwd: string) {
   } = useAppModalState()
 
   const { columns, rows } = useTerminalSize()
-  const configPath = getConfigPath()
-  const homeDir = getHomeDir()
+  const configPath = services.configPath()
+  const homeDir = services.homeDir()
 
   const { filteredSettingsEntries, filteredSettingOptions, savedSettingOption, iconsFormEntries } =
     getSettingsState(config, modalState, settingsSearchQuery, settingOptionsSearchQuery, homeDir)
 
-  const resolvedTheme = useLiveResolvedTheme({
-    themeId:
-      OptionPicker.previewedThemeId(modalState, filteredSettingOptions, settingOptionsCursor) ??
-      config?.theme,
-    customThemes: config?.themes,
-    colorScheme: config?.colorScheme,
-    homeDir,
-  })
+  const resolvedTheme = useLiveResolvedTheme(
+    {
+      themeId:
+        OptionPicker.previewedThemeId(modalState, filteredSettingOptions, settingOptionsCursor) ??
+        config?.theme,
+      customThemes: config?.themes,
+      colorScheme: config?.colorScheme,
+      homeDir,
+    },
+    services.theme
+  )
 
   const theme = resolvedTheme.colors
 
@@ -162,25 +163,30 @@ export function useAppController(invocationCwd: string) {
 
   usePendingCloseReset(pendingClose, selectedPrimaryItem, modalState !== null, setPendingClose)
 
-  const inventory = useSessionInventory(effects, measure, {
-    viewMode,
-    config,
-    backend,
-    cursor,
-    agentCursor,
-    selectedAgentSession,
-    lastSessionSelectionRef,
-    lastProjectSelectionRef,
-    setViewMode,
-    setSessionItems,
-    setLiveSessions,
-    setProjectSourceItems,
-    setAllItems,
-    setItems,
-    setCursor,
-    setAgentCursor,
-    setMessage: setInventoryStatus,
-  })
+  const inventory = useSessionInventory(
+    effects,
+    measure,
+    {
+      viewMode,
+      config,
+      backend,
+      cursor,
+      agentCursor,
+      selectedAgentSession,
+      lastSessionSelectionRef,
+      lastProjectSelectionRef,
+      setViewMode,
+      setSessionItems,
+      setLiveSessions,
+      setProjectSourceItems,
+      setAllItems,
+      setItems,
+      setCursor,
+      setAgentCursor,
+      setMessage: setInventoryStatus,
+    },
+    services.projects
+  )
 
   const [busy] = useState(() => anyPending([inventory.loading, launchGuard]))
 
@@ -192,10 +198,12 @@ export function useAppController(invocationCwd: string) {
     setConfig,
     setBackend,
     setAppMode,
-    setProjectSourceItems
+    setProjectSourceItems,
+    services.startup,
+    services.projects
   )
 
-  useAutoUpdateScheduler(config)
+  useAutoUpdateScheduler(config, services.autoUpdate)
 
   const details = useDetailsInspector({
     effects,
@@ -206,22 +214,25 @@ export function useAppController(invocationCwd: string) {
     backend,
   })
 
-  const launcherFiles = useLauncherQuery({
-    appMode,
-    config,
-    backend,
-    searchQuery,
-    allItems,
-    sessionItems,
-    items,
-    cursor,
-    setAllItems,
-    setItems,
-    setCursor,
-    setSessionCandidateItems,
-    setMessage: setFileSearchStatus,
-    showToast,
-  })
+  const launcherFiles = useLauncherQuery(
+    {
+      appMode,
+      config,
+      backend,
+      searchQuery,
+      allItems,
+      sessionItems,
+      items,
+      cursor,
+      setAllItems,
+      setItems,
+      setCursor,
+      setSessionCandidateItems,
+      setMessage: setFileSearchStatus,
+      showToast,
+    },
+    services.launcher
+  )
 
   const newSession = useNewSessionSteps({
     active: appMode === AppMode.NewSession,
@@ -230,7 +241,7 @@ export function useAppController(invocationCwd: string) {
     setSearchQuery,
     selected: selectedPrimaryItem,
     files: launcherFiles,
-    onDefect: requestFatalShutdown,
+    onDefect: services.onDefect,
   })
 
   const launchScope = getLaunchScope(appMode, viewMode, selectedPrimaryItem)
@@ -241,14 +252,14 @@ export function useAppController(invocationCwd: string) {
     backend: backend?.kind,
     invocationCwd,
     liveSessions: sessionItems,
-    clone: CLONE_SERVICES,
+    clone: services.clone,
   }
 
   const launchPreview = useLaunchPreview({
     ...launchPlanning,
     active: launchScope !== 'none',
     request: launchRequest,
-    onDefect: requestFatalShutdown,
+    onDefect: services.onDefect,
   })
 
   const { refreshItems, refreshList, reloadSessions } = createAppRuntime({
@@ -316,7 +327,8 @@ export function useAppController(invocationCwd: string) {
     handleTogglePinnedSessionWrapper,
     executeCommand,
   } = createAppHandlers({
-    clone: CLONE_SERVICES,
+    clone: services.clone,
+    history: services.openHistory,
     launchGuard,
     backend,
     viewMode,
@@ -354,7 +366,7 @@ export function useAppController(invocationCwd: string) {
     setCursor,
     setSearchQuery,
     setAgentCursor,
-    saveConfig,
+    saveConfig: services.saveConfig,
     setConfig,
     setSettingEditorError,
     settingEditorValue,
@@ -384,7 +396,7 @@ export function useAppController(invocationCwd: string) {
     setDraft: setSettingFieldDraft,
     openJsonEditor: openSettingEditor,
     returnToSettings: () => setModalState({ type: 'settings', picker: OptionPicker.browsing }),
-    saveConfig,
+    saveConfig: services.saveConfig,
     setConfig,
     refreshItems,
     showToast,
@@ -444,7 +456,7 @@ export function useAppController(invocationCwd: string) {
     setPendingClose,
     confirmBatchClose,
     retryBatchClose,
-    onDefect: requestFatalShutdown,
+    onDefect: services.onDefect,
     isOptionSetting,
     openSettingOptions,
     openSettingEditor,
@@ -506,6 +518,7 @@ export function useAppController(invocationCwd: string) {
     searchQuery,
     allItems,
     setUpdatedVersion,
+    services,
   })
 
   return {
@@ -516,6 +529,7 @@ export function useAppController(invocationCwd: string) {
     columns,
     rows,
     busy,
+    refreshItems,
     screenProps: {
       theme,
       actionContext,

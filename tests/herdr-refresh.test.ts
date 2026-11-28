@@ -6,6 +6,7 @@ import { createHerdrBackend } from '../src/herdr/backend'
 import { CommandTransportError } from '../src/multiplexer/command'
 import type { MultiplexerBackend } from '../src/multiplexer/types'
 import { ViewMode, type Config } from '../src/types'
+import { PROJECT_DISCOVERY } from '../src/projects/project-items'
 
 const poll = { kind: 'agents-poll' } as const
 
@@ -17,6 +18,7 @@ function pollingInventory(effects: AppEffectRuntime, config: Config, backend: Mu
   const inventory = createSessionInventory({
     effects,
     measure: async (_name, run) => run(),
+    projects: PROJECT_DISCOVERY,
     publish: snapshot => published.push(snapshot),
     report: () => {},
     onDefect: cause => defects.push(cause),

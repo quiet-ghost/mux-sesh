@@ -2,7 +2,13 @@ import { TextareaRenderable, type TerminalColors } from '@opentui/core'
 import type { TestRendererOptions, TestRendererSetup } from '@opentui/core/testing'
 import { useRenderer } from '@opentui/react'
 import { testRender } from '@opentui/react/test-utils'
-import { act, useCallback, useEffect, useLayoutEffect, useState } from 'react'
+import { act, useCallback, useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
+import type { AppServices } from '../../src/app/app-services'
+import { useAppController } from '../../src/app/controller'
+import type { StartupState } from '../../src/app/startup'
+import type { ProjectDiscovery } from '../../src/projects/discovery-service'
+import { PROJECT_DISCOVERY } from '../../src/projects/project-items'
+import { StartupErrorScreen } from '../../src/ui/StartupErrorScreen'
 import { executeCommand as executeAppCommand } from '../../src/app/command-dispatch'
 import { createAppControls } from '../../src/app/modal-controls'
 import { useAppCoreState } from '../../src/app/core-state'
@@ -47,7 +53,7 @@ import { getDefaultConfig } from '../../src/config'
 import type { LiveWorkspace, MultiplexerBackend, WorkspaceRef } from '../../src/multiplexer'
 import { filterAndSortItems } from '../../src/search'
 import type { FileSearchOutcome } from '../../src/search/fff'
-import type { OpenHistory } from '../../src/search/frecency-store'
+import { OPEN_HISTORY, type OpenHistory } from '../../src/search/frecency-store'
 import type { CloneServices } from '../../src/sessions/clone-plan'
 import { getSettingEditorTitle, isOptionSetting } from '../../src/settings/settings-catalog'
 import { resolveTheme, ThemeProvider, type ThemeResolver } from '../../src/styles/theme'
@@ -117,6 +123,7 @@ interface SessionFixture {
 interface FixtureHandle {
   refresh?: () => Promise<void>
   colors?: ThemeColors
+  startup?: StartupState['kind']
 }
 
 interface SessionScreenData {
@@ -328,7 +335,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     core.allItems,
     core.setItems,
     core.setCursor,
-    filterItems
+    () => filterItems
   )
 
   useStartOnCurrentSession({ ...core, ...derived, backend })
@@ -365,7 +372,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     [fixture.defects]
   )
 
-  useOpenHistory(fixture.openHistory ? config : null, fixture.openHistory, onDefect)
+  useOpenHistory(fixture.openHistory ? config : null, fixture.openHistory ?? OPEN_HISTORY, onDefect)
 
   const newSession = useNewSessionSteps({
     active: core.appMode === AppMode.NewSession,
@@ -408,6 +415,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     ...derived,
     ...controls,
     clone: fixture.clone,
+    history: fixture.openHistory ?? OPEN_HISTORY,
     launchGuard,
     backend,
     config,
@@ -539,9 +547,93 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
   )
 }
 
-export async function renderSessionScreen(
+interface ControllerFixture {
+  services: AppServices
+  invocationCwd: string
+  spinnerMotion: SpinnerMotion
+  lifecycle: string[]
+  handle: FixtureHandle
+}
+
+function ignoreQuit(): void {}
+
+// The production controller and screens, with every service outside React supplied by the test.
+function ControllerScreenFixture({ fixture }: { fixture: ControllerFixture }) {
+  useSilentTerminalPalette()
+
+  const { startup, retryStartup, theme, busy, refreshItems, screenProps, modalProps } =
+    useAppController(fixture.invocationCwd, fixture.services)
+
+  const { handle, lifecycle } = fixture
+
+  useLayoutEffect(() => {
+    handle.colors = theme
+    handle.startup = startup.kind
+  }, [handle, theme, startup.kind])
+
+  useEffect(() => {
+    handle.refresh = () => refreshItems()
+  })
+
+  useEffect(() => {
+    lifecycle.push('mounted')
+
+    return () => {
+      lifecycle.push('unmounted')
+    }
+  }, [lifecycle])
+
+  return (
+    <ThemeProvider theme={theme}>
+      <SpinnerMotionContext value={fixture.spinnerMotion}>
+        {startup.kind === 'failed' || startup.kind === 'retrying' ? (
+          <StartupErrorScreen startup={startup} onRetry={retryStartup} onQuit={ignoreQuit} />
+        ) : (
+          <BusyContext value={busy}>
+            <AppScreen {...screenProps} />
+            <AppModalsLayer {...modalProps} />
+          </BusyContext>
+        )}
+      </SpinnerMotionContext>
+    </ThemeProvider>
+  )
+}
+
+const NO_OPEN_HISTORY: OpenHistory = {
+  configure() {},
+  load: async () => {},
+  boost: () => 0,
+  record: async () => ({ kind: 'off' }),
+}
+
+function staticProjectDiscovery(items: Item[]): ProjectDiscovery {
+  return {
+    load: async () => ({ items, failures: [] }),
+    refresh() {},
+    subscribeFailures: () => () => {},
+  }
+}
+
+export function renderSessionScreen(
   options: TestRendererOptions,
   data: SessionScreenData = {}
+): Promise<SessionScreenHarness> {
+  return renderScreen(options, data, 'fixture')
+}
+
+export function renderControllerScreen(
+  options: TestRendererOptions,
+  data: SessionScreenData = {}
+): Promise<SessionScreenHarness> {
+  return renderScreen(options, data, 'controller')
+}
+
+const STARTUP_WAIT_MS = 5_000
+
+async function renderScreen(
+  options: TestRendererOptions,
+  data: SessionScreenData,
+  wiring: 'fixture' | 'controller'
 ): Promise<SessionScreenHarness> {
   const config: Config = {
     ...getDefaultConfig('/fixture'),
@@ -610,12 +702,6 @@ export async function renderSessionScreen(
     openEditor: unsupportedFixtureAction,
   }
 
-  const { sessionItems, liveSessions } = await loadSessionItems(
-    config,
-    async (_name, run) => run(),
-    backend
-  )
-
   const history = data.openHistory
 
   const filterItems: typeof filterAndSortItems =
@@ -650,33 +736,81 @@ export async function renderSessionScreen(
   const mounted: MountedRenderer = {}
   const handle: FixtureHandle = {}
 
+  async function fixtureElement(): Promise<ReactNode> {
+    const { sessionItems, liveSessions } = await loadSessionItems(
+      config,
+      async (_name, run) => run(),
+      backend
+    )
+
+    return (
+      <SessionScreenFixture
+        fixture={{
+          config,
+          saveConfig: data.saveConfig ?? unsupportedFixtureAction,
+          backend,
+          items: sessionItems,
+          liveSessions,
+          projects,
+          filterItems,
+          lifecycle,
+          defects,
+          homeDir: data.homeDir ?? '/fixture',
+          resolveTheme: data.resolveTheme ?? resolveTheme,
+          themeFollow: data.themeFollow,
+          launcher,
+          handle,
+          invocationCwd: data.invocationCwd ?? '/fixture',
+          clone: data.clone ?? NO_GIT,
+          spinnerMotion: data.spinnerMotion ?? STILL_MOTION,
+          openHistory: history,
+        }}
+      />
+    )
+  }
+
+  function controllerElement(): ReactNode {
+    const services: AppServices = {
+      startup: { loadConfig: async () => config, resolveBackend: async () => backend },
+      saveConfig: data.saveConfig ?? unsupportedFixtureAction,
+      configPath: () => '/fixture/config.json',
+      homeDir: () => data.homeDir ?? '/fixture',
+      clone: data.clone ?? NO_GIT,
+      launcher,
+      projects: data.projects ? staticProjectDiscovery(data.projects) : PROJECT_DISCOVERY,
+      openHistory: history ?? NO_OPEN_HISTORY,
+      createSearchFilter: () => filterItems,
+      theme: { resolve: data.resolveTheme ?? resolveTheme, follow: data.themeFollow },
+      updates: { on: () => () => {} },
+      autoUpdate: { schedule: () => () => {} },
+      onDefect: cause => {
+        defects.push(cause)
+      },
+    }
+
+    return (
+      <ControllerScreenFixture
+        fixture={{
+          services,
+          invocationCwd: data.invocationCwd ?? '/fixture',
+          spinnerMotion: data.spinnerMotion ?? STILL_MOTION,
+          lifecycle,
+          handle,
+        }}
+      />
+    )
+  }
+
+  const element = wiring === 'fixture' ? await fixtureElement() : controllerElement()
+
   try {
     await act(async () => {
-      mounted.setup = await testRender(
-        <SessionScreenFixture
-          fixture={{
-            config,
-            saveConfig: data.saveConfig ?? unsupportedFixtureAction,
-            backend,
-            items: sessionItems,
-            liveSessions,
-            projects,
-            filterItems,
-            lifecycle,
-            defects,
-            homeDir: data.homeDir ?? '/fixture',
-            resolveTheme: data.resolveTheme ?? resolveTheme,
-            themeFollow: data.themeFollow,
-            launcher,
-            handle,
-            invocationCwd: data.invocationCwd ?? '/fixture',
-            clone: data.clone ?? NO_GIT,
-            spinnerMotion: data.spinnerMotion ?? STILL_MOTION,
-            openHistory: history,
-          }}
-        />,
-        { ...options, consoleMode: 'disabled', exitOnCtrlC: false, kittyKeyboard: true }
-      )
+      mounted.setup = await testRender(element, {
+        ...options,
+        consoleMode: 'disabled',
+        exitOnCtrlC: false,
+        kittyKeyboard: true,
+      })
     })
   } catch (error) {
     act(() => mounted.setup?.renderer.destroy())
@@ -696,7 +830,22 @@ export async function renderSessionScreen(
     return setup.captureCharFrame()
   }
 
+  // Startup loads config, the backend and the first inventory through async effects; a test
+  // starts on the screen it produces, as a user would.
+  async function waitForStartup(): Promise<void> {
+    const deadline = Date.now() + STARTUP_WAIT_MS
+
+    while (handle.startup === undefined || handle.startup === 'loading') {
+      if (Date.now() > deadline) {
+        throw new Error(`The session-screen fixture never finished startup:\n${await frame()}`)
+      }
+
+      await act(() => settleTicks(1))
+    }
+  }
+
   try {
+    if (wiring === 'controller') await waitForStartup()
     await frame()
   } catch (error) {
     destroy()

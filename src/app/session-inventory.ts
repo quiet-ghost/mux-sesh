@@ -12,6 +12,8 @@ import { getItemKey } from '../multiplexer/items'
 import { ViewMode, type Config, type Item } from '../types'
 import { createPendingFlag, type PendingSignal } from '../util/pending'
 import { requestFatalShutdown } from '../lifecycle/shutdown'
+import type { ProjectDiscovery } from '../projects/discovery-service'
+import { PROJECT_DISCOVERY } from '../projects/project-items'
 import {
   getAgentSelectionIndex,
   getProjectSelectionIndex,
@@ -77,6 +79,7 @@ export type InventoryOutcome =
 export interface SessionInventoryOptions {
   effects: AppEffectRuntime
   measure: Measure
+  projects: ProjectDiscovery
   publish: (snapshot: InventorySnapshot, request: InventoryRequest) => void
   report: (status: InventoryStatus) => void
   onDefect: (cause: unknown) => void
@@ -132,7 +135,8 @@ function sameScope(left: InventoryScope, right: InventoryScope): boolean {
 async function loadSnapshot(
   request: InventoryRequest,
   { config, backend }: InventoryContext,
-  measure: Measure
+  measure: Measure,
+  projects: ProjectDiscovery
 ): Promise<InventorySnapshot> {
   const { liveSessions, visibleSessions, sessionItems } = await loadSessionItems(
     config,
@@ -151,7 +155,8 @@ async function loadSnapshot(
   const { projectSourceItems, projectItems } = await loadProjectItemsWithLinks(
     config,
     visibleSessions,
-    measure
+    measure,
+    projects
   )
 
   return { viewMode, liveSessions, sessionItems, projectSourceItems, projectItems }
@@ -239,7 +244,9 @@ export function createSessionInventory(options: SessionInventoryOptions): Sessio
   function read(load: InventoryLoad): Promise<OperationOutcome<InventorySnapshot, ReadFailure>> {
     return options.effects
       .run(
-        readEffect(() => loadSnapshot(load.request, load.context, options.measure)),
+        readEffect(() =>
+          loadSnapshot(load.request, load.context, options.measure, options.projects)
+        ),
         { signal: lifetime.signal }
       )
       .catch((cause: unknown): OperationOutcome<InventorySnapshot, ReadFailure> => ({
@@ -406,7 +413,8 @@ export interface SessionInventoryState extends InventorySink {
 export function useSessionInventory(
   effects: AppEffectRuntime,
   measure: Measure,
-  state: SessionInventoryState
+  state: SessionInventoryState,
+  projects: ProjectDiscovery = PROJECT_DISCOVERY
 ): SessionInventory {
   const latest = useRef(state)
   latest.current = state
@@ -417,6 +425,7 @@ export function useSessionInventory(
     return createSessionInventory({
       effects,
       measure,
+      projects,
       publish(snapshot, request) {
         const sink = latest.current
 

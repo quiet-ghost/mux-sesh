@@ -5,7 +5,8 @@ import { clearMatchIndices } from '../search'
 import { workspaceToItem } from '../multiplexer/items'
 import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey } from '../multiplexer/items'
-import { getProjectItems, getSessionCandidateItems } from '../projects/project-items'
+import type { ProjectDiscovery } from '../projects/discovery-service'
+import { PROJECT_DISCOVERY } from '../projects/project-items'
 import { filterHiddenSessions } from '../sessions/session-filters'
 import { isAgentSessionItem } from '../agents/session-name'
 import type { Config, Item } from '../types'
@@ -96,9 +97,9 @@ export async function loadProjectItemsWithLinks(
   config: Config,
   liveSessions: Item[],
   measure: Measure,
-  sourceItems?: Item[]
+  projects: ProjectDiscovery = PROJECT_DISCOVERY
 ): Promise<{ projectSourceItems: Item[]; projectItems: Item[] }> {
-  const projectSourceItems = sourceItems ?? (await loadProjectSourceItems(config, measure))
+  const projectSourceItems = await loadProjectSourceItems(config, measure, projects)
 
   const projectItems = clearMatchIndices(
     orderProjectItems(
@@ -115,9 +116,16 @@ export async function loadProjectItemsWithLinks(
   }
 }
 
-export async function loadProjectSourceItems(config: Config, measure: Measure): Promise<Item[]> {
+export async function loadProjectSourceItems(
+  config: Config,
+  measure: Measure,
+  projects: ProjectDiscovery = PROJECT_DISCOVERY
+): Promise<Item[]> {
   return orderProjectItems(
-    await measure('projects:getProjectItems', () => getProjectItems(config)),
+    await measure(
+      'projects:getProjectItems',
+      async () => (await projects.load(config, 'projects')).items
+    ),
     config.sortOrder
   )
 }
@@ -125,11 +133,12 @@ export async function loadProjectSourceItems(config: Config, measure: Measure): 
 export async function loadSessionCandidateItems(
   config: Config,
   measure: Measure,
-  backend: MultiplexerBackend
+  backend: MultiplexerBackend,
+  projects: ProjectDiscovery = PROJECT_DISCOVERY
 ): Promise<Item[]> {
   const [candidates, sessions] = await measure('loadSessionCandidateItems', () =>
     Promise.all([
-      getSessionCandidateItems(config),
+      projects.load(config, 'session-candidates').then(result => result.items),
       backend.list().then(items => items.map(workspaceToItem)),
     ])
   )
