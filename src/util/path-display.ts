@@ -1,9 +1,8 @@
 import { basename, dirname } from 'path'
 import { truncateMiddle } from './truncate'
 
-export function toHomeRelativePath(path: string): string {
-  const homeDir = process.env.HOME || ''
-
+// With HOME unset the default home is '', so paths stay as given.
+export function toHomeRelativePath(path: string, homeDir = process.env.HOME || ''): string {
   if (!path) {
     return ''
   }

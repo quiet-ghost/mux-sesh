@@ -1,6 +1,7 @@
 import { expandHomePath } from '../config'
 import type { Config, ProjectProfile, ProjectWildcard } from '../types'
 import { normalizePathForMatching } from '../util/glob'
+import { toHomeRelativePath } from '../util/path-display'
 import { DraftCheck, SettingChange } from './setting-change'
 import type { RulesSettingId } from './settings-catalog'
 import { getSettingDisplayValue } from './settings-view'
@@ -118,12 +119,6 @@ function fields(field: RuleField): readonly RuleFormField[] {
   return field === 'projects' ? PROJECT_FIELDS : WILDCARD_FIELDS
 }
 
-function homeRelative(path: string, homeDir: string): string {
-  if (path === homeDir) return '~'
-
-  return path.startsWith(`${homeDir}/`) ? `~${path.slice(homeDir.length)}` : path
-}
-
 function noun(field: RuleField): string {
   return field === 'projects' ? 'folder' : 'pattern'
 }
@@ -147,7 +142,7 @@ function duplicateOf(
 }
 
 function duplicateMessage(entry: RuleEntry, homeDir: string): string {
-  return `There is already a rule for ${homeRelative(entry.key, homeDir)}`
+  return `There is already a rule for ${toHomeRelativePath(entry.key, homeDir)}`
 }
 
 function storedKey(draft: string, homeDir: string): string {
@@ -172,7 +167,7 @@ function checkKey(
   // The config allows a rule for a folder that does not exist yet.
   if (field === 'projects' && !folderExists(key)) {
     return DraftCheck.warning(
-      `${homeRelative(key, homeDir)} does not exist yet; the rule applies once it does`
+      `${toHomeRelativePath(key, homeDir)} does not exist yet; the rule applies once it does`
     )
   }
 
@@ -348,7 +343,7 @@ function set(text: string): RuleValue {
 function valueOf(config: Config, entry: RuleEntry, formField: RuleFormField, homeDir: string) {
   switch (formField) {
     case 'key':
-      return set(homeRelative(entry.key, homeDir))
+      return set(toHomeRelativePath(entry.key, homeDir))
     case 'sessionName':
       return entry.sessionName === undefined
         ? inherited('default · from the folder name')
@@ -394,13 +389,13 @@ function form(config: Config, field: RuleField, index: number, homeDir: string):
 
 // The text an inline field opens with: the override, or nothing while it is inherited.
 function draftOf(entry: RuleEntry, formField: RuleTextField, homeDir: string): string {
-  if (formField === 'key') return homeRelative(entry.key, homeDir)
+  if (formField === 'key') return toHomeRelativePath(entry.key, homeDir)
 
   return entry[formField] ?? ''
 }
 
 function removePrompt(field: RuleField, entry: RuleEntry, homeDir: string): string {
-  const key = homeRelative(entry.key, homeDir)
+  const key = toHomeRelativePath(entry.key, homeDir)
 
   return field === 'projects'
     ? `Remove the rule for ${key}? Its session keeps running.`
@@ -408,7 +403,7 @@ function removePrompt(field: RuleField, entry: RuleEntry, homeDir: string): stri
 }
 
 function display(entry: RuleEntry, homeDir: string): string {
-  return homeRelative(entry.key, homeDir)
+  return toHomeRelativePath(entry.key, homeDir)
 }
 
 export const Rules = {

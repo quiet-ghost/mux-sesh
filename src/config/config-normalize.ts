@@ -21,6 +21,7 @@ import {
   SortChoice,
   ZoxideChoice,
 } from './config-document'
+import { getHomeDir } from './paths'
 
 const DEFAULT_EDITOR = 'nvim'
 const DEFAULT_THEME = 'rosepine'
@@ -316,7 +317,7 @@ function normalizeWildcards(value: DocumentValue, homeDir: string): ProjectWildc
   return wildcards.length > 0 ? wildcards : undefined
 }
 
-export function normalizeConfig(rawConfig: Schema.Json, homeDir = process.env.HOME || '~'): Config {
+export function normalizeConfig(rawConfig: Schema.Json, homeDir = getHomeDir()): Config {
   const raw = isRecord(rawConfig) ? rawConfig : {}
   const defaultConfig = getDefaultConfig(homeDir)
   const requestedTheme = asString(raw.theme)
@@ -422,7 +423,7 @@ export function normalizeConfig(rawConfig: Schema.Json, homeDir = process.env.HO
   }
 }
 
-export function getDefaultConfig(homeDir = process.env.HOME || '~'): Config {
+export function getDefaultConfig(homeDir = getHomeDir()): Config {
   return {
     projectPaths: [join(homeDir, 'dev'), join(homeDir, 'personal')],
     reposPath: join(homeDir, 'dev', 'repos'),

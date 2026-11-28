@@ -1,6 +1,7 @@
 import { expandHomePath } from '../config'
 import type { Config, Item } from '../types'
 import { matchesGlob, normalizePathForMatching } from '../util/glob'
+import { toHomeRelativePath } from '../util/path-display'
 import { plural } from '../util/plural'
 import { DraftCheck, SettingChange } from './setting-change'
 import type { ListSettingId } from './settings-catalog'
@@ -67,15 +68,9 @@ function withItems(config: Config, field: StringListField, next: string[]): Conf
   }
 }
 
-function homeRelative(path: string, homeDir: string): string {
-  if (path === homeDir) return '~'
-
-  return path.startsWith(`${homeDir}/`) ? `~${path.slice(homeDir.length)}` : path
-}
-
 // Folders are stored expanded and shown with `~`; patterns and names as written.
 function display(field: StringListField, value: string, homeDir: string): string {
-  return field === 'projectPaths' ? homeRelative(value, homeDir) : value
+  return field === 'projectPaths' ? toHomeRelativePath(value, homeDir) : value
 }
 
 // The value as stored: trimmed, and a folder with `~` expanded.

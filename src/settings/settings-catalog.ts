@@ -518,7 +518,8 @@ const SETTINGS = {
     description: "Scanned for projects and searched by New's file step",
     keywords: ['roots', 'paths', 'scan', 'directories'],
     read: config => config.projectPaths,
-    summary: config => config.projectPaths.map(toHomeRelativePath).join(', ') || 'none',
+    summary: config =>
+      config.projectPaths.map(path => toHomeRelativePath(path)).join(', ') || 'none',
     patch: project_paths => ({ project_paths }),
   },
   projects: {

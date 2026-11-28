@@ -19,6 +19,7 @@ import { workspaceNoun, type FocusOutcome, type WorkspaceRef } from '../multiple
 import type { CloneServices } from '../sessions/clone-plan'
 import type { LaunchPreview } from '../sessions/launch-plan'
 import { requestShutdown } from '../lifecycle/shutdown'
+import { getHomeDir } from '../config/paths'
 import { movePinAfterRename } from '../config/pinned-sessions'
 import type { CleanupBatch, CloseReceipt } from '../sessions/cleanup-batch'
 import { CleanupPlan } from '../sessions/cleanup-plan'
@@ -411,7 +412,7 @@ export async function handleSettingsEditorSubmitWithFeedback(
     return
   }
 
-  const homeDir = process.env.HOME || '~'
+  const homeDir = getHomeDir()
   const rawText = options.settingEditorPlainText ?? options.settingEditorValue
   const edit = editSetting(options.config, field, rawText, homeDir)
 
@@ -543,7 +544,7 @@ async function handleSettingResetWithFeedback(
 ): Promise<void> {
   if (!options.config) return
 
-  const nextConfig = resetSetting(options.config, field, process.env.HOME || '~')
+  const nextConfig = resetSetting(options.config, field, getHomeDir())
 
   if (!nextConfig) return
   await saveSettingsRowChange(field, nextConfig, 'reset', options, trackSave)
