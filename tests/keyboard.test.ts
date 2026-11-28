@@ -7,6 +7,7 @@ import {
   type KeyboardInput,
 } from '../src/handlers/keyboard'
 import { getActionTarget, type ActionContext } from '../src/app/action-catalog'
+import { PendingClose } from '../src/app/pending-close'
 import { AppMode, ViewMode, type Item } from '../src/types'
 
 function createItem(overrides: Partial<Item> = {}): Item {
@@ -44,6 +45,7 @@ function actionContextOf(ctx: BaseContext): ActionContext {
     agentCount: ctx.agentSessions.length,
     target: getActionTarget(selectedItem(ctx)),
     marked: new Map(),
+    pendingClose: PendingClose.none,
   }
 }
 

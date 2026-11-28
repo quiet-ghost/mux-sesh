@@ -67,7 +67,6 @@ interface ReviewedCloseOptions extends OutcomePresenter {
   inventoryRevision: () => number
   rememberedSessions: (key: string | null) => void
   refreshItems: () => Promise<void>
-  closeModal: () => void
 }
 
 interface SettingsHandlerOptions {
@@ -83,14 +82,12 @@ interface SettingsHandlerOptions {
   showOutcome: (report: OperationReport) => void
 }
 
-// The review closes first, so a second Enter cannot confirm it twice. The stored ref is closed
-// only if the inventory on screen still shows the target as it was reviewed.
+// The caller drops the waiting close first, so another d cannot confirm it twice. The stored ref
+// is closed only if the inventory on screen still shows the target as it was reviewed.
 export async function handleReviewedCloseWithFeedback(
   plan: CleanupPlan,
   options: ReviewedCloseOptions
 ): Promise<void> {
-  options.closeModal()
-
   if (!options.backend) return
 
   const check = CleanupPlan.recheck(plan, options.sessionItems, options.inventoryRevision())
@@ -576,7 +573,6 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       inventoryRevision: options.inventoryRevision,
       rememberedSessions: options.rememberedSessions,
       refreshItems: () => options.refreshItems(),
-      closeModal: options.closeModal,
       showToast: options.showToast,
       showOutcome: options.showOutcome,
     })

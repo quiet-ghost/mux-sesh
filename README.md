@@ -11,7 +11,7 @@ Keyboard-driven tmux session and Herdr workspace switching from a terminal UI.
 - Switch between live tmux sessions or Herdr workspaces without leaving the keyboard.
 - Launch local projects from a single, searchable picker.
 - Keep reusable project rules in config instead of shell scripts.
-- See what Enter will do before it runs, and review every close before anything is closed.
+- See what Enter will do before it runs, and confirm every close before anything is closed.
 
 ## Quick Start
 
@@ -68,9 +68,9 @@ tmux source-file ~/.tmux.conf
   [fff](https://github.com/dmtrKovalenko/fff) (`ctrl+o`).
 - Pasting a GitHub URL into New clones it into `repos_path`. URLs with credentials are refused,
   an existing destination is reused only after it is verified, and nothing is ever deleted.
-- Closing is reviewed: `d` shows exactly what will close, and `m` marks rows for a reviewed batch
-  close. Only tmux sessions or Herdr workspaces are closed; no files, worktrees, or branches are
-  deleted.
+- Closing is confirmed: `d` tints the row and a second `d` closes it, and `m` marks rows for a
+  reviewed batch close. Only tmux sessions or Herdr workspaces are closed; no files, worktrees, or
+  branches are deleted.
 - The details panel is compact by default; Toggle details (`v`) inspects the selected row.
 - The Agents section lists tmux agent sessions and each Herdr agent pane; Herdr agent panes are
   read-only here.
@@ -128,18 +128,18 @@ Default mode is `vim`, with `ctrl+x` as the prefix for secondary actions.
 
 <!-- keys: vim normal subset -->
 
-| Key        | Action                                                                |
-| ---------- | --------------------------------------------------------------------- |
-| `enter`    | Open the selected row: focus a live session, or create from a project |
-| `i`        | Search                                                                |
-| `n`        | New session                                                           |
-| `d`        | Review closing the selected session, or the marked rows               |
-| `m`        | Mark or unmark a row for a batch close                                |
-| `v`        | Toggle details                                                        |
-| `ctrl+x s` | Show sessions                                                         |
-| `ctrl+x p` | Show projects                                                         |
-| `ctrl+x r` | Rename session                                                        |
-| `ctrl+p`   | Command palette; type `theme` for the theme picker                    |
+| Key        | Action                                                                 |
+| ---------- | ---------------------------------------------------------------------- |
+| `enter`    | Open the selected row: focus a live session, or create from a project  |
+| `i`        | Search                                                                 |
+| `n`        | New session                                                            |
+| `d`        | Close the selected session (`d` again confirms), or review marked rows |
+| `m`        | Mark or unmark a row for a batch close                                 |
+| `v`        | Toggle details                                                         |
+| `ctrl+x s` | Show sessions                                                          |
+| `ctrl+x p` | Show projects                                                          |
+| `ctrl+x r` | Rename session                                                         |
+| `ctrl+p`   | Command palette; type `theme` for the theme picker                     |
 
 Move with `j` / `k`, open a visible row with `1`–`9`, and quit with `q` or `esc`. In text fields,
 letters type; only arrows, `enter`, `esc`, and `ctrl+…` keys act.

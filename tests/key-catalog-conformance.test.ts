@@ -7,6 +7,7 @@ import {
   type ActionContext,
   type ActionId,
 } from '../src/app/action-catalog'
+import { PendingClose } from '../src/app/pending-close'
 import type { NewSessionStepControls } from '../src/app/new-session-step'
 import {
   handleAgentsManageMode,
@@ -99,6 +100,7 @@ function actionContextFor(keybindMode: KeybindMode, mode: AppMode): ActionContex
     agentCount: 1,
     target: getActionTarget(mode === AppMode.AgentsManage ? agent : session),
     marked: new Map(),
+    pendingClose: PendingClose.none,
   }
 }
 

@@ -9,6 +9,7 @@ import {
   type ModalState,
 } from './modals'
 import { ActionRefused, reasonOf } from './action-outcome'
+import { PendingClose } from './pending-close'
 import type { Config, Item } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey } from '../multiplexer/items'
@@ -23,6 +24,7 @@ interface AppControlsOptions {
   inventoryRevision: () => number
   markedItems: ReadonlyMap<string, Item>
   setMarkedItems: Dispatch<SetStateAction<ReadonlyMap<string, Item>>>
+  setPendingClose: Dispatch<SetStateAction<PendingClose>>
   setRenameTarget: Dispatch<SetStateAction<Item | null>>
   setModalInputValue: Dispatch<SetStateAction<string>>
   setModalState: Dispatch<SetStateAction<ModalState>>
@@ -47,14 +49,14 @@ async function pickerHost(backend: MultiplexerBackend | null): Promise<PickerHos
 }
 
 export function createAppControls(options: AppControlsOptions) {
-  // Opens a review of exactly this target; closing happens only when that review is confirmed.
-  // Callers run inside the action owner, so a refusal is shown rather than thrown away.
+  // Freezes a review of exactly this target and waits on its row for a second close key; this
+  // never closes anything. Callers run inside the action owner, so a refusal is shown.
   function requestKillSession(item: Item) {
     const review = CleanupPlan.review(item, options.sessionItems, options.inventoryRevision())
 
     if (review.kind === 'refused') throw new ActionRefused({ reason: review.reason })
 
-    options.setModalState({ type: 'close-review', plan: review.plan })
+    options.setPendingClose(PendingClose.arm(review.plan))
   }
 
   // Marks are explicit and per row; nothing is ever marked on the user's behalf.

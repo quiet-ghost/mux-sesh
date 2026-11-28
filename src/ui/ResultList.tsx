@@ -18,6 +18,8 @@ interface Props {
   actions: RowActions
   icons?: IconConfig
   marked?: ReadonlyMap<string, Item>
+  // The item key whose close waits for a second key, if any.
+  closingKey: string | undefined
 }
 
 function getRowContext(item: Item): string {
@@ -46,6 +48,7 @@ export default function ResultList({
   actions,
   icons,
   marked,
+  closingKey,
 }: Props) {
   const searching = searchQuery.trim().length > 0
   const visibleWindow = getVisibleWindow(items, cursor, maxItems)
@@ -62,6 +65,7 @@ export default function ResultList({
             item={item}
             selected={selected}
             marked={marked?.has(getItemKey(item)) ?? false}
+            closing={getItemKey(item) === closingKey}
             width={width}
             titleColumn={titleColumn}
             context={getRowContext(item)}

@@ -47,8 +47,6 @@ describe('CleanupPlan.review', () => {
       warnings: [],
       revision: 4,
     })
-    expect(CleanupPlan.title(plan)).toBe("Close Herdr workspace 'api'?")
-    expect(CleanupPlan.scope(plan)).toBe('Closes 3 tabs and their panes')
   })
 
   test.each(['idle', 'done', 'unknown'] as const)(

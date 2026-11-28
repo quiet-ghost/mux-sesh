@@ -6,6 +6,7 @@ import {
 } from '../multiplexer/items'
 import type { MultiplexerBackend } from '../multiplexer/types'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../types'
+import { CONFIRM_CLOSE_KEY, type PendingClose } from './pending-close'
 
 export type CommandId =
   | 'search'
@@ -59,6 +60,8 @@ export interface ActionContext {
   target: ActionTarget
   // Rows marked for a batch close; when any are marked, close reviews them instead of the cursor.
   marked: ReadonlyMap<string, Item>
+  // A single close waiting for its second key; the footer then offers only confirm and cancel.
+  pendingClose: PendingClose
 }
 
 export interface ActionEntry<Id extends ActionId = ActionId> {
@@ -462,7 +465,7 @@ export function describeUnavailableAction(entry: ActionEntry): string | undefine
     : undefined
 }
 
-// `prefix` is the prefix-key indicator; `cancel` is esc leaving Search or New.
+// `prefix` is the prefix-key indicator; `cancel` is esc leaving Search or New, or a waiting close.
 export type FooterHintId = ActionId | 'prefix' | 'cancel'
 
 // Shown as `label key`; an empty key shows the label alone.
@@ -524,11 +527,19 @@ function selectHint(context: ActionContext, enter: NewSessionAction): FooterHint
   return enter === 'none' || enter === 'apply' ? [] : footerPart(context, 'select', enter)
 }
 
+// While a close waits, the next key either confirms it or cancels it, in every mode.
+const CONFIRM_CLOSE_HINTS: readonly FooterHint[] = [
+  CANCEL_HINT,
+  { id: 'kill-session', label: FOOTER_LABELS['kill-session'] ?? 'close', key: CONFIRM_CLOSE_KEY },
+]
+
 function footerHints(
   context: ActionContext,
   enter: NewSessionAction,
   newSessionSteps: readonly NewSessionStepId[]
-): FooterHint[] {
+): readonly FooterHint[] {
+  if (context.pendingClose.kind === 'armed') return CONFIRM_CLOSE_HINTS
+
   switch (context.appMode) {
     case AppMode.AgentsManage:
       return [

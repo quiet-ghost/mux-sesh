@@ -4,9 +4,11 @@ import type { IconConfig, Item, ThemeColors } from '../types'
 import HighlightedText from './HighlightedText'
 import { getItemIconPresentation } from './item-icon'
 import {
+  CLOSING_META,
   markedMeta,
   rowBackground,
   rowForeground,
+  rowHighlight,
   rowMarker,
   SELECTED_MATCH_ATTRIBUTES,
 } from './row-mark'
@@ -16,6 +18,8 @@ interface Props {
   item: Item
   selected: boolean
   marked: boolean
+  // Its close waits for a second key.
+  closing: boolean
   width: number
   titleColumn: number
   context: string
@@ -44,16 +48,17 @@ function getRowStatus(item: Item): RowStatus {
   return { kind: 'none' }
 }
 
-function metaColor(theme: ThemeColors, item: Item, marked: boolean): string {
-  if (marked || item.agentStatus === 'blocked') return theme.danger
+function metaColor(theme: ThemeColors, item: Item, marked: boolean, closing: boolean): string {
+  if (closing || marked || item.agentStatus === 'blocked') return theme.danger
 
   return item.agentStatus === 'working' ? theme.active : theme.textSubtle
 }
 
 function ItemRow({
   item,
-  selected,
+  selected: cursorRow,
   marked,
+  closing,
   width,
   titleColumn,
   context,
@@ -64,7 +69,10 @@ function ItemRow({
   const theme = useTheme()
   const icon = getItemIconPresentation(theme, item, icons)
   const status = getRowStatus(item)
-  const meta = markedMeta(marked, baseMeta)
+  const highlight = rowHighlight(cursorRow, closing)
+  // Text takes the selection's readable color only on the selection highlight itself.
+  const selected = highlight === 'selected'
+  const meta = closing ? CLOSING_META : markedMeta(marked, baseMeta)
 
   const iconText = icon.glyph ? ` ${icon.glyph}` : ''
   const prefixWidth = ROW_PREFIX_COLUMNS + iconText.length
@@ -89,7 +97,7 @@ function ItemRow({
         flexDirection: 'row',
         flexShrink: 0,
         justifyContent: 'space-between',
-        backgroundColor: rowBackground(theme, selected, marked),
+        backgroundColor: rowBackground(theme, highlight, marked),
         paddingRight: 1,
       }}
     >
@@ -139,7 +147,7 @@ function ItemRow({
       <text
         style={{
           wrapMode: 'none',
-          fg: rowForeground(theme, selected, metaColor(theme, item, marked)),
+          fg: rowForeground(theme, selected, metaColor(theme, item, marked, closing)),
         }}
       >
         {meta}

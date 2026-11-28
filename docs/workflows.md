@@ -184,10 +184,12 @@ reuse them unless they are a complete checkout; inspect or remove them yourself.
 
 ## Close Sessions
 
-Closing is always reviewed. `d` opens a review of exactly the selected live session: its name,
-path, what it contains, and warnings (attached, pinned, an agent working or waiting for input).
-`enter` closes that session or workspace; `esc` keeps it. If the target changed or disappeared
-since you reviewed it, nothing is closed and the review says why.
+Closing is always confirmed. `d` freezes exactly the selected live session: the row turns red,
+its right side reads `d again to close`, and any warnings (attached, pinned, an agent working or
+waiting for input) show in the status line above the footer. A second `d` closes that session or
+workspace; `esc` or any other key cancels, and moving to another row cancels too. If the target
+changed after the first `d` (renamed, a new window or tab, a new warning), nothing is closed and
+the status line says why. See [Confirming a Close](keybindings.md#confirming-a-close).
 
 To close several at once, mark rows with `m` (marked rows are shown in the list), then press
 `d` to review the marked set instead of the cursor row. Confirming closes only that reviewed set,
@@ -203,7 +205,7 @@ After a batch, a receipt lists each target as closed, failed, unfinished, or not
 never repeated.
 
 A close ends the tmux session or Herdr workspace and every pane in it. No files, worktrees, or
-branches are deleted, and mux-sesh never closes anything you did not review.
+branches are deleted, and mux-sesh never closes anything you did not confirm.
 
 ## Inspect Details
 

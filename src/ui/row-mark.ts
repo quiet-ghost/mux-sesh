@@ -1,4 +1,5 @@
 import { TextAttributes } from '@opentui/core'
+import { CONFIRM_CLOSE_KEY } from '../app/pending-close'
 import type { ThemeColors } from '../types'
 
 // Matched characters on the highlighted row share its text color, so they are underlined instead.
@@ -16,11 +17,32 @@ export function markedMeta(marked: boolean, meta: string): string {
   return meta ? `marked  ${meta}` : 'marked'
 }
 
-// The selection highlight wins over the marked tint; the '*' and 'marked' meta still show.
-export function rowBackground(theme: ThemeColors, selected: boolean, marked: boolean): string {
-  if (selected) return theme.selection
+// The cursor row is highlighted; while its close waits for a second key it takes the danger tint
+// instead, and its meta asks for that key.
+export type RowHighlight = 'none' | 'selected' | 'closing'
 
-  return marked ? theme.dangerSurface : 'transparent'
+export const CLOSING_META = `${CONFIRM_CLOSE_KEY} again to close`
+
+export function rowHighlight(selected: boolean, closing: boolean): RowHighlight {
+  if (closing) return 'closing'
+
+  return selected ? 'selected' : 'none'
+}
+
+// The selection highlight wins over the marked tint; the '*' and 'marked' meta still show.
+export function rowBackground(
+  theme: ThemeColors,
+  highlight: RowHighlight,
+  marked: boolean
+): string {
+  switch (highlight) {
+    case 'selected':
+      return theme.selection
+    case 'closing':
+      return theme.dangerSurface
+    case 'none':
+      return marked ? theme.dangerSurface : 'transparent'
+  }
 }
 
 // Any foreground on the selection highlight becomes the highlight's readable text color.

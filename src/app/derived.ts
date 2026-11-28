@@ -18,6 +18,7 @@ import {
   type CommandEntry,
 } from './action-catalog'
 import type { ModalState } from './modals'
+import { PendingClose } from './pending-close'
 import { splitVisibleSessions } from './view'
 
 const NO_MARKS: ReadonlyMap<string, Item> = new Map()
@@ -46,7 +47,8 @@ export function getSessionCommandState(
   config: Config | null,
   commandsSearchQuery: string,
   backend: ActionBackend | null = null,
-  marked: ReadonlyMap<string, Item> = NO_MARKS
+  marked: ReadonlyMap<string, Item> = NO_MARKS,
+  pendingClose: PendingClose = PendingClose.none
 ): SessionCommandState {
   const sessionSplit =
     viewMode === ViewMode.Sessions
@@ -69,6 +71,7 @@ export function getSessionCommandState(
     agentCount: sessionSplit.agentSessions.length,
     target: getActionTarget(selectedPrimaryItem),
     marked,
+    pendingClose,
   }
 
   return {

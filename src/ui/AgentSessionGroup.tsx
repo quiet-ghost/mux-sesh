@@ -2,7 +2,14 @@ import { useTheme } from '../styles/theme'
 import type { IconConfig, Item } from '../types'
 import { formatSectionHeader } from './item-icon'
 import { getItemKey } from '../multiplexer/items'
-import { markedMeta, rowBackground, rowForeground, rowMarker } from './row-mark'
+import {
+  CLOSING_META,
+  markedMeta,
+  rowBackground,
+  rowForeground,
+  rowHighlight,
+  rowMarker,
+} from './row-mark'
 import { getSessionMeta } from './session-meta'
 import type { VisibleWindow } from './list-window'
 import { fitListRow, getTitleColumnWidth } from './session-viewport'
@@ -15,6 +22,8 @@ interface Props {
   width: number
   icons?: IconConfig
   marked?: ReadonlyMap<string, Item>
+  // The item key whose close waits for a second key, if any.
+  closingKey: string | undefined
 }
 
 const AGENT_ROW_PREFIX_COLUMNS = 3
@@ -31,6 +40,7 @@ export default function AgentSessionGroup({
   width,
   icons,
   marked,
+  closingKey,
 }: Props) {
   const theme = useTheme()
   const header = formatSectionHeader(theme, 'agents', icons)
@@ -47,8 +57,10 @@ export default function AgentSessionGroup({
       {window.items.map((item, i) => {
         const absoluteIndex = window.startIndex + i
         const isMarked = marked?.has(getItemKey(item)) ?? false
-        const selected = active && absoluteIndex === cursor
-        const meta = markedMeta(isMarked, getSessionMeta(item))
+        const closing = getItemKey(item) === closingKey
+        const highlight = rowHighlight(active && absoluteIndex === cursor, closing)
+        const selected = highlight === 'selected'
+        const meta = closing ? CLOSING_META : markedMeta(isMarked, getSessionMeta(item))
 
         const metaWidth = meta ? meta.length + 1 : 0
 
@@ -66,7 +78,7 @@ export default function AgentSessionGroup({
               flexDirection: 'row',
               flexShrink: 0,
               justifyContent: 'space-between',
-              backgroundColor: rowBackground(theme, selected, isMarked),
+              backgroundColor: rowBackground(theme, highlight, isMarked),
               paddingRight: 1,
             }}
           >
@@ -99,7 +111,7 @@ export default function AgentSessionGroup({
                 fg: rowForeground(
                   theme,
                   selected,
-                  isMarked
+                  closing || isMarked
                     ? theme.danger
                     : item.agentStatus === 'blocked'
                       ? theme.danger

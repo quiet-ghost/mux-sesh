@@ -1,7 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { OperationReport } from './action-outcome'
 import type { CleanupBatch, CloseReceipt } from '../sessions/cleanup-batch'
-import type { CleanupPlan } from '../sessions/cleanup-plan'
 import { OptionPicker } from './option-picker'
 import { getSettingEditorValue, type SettingsFieldId } from '../settings'
 import type { Config, Item } from '../types'
@@ -18,7 +17,6 @@ export type ModalState =
     }
   | { type: 'setting-editor'; field: SettingsFieldId }
   | { type: 'outcome'; report: OperationReport }
-  | { type: 'close-review'; plan: CleanupPlan }
   | { type: 'close-batch-review'; batch: CleanupBatch }
   | { type: 'close-batch-results'; receipt: CloseReceipt }
   | null

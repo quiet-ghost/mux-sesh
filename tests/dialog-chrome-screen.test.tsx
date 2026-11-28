@@ -260,23 +260,6 @@ const DIALOGS: readonly DialogCase[] = [
     ],
   },
   {
-    name: 'close review',
-    open: async size => {
-      const fixture = await sessions(size)
-      await fixture.pressKey('j')
-      await fixture.pressKey('d')
-
-      return fixture
-    },
-    title: "Close tmux session 'beta'?",
-    tone: 'danger',
-    description: '/fixture/beta',
-    hints: [
-      ['close', 'enter'],
-      ['keep', 'esc'],
-    ],
-  },
-  {
     name: 'batch close review',
     open: async size => {
       const fixture = await sessions(size)
@@ -393,23 +376,25 @@ describe('dialogs are titled panes', () => {
     }
   )
 
-  test.each(SIZES)('a long title truncates inside the border at $width x $height', async size => {
-    const long = workspace('$2', `a-very-long-session-name-${'x'.repeat(80)}`)
-    screen = await renderSessionScreen(size, {
-      workspaces: [],
-      backend: closingBackend([workspace('$1', 'alpha', { isActive: true }), long]),
-    })
+  test('a title wider than the dialog truncates inside the border', async () => {
+    screen = await renderSessionScreen(
+      { width: 30, height: 18 },
+      {
+        workspaces: [],
+        backend: closingBackend([
+          workspace('$1', 'alpha', { isActive: true }),
+          workspace('$2', 'beta'),
+          workspace('$3', 'charlie'),
+        ]),
+      }
+    )
     await screen.settle()
-    await screen.pressKey('d')
+    await markBetaAndCharlie(screen)
 
-    const pane = await paneOf(screen, "Close tmux session 'a-very-long")
+    const pane = await paneOf(screen, 'Close 2 marked')
     const top = textOf(rowAt(pane.rows, pane.top).slice(pane.left, pane.right + 1))
 
-    expect(top).toMatch(/^┌─ Close tmux session 'a-very-long-session-name-x+… ─┐$/)
-    expectPaneFooter(pane, screen.colors(), [
-      ['close', 'enter'],
-      ['keep', 'esc'],
-    ])
+    expect(top).toMatch(/^┌─ Close 2 marked .*… ─┐$/)
   })
 })
 

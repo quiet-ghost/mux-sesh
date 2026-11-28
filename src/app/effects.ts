@@ -11,6 +11,7 @@ import type { TerminalColors } from '@opentui/core'
 import { checkAndUpdate, describeUpdateEvent, updateEvents } from '../update'
 import { createAutoUpdateScheduler, type AutoUpdateScheduler } from '../update/scheduler'
 import type { ShowToast } from './notifications'
+import { PendingClose } from './pending-close'
 import { useHerdrAgentPolling } from './herdr-refresh'
 import type { SessionInventory } from './session-inventory'
 import { clearMatchIndices, createItemFilter, type ItemFilter } from '../search'
@@ -173,6 +174,24 @@ export function useBoundedCursor(length: number, setCursor: Dispatch<SetStateAct
 
     setCursor(current => clampCursorIndex(length, current))
   }, [length, setCursor])
+}
+
+// A waiting close belongs to the row it was armed on, on the list itself: a refresh or view change
+// that puts another row under the cursor, or a dialog opening over the list, cancels it.
+export function usePendingCloseReset(
+  pendingClose: PendingClose,
+  target: Item | undefined,
+  modalOpen: boolean,
+  setPendingClose: Dispatch<SetStateAction<PendingClose>>
+) {
+  const armedKey = PendingClose.keyOf(pendingClose)
+  const targetKey = target && getItemKey(target)
+
+  useEffect(() => {
+    if (armedKey === undefined || (!modalOpen && targetKey === armedKey)) return
+
+    setPendingClose(PendingClose.none)
+  }, [armedKey, modalOpen, setPendingClose, targetKey])
 }
 
 export function useSelectionMemory(

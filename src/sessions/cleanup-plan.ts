@@ -185,18 +185,6 @@ function describeWarning(warning: CloseWarning): string {
   }
 }
 
-function title(plan: CleanupPlan): string {
-  const kind = plan.ref.backend === 'herdr' ? 'Herdr workspace' : 'tmux session'
-
-  return `Close ${kind} '${plan.ref.title}'?`
-}
-
-function scope(plan: CleanupPlan): string {
-  if (plan.units === undefined) return `Closes this ${nounOf(plan.ref)} and every pane in it`
-
-  return `Closes ${unitNoun(plan.ref, plan.units)} and ${plan.units === 1 ? 'its' : 'their'} panes`
-}
-
 function unitsLabel(plan: CleanupPlan): string {
   return plan.units === undefined ? 'every pane' : unitNoun(plan.ref, plan.units)
 }
@@ -205,8 +193,6 @@ export const CleanupPlan = {
   review,
   recheck,
   describeWarning,
-  title,
-  scope,
   nounOf,
   unitsLabel,
 } as const

@@ -11,6 +11,7 @@ import {
   type ActionTarget,
   type FooterHint,
 } from '../src/app/action-catalog'
+import { PendingClose } from '../src/app/pending-close'
 import { getItemKey, workspaceToItem } from '../src/multiplexer/items'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../src/types'
 
@@ -57,6 +58,7 @@ function context(overrides: Partial<ActionContext> = {}): ActionContext {
     agentCount: 0,
     target: { kind: 'none' },
     marked: new Map(),
+    pendingClose: PendingClose.none,
     ...overrides,
   }
 }

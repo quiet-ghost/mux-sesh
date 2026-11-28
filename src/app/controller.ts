@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAppCoreState } from './core-state'
-import { useAutoUpdateScheduler, useAppBehaviors } from './effects'
+import { useAutoUpdateScheduler, useAppBehaviors, usePendingCloseReset } from './effects'
 import { createAppControls } from './controls'
 import { getSessionCommandState, getSettingsState } from './derived'
 import { FocusOwner } from './focus-owner'
@@ -68,6 +68,8 @@ export function useAppController(invocationCwd: string) {
     setBackend,
     markedItems,
     setMarkedItems,
+    pendingClose,
+    setPendingClose,
     prefixActive,
     setPrefixActive,
     prefixTimeoutRef,
@@ -151,8 +153,11 @@ export function useAppController(invocationCwd: string) {
     config,
     commandsSearchQuery,
     backend,
-    markedItems
+    markedItems,
+    pendingClose
   )
+
+  usePendingCloseReset(pendingClose, selectedPrimaryItem, modalState !== null, setPendingClose)
 
   const inventory = useSessionInventory(effects, measure, {
     viewMode,
@@ -268,6 +273,7 @@ export function useAppController(invocationCwd: string) {
     inventoryRevision: () => inventory.revision(),
     markedItems,
     setMarkedItems,
+    setPendingClose,
     setRenameTarget,
     setModalInputValue,
     setModalState,
@@ -395,6 +401,7 @@ export function useAppController(invocationCwd: string) {
     ),
     handleOutcomeRetry,
     confirmCloseReview,
+    setPendingClose,
     confirmBatchClose,
     retryBatchClose,
     onDefect: requestFatalShutdown,

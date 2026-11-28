@@ -49,7 +49,6 @@ export interface KeyboardHandlerContext {
   requestMarkedClose: () => Promise<void>
   toggleMark: (item: Item) => void
   togglePinnedSession: (sessionName: string) => Promise<void>
-  // No-op left only for new-session.ts, which another slice owns; the pending-kill state is gone.
   handleSelect: (item: Item) => Promise<void>
   // Runs the frozen launch plan for the highlighted Projects row, the one the footer names.
   launchPlanned: () => Promise<void>

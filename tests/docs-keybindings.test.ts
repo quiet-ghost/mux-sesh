@@ -1,6 +1,7 @@
 import { join } from 'path'
 import { describe, expect, test } from 'bun:test'
 import { getActionKeys, type ActionContext } from '../src/app/action-catalog'
+import { PendingClose } from '../src/app/pending-close'
 import { AppMode, ViewMode, type KeybindMode } from '../src/types'
 import { ACTION_IDS, EVERY_ACTION_LISTED } from './fixtures/action-ids'
 
@@ -99,6 +100,7 @@ function catalogKeys(keybindMode: KeybindMode, mode: AppMode): string[] {
     agentCount: 0,
     target: { kind: 'none' },
     marked: new Map(),
+    pendingClose: PendingClose.none,
   }
 
   return [...new Set(ACTION_IDS.flatMap(id => getActionKeys(context, id)))].sort()

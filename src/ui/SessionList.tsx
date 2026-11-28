@@ -18,6 +18,8 @@ interface Props {
   searchQuery?: string
   icons?: IconConfig
   marked?: ReadonlyMap<string, Item>
+  // The item key whose close waits for a second key, if any.
+  closingKey: string | undefined
 }
 
 function getSessionContext(item: Item): string {
@@ -34,6 +36,7 @@ export default function SessionList({
   searchQuery = '',
   icons,
   marked,
+  closingKey,
 }: Props) {
   const theme = useTheme()
   const isSearching = searchQuery.trim().length > 0
@@ -70,6 +73,7 @@ export default function SessionList({
               item={item}
               selected={active && absoluteIndex === cursor}
               marked={marked?.has(getItemKey(item)) ?? false}
+              closing={getItemKey(item) === closingKey}
               width={width}
               titleColumn={titleColumn}
               context={getSessionContext(item)}

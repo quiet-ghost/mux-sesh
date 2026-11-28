@@ -3,7 +3,6 @@ import type { OperationReport } from './action-outcome'
 import type { ModalState } from './modals'
 import type { ShowToast } from './notifications'
 import { CloseReceipt, type CleanupBatch } from '../sessions/cleanup-batch'
-import type { CleanupPlan } from '../sessions/cleanup-plan'
 import type { SettingsEntry, SettingsOption } from '../settings'
 import type { CommandEntry } from '../ui/CommandsModal'
 import { clampCursorIndex } from '../ui/list-window'
@@ -32,7 +31,6 @@ interface ModalKeyboardContext {
   handleSettingsEditorSubmit: (field: SettingsEntry['id']) => Promise<void>
   handleRenameSubmit: () => Promise<void>
   handleOutcomeRetry: (report: OperationReport) => Promise<void>
-  confirmCloseReview: (plan: CleanupPlan) => Promise<void>
   confirmBatchClose: (batch: CleanupBatch) => Promise<void>
   retryBatchClose: (receipt: CloseReceipt) => Promise<void>
 }
@@ -65,21 +63,6 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
 
     if (key.name === 'return') {
       ctx.runAction(() => ctx.handleOutcomeRetry(report))
-    } else if (key.name === 'escape') {
-      ctx.closeModal()
-    } else {
-      return false
-    }
-
-    return true
-  }
-
-  // Only an explicit Enter closes the reviewed target; every other key leaves it open.
-  if (ctx.modalState?.type === 'close-review') {
-    const { plan } = ctx.modalState
-
-    if (key.name === 'return') {
-      ctx.runAction(() => ctx.confirmCloseReview(plan))
     } else if (key.name === 'escape') {
       ctx.closeModal()
     } else {

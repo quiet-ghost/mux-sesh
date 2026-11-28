@@ -19,6 +19,7 @@ import { getLaunchScope } from './launch-scope'
 import { getNewSessionEnterAction, type NewSessionSteps } from './new-session-step'
 import type { DetailsInspectorState } from './inspector'
 import type { QueuedToast } from './notifications'
+import { PendingClose } from './pending-close'
 import { AppMode, ViewMode, type Config, type Item, type ThemeColors } from '../types'
 import { isGitHubURL } from '../util/github'
 import { shouldShowDetailPanel } from '../util/terminal'
@@ -141,6 +142,7 @@ export function AppScreen({
     newSessionActive ? newSession.keys : []
   )
 
+  const closingKey = PendingClose.keyOf(actionContext.pendingClose)
   const showDetailPanel = shouldShowDetailPanel(columns, appMode === AppMode.NewSession)
   const showLaunchSummary = getLaunchScope(appMode, viewMode, selectedPrimaryItem) !== 'none'
 
@@ -267,6 +269,7 @@ export function AppScreen({
                     searchQuery={searchQuery}
                     icons={config?.icons}
                     marked={markedItems}
+                    closingKey={closingKey}
                   />
 
                   {viewport.agents.kind === 'shown' && (
@@ -278,6 +281,7 @@ export function AppScreen({
                       width={rowWidth}
                       icons={config?.icons}
                       marked={markedItems}
+                      closingKey={closingKey}
                     />
                   )}
                 </>
@@ -295,6 +299,7 @@ export function AppScreen({
                   }
                   icons={config?.icons}
                   marked={markedItems}
+                  closingKey={closingKey}
                 />
               )}
             </box>

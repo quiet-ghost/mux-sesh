@@ -5,6 +5,7 @@ import {
   getCommandEntries,
   type ActionContext,
 } from '../src/app/action-catalog'
+import { PendingClose } from '../src/app/pending-close'
 import { ActionRefused } from '../src/app/action-outcome'
 import { createAppControls } from '../src/app/controls'
 import { getDefaultConfig } from '../src/config'
@@ -50,6 +51,7 @@ function actionContext(overrides: Partial<ActionContext> = {}): ActionContext {
     agentCount: 0,
     target: { kind: 'none' },
     marked: new Map(),
+    pendingClose: PendingClose.none,
     ...overrides,
   }
 }
@@ -521,8 +523,9 @@ describe('app state helpers', () => {
 })
 
 describe('app controls', () => {
-  // Before DEV-343 a second press closed immediately; now every request only opens a review.
-  test('requesting a kill opens a review of the exact ref and never closes on a second press', () => {
+  // A request only freezes the exact ref and waits on the row; the second d is the keyboard's,
+  // so asking twice here never closes anything.
+  test('requesting a kill arms the exact ref on its row and never closes on a second request', () => {
     const item: Item = {
       title: 'alpha',
       desc: '',
@@ -540,6 +543,7 @@ describe('app controls', () => {
       backend: null,
       markedItems: new Map(),
       setMarkedItems: mock(() => {}),
+      setPendingClose: mock(() => {}),
       setRenameTarget: mock(() => {}),
       setModalInputValue: mock(() => {}),
       setModalState: mock(() => {}),
@@ -557,21 +561,19 @@ describe('app controls', () => {
     controls.requestKillSession(item)
     controls.requestKillSession(item)
 
-    const review = {
-      type: 'close-review',
-      plan: {
-        key: 'tmux:alpha',
-        ref: { backend: 'tmux', id: 'alpha', title: 'alpha' },
-        path: '/tmp/alpha',
-        units: undefined,
-        warnings: [],
-        revision: 7,
-      },
-    }
+    const armed = PendingClose.arm({
+      key: 'tmux:alpha',
+      ref: { backend: 'tmux', id: 'alpha', title: 'alpha' },
+      path: '/tmp/alpha',
+      units: undefined,
+      warnings: [],
+      revision: 7,
+    })
 
-    expect(options.setModalState).toHaveBeenCalledTimes(2)
-    expect(options.setModalState).toHaveBeenNthCalledWith(1, review)
-    expect(options.setModalState).toHaveBeenNthCalledWith(2, review)
+    expect(options.setPendingClose).toHaveBeenCalledTimes(2)
+    expect(options.setPendingClose).toHaveBeenNthCalledWith(1, armed)
+    expect(options.setPendingClose).toHaveBeenNthCalledWith(2, armed)
+    expect(options.setModalState).not.toHaveBeenCalled()
   })
 
   test('requesting a kill of an agent pane is refused instead of widening to its workspace', () => {
@@ -587,6 +589,7 @@ describe('app controls', () => {
     }
 
     const setModalState = mock(() => {})
+    const setPendingClose = mock(() => {})
 
     const controls = createAppControls({
       config: getDefaultConfig('/home/tester'),
@@ -595,6 +598,7 @@ describe('app controls', () => {
       backend: null,
       markedItems: new Map(),
       setMarkedItems: mock(() => {}),
+      setPendingClose,
       setRenameTarget: mock(() => {}),
       setModalInputValue: mock(() => {}),
       setModalState,
@@ -610,6 +614,7 @@ describe('app controls', () => {
 
     expect(() => controls.requestKillSession(pane)).toThrow(ActionRefused)
     expect(setModalState).not.toHaveBeenCalled()
+    expect(setPendingClose).not.toHaveBeenCalled()
   })
 
   test('opening rename seeds modal state', () => {
@@ -622,6 +627,7 @@ describe('app controls', () => {
       backend: null,
       markedItems: new Map(),
       setMarkedItems: mock(() => {}),
+      setPendingClose: mock(() => {}),
       setRenameTarget: mock(() => {}),
       setModalInputValue: mock(() => {}),
       setModalState: mock(() => {}),

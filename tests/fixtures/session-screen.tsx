@@ -11,6 +11,7 @@ import { getSessionCommandState, getSettingsState } from '../../src/app/derived'
 import {
   useNormalModeSessionReset,
   useOpenHistory,
+  usePendingCloseReset,
   useSearchFiltering,
   useSelectionMemory,
 } from '../../src/app/effects'
@@ -211,7 +212,8 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     config,
     modal.commandsSearchQuery,
     backend,
-    core.markedItems
+    core.markedItems,
+    core.pendingClose
   )
 
   const inventory = useSessionInventory(effects, passthroughMeasure, {
@@ -289,6 +291,13 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     setSessionCandidateItems,
     setSessionItems,
   ])
+
+  usePendingCloseReset(
+    core.pendingClose,
+    derived.selectedPrimaryItem,
+    modal.modalState !== null,
+    core.setPendingClose
+  )
 
   useSelectionMemory(
     core.appMode,

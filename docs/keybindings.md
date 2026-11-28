@@ -36,24 +36,24 @@ The action tables on this page are checked against the action catalog by the tes
 
 <!-- keys: vim normal -->
 
-| Key              | Action                                                                |
-| ---------------- | --------------------------------------------------------------------- |
-| `enter`          | Open the selected row: focus a live session, or create from a project |
-| `i`              | Search                                                                |
-| `n`              | New session (the project-first launcher)                              |
-| `o`              | Agents, when agent rows are listed in the sessions view               |
-| `d` / `ctrl+x d` | Close: review the selected live session, or the marked rows           |
-| `m` / `ctrl+x m` | Mark or unmark the selected row for a batch close                     |
-| `v` / `ctrl+x v` | Toggle details                                                        |
-| `ctrl+f`         | Pin or unpin the selected session (sessions view)                     |
-| `s` / `ctrl+x s` | Show sessions                                                         |
-| `p` / `ctrl+x p` | Show projects                                                         |
-| `ctrl+x r`       | Rename the selected live session                                      |
-| `ctrl+x l`       | Last session (tmux only; Herdr does not track the previous workspace) |
-| `ctrl+x g`       | Root session: open the git root of the selected row                   |
-| `ctrl+x e`       | Edit target: open a listed configured target in your `editor`         |
-| `ctrl+x shift+r` | Refresh sessions and projects                                         |
-| `ctrl+p`         | Command palette                                                       |
+| Key              | Action                                                                     |
+| ---------------- | -------------------------------------------------------------------------- |
+| `enter`          | Open the selected row: focus a live session, or create from a project      |
+| `i`              | Search                                                                     |
+| `n`              | New session (the project-first launcher)                                   |
+| `o`              | Agents, when agent rows are listed in the sessions view                    |
+| `d` / `ctrl+x d` | Close the selected live session on a second `d`, or review the marked rows |
+| `m` / `ctrl+x m` | Mark or unmark the selected row for a batch close                          |
+| `v` / `ctrl+x v` | Toggle details                                                             |
+| `ctrl+f`         | Pin or unpin the selected session (sessions view)                          |
+| `s` / `ctrl+x s` | Show sessions                                                              |
+| `p` / `ctrl+x p` | Show projects                                                              |
+| `ctrl+x r`       | Rename the selected live session                                           |
+| `ctrl+x l`       | Last session (tmux only; Herdr does not track the previous workspace)      |
+| `ctrl+x g`       | Root session: open the git root of the selected row                        |
+| `ctrl+x e`       | Edit target: open a listed configured target in your `editor`              |
+| `ctrl+x shift+r` | Refresh sessions and projects                                              |
+| `ctrl+p`         | Command palette                                                            |
 
 Also in vim mode:
 
@@ -83,20 +83,20 @@ is the command layer.
 
 <!-- keys: standard search -->
 
-| Key              | Action                                                      |
-| ---------------- | ----------------------------------------------------------- |
-| `enter`          | Open the highlighted row                                    |
-| `ctrl+x n`       | New session (the project-first launcher)                    |
-| `ctrl+x o`       | Agents, when agent rows are listed in the sessions view     |
-| `ctrl+x d`       | Close: review the selected live session, or the marked rows |
-| `ctrl+x m`       | Mark or unmark the selected row for a batch close           |
-| `ctrl+x v`       | Toggle details                                              |
-| `ctrl+x s`       | Open settings                                               |
-| `ctrl+x r`       | Rename the selected live session                            |
-| `ctrl+x l`       | Last session (tmux only)                                    |
-| `ctrl+x g`       | Root session: open the git root of the selected row         |
-| `ctrl+x shift+r` | Refresh sessions and projects                               |
-| `ctrl+p`         | Command palette                                             |
+| Key              | Action                                                                     |
+| ---------------- | -------------------------------------------------------------------------- |
+| `enter`          | Open the highlighted row                                                   |
+| `ctrl+x n`       | New session (the project-first launcher)                                   |
+| `ctrl+x o`       | Agents, when agent rows are listed in the sessions view                    |
+| `ctrl+x d`       | Close the selected live session on a second `d`, or review the marked rows |
+| `ctrl+x m`       | Mark or unmark the selected row for a batch close                          |
+| `ctrl+x v`       | Toggle details                                                             |
+| `ctrl+x s`       | Open settings                                                              |
+| `ctrl+x r`       | Rename the selected live session                                           |
+| `ctrl+x l`       | Last session (tmux only)                                                   |
+| `ctrl+x g`       | Root session: open the git root of the selected row                        |
+| `ctrl+x shift+r` | Refresh sessions and projects                                              |
+| `ctrl+p`         | Command palette                                                            |
 
 Type to filter, `↑` / `↓` to move, `esc` to clear the query, and `ctrl+q` to quit. Standard mode
 has no key for pinning, switching to projects, editing a configured target, or themes; run them
@@ -122,15 +122,15 @@ In standard mode New has two more keys:
 
 <!-- keys: standard new -->
 
-| Key      | Action                                                         |
-| -------- | -------------------------------------------------------------- |
-| `enter`  | Run what the summary row says: create, focus, or clone         |
-| `ctrl+n` | Name: edit the name of the session about to be created         |
-| `ctrl+t` | Startup: edit its startup command; empty runs nothing          |
-| `ctrl+g` | Here: create a named session in the directory you started from |
-| `ctrl+o` | File: search for a file, or type its path, and open it         |
-| `ctrl+i` | Back to search                                                 |
-| `ctrl+d` | Close: review the selected live session, or the marked rows    |
+| Key      | Action                                                                     |
+| -------- | -------------------------------------------------------------------------- |
+| `enter`  | Run what the summary row says: create, focus, or clone                     |
+| `ctrl+n` | Name: edit the name of the session about to be created                     |
+| `ctrl+t` | Startup: edit its startup command; empty runs nothing                      |
+| `ctrl+g` | Here: create a named session in the directory you started from             |
+| `ctrl+o` | File: search for a file, or type its path, and open it                     |
+| `ctrl+i` | Back to search                                                             |
+| `ctrl+d` | Close the selected live session on a second `d`, or review the marked rows |
 
 Type to filter projects, `↑` / `↓` to move, and `esc` to cancel. Inside a step, `enter` applies
 or opens, and `esc` returns to the project list with its query and selection unchanged.
@@ -141,30 +141,44 @@ offered for a live session, a typed path, or a GitHub URL. See [workflows.md](wo
 
 <!-- keys: vim agents -->
 
-| Key                | Action                                                            |
-| ------------------ | ----------------------------------------------------------------- |
-| `esc` / `ctrl+x o` | Back                                                              |
-| `enter`            | Focus the selected agent                                          |
-| `d` / `ctrl+x d`   | Close: review the selected tmux agent session, or the marked rows |
-| `m` / `ctrl+x m`   | Mark or unmark the selected row                                   |
-| `v` / `ctrl+x v`   | Toggle details                                                    |
-| `ctrl+x r`         | Rename the selected tmux agent session                            |
-| `ctrl+p`           | Command palette                                                   |
+| Key                | Action                                                                           |
+| ------------------ | -------------------------------------------------------------------------------- |
+| `esc` / `ctrl+x o` | Back                                                                             |
+| `enter`            | Focus the selected agent                                                         |
+| `d` / `ctrl+x d`   | Close the selected tmux agent session on a second `d`, or review the marked rows |
+| `m` / `ctrl+x m`   | Mark or unmark the selected row                                                  |
+| `v` / `ctrl+x v`   | Toggle details                                                                   |
+| `ctrl+x r`         | Rename the selected tmux agent session                                           |
+| `ctrl+p`           | Command palette                                                                  |
 
 <!-- keys: standard agents -->
 
-| Key                | Action                                                            |
-| ------------------ | ----------------------------------------------------------------- |
-| `esc` / `ctrl+x o` | Back                                                              |
-| `enter`            | Focus the selected agent                                          |
-| `ctrl+x d`         | Close: review the selected tmux agent session, or the marked rows |
-| `ctrl+x m`         | Mark or unmark the selected row                                   |
-| `ctrl+x v`         | Toggle details                                                    |
-| `ctrl+x r`         | Rename the selected tmux agent session                            |
-| `ctrl+p`           | Command palette                                                   |
+| Key                | Action                                                                           |
+| ------------------ | -------------------------------------------------------------------------------- |
+| `esc` / `ctrl+x o` | Back                                                                             |
+| `enter`            | Focus the selected agent                                                         |
+| `ctrl+x d`         | Close the selected tmux agent session on a second `d`, or review the marked rows |
+| `ctrl+x m`         | Mark or unmark the selected row                                                  |
+| `ctrl+x v`         | Toggle details                                                                   |
+| `ctrl+x r`         | Rename the selected tmux agent session                                           |
+| `ctrl+p`           | Command palette                                                                  |
 
 `↑` / `↓` move (also `j` / `k` in vim mode). Herdr agent rows are panes inside a workspace: they
 can be focused and inspected, but rename and close are unavailable and say to use Herdr instead.
+
+## Confirming a Close
+
+The first close key on an unmarked row turns that row red and its right side reads
+`d again to close`; any warnings show in the status line above the footer. Then:
+
+- `d` closes exactly that row, in every mode. In standard mode, `ctrl+x d` works too, and so
+  does `ctrl+d` in New.
+- `esc` cancels and does nothing else.
+- Any other key cancels, then does what it normally does: a movement still moves, a letter still
+  types into the search, and `m` still marks.
+- A refresh or view change that puts another row under the cursor, or a dialog opening, cancels.
+
+With rows marked, `d` opens the batch close review instead, even for one marked row.
 
 ## Dialogs
 
@@ -173,7 +187,7 @@ can be focused and inspected, but rename and close are unavailable and say to us
 | Command palette, settings | Type to filter, `↑` / `↓` move, `enter` runs or opens, `esc` closes        |
 | Theme picker              | `↑` / `↓` preview, `enter` saves, `esc` restores the saved theme           |
 | Rename                    | Type the name, `enter` renames, `esc` cancels                              |
-| Close review              | `enter` closes exactly what is shown, `esc` keeps it                       |
+| Batch close review        | `enter` closes exactly the marked set shown, `esc` keeps it                |
 | Close results             | `enter` retries what is still open (or closes the dialog), `esc` closes    |
 | Operation report          | `enter` retries when the footer offers it (otherwise closes), `esc` closes |
 | Startup failure           | `r` retries, `q` / `esc` / `ctrl+c` quit                                   |

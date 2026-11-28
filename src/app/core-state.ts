@@ -4,6 +4,7 @@ import { AppMode, ViewMode, type Config, type Item } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 import type { StatusLine } from '../ui/status-line'
 import { useToasts } from './notifications'
+import { PendingClose } from './pending-close'
 
 const NO_MARKS: ReadonlyMap<string, Item> = new Map()
 
@@ -21,13 +22,16 @@ export function useAppCoreState() {
   // Persistent status lines above the footer: stale inventory, and degraded file search.
   const [inventoryStatus, setInventoryStatus] = useState('')
   const [fileSearchStatus, setFileSearchStatus] = useState('')
+  // A single close waiting for its second key; its warnings show as a status line meanwhile.
+  const [pendingClose, setPendingClose] = useState<PendingClose>(PendingClose.none)
 
   const statusLines = useMemo(
     (): readonly StatusLine[] => [
       ...(inventoryStatus ? [{ kind: 'stale' as const, text: inventoryStatus }] : []),
       ...(fileSearchStatus ? [{ kind: 'warn' as const, text: fileSearchStatus }] : []),
+      ...PendingClose.statusLines(pendingClose),
     ],
-    [inventoryStatus, fileSearchStatus]
+    [inventoryStatus, fileSearchStatus, pendingClose]
   )
 
   const [renameTarget, setRenameTarget] = useState<Item | null>(null)
@@ -67,6 +71,8 @@ export function useAppCoreState() {
     statusLines,
     setInventoryStatus,
     setFileSearchStatus,
+    pendingClose,
+    setPendingClose,
     renameTarget,
     setRenameTarget,
     config,

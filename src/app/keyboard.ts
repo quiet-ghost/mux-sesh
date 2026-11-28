@@ -8,18 +8,22 @@ import type { NewSessionStepControls } from './new-session-step'
 import type { ModalState } from './modals'
 import type { CleanupBatch, CloseReceipt } from '../sessions/cleanup-batch'
 import type { CleanupPlan } from '../sessions/cleanup-plan'
+import { PendingClose } from './pending-close'
 import {
+  clearPrefix,
   handleNewSessionMode,
   handleNormalMode,
   handleAgentsManageMode,
   handleSearchMode,
+  matchesPrefixKey,
   type KeyboardHandlerContext,
 } from '../handlers/keyboard'
+import { getItemKey } from '../multiplexer/items'
 import { resolvePrefixKey } from '../config'
 import type { SettingsEntry, SettingsFieldId, SettingsOption } from '../settings'
 import type { Config, Item } from '../types'
 import type { CommandEntry } from '../ui/CommandsModal'
-import type { ActionContext } from './action-catalog'
+import { getActionTargetItem, type ActionContext } from './action-catalog'
 import { failureKind } from './action-outcome'
 import type { ShowToast } from './notifications'
 import { AppMode, ViewMode } from '../types'
@@ -60,7 +64,9 @@ interface UseAppKeyboardOptions {
   handleRenameSubmit: () => Promise<void>
   newSession: NewSessionStepControls
   handleOutcomeRetry: (report: OperationReport) => Promise<void>
+  // Closes the frozen plan a second close key confirmed.
   confirmCloseReview: (plan: CleanupPlan) => Promise<void>
+  setPendingClose: Dispatch<SetStateAction<PendingClose>>
   confirmBatchClose: (batch: CleanupBatch) => Promise<void>
   retryBatchClose: (receipt: CloseReceipt) => Promise<void>
   // Crash recovery for defects raised by key handlers; production passes requestFatalShutdown.
@@ -155,6 +161,45 @@ export function useAppKeyboard(options: UseAppKeyboardOptions) {
 
 type AppKey = Parameters<Parameters<typeof useKeyboard>[0]>[0]
 
+// A waiting close sees every key first. Returns whether it consumed the key; otherwise the key
+// goes on to the mode handler as usual.
+function handlePendingClose(
+  key: AppKey,
+  options: UseAppKeyboardOptions,
+  keyboardContext: KeyboardHandlerContext,
+  owner: ActionOwner
+): boolean {
+  const target = getActionTargetItem(options.actionContext.target)
+
+  const step = PendingClose.onKey(options.actionContext.pendingClose, key, {
+    targetKey: target && getItemKey(target),
+    prefixActive: options.prefixActive,
+    prefixKeyPressed: matchesPrefixKey(key, keyboardContext.prefixKey),
+  })
+
+  switch (step.kind) {
+    case 'pass':
+      return false
+    case 'cancel-and-pass':
+      options.setPendingClose(PendingClose.none)
+
+      return false
+    case 'cancel':
+      clearPrefix(keyboardContext)
+      options.setPendingClose(PendingClose.none)
+      key.preventDefault()
+
+      return true
+    case 'confirm':
+      clearPrefix(keyboardContext)
+      options.setPendingClose(PendingClose.none)
+      key.preventDefault()
+      owner.run(() => options.confirmCloseReview(step.plan))
+
+      return true
+  }
+}
+
 function handleKey(
   key: AppKey,
   options: UseAppKeyboardOptions,
@@ -167,6 +212,8 @@ function handleKey(
 
   const keybindMode = options.config?.keybindMode || 'vim'
   const focus = FocusOwner.of(options)
+
+  if (focus.kind !== 'modal' && handlePendingClose(key, options, keyboardContext, owner)) return
 
   if (focus.kind === 'modal') {
     const consumed = handleModalKeyboard(key, {
@@ -193,7 +240,6 @@ function handleKey(
       handleSettingsEditorSubmit: options.handleSettingsEditorSubmit,
       handleRenameSubmit: options.handleRenameSubmit,
       handleOutcomeRetry: options.handleOutcomeRetry,
-      confirmCloseReview: options.confirmCloseReview,
       confirmBatchClose: options.confirmBatchClose,
       retryBatchClose: options.retryBatchClose,
     })
