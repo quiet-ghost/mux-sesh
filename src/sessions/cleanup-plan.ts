@@ -1,4 +1,5 @@
 import { getItemKey, isHerdrAgentItem, isLiveSessionItem } from '../multiplexer/items'
+import { workspaceNoun } from '../multiplexer/types'
 import type { Item } from '../types'
 
 // A close always removes one whole tmux session or Herdr workspace. A Herdr ref carrying an agent
@@ -37,7 +38,7 @@ export type CleanupCheck =
   | { readonly kind: 'changed'; readonly message: string }
 
 function nounOf(ref: ClosureRef): 'session' | 'workspace' {
-  return ref.backend === 'herdr' ? 'workspace' : 'session'
+  return workspaceNoun(ref.backend)
 }
 
 function unitNoun(ref: ClosureRef, count: number): string {

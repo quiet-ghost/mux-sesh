@@ -15,7 +15,7 @@ import { AppMode, type Config, type Item, type ViewMode } from '../types'
 import type { SettingsFieldId } from '../settings'
 import type { MultiplexerBackend } from '../multiplexer'
 import { handoffOf } from '../multiplexer/focus-outcome'
-import type { FocusOutcome, WorkspaceRef } from '../multiplexer/types'
+import { workspaceNoun, type FocusOutcome, type WorkspaceRef } from '../multiplexer/types'
 import type { CloneServices } from '../sessions/clone-plan'
 import type { LaunchPreview } from '../sessions/launch-plan'
 import { requestShutdown } from '../lifecycle/shutdown'
@@ -262,7 +262,7 @@ export async function handleRenameSubmitWithFeedback(
 
   closeModal()
 
-  const noun = options.backend.kind === 'herdr' ? 'Workspace' : 'Session'
+  const noun = workspaceNoun(options.backend.kind)
 
   const pin = options.config
     ? movePinAfterRename(
@@ -273,13 +273,13 @@ export async function handleRenameSubmitWithFeedback(
       )
     : { kind: 'none' as const }
 
-  let message = `${noun} renamed to '${outcome.target.title}'`
+  let message = `${noun.charAt(0).toUpperCase()}${noun.slice(1)} renamed to '${outcome.target.title}'`
   // The rename happened either way; a pin left behind is worth a warning, not a failure.
   let kind: 'success' | 'warning' = 'success'
 
   if (pin.kind === 'ambiguous') {
     kind = 'warning'
-    message += `. The pin on '${renameTarget.title}' was kept because another ${noun.toLowerCase()} still uses that name.`
+    message += `. The pin on '${renameTarget.title}' was kept because another ${noun} still uses that name.`
   }
 
   if (pin.kind === 'moved' && options.config) {

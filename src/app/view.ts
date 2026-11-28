@@ -1,6 +1,7 @@
 import { isAgentSessionItem } from '../agents/session-name'
 import { getPanelStyle } from '../styles/theme'
 import { getNoMatchMessage } from '../ui/dialog-layout'
+import { workspaceNoun } from '../multiplexer/types'
 import { AppMode, ViewMode, type BackendKind, type ThemeColors } from '../types'
 import { getActionFooter, getActionKeyHint, type ActionContext } from './action-catalog'
 import type { NewSessionStepKind } from './new-session-step'
@@ -131,7 +132,7 @@ export function getEmptyStateMessage(
 
 // Search's next step when nothing matches: New, under the key that reaches it from here.
 export function getSearchNoMatchHint(context: ActionContext): string {
-  const noun = context.backend?.kind === 'herdr' ? 'workspace' : 'session'
+  const noun = context.backend ? workspaceNoun(context.backend.kind) : 'session'
   const direct = getActionKeyHint(context, 'new-session')
 
   if (direct) return `${direct} to start a new ${noun}`

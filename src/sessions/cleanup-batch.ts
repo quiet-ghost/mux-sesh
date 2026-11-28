@@ -1,6 +1,7 @@
 import { getItemKey, isLiveSessionItem } from '../multiplexer/items'
-import type { BackendKind } from '../multiplexer/types'
+import { workspaceNoun, type BackendKind } from '../multiplexer/types'
 import type { Item } from '../types'
+import { plural } from '../util/plural'
 import { CleanupPlan } from './cleanup-plan'
 
 // Which workspace runs this picker. A batch never closes it: the picker would end before it
@@ -55,14 +56,6 @@ export interface CloseReceipt {
   readonly results: readonly CloseResult[]
   readonly refused: readonly RefusedMember[]
   readonly focus: FocusRestore
-}
-
-function nounOf(backend: BackendKind): 'session' | 'workspace' {
-  return backend === 'herdr' ? 'workspace' : 'session'
-}
-
-function plural(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`
 }
 
 function hostReason(): string {
@@ -155,7 +148,7 @@ function title(batch: CleanupBatch): string {
 function hostWarning(batch: CleanupBatch): string | undefined {
   if (batch.host.kind === 'known') return undefined
 
-  return `Could not tell which ${nounOf(batch.backend)} hosts this picker (${batch.host.reason}). If one of these does, closing it ends mux-sesh.`
+  return `Could not tell which ${workspaceNoun(batch.backend)} hosts this picker (${batch.host.reason}). If one of these does, closing it ends mux-sesh.`
 }
 
 function refusedLine(member: RefusedMember): string {
@@ -231,11 +224,11 @@ function isComplete(receipt: CloseReceipt): boolean {
 function completedMessage(receipt: CloseReceipt): string {
   const names = receipt.results.map(result => `'${result.plan.ref.title}'`).join(', ')
 
-  return `Closed ${plural(receipt.results.length, nounOf(receipt.backend))}: ${names}`
+  return `Closed ${plural(receipt.results.length, workspaceNoun(receipt.backend))}: ${names}`
 }
 
 function resultLine(result: CloseResult, backend: BackendKind): string {
-  const noun = nounOf(backend)
+  const noun = workspaceNoun(backend)
   const name = `${noun} '${result.plan.ref.title}'`
 
   switch (result.kind) {
@@ -256,7 +249,7 @@ function receiptTitle(receipt: CloseReceipt): string {
   const closed = receipt.results.filter(result => result.kind === 'closed').length
   const total = receipt.results.length + receipt.refused.length
 
-  return `Closed ${closed} of ${plural(total, `marked ${nounOf(receipt.backend)}`)}`
+  return `Closed ${closed} of ${plural(total, `marked ${workspaceNoun(receipt.backend)}`)}`
 }
 
 function lines(receipt: CloseReceipt): string[] {

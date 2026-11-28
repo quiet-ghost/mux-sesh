@@ -13,7 +13,12 @@ import {
   reasonOf,
 } from '../app/action-outcome'
 import { handoffOf } from '../multiplexer/focus-outcome'
-import type { BackendKind, OpenWorkspaceInput, WorkspaceRef } from '../multiplexer/types'
+import {
+  workspaceNoun,
+  type BackendKind,
+  type OpenWorkspaceInput,
+  type WorkspaceRef,
+} from '../multiplexer/types'
 import {
   CleanupBatch,
   CloseReceipt,
@@ -426,7 +431,7 @@ export async function handleRenameSubmit(
   } catch (cause) {
     if (!isBackendFailure(cause)) throw cause
 
-    const noun = backend.kind === 'herdr' ? 'workspace' : 'session'
+    const noun = workspaceNoun(backend.kind)
 
     return {
       kind: 'failed',
@@ -435,17 +440,13 @@ export async function handleRenameSubmit(
   }
 }
 
-function nounOf(backend: BackendKind): 'workspace' | 'session' {
-  return backend === 'herdr' ? 'workspace' : 'session'
-}
-
 function capitalized(noun: string): string {
   return `${noun.charAt(0).toUpperCase()}${noun.slice(1)}`
 }
 
 // The created session is confirmed, so recovery opens it; startup is never re-run blindly.
 function followUpOutcome(failure: LaunchFollowUpFailed, backend: BackendKind): ActionOutcome {
-  const noun = nounOf(backend)
+  const noun = workspaceNoun(backend)
   const { workspace } = failure.receipt
   const reason = reasonOf(failure.cause)
 
@@ -479,7 +480,7 @@ function launchFailureOutcome(
 
   if (!isExpectedActionFailure(cause)) throw cause
 
-  const noun = nounOf(backend)
+  const noun = workspaceNoun(backend)
 
   if (plan.kind === 'focus') {
     return {

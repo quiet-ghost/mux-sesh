@@ -3,6 +3,7 @@ import { DraftCheck, SettingChange } from './setting-change'
 import type { ListSettingId } from './settings'
 import type { Config, Item } from './types'
 import { matchesGlob, normalizePathForMatching } from './util/glob'
+import { plural } from './util/plural'
 
 export type StringListField = ListSettingId
 
@@ -218,10 +219,6 @@ function projectsIn(root: string, context: ListContext): number {
 
 function isRunning(name: string, context: ListContext): boolean {
   return context.liveSessions.some(item => item.isSession && item.title === name)
-}
-
-function plural(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? '' : 's'}`
 }
 
 function joinNames(names: readonly string[]): string {

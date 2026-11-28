@@ -4,6 +4,11 @@ export type BackendKind = 'tmux' | 'herdr'
 
 export type BackendPreference = BackendKind
 
+// What a backend's top-level unit is called in user-facing text.
+export function workspaceNoun(backend: BackendKind): 'workspace' | 'session' {
+  return backend === 'herdr' ? 'workspace' : 'session'
+}
+
 export type AgentStatus = 'idle' | 'working' | 'blocked' | 'done' | 'unknown'
 
 interface WorkspaceIdentity {
