@@ -6,7 +6,7 @@ import type { MultiplexerBackend } from '../../src/multiplexer'
 import { filterAndSortItems } from '../../src/search'
 import { FRECENCY_ENTRY_LIMIT, OpenKey } from '../../src/search/frecency'
 import { createOpenHistory, type OpenHistory } from '../../src/search/frecency-store'
-import type { Item } from '../../src/types'
+import type { Item } from '../../src/items/item'
 
 export const PICKER_CORPUS_SIZE = { sessions: 200, projects: 5000 } as const
 

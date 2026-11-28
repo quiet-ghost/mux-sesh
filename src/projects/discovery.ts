@@ -1,6 +1,7 @@
 import { basename } from 'path'
 import { access, stat } from 'fs/promises'
-import type { Config, Item } from '../types'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import { mapWithConcurrency } from '../util/concurrency'
 import { normalizePathForMatching } from '../util/glob'
 import { getPathContextLabel } from '../util/path-display'

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { clearMatchIndices, filterAndSortItems } from '../src/search'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 
 function createItem(overrides: Partial<Item> = {}): Item {
   return {

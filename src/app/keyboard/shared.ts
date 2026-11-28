@@ -9,7 +9,9 @@ import {
 import { openNewSession } from '../launcher-query'
 import type { ShowToast } from '../notifications'
 import { refreshProjectDiscovery } from '../../projects/project-items'
-import { AppMode, ViewMode, type Config, type Item } from '../../types'
+import { AppMode, ViewMode } from '../app-mode'
+import type { Config } from '../../config/config-model'
+import type { Item } from '../../items/item'
 
 export interface KeyboardInput {
   name?: string

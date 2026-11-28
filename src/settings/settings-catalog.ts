@@ -3,7 +3,8 @@ import { getDefaultConfig, resolvePrefixKey, serializeConfig } from '../config'
 import { PrefixKey } from '../config/prefix-key'
 import { BUILTIN_THEMES, getBuiltinTheme } from '../styles/theme'
 import { DEFAULT_COLOR_SCHEME, DEFAULT_THEME_ID, SYSTEM_THEME_ID } from '../styles/theme-ids'
-import type { Config, KeybindMode, SortOrder, ThemeColorScheme, ZoxideMode } from '../types'
+import type { Config, KeybindMode, SortOrder, ZoxideMode } from '../config/config-model'
+import type { ThemeColorScheme } from '../styles/theme-model'
 import { toHomeRelativePath } from '../util/path-display'
 
 export type SettingsFieldId =

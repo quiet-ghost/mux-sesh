@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { TextareaRenderable } from '@opentui/core'
 import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
-import type { KeybindMode } from '../src/types'
+import type { KeybindMode } from '../src/config/config-model'
 import { footerHints } from './fixtures/footer'
 import { noticeOf } from './fixtures/status-line'
 import { renderSessionScreen } from './fixtures/session-screen'

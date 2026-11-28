@@ -2,7 +2,7 @@ import type { TextareaRenderable } from '@opentui/core'
 import { useLayoutEffect } from 'react'
 import { reconcileTextareaValue } from '../app/textarea'
 import { useTheme } from '../styles/theme'
-import { AppMode } from '../types'
+import { AppMode } from '../app/app-mode'
 import { textFieldColors } from './text-field-colors'
 
 const PROMPT = '›'

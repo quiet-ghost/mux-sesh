@@ -12,7 +12,7 @@ import {
   OpenKey,
 } from '../src/search/frecency'
 import { createOpenHistory, type OpenHistory } from '../src/search/frecency-store'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 
 const DAY = 86_400_000
 const NOW = Date.UTC(2026, 10, 26)

@@ -9,7 +9,8 @@ import { getDefaultConfig } from '../src/config'
 import { createHerdrBackend } from '../src/herdr/backend'
 import { CommandTransportError } from '../src/multiplexer/command'
 import type { MultiplexerBackend } from '../src/multiplexer/types'
-import { AppMode, ViewMode, type Item } from '../src/types'
+import { AppMode, ViewMode } from '../src/app/app-mode'
+import type { Item } from '../src/items/item'
 
 const config = getDefaultConfig('/fixture')
 

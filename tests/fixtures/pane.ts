@@ -1,5 +1,5 @@
 import { expect } from 'bun:test'
-import type { ThemeColors } from '../../src/types'
+import type { ThemeColors } from '../../src/styles/theme-model'
 import { sameColor, type Cell } from './selection'
 
 // Body text sits one space inside a pane's left border.

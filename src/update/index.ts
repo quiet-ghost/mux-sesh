@@ -1,4 +1,5 @@
-import type { Config, UpdateEvent } from '../types'
+import type { Config } from '../config/config-model'
+import type { UpdateEvent } from './update-event'
 import { CURRENT_VERSION, getLatestVersion, isNewerVersion } from './version'
 import {
   canAutoUpdate,

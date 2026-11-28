@@ -1,6 +1,8 @@
 import type { ShowToast } from './notifications'
 import type { SessionInventory } from './session-inventory'
-import type { Config, Item, ViewMode } from '../types'
+import type { ViewMode } from './app-mode'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import type { MultiplexerBackend } from '../multiplexer'
 
 interface AppRuntimeOptions {

@@ -1,5 +1,5 @@
 import { expandHomePath } from '../config'
-import type { Config, ProjectProfile, ProjectWildcard } from '../types'
+import type { Config, ProjectProfile, ProjectWildcard } from '../config/config-model'
 import { normalizePathForMatching } from '../util/glob'
 import { toHomeRelativePath } from '../util/path-display'
 import { DraftCheck, SettingChange } from './setting-change'

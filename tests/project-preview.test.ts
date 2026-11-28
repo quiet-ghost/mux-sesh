@@ -12,7 +12,7 @@ import {
   type CommandRunner,
 } from '../src/multiplexer/command'
 import { getProjectPreview } from '../src/preview/project'
-import type { Config } from '../src/types'
+import type { Config } from '../src/config/config-model'
 
 let projectPath = ''
 

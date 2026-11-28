@@ -2,7 +2,8 @@ import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateA
 import { useKeyboard } from '@opentui/react'
 import type { MultiplexerBackend, WorkspaceRef } from '../multiplexer'
 import { getItemKey, isLiveSessionItem } from '../multiplexer/items'
-import { AppMode, ViewMode, type Item } from '../types'
+import { AppMode, ViewMode } from './app-mode'
+import type { Item } from '../items/item'
 
 // The start cursor waits for the current session, lands on it once, and is then settled for good.
 type StartCursor =

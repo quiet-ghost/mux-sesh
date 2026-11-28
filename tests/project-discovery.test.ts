@@ -11,7 +11,7 @@ import { applyZoxideMode, getZoxideEntries, parseZoxideOutput } from '../src/pro
 import { filterHiddenSessions, getLastSessionTarget } from '../src/sessions/session-filters'
 import { getDefaultConfig } from '../src/config'
 import { annotateProjectItemsWithSessionLinks } from '../src/projects/session-links'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 
 describe('project discovery helpers', () => {
   test('parses zoxide score output', () => {

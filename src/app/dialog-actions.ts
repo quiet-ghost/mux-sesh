@@ -1,5 +1,5 @@
 import type { SettingsEntry } from '../settings/settings-catalog'
-import type { KeybindMode } from '../types'
+import type { KeybindMode } from '../config/config-model'
 
 // Settings dialogs keep a text field focused, so their actions are non-text keys only; letters
 // always type. Each action declares its keys once: the dialogs' footers and modal-keyboard both

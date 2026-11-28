@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { mkdir } from 'fs/promises'
 import { join } from 'path'
 import { TextareaRenderable } from '@opentui/core'
-import type { Config, ProjectProfile } from '../src/types'
+import type { Config, ProjectProfile } from '../src/config/config-model'
 import { sameColor, selectedRows } from './fixtures/selection'
 import { renderSessionScreen } from './fixtures/session-screen'
 

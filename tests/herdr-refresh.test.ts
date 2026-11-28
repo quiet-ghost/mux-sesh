@@ -5,7 +5,8 @@ import { getDefaultConfig } from '../src/config'
 import { createHerdrBackend } from '../src/herdr/backend'
 import { CommandTransportError } from '../src/multiplexer/command'
 import type { MultiplexerBackend } from '../src/multiplexer/types'
-import { ViewMode, type Config } from '../src/types'
+import { ViewMode } from '../src/app/app-mode'
+import type { Config } from '../src/config/config-model'
 import { PROJECT_DISCOVERY } from '../src/projects/project-items'
 
 const poll = { kind: 'agents-poll' } as const

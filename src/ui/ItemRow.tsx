@@ -1,6 +1,8 @@
 import { memo } from 'react'
 import { useTheme } from '../styles/theme'
-import type { IconConfig, Item, ThemeColors } from '../types'
+import type { IconConfig } from '../config/config-model'
+import type { Item } from '../items/item'
+import type { ThemeColors } from '../styles/theme-model'
 import HighlightedText from './HighlightedText'
 import { getItemIconPresentation } from './item-icon'
 import {

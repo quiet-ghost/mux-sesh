@@ -1,5 +1,5 @@
 import type { ToastKind } from '../app/notifications'
-import type { ThemeColors } from '../types'
+import type { ThemeColors } from '../styles/theme-model'
 
 // The theme has no warning token; `key` is the palette's warning color.
 export function toastColor(theme: ThemeColors, kind: ToastKind): string {

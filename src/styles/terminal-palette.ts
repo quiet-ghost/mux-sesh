@@ -1,4 +1,4 @@
-import type { ThemeColors } from '../types'
+import type { ThemeColors } from './theme-model'
 
 export type TerminalMode = 'light' | 'dark'
 

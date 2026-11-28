@@ -1,5 +1,6 @@
 import { resolve } from 'path'
-import type { Config, Item } from '../types'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import { isLiveSessionItem } from '../multiplexer/items'
 import { resolveProjectSession } from '../config/session-rules'
 import { buildFileSessionName, isFileItem, resolveFileSession } from '../files/target'

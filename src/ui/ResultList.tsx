@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import type { IconConfig, Item } from '../types'
+import type { IconConfig } from '../config/config-model'
+import type { Item } from '../items/item'
 import { getItemKey } from '../multiplexer/items'
 import ItemRow from './ItemRow'
 import { getVisibleWindow } from './list-window'

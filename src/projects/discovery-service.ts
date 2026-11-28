@@ -1,5 +1,5 @@
 import type { CommandRunner } from '../multiplexer/command'
-import type { Config } from '../types'
+import type { Config } from '../config/config-model'
 import { toHomeRelativePath } from '../util/path-display'
 import { buildCacheKey, type DiscoveryScope } from './discovery'
 import {

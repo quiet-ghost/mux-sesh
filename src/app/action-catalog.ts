@@ -5,7 +5,9 @@ import {
   type LiveSessionItem,
 } from '../multiplexer/items'
 import type { MultiplexerBackend } from '../multiplexer/types'
-import { AppMode, ViewMode, type Item, type KeybindMode } from '../types'
+import { AppMode, ViewMode } from './app-mode'
+import type { KeybindMode } from '../config/config-model'
+import type { Item } from '../items/item'
 import type { PendingClose } from './pending-close'
 
 export type CommandId =

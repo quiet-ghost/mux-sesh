@@ -11,7 +11,7 @@ import {
   type FileSearchOutcome,
   type NativeFileSearch,
 } from '../src/search/fff'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 import { createFakeNative, type FakeNative } from './fixtures/fake-native-finder'
 
 function makeScore(total: number): Score {

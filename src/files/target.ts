@@ -1,6 +1,7 @@
 import { basename, dirname, isAbsolute, join } from 'path'
 import { stat } from 'fs/promises'
-import type { Config, Item } from '../types'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import { quoteShellArg } from '../util/shell'
 
 export interface ResolvedFileSession {

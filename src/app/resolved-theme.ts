@@ -4,7 +4,7 @@ import { resolveTheme, type ResolvedTheme, type ThemeResolver } from '../styles/
 import { SYSTEM_THEME_ID } from '../styles/theme-ids'
 import type { SubscribeThemeFollowOptions } from '../styles/theme-follow'
 import type { TerminalPalette } from '../styles/terminal-palette'
-import type { ThemeColorScheme, ThemeDefinition } from '../types'
+import type { ThemeColorScheme, ThemeDefinition } from '../styles/theme-model'
 
 export interface ThemeSource {
   themeId: string | undefined

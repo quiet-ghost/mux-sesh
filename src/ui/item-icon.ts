@@ -1,6 +1,9 @@
 import { isAgentSessionItem } from '../agents/session-name'
 import type { SessionSection } from '../items/order'
-import type { BackendKind, IconConfig, Item, ThemeColors } from '../types'
+import type { IconConfig } from '../config/config-model'
+import type { Item } from '../items/item'
+import type { BackendKind } from '../multiplexer/types'
+import type { ThemeColors } from '../styles/theme-model'
 
 export interface ItemIconPresentation {
   glyph: string

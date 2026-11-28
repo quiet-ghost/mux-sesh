@@ -21,7 +21,8 @@ import type {
 } from '../multiplexer/types'
 import type { FileStepSearch } from '../search/file-step'
 import { sanitizeTmuxSessionName } from '../multiplexer/tmux-text'
-import type { Config, Item } from '../types'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import { isGitHubURL, parseGitHubURL, type GitHubURL } from './github-url'
 import {
   checkCloneDestination,

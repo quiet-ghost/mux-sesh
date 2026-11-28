@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import { getDefaultConfig } from '../src/config'
 import { StringList, type ListContext } from '../src/settings/setting-lists'
-import type { Config, Item } from '../src/types'
+import type { Config } from '../src/config/config-model'
+import type { Item } from '../src/items/item'
 
 const HOME = '/home/tester'
 

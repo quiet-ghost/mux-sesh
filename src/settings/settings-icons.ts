@@ -1,4 +1,4 @@
-import type { Config, IconConfig } from '../types'
+import type { Config, IconConfig } from '../config/config-model'
 import type { SettingsReset } from './settings-catalog'
 
 // The Icons form: an on/off row, then one glyph per icon kind in the config's `icons` object. The

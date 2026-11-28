@@ -4,7 +4,7 @@ import { CommandInterrupted } from '../src/multiplexer/command'
 import { workspaceToItem } from '../src/multiplexer/items'
 import type { LiveWorkspace, MultiplexerBackend, WorkspaceRef } from '../src/multiplexer/types'
 import { CleanupBatch, CloseReceipt } from '../src/sessions/cleanup-batch'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 import { unsupportedBackend } from './fixtures/fake-backend'
 
 function tmux(id: string, title: string, extra: Partial<LiveWorkspace> = {}): Item {

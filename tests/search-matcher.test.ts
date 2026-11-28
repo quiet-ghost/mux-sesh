@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import fuzzysort from 'fuzzysort'
 import { createItemFilter, filterAndSortItems } from '../src/search'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 
 const WORDS = [
   'api',

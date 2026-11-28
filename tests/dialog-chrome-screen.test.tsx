@@ -3,7 +3,7 @@ import { rgbToHex, TextAttributes } from '@opentui/core'
 import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import { MultiplexerError } from '../src/multiplexer/types'
 import { resolveTheme } from '../src/styles/theme'
-import type { ThemeColors } from '../src/types'
+import type { ThemeColors } from '../src/styles/theme-model'
 import {
   cellAt,
   expectPane,

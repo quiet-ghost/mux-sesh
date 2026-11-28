@@ -1,7 +1,9 @@
 import { refreshProjectDiscovery } from '../projects/project-items'
 import { getActionTarget, type CommandId } from './action-catalog'
 import { getNewSessionSeed, openNewSession } from './launcher-query'
-import { AppMode, ViewMode, type Item, type KeybindMode } from '../types'
+import { AppMode, ViewMode } from './app-mode'
+import type { KeybindMode } from '../config/config-model'
+import type { Item } from '../items/item'
 
 interface ExecuteCommandContext {
   keybindMode: KeybindMode

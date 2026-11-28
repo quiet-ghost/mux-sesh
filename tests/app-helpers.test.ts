@@ -28,7 +28,8 @@ import {
   getStatusLabel,
   splitVisibleSessions,
 } from '../src/app/screen-layout'
-import { AppMode, ViewMode, type Item } from '../src/types'
+import { AppMode, ViewMode } from '../src/app/app-mode'
+import type { Item } from '../src/items/item'
 import { createHerdrBackend } from '../src/herdr/backend'
 import { getItemKey, workspaceToItem } from '../src/multiplexer/items'
 import { MultiplexerError } from '../src/multiplexer/types'

@@ -9,7 +9,8 @@ import type { ProjectDiscovery } from '../projects/discovery-service'
 import { PROJECT_DISCOVERY } from '../projects/project-items'
 import { filterHiddenSessions } from '../sessions/session-filters'
 import { isAgentSessionItem } from '../agents/session-name'
-import type { Config, Item } from '../types'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import { clampCursorIndex } from '../ui/list-window'
 
 export type Measure = <T>(name: string, fn: () => Promise<T>) => Promise<T>

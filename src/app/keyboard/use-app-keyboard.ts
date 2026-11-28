@@ -26,12 +26,13 @@ import type {
 import type { SettingPaneAction } from '../setting-pane-actions'
 import type { SettingPaneView } from '../setting-panes'
 import type { IconsFormAction, IconsFormEntry } from '../../settings/settings-icons'
-import type { Config, Item } from '../../types'
+import type { Config } from '../../config/config-model'
+import type { Item } from '../../items/item'
 import type { CommandEntry } from '../../ui/CommandsModal'
 import { getActionTargetItem, type ActionContext } from '../action-catalog'
 import { failureKind } from '../action-outcome'
 import type { ShowToast } from '../notifications'
-import { AppMode, ViewMode } from '../../types'
+import { AppMode, ViewMode } from '../app-mode'
 
 interface UseAppKeyboardOptions {
   // False while another screen (e.g. startup failure) owns the keyboard.

@@ -1,6 +1,6 @@
 import { getItemKey, isHerdrAgentItem, isLiveSessionItem } from '../multiplexer/items'
 import { workspaceNoun } from '../multiplexer/types'
-import type { Item } from '../types'
+import type { Item } from '../items/item'
 
 // A close always removes one whole tmux session or Herdr workspace. A Herdr ref carrying an agent
 // pane target is not assignable here, so a reviewed pane can never widen into a workspace close.

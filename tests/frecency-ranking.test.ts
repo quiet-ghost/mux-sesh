@@ -6,7 +6,7 @@ import { createItemFilter, filterAndSortItems } from '../src/search'
 import { OpenKey } from '../src/search/frecency'
 import { createOpenHistory, type OpenHistory } from '../src/search/frecency-store'
 import type { LiveWorkspace } from '../src/multiplexer'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 import { renderSessionScreen } from './fixtures/session-screen'
 import { listRow, selectedRowText } from './fixtures/selection'
 

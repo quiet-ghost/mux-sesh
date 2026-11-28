@@ -1,5 +1,5 @@
 import { getSessionSection } from '../items/order'
-import type { Item, SearchMatchMetadata } from '../types'
+import type { Item, SearchMatchMetadata } from '../items/item'
 import { mapMiddleCutIndices, truncateMiddleCut } from '../util/truncate'
 import { fitDialogLabelMatches, truncateDialogText } from './dialog-layout'
 import { getVisibleWindow, type VisibleWindow } from './list-window'

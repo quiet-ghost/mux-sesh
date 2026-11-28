@@ -2,7 +2,7 @@ import { resolve } from 'path'
 import * as Schema from 'effect/Schema'
 import { isHerdrAgentItem, isLiveSessionItem } from '../multiplexer/items'
 import type { BackendKind } from '../multiplexer/types'
-import type { Item } from '../types'
+import type { Item } from '../items/item'
 
 // What the picker opened, kept as JSON lines: `{ key, frequency, lastOpen }`. Appends only; the
 // last line for a key wins. Past FRECENCY_ENTRY_LIMIT lines the file is rewritten with the newest

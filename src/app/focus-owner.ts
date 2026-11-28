@@ -1,5 +1,5 @@
 import type { ModalState } from './modals'
-import { AppMode } from '../types'
+import { AppMode } from './app-mode'
 
 type OpenModal = NonNullable<ModalState>
 

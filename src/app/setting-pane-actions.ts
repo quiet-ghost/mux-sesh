@@ -9,7 +9,8 @@ import {
   type SettingCollection,
   type SettingsFieldId,
 } from '../settings/settings-catalog'
-import type { Config, ViewMode } from '../types'
+import type { ViewMode } from './app-mode'
+import type { Config } from '../config/config-model'
 import { clampCursorIndex } from '../ui/list-window'
 import type { ListPaneActionId, RulePaneActionId } from './dialog-actions'
 import { ActionOutcome, type OperationReport } from './action-outcome'

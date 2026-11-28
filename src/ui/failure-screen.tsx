@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from 'react'
 import type { ToastKind } from '../app/notifications'
 import { ThemeProvider, useTheme } from '../styles/theme'
-import type { ThemeColors } from '../types'
+import type { ThemeColors } from '../styles/theme-model'
 import { truncateDialogText } from './dialog-layout'
 import { GROUP_GAP_COLUMNS, KeyHint, KeyHints } from './key-hints'
 import { Pane, PaneRule } from './pane'

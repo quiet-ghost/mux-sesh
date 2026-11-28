@@ -1,4 +1,4 @@
-import type { ThemeColorScheme } from '../types'
+import type { ThemeColorScheme } from './theme-model'
 
 // Kept apart from the theme catalog so config loading does not import the theme data.
 export const DEFAULT_THEME_ID = 'rosepine'

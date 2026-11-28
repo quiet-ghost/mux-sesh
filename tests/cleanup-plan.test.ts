@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { workspaceToItem } from '../src/multiplexer/items'
 import type { LiveWorkspace, WorkspaceRef } from '../src/multiplexer/types'
 import { CleanupPlan, type ClosureRef } from '../src/sessions/cleanup-plan'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 
 function herdr(extra: Partial<LiveWorkspace> = {}): Item {
   return workspaceToItem({

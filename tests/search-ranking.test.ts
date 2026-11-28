@@ -3,7 +3,7 @@ import type { CommandEntry } from '../src/app/action-catalog'
 import { filterAndSortItems } from '../src/search'
 import type { SettingsEntry } from '../src/settings/settings-catalog'
 import { filterSettingsEntries, filterSettingsOptions } from '../src/settings/settings-search'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 import { filterCommandEntries } from '../src/ui/CommandsModal'
 
 function session(title: string, overrides: Partial<Item> = {}): Item {

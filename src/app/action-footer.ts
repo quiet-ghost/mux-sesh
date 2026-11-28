@@ -1,4 +1,4 @@
-import { AppMode, ViewMode } from '../types'
+import { AppMode, ViewMode } from './app-mode'
 import {
   getActionAvailability,
   getActionKeyHint,

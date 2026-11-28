@@ -1,6 +1,6 @@
 import { test, expect, describe, mock } from 'bun:test'
 import { updateEvents } from '../src/update/events'
-import type { UpdateEvent } from '../src/types'
+import type { UpdateEvent } from '../src/update/update-event'
 
 describe('UpdateEvents', () => {
   test('should call listener when event is emitted', () => {

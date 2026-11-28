@@ -1,4 +1,5 @@
-import { AppMode, ViewMode, type KeybindMode } from '../../types'
+import { AppMode, ViewMode } from '../app-mode'
+import type { KeybindMode } from '../../config/config-model'
 import { clampCursorIndex } from '../../ui/list-window'
 import { requestShutdown } from '../../lifecycle/shutdown'
 import {

@@ -3,7 +3,7 @@ import { mkdir } from 'fs/promises'
 import { join } from 'path'
 import { TextareaRenderable } from '@opentui/core'
 import type { LiveWorkspace } from '../src/multiplexer'
-import type { Config } from '../src/types'
+import type { Config } from '../src/config/config-model'
 import { selectedRows } from './fixtures/selection'
 import { renderSessionScreen } from './fixtures/session-screen'
 

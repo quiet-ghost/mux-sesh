@@ -1,5 +1,5 @@
 import { getDefaultConfig } from '../config'
-import type { Config } from '../types'
+import type { Config } from '../config/config-model'
 import {
   controlOf,
   displayValue,

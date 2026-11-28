@@ -5,7 +5,7 @@ import type {
   ThemeColors,
   ThemeDefinition,
   ThemeVariant,
-} from '../types'
+} from './theme-model'
 import { getHomeDir } from '../config/paths'
 import { TUI_THEME_COLORS } from './opencode-tui-colors'
 import { THEMES_A } from './opencode-themes-a'

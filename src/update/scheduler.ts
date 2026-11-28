@@ -1,4 +1,4 @@
-import type { Config } from '../types'
+import type { Config } from '../config/config-model'
 
 export interface AutoUpdateScheduler {
   // Returns a cancel for a check that has not started yet; a started check is never repeated.

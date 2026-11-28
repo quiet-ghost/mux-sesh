@@ -5,7 +5,8 @@ import { handleSearchMode } from '../src/app/keyboard/search'
 import type { KeyboardHandlerContext, KeyboardInput } from '../src/app/keyboard/shared'
 import { getActionTarget, type ActionContext } from '../src/app/action-catalog'
 import { PendingClose } from '../src/app/pending-close'
-import { AppMode, ViewMode, type Item } from '../src/types'
+import { AppMode, ViewMode } from '../src/app/app-mode'
+import type { Item } from '../src/items/item'
 
 function createItem(overrides: Partial<Item> = {}): Item {
   return {

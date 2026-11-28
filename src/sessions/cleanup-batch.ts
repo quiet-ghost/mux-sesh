@@ -1,6 +1,6 @@
 import { getItemKey, isLiveSessionItem } from '../multiplexer/items'
 import { workspaceNoun, type BackendKind } from '../multiplexer/types'
-import type { Item } from '../types'
+import type { Item } from '../items/item'
 import { plural } from '../util/plural'
 import { CleanupPlan } from './cleanup-plan'
 

@@ -9,7 +9,7 @@ import {
   describeDiscoveryFailures,
   type DiscoveryFailure,
 } from '../src/projects/discovery-service'
-import type { Config } from '../src/types'
+import type { Config } from '../src/config/config-model'
 
 const realRunner = createCommandRunner()
 

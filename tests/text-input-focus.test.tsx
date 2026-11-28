@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { TextareaRenderable } from '@opentui/core'
-import type { KeybindMode } from '../src/types'
+import type { KeybindMode } from '../src/config/config-model'
 import { renderSessionScreen } from './fixtures/session-screen'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>

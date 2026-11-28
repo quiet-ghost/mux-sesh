@@ -5,7 +5,7 @@ import { useAutoUpdateScheduler, useTerminalPalette } from '../src/app/app-hooks
 import { getDefaultConfig } from '../src/config'
 import { SYSTEM_THEME_ID } from '../src/styles/theme-ids'
 import type { TerminalPalette } from '../src/styles/terminal-palette'
-import type { Config } from '../src/types'
+import type { Config } from '../src/config/config-model'
 import { createAutoUpdateScheduler, type AutoUpdateScheduler } from '../src/update/scheduler'
 
 let setup: Awaited<ReturnType<typeof testRender>> | undefined

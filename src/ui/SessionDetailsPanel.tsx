@@ -2,7 +2,7 @@ import type { DetailsContent, DetailsView, InspectorMode } from '../app/inspecto
 import { getDetailsContent, getInspectionKey } from '../app/inspector'
 import type { ProjectPreview } from '../preview/project'
 import { getDetailPanelStyle, useTheme } from '../styles/theme'
-import type { Item } from '../types'
+import type { Item } from '../items/item'
 import type { WorkspaceDetails } from '../multiplexer'
 import { fitPath } from '../util/path-display'
 import { getCompactDetails } from './session-meta'

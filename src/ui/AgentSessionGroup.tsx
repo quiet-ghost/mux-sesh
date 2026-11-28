@@ -1,5 +1,6 @@
 import { useTheme } from '../styles/theme'
-import type { IconConfig, Item } from '../types'
+import type { IconConfig } from '../config/config-model'
+import type { Item } from '../items/item'
 import { formatSectionHeader } from './item-icon'
 import { getItemKey } from '../multiplexer/items'
 import {

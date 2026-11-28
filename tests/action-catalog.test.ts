@@ -12,7 +12,9 @@ import {
 import { getActionFooter, type FooterHint } from '../src/app/action-footer'
 import { PendingClose } from '../src/app/pending-close'
 import { getItemKey, workspaceToItem } from '../src/multiplexer/items'
-import { AppMode, ViewMode, type Item, type KeybindMode } from '../src/types'
+import { AppMode, ViewMode } from '../src/app/app-mode'
+import type { KeybindMode } from '../src/config/config-model'
+import type { Item } from '../src/items/item'
 
 const tmux: ActionBackend = { kind: 'tmux', capabilities: { previousWorkspace: true } }
 const herdr: ActionBackend = { kind: 'herdr', capabilities: { previousWorkspace: false } }

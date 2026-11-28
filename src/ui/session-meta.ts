@@ -1,4 +1,4 @@
-import type { Item } from '../types'
+import type { Item } from '../items/item'
 import { isLiveSessionItem } from '../multiplexer/items'
 import { toHomeRelativePath } from '../util/path-display'
 import { formatSessionAge } from '../util/time'

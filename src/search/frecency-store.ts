@@ -2,7 +2,7 @@ import { appendFile, mkdir, rename, writeFile } from 'fs/promises'
 import { dirname } from 'path'
 import * as Schema from 'effect/Schema'
 import { getOpenHistoryPath } from '../config/paths'
-import type { Item } from '../types'
+import type { Item } from '../items/item'
 import { mark } from '../util/perf'
 import { FrecencyHistory, OpenKey } from './frecency'
 

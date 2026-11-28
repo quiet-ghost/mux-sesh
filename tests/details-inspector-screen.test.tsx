@@ -7,7 +7,7 @@ import type {
 } from '../src/multiplexer'
 import type { CommandOptions } from '../src/multiplexer/command'
 import { MultiplexerError } from '../src/multiplexer/types'
-import type { KeybindMode } from '../src/types'
+import type { KeybindMode } from '../src/config/config-model'
 import { renderSessionScreen } from './fixtures/session-screen'
 import { listRow, selectedRowText } from './fixtures/selection'
 import { unsupportedBackend } from './fixtures/fake-backend'

@@ -1,6 +1,6 @@
 import * as Option from 'effect/Option'
 import * as Schema from 'effect/Schema'
-import type { InstallMethod } from '../types'
+import type { InstallMethod } from './update-event'
 import { isCompiledBinary } from './build'
 
 const PACKAGE_NAME = 'mux-sesh'

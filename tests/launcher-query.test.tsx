@@ -13,7 +13,8 @@ import {
   FileSearchUnavailableError,
   type FileSearchOutcome,
 } from '../src/search/fff'
-import { AppMode, type Item } from '../src/types'
+import { AppMode } from '../src/app/app-mode'
+import type { Item } from '../src/items/item'
 import { createFakeNative, type FakeNative } from './fixtures/fake-native-finder'
 import { unsupportedBackend } from './fixtures/fake-backend'
 

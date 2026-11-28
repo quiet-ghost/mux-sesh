@@ -6,10 +6,8 @@ import type {
   ProjectProfile,
   ProjectWildcard,
   SessionDefaults,
-  ThemeDefinition,
-  ThemePalette,
-  ThemeVariant,
-} from '../types'
+} from './config-model'
+import type { ThemeDefinition, ThemePalette, ThemeVariant } from '../styles/theme-model'
 import {
   BackendChoice,
   ColorSchemeChoice,

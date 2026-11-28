@@ -8,7 +8,7 @@ import type {
 } from '../app/setting-panes'
 import type { RuleFormRow } from '../settings/setting-rules'
 import { useTheme } from '../styles/theme'
-import type { ThemeColors } from '../types'
+import type { ThemeColors } from '../styles/theme-model'
 import {
   fitsOptionalDialogRows,
   getDialogChromeRows,

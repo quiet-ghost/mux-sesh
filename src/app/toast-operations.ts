@@ -1,4 +1,5 @@
-import type { Config, ViewMode } from '../types'
+import type { ViewMode } from './app-mode'
+import type { Config } from '../config/config-model'
 import {
   failureKind,
   isExpectedActionFailure,

@@ -1,4 +1,5 @@
-import type { Config, Item, ProjectProfile } from '../types'
+import type { Config, ProjectProfile } from './config-model'
+import type { Item } from '../items/item'
 import { resolveProjectSession } from './session-rules'
 import { getPathGroupLabel } from '../util/path-display'
 

@@ -1,4 +1,5 @@
-import type { Item, SortOrder } from '../types'
+import type { SortOrder } from '../config/config-model'
+import type { Item } from './item'
 import { isAgentSessionItem } from '../agents/session-name'
 import { getLiveSessionSortKey } from './session-groups'
 

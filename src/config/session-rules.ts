@@ -1,6 +1,6 @@
 import { basename } from 'path'
 import { spawn } from 'bun'
-import type { Config, ProjectProfile, ProjectWildcard } from '../types'
+import type { Config, ProjectProfile, ProjectWildcard } from './config-model'
 import { matchesGlob, normalizePathForMatching } from '../util/glob'
 
 export interface ResolvedProjectSession {

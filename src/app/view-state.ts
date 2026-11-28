@@ -4,7 +4,9 @@ import { filterSettingsEntries, filterSettingsOptions } from '../settings/settin
 import type { SettingsEntry, SettingsOption } from '../settings/settings-catalog'
 import { getSettingOptions, getSettingsEntries, getSettingValue } from '../settings/settings-view'
 import { IconsForm, type IconsFormEntry } from '../settings/settings-icons'
-import { AppMode, ViewMode, type Config, type Item } from '../types'
+import { AppMode, ViewMode } from './app-mode'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import {
   getActionTarget,
   getCommandEntries,

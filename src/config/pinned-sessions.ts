@@ -1,5 +1,5 @@
 import { getItemKey } from '../multiplexer/items'
-import type { Item } from '../types'
+import type { Item } from '../items/item'
 
 export type PinAfterRename =
   | { readonly kind: 'none' }

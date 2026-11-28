@@ -2,7 +2,8 @@ import { describe, expect, test } from 'bun:test'
 import type * as Schema from 'effect/Schema'
 import { getDefaultConfig, normalizeConfig } from '../src/config'
 import { CONFIG_DOCUMENT_KEYS, checkConfigDocument } from '../src/config/config-document'
-import type { Config, ThemeColorScheme } from '../src/types'
+import type { Config } from '../src/config/config-model'
+import type { ThemeColorScheme } from '../src/styles/theme-model'
 
 // What a case reads back: a top-level config value, or one nested text or flag.
 type FieldValue = Config[keyof Config]

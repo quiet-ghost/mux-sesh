@@ -1,6 +1,6 @@
 import { getDefaultConfig, normalizeConfig, serializeConfig } from '../config'
 import { checkConfigDocument, type ConfigIssue } from '../config/config-document'
-import type { Config } from '../types'
+import type { Config } from '../config/config-model'
 import { JsonSyntaxIssue } from './json-syntax'
 import {
   decodeJsonText,

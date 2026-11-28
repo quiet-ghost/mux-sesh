@@ -13,7 +13,9 @@ import {
   type FileSearchScope,
 } from '../search/fff'
 import { OPEN_HISTORY } from '../search/frecency-store'
-import { AppMode, ViewMode, type Config, type Item } from '../types'
+import { AppMode, ViewMode } from './app-mode'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import { isGitHubURL } from '../sessions/github-url'
 import { mark, measure } from '../util/perf'
 import { requestFatalShutdown } from '../lifecycle/shutdown'

@@ -12,7 +12,8 @@ import {
   type LaunchPreview,
   type LaunchRequest,
 } from '../sessions/launch-plan'
-import type { Config, Item } from '../types'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import { getNewSessionAction } from '../ui/launch-preview'
 import { clampCursorIndex } from '../ui/list-window'
 import type { NewSessionStepId } from './action-catalog'

@@ -1,5 +1,6 @@
 import { basename } from 'path'
-import type { Config, Item } from '../types'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import { normalizePathForMatching } from '../util/glob'
 import {
   filterProjectCandidatePaths,

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 import { fitListRow, getSessionViewport } from '../src/ui/session-viewport'
 import { getStatusRows, type StatusLine } from '../src/ui/status-line'
 

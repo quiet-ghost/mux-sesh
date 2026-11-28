@@ -4,7 +4,8 @@ import { getDefaultConfig } from '../src/config'
 import { workspaceToItem } from '../src/multiplexer/items'
 import { MultiplexerError } from '../src/multiplexer/types'
 import type { BackendKind, MultiplexerBackend, WorkspaceRef } from '../src/multiplexer/types'
-import type { Config, Item } from '../src/types'
+import type { Config } from '../src/config/config-model'
+import type { Item } from '../src/items/item'
 import { unsupportedBackend } from './fixtures/fake-backend'
 
 function renameBackend(

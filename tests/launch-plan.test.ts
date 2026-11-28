@@ -23,7 +23,7 @@ import {
   type LaunchPlan,
   type LaunchRequest,
 } from '../src/sessions/launch-plan'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 import { NO_GIT } from './fixtures/local-github'
 import { unsupportedBackend } from './fixtures/fake-backend'
 

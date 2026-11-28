@@ -1,4 +1,4 @@
-import type { Item } from '../types'
+import type { Item } from '../items/item'
 import type { HerdrAgentTarget, LiveWorkspace, WorkspaceRef } from './types'
 import { getLiveSessionGroupLabel } from '../items/session-groups'
 

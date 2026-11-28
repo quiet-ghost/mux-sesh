@@ -1,4 +1,4 @@
-import type { UpdateEventListener, UpdateEvent } from '../types'
+import type { UpdateEventListener, UpdateEvent } from './update-event'
 
 class UpdateEvents {
   private listeners: UpdateEventListener[] = []

@@ -1,5 +1,6 @@
 import { expandHomePath } from '../config'
-import type { Config, Item } from '../types'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import { matchesGlob, normalizePathForMatching } from '../util/glob'
 import { toHomeRelativePath } from '../util/path-display'
 import { plural } from '../util/plural'

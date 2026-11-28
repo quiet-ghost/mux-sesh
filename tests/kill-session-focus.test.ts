@@ -5,7 +5,7 @@ import type { LiveWorkspace, MultiplexerBackend, WorkspaceRef } from '../src/mul
 import { CommandTimeoutError } from '../src/multiplexer/command'
 import { MultiplexerError } from '../src/multiplexer/types'
 import { CleanupPlan } from '../src/sessions/cleanup-plan'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 
 function liveItem(id: string, title: string, backend: 'herdr' | 'tmux' = 'herdr'): Item {
   return {

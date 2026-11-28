@@ -3,7 +3,8 @@ import { describe, expect, test } from 'bun:test'
 import { getActionKeys, type ActionContext } from '../src/app/action-catalog'
 import { getDialogActionKeys } from '../src/app/dialog-actions'
 import { PendingClose } from '../src/app/pending-close'
-import { AppMode, ViewMode, type KeybindMode } from '../src/types'
+import { AppMode, ViewMode } from '../src/app/app-mode'
+import type { KeybindMode } from '../src/config/config-model'
 import { ACTION_IDS, DIALOG_ACTION_IDS, EVERY_ACTION_LISTED } from './fixtures/action-ids'
 
 const ROOT = join(import.meta.dir, '..')

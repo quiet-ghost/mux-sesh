@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'path'
-import type { ThemeColors } from '../types'
+import type { ThemeColors } from './theme-model'
 
 const OMARCHY_STATE_DIR = ['.local', 'state', 'omarchy', 'current'] as const
 

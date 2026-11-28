@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import type { MultiplexerBackend } from '../multiplexer/types'
-import { AppMode, ViewMode, type Config } from '../types'
+import { AppMode, ViewMode } from './app-mode'
+import type { Config } from '../config/config-model'
 import { requestFatalShutdown } from '../lifecycle/shutdown'
 import type { SessionInventory } from './session-inventory'
 

@@ -3,7 +3,8 @@ import { homedir } from 'os'
 import type { MixedSearchResult } from '@ff-labs/fff-bun'
 import * as Data from 'effect/Data'
 import { rankItems } from './index'
-import type { Config, Item } from '../types'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 
 declare global {
   // Build-time constant used by @ff-labs/fff-bun for compiled binaries.

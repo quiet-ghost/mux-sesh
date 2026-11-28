@@ -7,7 +7,8 @@ import {
   type DetailsView,
 } from '../src/app/inspector'
 import { getDefaultConfig } from '../src/config'
-import type { Config, Item } from '../src/types'
+import type { Config } from '../src/config/config-model'
+import type { Item } from '../src/items/item'
 import { settleTicks } from './fixtures/wait'
 
 const effects = createEffectRuntime()

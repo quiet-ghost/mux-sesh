@@ -7,7 +7,7 @@ import {
   getItemIconPresentation,
   getSessionSectionPresentation,
 } from '../src/ui/item-icon'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 
 describe('item ordering', () => {
   test('keeps duplicate Herdr labels when pinned', () => {

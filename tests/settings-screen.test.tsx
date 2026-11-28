@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { TextareaRenderable } from '@opentui/core'
-import type { Config } from '../src/types'
+import type { Config } from '../src/config/config-model'
 import { withoutSideBorders } from './fixtures/pane'
 import { sameColor, selectedRows } from './fixtures/selection'
 import { renderSessionScreen } from './fixtures/session-screen'

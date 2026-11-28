@@ -7,7 +7,8 @@ import {
   type ListSettingId,
   type RulesSettingId,
 } from '../settings/settings-catalog'
-import type { Config, Item, KeybindMode } from '../types'
+import type { Config, KeybindMode } from '../config/config-model'
+import type { Item } from '../items/item'
 import { clampCursorIndex } from '../ui/list-window'
 import {
   getDialogHints,

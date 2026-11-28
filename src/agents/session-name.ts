@@ -1,4 +1,4 @@
-import type { Item } from '../types'
+import type { Item } from '../items/item'
 
 const AGENT_SESSION_PREFIXES = ['opencode-', 'pi-', 'codex-', 'claude-'] as const
 const SIDE_SESSION_NAMES = new Set(['tui_chat'])

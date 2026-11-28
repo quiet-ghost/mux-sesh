@@ -11,7 +11,8 @@ import {
   type LaunchRequest,
   type SessionPlan,
 } from '../sessions/launch-plan'
-import type { Config, Item } from '../types'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import { gitHubRepositoryName } from '../sessions/github-url'
 import { toHomeRelativePath } from '../util/path-display'
 

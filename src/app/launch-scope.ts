@@ -8,7 +8,9 @@ import {
   type LaunchPreview,
   type LaunchRequest,
 } from '../sessions/launch-plan'
-import { AppMode, ViewMode, type Config, type Item } from '../types'
+import { AppMode, ViewMode } from './app-mode'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 
 // Whose Enter runs a frozen launch plan: New always, and the Projects view for its highlighted
 // row. Everywhere else Enter opens the row directly and nothing is planned.

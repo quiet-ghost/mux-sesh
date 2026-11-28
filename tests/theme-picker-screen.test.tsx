@@ -2,7 +2,8 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { RGBA, type TerminalColors } from '@opentui/core'
 import { resolveTheme } from '../src/styles/theme'
 import { terminalColorsToPalette } from '../src/styles/terminal-palette'
-import type { Config, ThemeColors } from '../src/types'
+import type { Config } from '../src/config/config-model'
+import type { ThemeColors } from '../src/styles/theme-model'
 import { renderSessionScreen } from './fixtures/session-screen'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>

@@ -1,5 +1,5 @@
 import { RGBA, type CapturedFrame, type CapturedLine, type CapturedSpan } from '@opentui/core'
-import type { ThemeColors } from '../../src/types'
+import type { ThemeColors } from '../../src/styles/theme-model'
 
 export interface SelectionScreen {
   frame(): Promise<string>

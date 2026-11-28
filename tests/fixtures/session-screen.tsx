@@ -19,7 +19,9 @@ import type { OpenHistory } from '../../src/search/frecency-store'
 import type { CloneServices } from '../../src/sessions/clone-plan'
 import { resolveTheme, ThemeProvider, type ThemeResolver } from '../../src/styles/theme'
 import type { SubscribeThemeFollowOptions } from '../../src/styles/theme-follow'
-import type { Config, Item, KeybindMode, ThemeColors } from '../../src/types'
+import type { Config, KeybindMode } from '../../src/config/config-model'
+import type { Item } from '../../src/items/item'
+import type { ThemeColors } from '../../src/styles/theme-model'
 import {
   BusyContext,
   SpinnerMotionContext,

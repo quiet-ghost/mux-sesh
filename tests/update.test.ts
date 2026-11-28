@@ -1,5 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test'
-import type { Config, UpdateEvent } from '../src/types'
+import type { Config } from '../src/config/config-model'
+import type { UpdateEvent } from '../src/update/update-event'
 import { checkAndUpdate, describeUpdateEvent } from '../src/update'
 import { CURRENT_VERSION } from '../src/update/version'
 

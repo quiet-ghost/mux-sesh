@@ -1,4 +1,4 @@
-import type { ThemeColors } from '../types'
+import type { ThemeColors } from '../styles/theme-model'
 
 export interface TextFieldColors {
   textColor: string

@@ -34,7 +34,9 @@ import type {
   SettingsReset,
 } from '../src/settings/settings-catalog'
 import type { IconsFormAction, IconsFormEntry } from '../src/settings/settings-icons'
-import { AppMode, ViewMode, type Item, type KeybindMode } from '../src/types'
+import { AppMode, ViewMode } from '../src/app/app-mode'
+import type { KeybindMode } from '../src/config/config-model'
+import type { Item } from '../src/items/item'
 import {
   ACTION_IDS,
   COMMAND_IDS,

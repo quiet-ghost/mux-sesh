@@ -1,5 +1,5 @@
 import { basename } from 'path'
-import type { Item, SearchMatchMetadata } from '../types'
+import type { Item, SearchMatchMetadata } from '../items/item'
 import {
   createSearchSchema,
   createSearchSession,

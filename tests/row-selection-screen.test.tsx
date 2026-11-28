@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { TextAttributes, type CapturedLine } from '@opentui/core'
 import type { LiveWorkspace } from '../src/multiplexer'
 import { resolveTheme } from '../src/styles/theme'
-import type { ThemeColors } from '../src/types'
+import type { ThemeColors } from '../src/styles/theme-model'
 import { renderSessionScreen } from './fixtures/session-screen'
 import {
   cellsOf,

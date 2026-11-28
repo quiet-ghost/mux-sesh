@@ -1,4 +1,4 @@
-import type { Item } from '../types'
+import type { Item } from '../items/item'
 import { FileSearchUnavailableError, type FileSearchOutcome } from './fff'
 
 // Results of the explicit "open file" step. Unlike the project list, an unavailable native search

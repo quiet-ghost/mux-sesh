@@ -6,7 +6,8 @@ import type { SettingListPane, SettingPane, SettingRulesPane } from './setting-p
 import { isFormSetting, isJsonSetting, type SettingsFieldId } from '../settings/settings-catalog'
 import { getSettingEditorValue } from '../settings/settings-view'
 import type { IconKind, IconsFormRow } from '../settings/settings-icons'
-import type { Config, Item } from '../types'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 
 export type ModalState =
   | { type: 'rename'; target: string }

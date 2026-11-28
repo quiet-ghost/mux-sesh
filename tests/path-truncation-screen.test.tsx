@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { testRender } from '@opentui/react/test-utils'
 import type { DetailsView } from '../src/app/inspector'
 import type { LaunchPreview } from '../src/sessions/launch-plan'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 import NewSessionSummary from '../src/ui/NewSessionSummary'
 import SessionDetailsPanel from '../src/ui/SessionDetailsPanel'
 

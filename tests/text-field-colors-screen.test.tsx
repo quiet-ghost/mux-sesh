@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { RGBA, TextareaRenderable } from '@opentui/core'
 import { resolveTheme } from '../src/styles/theme'
-import type { ThemeColors, ThemeColorScheme } from '../src/types'
+import type { ThemeColors, ThemeColorScheme } from '../src/styles/theme-model'
 import { renderSessionScreen } from './fixtures/session-screen'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>

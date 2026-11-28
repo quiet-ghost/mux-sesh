@@ -1,6 +1,6 @@
 import { TextAttributes } from '@opentui/core'
 import { CONFIRM_CLOSE_KEY } from '../app/pending-close'
-import type { ThemeColors } from '../types'
+import type { ThemeColors } from '../styles/theme-model'
 
 // Matched characters on the highlighted row share its text color, so they are underlined instead.
 export const SELECTED_MATCH_ATTRIBUTES = TextAttributes.UNDERLINE | TextAttributes.BOLD

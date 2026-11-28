@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import type { Config } from '../src/types'
+import type { Config } from '../src/config/config-model'
 import { selectedRows } from './fixtures/selection'
 import { renderSessionScreen } from './fixtures/session-screen'
 

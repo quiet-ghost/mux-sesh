@@ -1,6 +1,7 @@
 import { dirname } from 'path'
 import { ActionRefused } from './action-outcome'
-import type { Config, Item } from '../types'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import type { MultiplexerBackend } from '../multiplexer'
 import type { OpenWorkspaceInput } from '../multiplexer/types'
 import { getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'

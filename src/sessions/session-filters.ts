@@ -1,4 +1,4 @@
-import type { Item } from '../types'
+import type { Item } from '../items/item'
 import { matchesGlob } from '../util/glob'
 
 export function filterHiddenSessions(items: Item[], hiddenSessions: string[] = []): Item[] {
