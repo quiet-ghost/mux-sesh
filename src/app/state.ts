@@ -3,7 +3,7 @@ import { loadConfig } from '../config'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
 import type { AppEffectRuntime } from './effect-runtime'
 import { resolveMultiplexerBackend, type MultiplexerBackend } from '../multiplexer'
-import type { CommandRunner } from '../multiplexer/command'
+import { CommandInterrupted, type CommandRunner } from '../multiplexer/command'
 import { isBackendFailure } from '../multiplexer/failure'
 import { requestFatalShutdown } from '../util/shutdown'
 import { loadProjectSourceItems, type Measure } from './data'
@@ -91,6 +91,9 @@ export function useAppStartup(
           dependencies.resolveBackend(config, effects.runner)
         )
       } catch (cause) {
+        // Unmounting (a crash, or quitting) disposes the runtime and interrupts the probe.
+        if (cancelled && cause instanceof CommandInterrupted) return { kind: 'stopped' }
+
         if (!isBackendFailure(cause)) throw cause
 
         return failed('backend', cause.message)

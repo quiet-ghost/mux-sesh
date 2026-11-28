@@ -23,6 +23,7 @@ interface ShutdownState {
   exitListenerInstalled?: boolean
   fatalListenersInstalled?: boolean
   fatalStarted?: boolean
+  terminalRestored?: boolean
 }
 
 const state: ShutdownState = {}
@@ -71,11 +72,16 @@ const TERMINAL_STEPS: readonly TeardownStep[] = [
   { name: 'input stream', run: () => process.stdin.pause() },
 ]
 
-function resetTerminalModes(): void {
-  runTeardownSteps(TERMINAL_STEPS)
+// The exit backstop covers exits that skipped shutdown. After a shutdown it must stay silent:
+// leaving the alternate screen again restores the cursor saved when the picker started, so the
+// shell would print over the fatal report or a handoff's last output.
+function resetTerminalModesOnExit(): void {
+  if (!state.terminalRestored) runTeardownSteps(TERMINAL_STEPS)
 }
 
 function restoreTerminal(): readonly string[] {
+  state.terminalRestored = true
+
   return [...runTeardownSteps(RENDERER_STEPS), ...runTeardownSteps(TERMINAL_STEPS)]
 }
 
@@ -113,7 +119,7 @@ export function initializeShutdown(renderer: CliRenderer): void {
   state.renderer = renderer
 
   if (!state.exitListenerInstalled) {
-    process.once('exit', resetTerminalModes)
+    process.once('exit', resetTerminalModesOnExit)
     state.exitListenerInstalled = true
   }
 }

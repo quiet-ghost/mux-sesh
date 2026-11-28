@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { join } from 'path'
 import { testRender } from '@opentui/react/test-utils'
+import * as Schema from 'effect/Schema'
 import { act, useState } from 'react'
 import { AppRecoveryBoundary, useRecoveryTheme } from '../src/app'
 import { createSimulatedCrash, SIMULATED_CRASH_MESSAGE } from '../src/app/dev-crash'
@@ -10,6 +11,12 @@ import { FailurePalette } from '../src/ui/failure-screen'
 import { cellsOf, sameColor, type Cell } from './fixtures/selection'
 
 let setup: Awaited<ReturnType<typeof testRender>> | undefined
+
+const decodeStartupCrash = Schema.decodeUnknownSync(
+  Schema.fromJsonString(
+    Schema.Struct({ crashed: Schema.String, retried: Schema.String, probes: Schema.Number })
+  )
+)
 
 afterEach(() => {
   const current = setup
@@ -94,6 +101,40 @@ describe('app recovery', () => {
     expect(failed).toContain('mux-sesh crashed')
     expect(failed).toContain('fixture mouse failure')
   })
+
+  // Runs in its own process, because a fatal shutdown exits the process it runs in.
+  test('a crash while startup waits on the backend keeps the error screen, and retry restarts', async () => {
+    const proc = Bun.spawn(
+      [process.execPath, join(import.meta.dir, 'fixtures/startup-crash.tsx')],
+      {
+        cwd: join(import.meta.dir, '..'),
+        stdin: 'ignore',
+        stdout: 'pipe',
+        stderr: 'pipe',
+        timeout: 5000,
+        killSignal: 'SIGKILL',
+      }
+    )
+
+    try {
+      const [exitCode, stdout, stderr] = await Promise.all([
+        proc.exited,
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+      ])
+
+      expect(stderr).not.toContain('Fatal')
+      expect(exitCode).toBe(0)
+      const report = decodeStartupCrash(stdout.slice(stdout.indexOf('{')))
+      expect(report.crashed).toContain('mux-sesh crashed')
+      expect(report.crashed).toContain('fixture crash during startup')
+      expect(report.retried).toContain('startup loading')
+      expect(report.probes).toBe(2)
+    } finally {
+      if (proc.exitCode === null) proc.kill('SIGKILL')
+      await proc.exited
+    }
+  }, 10000)
 })
 
 describe('simulated crash for development', () => {

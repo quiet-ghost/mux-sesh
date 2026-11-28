@@ -1,8 +1,19 @@
 import { describe, expect, test } from 'bun:test'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
+import * as Schema from 'effect/Schema'
 
 const repoRoot = join(import.meta.dir, '..')
+
+const LEAVE_ALTERNATE_SCREEN = '\u001b[?1049l'
+
+const decodeWrites = Schema.decodeUnknownSync(
+  Schema.fromJsonString(
+    Schema.Array(
+      Schema.Struct({ stream: Schema.Literals(['stdout', 'stderr']), text: Schema.String })
+    )
+  )
+)
 
 async function waitForExit(proc: Bun.Subprocess, timeoutMs: number): Promise<number | null> {
   let timeout: ReturnType<typeof setTimeout> | undefined
@@ -239,6 +250,41 @@ describe('bounded teardown', () => {
     expect(stderr).toContain('Fatal fatal error')
     expect(stderr).toContain('fixture fatal failure')
     expect(stderr).not.toContain('fixture-teardown-secret')
+  }, 10000)
+
+  // Leaving the alternate screen again would restore the cursor saved when the picker started, so
+  // whatever the shell prints next would overwrite the report.
+  test('a fatal error resets the terminal before the report and never after it', async () => {
+    const proc = Bun.spawn(
+      [process.execPath, join(import.meta.dir, 'fixtures/shutdown-output-order.tsx')],
+      {
+        cwd: repoRoot,
+        stdin: 'ignore',
+        stdout: 'pipe',
+        stderr: 'pipe',
+        timeout: 5000,
+        killSignal: 'SIGKILL',
+      }
+    )
+
+    try {
+      const [exitCode, stdout] = await Promise.all([proc.exited, new Response(proc.stdout).text()])
+
+      const writes = decodeWrites(stdout.slice(stdout.indexOf('[')))
+      const report = writes.findIndex(write => write.text.includes('Fatal fatal error'))
+
+      const resets = writes.flatMap((write, index) =>
+        write.stream === 'stdout' && write.text.includes(LEAVE_ALTERNATE_SCREEN) ? [index] : []
+      )
+
+      expect(exitCode).toBe(1)
+      expect(report).toBeGreaterThan(-1)
+      expect(resets.length).toBeGreaterThan(0)
+      expect(resets.every(index => index < report)).toBe(true)
+    } finally {
+      if (proc.exitCode === null) proc.kill('SIGKILL')
+      await proc.exited
+    }
   }, 10000)
 })
 
