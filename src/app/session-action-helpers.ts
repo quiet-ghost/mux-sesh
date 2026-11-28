@@ -1,0 +1,90 @@
+import { dirname } from 'path'
+import { ActionRefused } from './action-outcome'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
+import type { MultiplexerBackend } from '../multiplexer'
+import type { OpenWorkspaceInput } from '../multiplexer/types'
+import { getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
+import { getGitRoot, resolveProjectSession } from '../config/session-rules'
+import { isFileItem, resolveFileSession } from '../files/target'
+import { handoffOf } from '../multiplexer/focus-outcome'
+import { requestShutdown } from '../lifecycle/shutdown'
+import { quoteShellArg } from '../util/shell'
+
+export function buildEditorCommand(editor: string, path: string): string {
+  return `${editor} ${quoteShellArg(path)}`
+}
+
+export function requireConfig(config: Config | null): Config {
+  if (!config) {
+    throw new ActionRefused({ reason: 'Config is not loaded yet' })
+  }
+
+  return config
+}
+
+export function requireConfiguredItem(item: Item | undefined): Item {
+  if (!item || item.itemKind !== 'configured') {
+    throw new ActionRefused({ reason: 'Select a configured session to edit its target' })
+  }
+
+  return item
+}
+
+export function getNextSessionName(renameTarget: string, newName: string): string | null {
+  const trimmedName = newName.trim()
+
+  if (!trimmedName || trimmedName === renameTarget) {
+    return null
+  }
+
+  return trimmedName
+}
+
+export async function openProjectSession(
+  projectPath: string,
+  config: Config,
+  backend: MultiplexerBackend,
+  onOpened: (input: OpenWorkspaceInput) => Promise<void> = async () => {}
+): Promise<void> {
+  const resolvedSession = await resolveProjectSession(projectPath, config)
+
+  const input = {
+    title: resolvedSession.sessionName,
+    path: projectPath,
+    startupCommand: resolvedSession.startupCommand,
+  }
+
+  const focus = await backend.openOrCreate(input)
+  await onOpened(input)
+  await requestShutdown(0, handoffOf(focus))
+}
+
+export async function openFileSession(
+  filePath: string,
+  config: Config,
+  backend: MultiplexerBackend,
+  onOpened: (input: OpenWorkspaceInput) => Promise<void> = async () => {}
+): Promise<void> {
+  const resolvedSession = resolveFileSession(filePath, config)
+
+  const input = {
+    title: resolvedSession.sessionName,
+    path: resolvedSession.cwd,
+    startupCommand: resolvedSession.startupCommand,
+  }
+
+  const focus = await backend.openOrCreate(input)
+  await onOpened(input)
+  await requestShutdown(0, handoffOf(focus))
+}
+
+export async function getRootSessionPath(item: Item, backend: MultiplexerBackend): Promise<string> {
+  const itemPath = isLiveSessionItem(item)
+    ? ((await backend.directory(getWorkspaceRef(item))) ?? item.path)
+    : item.path
+
+  const searchRoot = !item.isSession && isFileItem(item) ? dirname(itemPath) : itemPath
+
+  return (await getGitRoot(searchRoot)) ?? searchRoot
+}

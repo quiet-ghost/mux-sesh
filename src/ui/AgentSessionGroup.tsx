@@ -1,93 +1,132 @@
 import { useTheme } from '../styles/theme'
-import type { IconConfig, Item, AppMode } from '../types'
-import { AppMode as AppModeEnum } from '../types'
+import type { IconConfig } from '../config/config-model'
+import type { Item } from '../items/item'
 import { formatSectionHeader } from './item-icon'
 import { getItemKey } from '../multiplexer/items'
+import {
+  CLOSING_META,
+  markedMeta,
+  rowBackground,
+  rowForeground,
+  rowHighlight,
+  rowMarker,
+} from './row-mark'
 import { getSessionMeta } from './session-meta'
-import { getVisibleWindow } from './list-window'
+import type { VisibleWindow } from './list-window'
+import { fitListRow, getTitleColumnWidth } from './session-viewport'
 
 interface Props {
   sessions: Item[]
-  appMode: AppMode
+  window: VisibleWindow<Item>
   cursor: number
-  maxItems?: number
+  active: boolean
+  width: number
   icons?: IconConfig
-  pendingKillSessionName?: string | null
+  marked?: ReadonlyMap<string, Item>
+  // The item key whose close waits for a second key, if any.
+  closingKey: string | undefined
+}
+
+const AGENT_ROW_PREFIX_COLUMNS = 3
+
+function getAgentContext(item: Item): string {
+  return item.workspaceTitle ?? item.desc
 }
 
 export default function AgentSessionGroup({
   sessions,
-  appMode,
+  window,
   cursor,
-  maxItems = 20,
+  active,
+  width,
   icons,
-  pendingKillSessionName,
+  marked,
+  closingKey,
 }: Props) {
   const theme = useTheme()
-  if (sessions.length === 0) return null
-
   const header = formatSectionHeader(theme, 'agents', icons)
-  const visibleWindow = getVisibleWindow(sessions, cursor, maxItems)
+  const titleColumn = getTitleColumnWidth(sessions, getAgentContext)
 
   return (
     <>
-      <text style={{ fg: theme.textSubtle, marginTop: 2, marginBottom: 1 }}>
+      <text style={{ fg: theme.textSubtle, marginTop: 1, flexShrink: 0, wrapMode: 'none' }}>
         <span style={{ fg: header.color }}>{header.text}</span>
       </text>
-      {visibleWindow.items.map((item, i) => {
-        const absoluteIndex = visibleWindow.startIndex + i
-        const pendingKill = getItemKey(item) === pendingKillSessionName
-        const selected = appMode === AppModeEnum.AgentsManage && absoluteIndex === cursor
-        const itemMeta = getSessionMeta(item)
+      {sessions.length === 0 ? (
+        <text style={{ fg: theme.textMuted, wrapMode: 'none' }}>No agent sessions</text>
+      ) : null}
+      {window.items.map((item, i) => {
+        const absoluteIndex = window.startIndex + i
+        const isMarked = marked?.has(getItemKey(item)) ?? false
+        const closing = getItemKey(item) === closingKey
+        const highlight = rowHighlight(active && absoluteIndex === cursor, closing)
+        const selected = highlight === 'selected'
+        const meta = closing ? CLOSING_META : markedMeta(isMarked, getSessionMeta(item))
+
+        const metaWidth = meta ? meta.length + 1 : 0
+
+        const row = fitListRow(
+          item.title,
+          getAgentContext(item),
+          width - AGENT_ROW_PREFIX_COLUMNS - metaWidth,
+          titleColumn
+        )
 
         return (
           <box
             key={getItemKey(item)}
             style={{
               flexDirection: 'row',
+              flexShrink: 0,
               justifyContent: 'space-between',
-              backgroundColor: pendingKill
-                ? theme.dangerSurface
-                : selected
-                  ? theme.surfaceAlt
-                  : 'transparent',
-              paddingLeft: 1,
+              backgroundColor: rowBackground(theme, highlight, isMarked),
               paddingRight: 1,
             }}
           >
-            <text>
-              <span style={{ fg: selected ? theme.primary : theme.textSubtle }}>
-                {selected ? '› ' : '  '}
+            <text style={{ wrapMode: 'none' }}>
+              <span style={{ fg: rowForeground(theme, selected, theme.danger) }}>
+                {rowMarker(isMarked)}
               </span>
               <span
                 style={{
-                  fg: item.isAttached ? theme.active : theme.inactive,
+                  fg: rowForeground(
+                    theme,
+                    selected,
+                    item.isAttached ? theme.active : theme.inactive
+                  ),
                 }}
               >
                 {item.isAttached ? '●' : '○'}
               </span>{' '}
-              <span style={{ fg: theme.text }}>{item.title}</span>
+              <span style={{ fg: rowForeground(theme, selected, theme.text) }}>{row.title}</span>
+              {row.context ? (
+                <span style={{ fg: rowForeground(theme, selected, theme.textSubtle) }}>
+                  {`${row.spacer}${row.context}`}
+                </span>
+              ) : null}
             </text>
 
             <text
               style={{
-                fg: pendingKill
-                  ? theme.danger
-                  : item.agentStatus === 'blocked'
+                wrapMode: 'none',
+                fg: rowForeground(
+                  theme,
+                  selected,
+                  closing || isMarked
                     ? theme.danger
-                    : item.agentStatus === 'working'
-                      ? theme.active
-                      : theme.textSubtle,
+                    : item.agentStatus === 'blocked'
+                      ? theme.danger
+                      : item.agentStatus === 'working'
+                        ? theme.active
+                        : theme.textSubtle
+                ),
               }}
             >
-              {pendingKill
-                ? `press d again to ${item.itemKind === 'herdr' ? 'close' : 'kill'}`
-                : itemMeta}
+              {meta}
             </text>
           </box>
         )
       })}
-      <box style={{ marginBottom: 1 }} />
     </>
   )
 }

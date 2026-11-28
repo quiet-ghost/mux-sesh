@@ -1,19 +1,38 @@
 import { readdir, stat } from 'fs/promises'
 import { basename, dirname, join } from 'path'
-import { spawn } from 'bun'
-import type { Config } from '../types'
+import * as Option from 'effect/Option'
+import * as Schema from 'effect/Schema'
+import type { Config } from '../config/config-model'
 import type { WorkspaceDetails, WorkspaceRef } from '../multiplexer'
+import {
+  CommandInterrupted,
+  CommandOutputLimitError,
+  CommandTimeoutError,
+  DEFAULT_COMMAND_POLICY,
+  type CommandPolicy,
+  type CommandRunner,
+} from '../multiplexer/command'
 import { stripAnsi } from '../util/ansi'
-import { getGitRoot, resolveProjectSession } from '../config/session-rules'
+import { resolveProjectSession } from '../config/session-rules'
 import { resolveFileSession } from '../files/target'
 import { toHomeRelativePath } from '../util/path-display'
 import { quoteShellArg } from '../util/shell'
 
 const MAX_PREVIEW_LINES = 24
 const MAX_PREVIEW_LINE_LENGTH = 120
-const PREVIEW_COMMAND_TIMEOUT_MS = 1500
-const PROJECT_PREVIEW_CACHE_TTL_MS = 4000
-const projectPreviewCache = new Map<string, { preview: ProjectPreview; expiresAt: number }>()
+
+// Preview and git reads are display-only: a short deadline and a small output budget.
+export const PREVIEW_COMMAND_POLICY: CommandPolicy = {
+  ...DEFAULT_COMMAND_POLICY,
+  timeoutMs: 1500,
+  maxStdoutBytes: 256 * 1024,
+}
+
+export interface PreviewServices {
+  readonly runner: CommandRunner
+  readonly signal?: AbortSignal
+  readonly loadWorkspaceDetails?: (workspace: WorkspaceRef) => Promise<WorkspaceDetails>
+}
 
 export interface ProjectPreview {
   path: string
@@ -39,6 +58,16 @@ interface PackageSummary {
   name?: string
   scripts: string[]
 }
+
+const decodePackageManifest = Schema.decodeUnknownOption(
+  Schema.Struct({
+    name: Schema.optionalKey(Schema.Unknown),
+    scripts: Schema.optionalKey(Schema.Unknown),
+  })
+)
+
+const isPackageName = Schema.is(Schema.String)
+const isScriptTable = Schema.is(Schema.Record(Schema.String, Schema.Unknown))
 
 export function interpolatePreviewCommand(
   command: string | undefined,
@@ -81,34 +110,61 @@ export function formatPreviewOutput(
   }
 }
 
-async function getGitBranch(projectPath: string): Promise<string | undefined> {
+async function gitOutput(
+  args: readonly string[],
+  services: PreviewServices
+): Promise<string | undefined> {
   try {
-    const proc = spawn(['git', '-C', projectPath, 'branch', '--show-current'], {
-      stderr: 'pipe',
-    })
-    const output = (await new Response(proc.stdout).text()).trim()
-    await proc.exited
+    const result = await services.runner.run(['git', ...args], { signal: services.signal })
+    const output = result.stdout.trim()
 
-    if (proc.exitCode !== 0 || output.length === 0) {
-      return undefined
-    }
+    return result.exitCode === 0 && output.length > 0 ? output : undefined
+  } catch (cause) {
+    // Git context is optional; only cancellation propagates.
+    if (cause instanceof CommandInterrupted) throw cause
 
-    return output
-  } catch {
+    return undefined
+  }
+}
+
+function getGitBranch(projectPath: string, services: PreviewServices): Promise<string | undefined> {
+  return gitOutput(['-C', projectPath, 'branch', '--show-current'], services)
+}
+
+function getGitRoot(projectPath: string, services: PreviewServices): Promise<string | undefined> {
+  return gitOutput(['-C', projectPath, 'rev-parse', '--show-toplevel'], services)
+}
+
+async function loadLinkedSession(
+  linkedWorkspace: WorkspaceRef | undefined,
+  services: PreviewServices
+): Promise<WorkspaceDetails | undefined> {
+  if (!linkedWorkspace || !services.loadWorkspaceDetails) return undefined
+
+  try {
+    return await services.loadWorkspaceDetails(linkedWorkspace)
+  } catch (cause) {
+    // The project preview stands without its linked session; only cancellation propagates.
+    if (cause instanceof CommandInterrupted) throw cause
+
     return undefined
   }
 }
 
 async function readPackageSummary(projectPath: string): Promise<PackageSummary | null> {
   try {
-    const packageJson = (await Bun.file(join(projectPath, 'package.json')).json()) as {
-      name?: string
-      scripts?: Record<string, string>
+    const packageJson: unknown = await Bun.file(join(projectPath, 'package.json')).json()
+    const manifest = decodePackageManifest(packageJson)
+
+    if (Option.isNone(manifest)) {
+      return null
     }
 
+    const { name, scripts } = manifest.value
+
     return {
-      name: packageJson.name,
-      scripts: Object.keys(packageJson.scripts ?? {}).slice(0, 6),
+      name: isPackageName(name) ? name : undefined,
+      scripts: isScriptTable(scripts) ? Object.keys(scripts).slice(0, 6) : [],
     }
   } catch {
     return null
@@ -159,69 +215,64 @@ async function getDirectoryPreviewLines(projectPath: string): Promise<string[]> 
   }
 }
 
+function previewFailureNotice(cause: unknown): string {
+  if (cause instanceof CommandTimeoutError) {
+    return 'Preview command timed out; showing directory listing instead.'
+  }
+
+  if (cause instanceof CommandOutputLimitError) {
+    return 'Preview command wrote too much output; showing directory listing instead.'
+  }
+
+  return 'Preview command failed; showing directory listing instead.'
+}
+
 async function runPreviewCommand(
   command: string,
-  cwd: string
+  cwd: string,
+  services: PreviewServices
 ): Promise<{ output?: string; notice?: string }> {
   try {
-    const proc = spawn(['sh', '-lc', command], {
+    const result = await services.runner.run(['sh', '-lc', command], {
       cwd,
-      stderr: 'pipe',
+      signal: services.signal,
     })
 
-    const stdoutPromise = new Response(proc.stdout).text()
-    let timedOut = false
-    const timeout = setTimeout(() => {
-      timedOut = true
-      proc.kill()
-    }, PREVIEW_COMMAND_TIMEOUT_MS)
-
-    await proc.exited
-    clearTimeout(timeout)
-
-    if (timedOut) {
-      return { notice: 'Preview command timed out; showing directory listing instead.' }
-    }
-
-    const output = await stdoutPromise
-    if (proc.exitCode !== 0) {
+    if (result.exitCode !== 0) {
       return { notice: 'Preview command failed; showing directory listing instead.' }
     }
 
-    return { output }
-  } catch {
-    return { notice: 'Preview command failed; showing directory listing instead.' }
+    return { output: result.stdout }
+  } catch (cause) {
+    if (cause instanceof CommandInterrupted) throw cause
+
+    return { notice: previewFailureNotice(cause) }
   }
 }
 
+// Uncached: every call reads again, so changed rules and refreshes show current output.
 export async function getProjectPreview(
   projectPath: string,
   config: Config,
-  linkedWorkspace?: WorkspaceRef,
-  loadWorkspaceDetails?: (workspace: WorkspaceRef) => Promise<WorkspaceDetails>
+  linkedWorkspace: WorkspaceRef | undefined,
+  services: PreviewServices
 ): Promise<ProjectPreview> {
-  const cacheKey = `${projectPath}::${linkedWorkspace ? `${linkedWorkspace.backend}:${linkedWorkspace.id}` : ''}`
-  const cached = projectPreviewCache.get(cacheKey)
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.preview
-  }
-
   const [resolvedSession, gitRootPath, gitBranch, linkedSession] = await Promise.all([
     resolveProjectSession(projectPath, config),
-    getGitRoot(projectPath),
-    getGitBranch(projectPath),
-    linkedWorkspace && loadWorkspaceDetails
-      ? loadWorkspaceDetails(linkedWorkspace).catch(() => null)
-      : Promise.resolve(null),
+    getGitRoot(projectPath, services),
+    getGitBranch(projectPath, services),
+    loadLinkedSession(linkedWorkspace, services),
   ])
 
   const resolvedPreviewCommand = interpolatePreviewCommand(
     resolvedSession.previewCommand,
     projectPath
   )
+
   const commandResult = resolvedPreviewCommand
-    ? await runPreviewCommand(resolvedPreviewCommand, projectPath)
+    ? await runPreviewCommand(resolvedPreviewCommand, projectPath, services)
     : undefined
+
   const formattedCommandOutput = commandResult?.output
     ? formatPreviewOutput(commandResult.output)
     : undefined
@@ -235,7 +286,7 @@ export async function getProjectPreview(
       previewCommand: resolvedPreviewCommand,
       gitRoot: gitRootPath ? toHomeRelativePath(gitRootPath) : undefined,
       gitBranch,
-      linkedSession: linkedSession ?? undefined,
+      linkedSession,
       previewKind: 'command',
       previewLabel: 'Preview Output',
       previewLines: formattedCommandOutput.lines,
@@ -243,11 +294,6 @@ export async function getProjectPreview(
         ? 'Preview output truncated to fit the panel.'
         : undefined,
     }
-
-    projectPreviewCache.set(cacheKey, {
-      preview,
-      expiresAt: Date.now() + PROJECT_PREVIEW_CACHE_TTL_MS,
-    })
 
     return preview
   }
@@ -263,7 +309,7 @@ export async function getProjectPreview(
     previewCommand: resolvedPreviewCommand,
     gitRoot: gitRootPath ? toHomeRelativePath(gitRootPath) : undefined,
     gitBranch,
-    linkedSession: linkedSession ?? undefined,
+    linkedSession,
     previewKind: 'directory',
     previewLabel: 'Directory Listing',
     previewLines: formattedDirectoryOutput.lines,
@@ -273,11 +319,6 @@ export async function getProjectPreview(
         ? 'Directory listing truncated to fit the panel.'
         : undefined),
   }
-
-  projectPreviewCache.set(cacheKey, {
-    preview,
-    expiresAt: Date.now() + PROJECT_PREVIEW_CACHE_TTL_MS,
-  })
 
   return preview
 }
@@ -289,6 +330,7 @@ async function getFilePreviewLines(
 ): Promise<{ lines: string[]; notice?: string }> {
   try {
     const fileInfo = await stat(filePath)
+
     const bytes = new Uint8Array(
       await Bun.file(filePath).slice(0, FILE_PREVIEW_MAX_BYTES).arrayBuffer()
     )
@@ -301,6 +343,7 @@ async function getFilePreviewLines(
     }
 
     const formatted = formatPreviewOutput(new TextDecoder().decode(bytes))
+
     return {
       lines: formatted.lines.length > 0 ? formatted.lines : ['(empty file)'],
       notice:
@@ -319,23 +362,16 @@ async function getFilePreviewLines(
 export async function getFilePreview(
   filePath: string,
   config: Config,
-  linkedWorkspace?: WorkspaceRef,
-  loadWorkspaceDetails?: (workspace: WorkspaceRef) => Promise<WorkspaceDetails>
+  linkedWorkspace: WorkspaceRef | undefined,
+  services: PreviewServices
 ): Promise<ProjectPreview> {
-  const cacheKey = `file::${filePath}::${linkedWorkspace ? `${linkedWorkspace.backend}:${linkedWorkspace.id}` : ''}`
-  const cached = projectPreviewCache.get(cacheKey)
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.preview
-  }
-
   const parentDirectory = dirname(filePath)
   const resolvedSession = resolveFileSession(filePath, config)
+
   const [gitRootPath, gitBranch, linkedSession, fileLines] = await Promise.all([
-    getGitRoot(parentDirectory),
-    getGitBranch(parentDirectory),
-    linkedWorkspace && loadWorkspaceDetails
-      ? loadWorkspaceDetails(linkedWorkspace).catch(() => null)
-      : Promise.resolve(null),
+    getGitRoot(parentDirectory, services),
+    getGitBranch(parentDirectory, services),
+    loadLinkedSession(linkedWorkspace, services),
     getFilePreviewLines(filePath),
   ])
 
@@ -346,17 +382,12 @@ export async function getFilePreview(
     startupCommand: resolvedSession.startupCommand,
     gitRoot: gitRootPath ? toHomeRelativePath(gitRootPath) : undefined,
     gitBranch,
-    linkedSession: linkedSession ?? undefined,
+    linkedSession,
     previewKind: 'file',
     previewLabel: 'File Preview',
     previewLines: fileLines.lines,
     previewNotice: fileLines.notice,
   }
-
-  projectPreviewCache.set(cacheKey, {
-    preview,
-    expiresAt: Date.now() + PROJECT_PREVIEW_CACHE_TTL_MS,
-  })
 
   return preview
 }

@@ -3,3 +3,4 @@ dist
 bun.lock
 .git
 tsconfig.tsbuildinfo
+tools/oxlint/anti-slop

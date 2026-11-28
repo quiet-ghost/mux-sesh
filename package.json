@@ -2,26 +2,32 @@
   "$schema": "https://json.schemastore.org/package.json",
   "name": "mux-sesh",
   "version": "1.10.0",
+  "private": true,
   "description": "An OpenTUI manager for tmux sessions and Herdr workspaces with fuzzy project search",
   "type": "module",
-  "packageManager": "bun@1.3.14",
+  "packageManager": "bun@1.4.5",
   "bin": {
     "mux-sesh": "./bin/mux-sesh"
   },
-  "files": [
-    "bin",
-    "src",
-    "tsconfig.json"
-  ],
   "scripts": {
     "dev": "MUX_SESH_DEV=1 bun run src/index.tsx",
-    "build": "bun build src/index.tsx --compile --outfile dist/mux-sesh",
+    "dev:config-error": "bun tools/dev/screens.ts config-error",
+    "dev:backend-error": "bun tools/dev/screens.ts backend-error",
+    "dev:crash": "bun tools/dev/screens.ts crash",
+    "build": "bun tools/build/build.ts --single",
+    "build:all": "bun tools/build/build.ts",
+    "pack": "bun tools/build/pack.ts",
+    "smoke:binary": "bun tools/build/smoke.ts",
+    "check:upgrade": "bun tools/build/upgrade-check.ts",
     "start": "bun run src/index.tsx",
-    "typecheck": "tsc --noEmit",
+    "lint": "bun run --bun oxlint --deny-warnings",
+    "typecheck": "tsc --noEmit && tsc --noEmit --project tools/build/tsconfig.json && tsc --noEmit --project tools/dev/tsconfig.json && tsc --noEmit --project tools/schema/tsconfig.json",
+    "typecheck:tests": "tsc --noEmit --project tests/tsconfig.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "bun test",
-    "prepublishOnly": "bun run typecheck"
+    "bench:picker": "bun tests/perf/run-baseline.ts",
+    "schema": "bun tools/schema/generate.ts"
   },
   "keywords": [
     "tmux",
@@ -41,27 +47,32 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/quiet-ghost/mux-sesh.git"
+    "url": "git+https://github.com/quiet-ghost/mux-sesh.git"
   },
   "bugs": {
     "url": "https://github.com/quiet-ghost/mux-sesh/issues"
   },
   "homepage": "https://github.com/quiet-ghost/mux-sesh#readme",
   "engines": {
-    "bun": ">=1.0.0"
+    "bun": ">=1.3.14"
   },
   "overrides": {
     "@types/node": "^24"
   },
   "dependencies": {
     "@ff-labs/fff-bun": "0.10.1",
-    "@opentui/core": "0.4.5",
-    "@opentui/react": "0.4.5",
+    "@opentui/core": "0.5.17",
+    "@opentui/react": "0.5.17",
+    "effect": "4.0.5",
+    "fuzzysort": "4.0.2",
     "react": "19.2.8"
   },
   "devDependencies": {
+    "@oxlint/plugins": "1.88.0",
     "@types/bun": "1.3.14",
     "@types/react": "19.2.17",
+    "oxlint": "1.88.0",
+    "oxlint-tsgolint": "7.0.2004",
     "prettier": "3.9.6",
     "typescript": "5.9.3"
   }

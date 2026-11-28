@@ -1,10 +1,12 @@
-import type { Config } from '../types'
+import type { Config } from '../config/config-model'
+import type { UpdateEvent } from './update-event'
 import { CURRENT_VERSION, getLatestVersion, isNewerVersion } from './version'
 import {
   canAutoUpdate,
   detectInstallMethod,
   getInstalledVersion,
   performUpgrade,
+  upgradeCommand,
 } from './installation'
 import { updateEvents } from './events'
 
@@ -30,6 +32,7 @@ const defaultDependencies: UpdateDependencies = {
 
 function truthy(key: string): boolean {
   const value = process.env[key]?.toLowerCase()
+
   return value === 'true' || value === '1'
 }
 
@@ -47,6 +50,7 @@ export async function checkAndUpdate(
   }
 
   const latest = await resolvedDependencies.getLatestVersion()
+
   if (!latest) {
     return
   }
@@ -64,6 +68,7 @@ export async function checkAndUpdate(
       version: latest,
       installMethod: method,
     })
+
     return
   }
 
@@ -77,6 +82,7 @@ export async function checkAndUpdate(
       version: latest,
       installMethod: method,
     })
+
     return
   }
 
@@ -86,6 +92,35 @@ export async function checkAndUpdate(
     version: latest,
     installMethod: method,
   })
+}
+
+export interface UpdateNotice {
+  readonly kind: 'info' | 'success' | 'error'
+  readonly message: string
+}
+
+// What the status line says about a background update check.
+export function describeUpdateEvent(event: UpdateEvent): UpdateNotice {
+  switch (event.kind) {
+    case 'updated':
+      return {
+        kind: 'success',
+        message: `Updated in background to v${event.version}. Restart mux-sesh to use it.`,
+      }
+    case 'available': {
+      const command = upgradeCommand(event.installMethod)
+
+      return {
+        kind: 'info',
+        message: command
+          ? `Update available: v${event.version}. Run: ${command}`
+          : `Update available: v${event.version}`,
+      }
+    }
+
+    case 'failed':
+      return { kind: 'error', message: `Background update to v${event.version} failed.` }
+  }
 }
 
 export { updateEvents } from './events'

@@ -1,29 +1,58 @@
 import { describe, expect, mock, test } from 'bun:test'
-import { createAppControls } from '../src/app/controls'
+import { getActionTarget, getCommandEntries, type ActionContext } from '../src/app/action-catalog'
+import { getActionFooter } from '../src/app/action-footer'
+import { PendingClose } from '../src/app/pending-close'
+import { ActionRefused } from '../src/app/action-outcome'
+import { createAppControls } from '../src/app/modal-controls'
 import { getDefaultConfig } from '../src/config'
 import {
   getAgentSelectionIndex,
   getProjectSelectionIndex,
   getSessionSelectionIndex,
   reuseSessionItemIdentities,
-} from '../src/app/data'
-import { getSessionCommandState, getSettingsState } from '../src/app/derived'
-import { createAppHandlers, getPinnedSessionsAfterToggle } from '../src/app/handlers'
-import { applyOpencodeState, loadOpencodeSessionStats } from '../src/app/opencode'
-import { persistConfigUpdate, runWithErrorMessage } from '../src/app/operations'
-import { createAppRuntime } from '../src/app/runtime'
-import { applyRefreshedViewState } from '../src/app/state'
+} from '../src/app/inventory-load'
+import { getSessionCommandState, getSettingsState } from '../src/app/view-state'
+import { createAppHandlers, getPinnedSessionsAfterToggle } from '../src/app/action-feedback'
+import { persistConfigUpdate, runWithErrorToast } from '../src/app/toast-operations'
+import type { ToastInput } from '../src/app/notifications'
+import { OptionPicker } from '../src/app/option-picker'
+import { createAppRuntime } from '../src/app/list-refresh'
+import {
+  publishInventory,
+  type InventoryOutcome,
+  type SessionInventory,
+} from '../src/app/session-inventory'
 import {
   getAppTitle,
   getEmptyStateMessage,
-  getFooterHint,
   getStatusLabel,
   splitVisibleSessions,
-} from '../src/app/view'
-import { AppMode, ViewMode, type Item } from '../src/types'
-import { getCommandEntries } from '../src/ui/CommandsModal'
+} from '../src/app/screen-layout'
+import { AppMode, ViewMode } from '../src/app/app-mode'
+import type { Item } from '../src/items/item'
+import { createHerdrBackend } from '../src/herdr/backend'
 import { getItemKey, workspaceToItem } from '../src/multiplexer/items'
-import { filterHiddenSessions } from '../src/tmux/workflows'
+import { MultiplexerError } from '../src/multiplexer/types'
+import { filterHiddenSessions } from '../src/sessions/session-filters'
+import { INACTIVE_LAUNCH } from '../src/sessions/launch-plan'
+import { IDLE } from '../src/util/pending'
+import { NO_GIT } from './fixtures/local-github'
+import { OPEN_HISTORY } from '../src/search/frecency-store'
+
+function actionContext(overrides: Partial<ActionContext> = {}): ActionContext {
+  return {
+    appMode: AppMode.Normal,
+    viewMode: ViewMode.Sessions,
+    keybindMode: 'vim',
+    prefixKey: 'ctrl+x',
+    backend: { kind: 'tmux', capabilities: { previousWorkspace: true } },
+    agentCount: 0,
+    target: { kind: 'none' },
+    marked: new Map(),
+    pendingClose: PendingClose.none,
+    ...overrides,
+  }
+}
 
 describe('app view helpers', () => {
   test('splits regular and agent sessions without losing item shape', () => {
@@ -41,6 +70,15 @@ describe('app view helpers', () => {
         isSession: true,
         itemKind: 'herdr',
         agentStatus: 'working',
+        target: { kind: 'agent', tabId: 'w1:t1', paneId: 'w1:p1' },
+      },
+      {
+        title: 'herdr-busy-workspace',
+        desc: '',
+        path: '/tmp/herdr-busy',
+        isSession: true,
+        itemKind: 'herdr',
+        agentStatus: 'working',
       },
       {
         title: 'herdr-plain',
@@ -54,7 +92,11 @@ describe('app view helpers', () => {
 
     const split = splitVisibleSessions(items)
 
-    expect(split.regularSessions.map(item => item.title)).toEqual(['dev', 'herdr-plain'])
+    expect(split.regularSessions.map(item => item.title)).toEqual([
+      'dev',
+      'herdr-busy-workspace',
+      'herdr-plain',
+    ])
     expect(split.agentSessions.map(item => item.title)).toEqual([
       'opencode-dev',
       'pi-main',
@@ -68,8 +110,21 @@ describe('app view helpers', () => {
   test('builds title, footer, status, and empty messages from app state', () => {
     expect(getAppTitle(AppMode.NewSession, ViewMode.Projects)).toBe('New Session')
     expect(getAppTitle(AppMode.AgentsManage, ViewMode.Sessions)).toBe('Agent Sessions')
-    expect(getFooterHint(AppMode.AgentsManage, 'ctrl+x')).toContain('ctrl+x')
-    expect(getFooterHint(AppMode.Normal)).toContain('o agents')
+    expect(getActionFooter(actionContext({ appMode: AppMode.AgentsManage })).global).toContainEqual(
+      {
+        id: 'prefix',
+        label: 'prefix',
+        key: 'ctrl+x',
+      }
+    )
+    expect(getActionFooter(actionContext({ agentCount: 1 })).global).toContainEqual({
+      id: 'open-agents',
+      label: 'agents',
+      key: 'o',
+    })
+    expect(getActionFooter(actionContext()).global.map(hint => hint.id)).not.toContain(
+      'open-agents'
+    )
     expect(getStatusLabel(ViewMode.Sessions, 2, 5, 9)).toBe('2/5 active')
     expect(getEmptyStateMessage(AppMode.NewSession, 'https://github.com/acme/repo', true)).toBe(
       'Clone & create session'
@@ -88,11 +143,32 @@ describe('app view helpers', () => {
       target: { kind: 'agent' as const, tabId: 'agents:t1', paneId: 'agents:p1' },
     }
 
-    const entries = getCommandEntries(AppMode.AgentsManage, 'vim', undefined, agent)
+    const entries = getCommandEntries(
+      actionContext({
+        appMode: AppMode.AgentsManage,
+        agentCount: 1,
+        target: getActionTarget(agent),
+      })
+    )
 
-    expect(entries.some(entry => entry.id === 'kill-session')).toBe(false)
-    expect(entries.some(entry => entry.id === 'rename-session')).toBe(false)
-    expect(getFooterHint(AppMode.AgentsManage, undefined, agent)).not.toContain('d kill')
+    expect(entries.find(entry => entry.id === 'kill-session')?.availability).toEqual({
+      kind: 'unavailable',
+      reason: 'Close it in Herdr',
+    })
+    expect(entries.find(entry => entry.id === 'rename-session')?.availability).toEqual({
+      kind: 'unavailable',
+      reason: 'Rename it in Herdr',
+    })
+
+    const footer = getActionFooter(
+      actionContext({
+        appMode: AppMode.AgentsManage,
+        agentCount: 1,
+        target: getActionTarget(agent),
+      })
+    )
+
+    expect([...footer.global, ...footer.target].map(hint => hint.id)).not.toContain('kill-session')
   })
 })
 
@@ -107,6 +183,7 @@ describe('app data helpers', () => {
       unitCount: 1,
       target: { kind: 'agent', tabId: 'agents:t1', paneId: 'agents:p1' },
     })
+
     const second = workspaceToItem({
       backend: 'herdr',
       id: 'agents',
@@ -155,8 +232,91 @@ describe('app data helpers', () => {
 })
 
 describe('app derived helpers', () => {
+  test.each([
+    { appMode: AppMode.Normal, keybindMode: 'vim' },
+    { appMode: AppMode.Search, keybindMode: 'vim' },
+    { appMode: AppMode.Search, keybindMode: 'standard' },
+    { appMode: AppMode.AgentsManage, keybindMode: 'standard' },
+  ] as const)(
+    'retains native agent targets in $keybindMode $appMode',
+    ({ appMode, keybindMode }) => {
+      const plain = workspaceToItem({
+        backend: 'herdr',
+        id: 'plain',
+        title: 'opencode-native-unknown',
+        path: '/fixture/plain',
+        isActive: false,
+        unitCount: 1,
+        agentStatus: 'unknown',
+      })
+
+      const agent = workspaceToItem({
+        backend: 'herdr',
+        id: 'agents',
+        title: 'worker',
+        path: '/fixture/worker',
+        isActive: false,
+        unitCount: 1,
+        agentStatus: 'unknown',
+        target: { kind: 'agent', tabId: 'agents:t1', paneId: 'agents:p1' },
+      })
+
+      const state = getSessionCommandState(
+        appMode,
+        ViewMode.Sessions,
+        [plain, agent],
+        0,
+        0,
+        { ...getDefaultConfig('/fixture'), keybindMode },
+        ''
+      )
+
+      expect(state.agentSessions).toEqual([agent])
+      expect(state.agentSessions[0]).toBe(agent)
+      expect(state.regularSessions).toContain(plain)
+    }
+  )
+
+  test('keeps search list and command targets on the same flat cursor', () => {
+    const agent = workspaceToItem({
+      backend: 'tmux',
+      id: 'pi-agent',
+      title: 'pi-agent',
+      path: '/fixture/agent',
+      isActive: false,
+      unitCount: 1,
+    })
+
+    const plain = workspaceToItem({
+      backend: 'tmux',
+      id: 'plain',
+      title: 'plain',
+      path: '/fixture/plain',
+      isActive: false,
+      unitCount: 1,
+    })
+
+    const items = [agent, plain]
+
+    const state = getSessionCommandState(
+      AppMode.Search,
+      ViewMode.Sessions,
+      items,
+      1,
+      0,
+      { ...getDefaultConfig('/fixture'), keybindMode: 'standard' },
+      ''
+    )
+
+    expect(state.agentSessions).toEqual([agent])
+    expect(state.regularSessions).toBe(items)
+    expect(state.regularSessions[1]).toBe(plain)
+    expect(state.selectedPrimaryItem).toBe(plain)
+  })
+
   test('builds session command state from current app view', () => {
     const config = getDefaultConfig('/home/tester')
+
     const items: Item[] = [
       { title: 'alpha', desc: '', path: '/tmp/alpha', isSession: true },
       { title: 'opencode-alpha', desc: '', path: '/tmp/opencode', isSession: true },
@@ -180,7 +340,8 @@ describe('app derived helpers', () => {
 
   test('command palette search for theme opens Themes', () => {
     const config = getDefaultConfig('/home/tester')
-    const entries = getCommandEntries(AppMode.Normal, 'vim', 'ctrl+x')
+    const entries = getCommandEntries(actionContext())
+
     const state = getSessionCommandState(
       AppMode.Normal,
       ViewMode.Sessions,
@@ -198,11 +359,18 @@ describe('app derived helpers', () => {
 
   test('builds settings state for setting option filtering', () => {
     const config = getDefaultConfig('/home/tester')
+
     const state = getSettingsState(
       config,
-      { type: 'setting-options', field: 'keybindMode' },
+      {
+        type: 'setting-options',
+        field: 'keybindMode',
+        openedFrom: 'settings',
+        picker: OptionPicker.browsing,
+      },
       'theme',
-      'stan'
+      'stan',
+      '/home/tester'
     )
 
     expect(state.filteredSettingsEntries.some(entry => entry.id === 'theme')).toBe(true)
@@ -227,18 +395,35 @@ describe('app operation helpers', () => {
     expect(getPinnedSessionsAfterToggle(config, 'main')).toEqual([])
   })
 
-  test('reports fallback errors through the shared message helper', async () => {
+  test('reports a refusal as a warning and a backend failure as an error', async () => {
+    const showToast = mock((_toast: ToastInput) => {})
+
+    await runWithErrorToast(async () => {
+      throw new ActionRefused({ reason: 'No session or project is selected' })
+    }, showToast)
+
+    await runWithErrorToast(async () => {
+      throw new MultiplexerError('command-failed', 'tmux exited')
+    }, showToast)
+
+    expect(showToast.mock.calls).toEqual([
+      [{ kind: 'warning', message: 'No session or project is selected' }],
+      [{ kind: 'error', message: 'tmux exited' }],
+    ])
+  })
+
+  test('lets defects through the shared toast helper to crash recovery', async () => {
     const showMessage = mock(() => {})
 
-    await runWithErrorMessage(
-      async () => {
-        throw 'boom'
-      },
-      'fallback message',
-      showMessage
+    const failure = await runWithErrorToast(async () => {
+      throw 'boom'
+    }, showMessage).then(
+      () => undefined,
+      (cause: unknown) => cause
     )
 
-    expect(showMessage).toHaveBeenCalledWith('fallback message', 3000)
+    expect(failure).toBe('boom')
+    expect(showMessage).not.toHaveBeenCalled()
   })
 
   test('persists config updates before refresh and success message', async () => {
@@ -247,58 +432,102 @@ describe('app operation helpers', () => {
     const saveConfig = mock(async () => {})
     const setConfig = mock(() => {})
     const refreshItems = mock(async () => {})
-    const showMessage = mock(() => {})
 
-    await persistConfigUpdate(
+    const outcome = await persistConfigUpdate(
       nextConfig,
       'updated',
       saveConfig,
       setConfig,
-      refreshItems,
-      showMessage
+      refreshItems
     )
 
     expect(saveConfig).toHaveBeenCalledWith(nextConfig)
     expect(setConfig).toHaveBeenCalledWith(nextConfig)
     expect(refreshItems).toHaveBeenCalledWith(undefined, nextConfig)
-    expect(showMessage).toHaveBeenCalledWith('updated')
+    expect(outcome).toEqual({ kind: 'completed', message: 'updated' })
   })
 })
 
 describe('app state helpers', () => {
-  test('applies refreshed state to all affected collections', () => {
-    const setSessionItems = mock(() => {})
-    const setProjectSourceItems = mock(() => {})
-    const setAllItems = mock(() => {})
-    const setItems = mock(() => {})
-    const setCursor = mock(() => {})
-    const refreshedItems = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
-    const refreshedProjects = [{ title: 'proj', desc: '', path: '/tmp/p', isSession: false }]
+  function createSink(lastSessionSelection: string | null, lastProjectSelection: string | null) {
+    return {
+      lastSessionSelectionRef: { current: lastSessionSelection },
+      lastProjectSelectionRef: { current: lastProjectSelection },
+      setSessionItems: mock(() => {}),
+      setLiveSessions: mock(() => {}),
+      setProjectSourceItems: mock(() => {}),
+      setAllItems: mock(() => {}),
+      setItems: mock(() => {}),
+      setCursor: mock(() => {}),
+      setAgentCursor: mock(() => {}),
+    }
+  }
 
-    applyRefreshedViewState(
+  test('publishes a projects inventory to all affected collections', () => {
+    const sink = createSink(null, '/tmp/q')
+    const refreshedItems = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
+
+    const refreshedProjects = [
+      { title: 'proj', desc: '', path: '/tmp/p', isSession: false },
+      { title: 'other', desc: '', path: '/tmp/q', isSession: false },
+    ]
+
+    publishInventory(
       {
-        items: refreshedItems,
-        cursor: 2,
+        viewMode: ViewMode.Projects,
+        liveSessions: refreshedItems,
         sessionItems: refreshedItems,
         projectSourceItems: refreshedProjects,
+        projectItems: refreshedProjects,
       },
-      setSessionItems,
-      setProjectSourceItems,
-      setAllItems,
-      setItems,
-      setCursor
+      { sessionCursor: 0, agentKey: undefined, agentCursor: 0 },
+      sink
     )
 
-    expect(setSessionItems).toHaveBeenCalledWith(refreshedItems)
-    expect(setProjectSourceItems).toHaveBeenCalledWith(refreshedProjects)
-    expect(setAllItems).toHaveBeenCalledWith(refreshedItems)
-    expect(setItems).toHaveBeenCalledWith(refreshedItems)
-    expect(setCursor).toHaveBeenCalledWith(2)
+    expect(sink.setSessionItems).toHaveBeenCalledTimes(1)
+    expect(sink.setLiveSessions).toHaveBeenCalledWith(refreshedItems)
+    expect(sink.setProjectSourceItems).toHaveBeenCalledWith(refreshedProjects)
+    expect(sink.setAllItems).toHaveBeenCalledWith(refreshedProjects)
+    expect(sink.setItems).toHaveBeenCalledWith(refreshedProjects)
+    expect(sink.setCursor).toHaveBeenCalledWith(1)
+  })
+
+  test('publishes a sessions inventory and remembers the fallback selection', () => {
+    const sink = createSink('tmux:gone', null)
+
+    const session = (title: string) =>
+      workspaceToItem({
+        backend: 'tmux',
+        id: title,
+        title,
+        path: `/tmp/${title}`,
+        isActive: false,
+        unitCount: 1,
+      })
+
+    const delta = session('delta')
+    const sessions = [session('alpha'), session('beta'), delta]
+
+    publishInventory(
+      { viewMode: ViewMode.Sessions, liveSessions: sessions, sessionItems: sessions },
+      { sessionCursor: 5, agentKey: undefined, agentCursor: 0 },
+      sink
+    )
+
+    expect(sink.setSessionItems).toHaveBeenCalledTimes(1)
+    expect(sink.setAllItems).toHaveBeenCalledTimes(1)
+    expect(sink.setItems).toHaveBeenCalledTimes(1)
+    expect(sink.setProjectSourceItems).not.toHaveBeenCalled()
+    expect(sink.setCursor).toHaveBeenCalledWith(2)
+    expect(sink.setAgentCursor).toHaveBeenCalledWith(0)
+    expect(sink.lastSessionSelectionRef.current).toBe(getItemKey(delta))
   })
 })
 
 describe('app controls', () => {
-  test('requests kill on first press and confirms on second press', async () => {
+  // A request only freezes the exact ref and waits on the row; the second d is the keyboard's,
+  // so asking twice here never closes anything.
+  test('requesting a kill arms the exact ref on its row and never closes on a second request', () => {
     const item: Item = {
       title: 'alpha',
       desc: '',
@@ -308,10 +537,15 @@ describe('app controls', () => {
       backend: 'tmux',
       sessionId: 'alpha',
     }
-    const baseOptions = {
+
+    const options = {
       config: getDefaultConfig('/home/tester'),
-      handleKillSession: mock(async () => {}),
-      setPendingKillSessionName: mock(() => {}),
+      sessionItems: [item],
+      inventoryRevision: () => 7,
+      backend: null,
+      markedItems: new Map(),
+      setMarkedItems: mock(() => {}),
+      setPendingClose: mock(() => {}),
       setRenameTarget: mock(() => {}),
       setModalInputValue: mock(() => {}),
       setModalState: mock(() => {}),
@@ -325,29 +559,77 @@ describe('app controls', () => {
       setSettingEditorValue: mock(() => {}),
     }
 
-    const firstControls = createAppControls({
-      ...baseOptions,
-      pendingKillSessionName: null,
-    })
-    firstControls.requestKillSession(item)
-    expect(baseOptions.setPendingKillSessionName).toHaveBeenCalledWith('tmux:alpha')
+    const controls = createAppControls(options)
+    controls.requestKillSession(item)
+    controls.requestKillSession(item)
 
-    const secondControls = createAppControls({
-      ...baseOptions,
-      pendingKillSessionName: 'tmux:alpha',
+    const armed = PendingClose.arm({
+      key: 'tmux:alpha',
+      ref: { backend: 'tmux', id: 'alpha', title: 'alpha' },
+      path: '/tmp/alpha',
+      units: undefined,
+      warnings: [],
+      revision: 7,
     })
-    secondControls.requestKillSession(item)
-    await Promise.resolve()
-    expect(baseOptions.handleKillSession).toHaveBeenCalledWith(item)
+
+    expect(options.setPendingClose).toHaveBeenCalledTimes(2)
+    expect(options.setPendingClose).toHaveBeenNthCalledWith(1, armed)
+    expect(options.setPendingClose).toHaveBeenNthCalledWith(2, armed)
+    expect(options.setModalState).not.toHaveBeenCalled()
   })
 
-  test('opening rename clears pending kill and seeds modal state', () => {
+  test('requesting a kill of an agent pane is refused instead of widening to its workspace', () => {
+    const pane: Item = {
+      title: 'opencode-api',
+      desc: '',
+      path: '/tmp/api',
+      isSession: true,
+      itemKind: 'herdr',
+      backend: 'herdr',
+      sessionId: 'w1',
+      target: { kind: 'agent', tabId: 'w1:t1', paneId: 'w1:p1' },
+    }
+
+    const setModalState = mock(() => {})
+    const setPendingClose = mock(() => {})
+
+    const controls = createAppControls({
+      config: getDefaultConfig('/home/tester'),
+      sessionItems: [pane],
+      inventoryRevision: () => 1,
+      backend: null,
+      markedItems: new Map(),
+      setMarkedItems: mock(() => {}),
+      setPendingClose,
+      setRenameTarget: mock(() => {}),
+      setModalInputValue: mock(() => {}),
+      setModalState,
+      setCommandsSearchQuery: mock(() => {}),
+      setCommandsCursor: mock(() => {}),
+      setSettingEditorError: mock(() => {}),
+      setSettingsSearchQuery: mock(() => {}),
+      setSettingsCursor: mock(() => {}),
+      setSettingOptionsSearchQuery: mock(() => {}),
+      setSettingOptionsCursor: mock(() => {}),
+      setSettingEditorValue: mock(() => {}),
+    })
+
+    expect(() => controls.requestKillSession(pane)).toThrow(ActionRefused)
+    expect(setModalState).not.toHaveBeenCalled()
+    expect(setPendingClose).not.toHaveBeenCalled()
+  })
+
+  test('opening rename seeds modal state', () => {
     const item: Item = { title: 'beta', desc: '', path: '/tmp/beta', isSession: true }
+
     const options = {
       config: getDefaultConfig('/home/tester'),
-      pendingKillSessionName: null,
-      handleKillSession: mock(async () => {}),
-      setPendingKillSessionName: mock(() => {}),
+      sessionItems: [],
+      inventoryRevision: () => 0,
+      backend: null,
+      markedItems: new Map(),
+      setMarkedItems: mock(() => {}),
+      setPendingClose: mock(() => {}),
       setRenameTarget: mock(() => {}),
       setModalInputValue: mock(() => {}),
       setModalState: mock(() => {}),
@@ -363,126 +645,67 @@ describe('app controls', () => {
 
     createAppControls(options).openRenameModal(item)
 
-    expect(options.setPendingKillSessionName).toHaveBeenCalledWith(null)
     expect(options.setRenameTarget).toHaveBeenCalledWith(item)
     expect(options.setModalInputValue).toHaveBeenCalledWith('beta')
     expect(options.setModalState).toHaveBeenCalledWith({ type: 'rename', target: 'beta' })
   })
 })
 
-describe('app opencode helpers', () => {
-  test('applies opencode state across all item collections', () => {
-    let sessionItems: Item[] = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
-    let allItems: Item[] = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
-    let items: Item[] = [{ title: 'alpha', desc: '', path: '/tmp/a', isSession: true }]
-
-    applyOpencodeState(
-      'alpha',
-      { status: 'missing', message: 'not found' },
-      update => {
-        sessionItems = typeof update === 'function' ? update(sessionItems) : update
-      },
-      update => {
-        allItems = typeof update === 'function' ? update(allItems) : update
-      },
-      update => {
-        items = typeof update === 'function' ? update(items) : update
-      }
-    )
-
-    expect(sessionItems[0]?.opencodeState).toEqual({ status: 'missing', message: 'not found' })
-    expect(allItems[0]?.opencodeState).toEqual({ status: 'missing', message: 'not found' })
-    expect(items[0]?.opencodeState).toEqual({ status: 'missing', message: 'not found' })
-  })
-
-  test('loads opencode stats and reports failures through shared callbacks', async () => {
-    const updateState = mock(() => {})
-    const showMessage = mock(() => {})
-
-    const stats = await loadOpencodeSessionStats(
-      'alpha',
-      async () => ({ sessionID: '1', title: 'alpha' }),
-      updateState,
-      showMessage
-    )
-
-    expect(stats).toEqual({ sessionID: '1', title: 'alpha' })
-    expect(updateState).toHaveBeenCalledWith('alpha', { status: 'loading' })
-    expect(updateState).toHaveBeenCalledWith('alpha', {
-      status: 'ready',
-      stats: { sessionID: '1', title: 'alpha' },
-    })
-
-    const failingUpdateState = mock(() => {})
-    const failingShowMessage = mock(() => {})
-    await loadOpencodeSessionStats(
-      'beta',
-      async () => {
-        throw new Error('boom')
-      },
-      failingUpdateState,
-      failingShowMessage
-    )
-
-    expect(failingUpdateState).toHaveBeenCalledWith('beta', { status: 'loading' })
-    expect(failingUpdateState).toHaveBeenCalledWith('beta', {
-      status: 'error',
-      message: 'boom',
-    })
-    expect(failingShowMessage).toHaveBeenCalledWith('boom', 4000)
-  })
-})
+const REFRESH_CASES: Array<{
+  outcome: 'published' | 'failed' | 'superseded'
+  toasts: ToastInput[]
+}> = [
+  { outcome: 'published', toasts: [{ kind: 'success', message: 'Refreshed' }] },
+  { outcome: 'failed', toasts: [] },
+  { outcome: 'superseded', toasts: [] },
+]
 
 describe('app runtime helpers', () => {
-  test('shows messages through shared setter timing helper', () => {
-    const setMessage = mock(() => {})
-    const runtime = createAppRuntime({
-      config: getDefaultConfig('/home/tester'),
-      viewMode: ViewMode.Sessions,
-      measure: async (_name, fn) => fn(),
-      lastSessionSelectionRef: { current: null },
-      lastProjectSelectionRef: { current: null },
-      setSessionItems: mock(() => {}),
-      setProjectSourceItems: mock(() => {}),
-      setAllItems: mock(() => {}),
-      setItems: mock(() => {}),
-      setCursor: mock(() => {}),
-      setMessage,
-      getOpencodeSessionStats: async () => null,
-    })
+  test.each(REFRESH_CASES)(
+    'a manual refresh that is $outcome confirms only a published list',
+    async ({ outcome, toasts }) => {
+      const showToast = mock((_toast: ToastInput) => {})
 
-    runtime.showMessage('hello')
+      const unusedRunner = mock(async () => {
+        throw new Error('The mocked inventory never runs a backend command')
+      })
 
-    expect(setMessage).toHaveBeenCalledWith('hello')
-  })
+      const results: Record<typeof outcome, InventoryOutcome> = {
+        published: {
+          kind: 'published',
+          generation: 1,
+          snapshot: { viewMode: ViewMode.Sessions, liveSessions: [], sessionItems: [] },
+        },
+        failed: { kind: 'failed', failure: new MultiplexerError('server-stopped', 'stopped') },
+        superseded: { kind: 'superseded' },
+      }
 
-  test('loads opencode stats through shared runtime callbacks', async () => {
-    const setSessionItems = mock(() => {})
-    const setAllItems = mock(() => {})
-    const setItems = mock(() => {})
+      const refresh = mock(async () => results[outcome])
 
-    const runtime = createAppRuntime({
-      config: getDefaultConfig('/home/tester'),
-      viewMode: ViewMode.Sessions,
-      measure: async (_name, fn) => fn(),
-      lastSessionSelectionRef: { current: null },
-      lastProjectSelectionRef: { current: null },
-      setSessionItems,
-      setProjectSourceItems: mock(() => {}),
-      setAllItems,
-      setItems,
-      setCursor: mock(() => {}),
-      setMessage: mock(() => {}),
-      getOpencodeSessionStats: async () => ({ sessionID: '1', title: 'alpha' }),
-    })
+      const inventory: SessionInventory = {
+        refresh,
+        observe: mock(() => {}),
+        status: () => ({ kind: 'fresh' }),
+        revision: () => 0,
+        subscribe: () => () => {},
+        loading: IDLE,
+        dispose: mock(() => {}),
+      }
 
-    const stats = await runtime.loadOpencodeStatsForSession('alpha')
+      const runtime = createAppRuntime({
+        config: getDefaultConfig('/home/tester'),
+        backend: createHerdrBackend({ runner: { run: unusedRunner }, insideHerdr: true }),
+        viewMode: ViewMode.Sessions,
+        inventory,
+        showToast,
+      })
 
-    expect(stats).toEqual({ sessionID: '1', title: 'alpha' })
-    expect(setSessionItems).toHaveBeenCalled()
-    expect(setAllItems).toHaveBeenCalled()
-    expect(setItems).toHaveBeenCalled()
-  })
+      await runtime.refreshList()
+
+      expect(refresh).toHaveBeenCalledTimes(1)
+      expect(showToast.mock.calls.map(([toast]) => toast)).toEqual(toasts)
+    }
+  )
 })
 
 describe('app handler factory', () => {
@@ -490,18 +713,22 @@ describe('app handler factory', () => {
     const config = getDefaultConfig('/home/tester')
     const closeModal = mock(() => {})
     const refreshItems = mock(async () => {})
-    const showMessage = mock(() => {})
+    const refreshList = mock(async () => {})
 
     const handlers = createAppHandlers({
-      appMode: AppMode.Normal,
+      clone: NO_GIT,
+      history: OPEN_HISTORY,
+      launchGuard: { active: false },
+      showOutcome: mock(() => {}),
       viewMode: ViewMode.Sessions,
       config,
+      backend: null,
       items: [],
       sessionItems: [],
       cursor: 0,
-      showMessage,
+      showToast: mock(() => {}),
       refreshItems,
-      agentCursor: 0,
+      refreshList,
       regularSessions: [],
       agentSessions: [],
       selectedPrimaryItem: undefined,
@@ -510,6 +737,8 @@ describe('app handler factory', () => {
       closeModal,
       openRenameModal: mock(() => {}),
       openSettingsModal: mock(() => {}),
+      openSettingOptions: mock(() => {}),
+      setModalState: mock(() => {}),
       requestKillSession: mock(() => {}),
       setAppMode: mock(() => {}),
       setViewMode: mock(() => {}),
@@ -518,38 +747,64 @@ describe('app handler factory', () => {
       setCursor: mock(() => {}),
       setSearchQuery: mock(() => {}),
       setAgentCursor: mock(() => {}),
-      setPendingKillSessionName: mock(() => {}),
+      requestMarkedClose: mock(async () => {}),
+      toggleMark: mock(() => {}),
+      clearMarks: mock(() => {}),
+      markedItems: new Map(),
+      reloadSessions: mock(async () => undefined),
       saveConfig: mock(async () => {}),
       setConfig: mock(() => {}),
       setSettingEditorError: mock(() => {}),
       settingEditorValue: '',
       settingEditorPlainText: undefined,
-      renameTarget: 'alpha',
+      renameTarget: null,
       renamedValue: 'alpha-2',
-      searchTerm: '',
-      loadOpencodeStatsForSession: mock(async () => null),
+      launchPreview: INACTIVE_LAUNCH,
+      rememberedSessions: mock(() => {}),
+      inventoryRevision: () => 0,
+      toggleDetails: mock(() => {}),
     })
 
     await handlers.executeCommand('refresh')
 
     expect(closeModal).toHaveBeenCalled()
-    expect(refreshItems).toHaveBeenCalled()
-    expect(showMessage).toHaveBeenCalledWith('Refreshed')
+    expect(refreshList).toHaveBeenCalled()
   })
 
   test('rename submit closes modal when name is unchanged', async () => {
     const closeModal = mock(() => {})
+    const refreshItems = mock(async () => {})
+    const showToast = mock(() => {})
+
+    const run = mock(async () => {
+      throw new Error('An unchanged name must not trigger a backend command')
+    })
+
+    const backend = createHerdrBackend({ runner: { run }, insideHerdr: true })
+
+    const renameTarget = workspaceToItem({
+      backend: 'herdr',
+      id: 'w1',
+      title: 'alpha',
+      path: '/tmp/alpha',
+      isActive: false,
+      unitCount: 1,
+    })
 
     const handlers = createAppHandlers({
-      appMode: AppMode.Normal,
+      clone: NO_GIT,
+      history: OPEN_HISTORY,
+      launchGuard: { active: false },
+      showOutcome: mock(() => {}),
       viewMode: ViewMode.Sessions,
       config: getDefaultConfig('/home/tester'),
+      backend,
       items: [],
       sessionItems: [],
       cursor: 0,
-      showMessage: mock(() => {}),
-      refreshItems: mock(async () => {}),
-      agentCursor: 0,
+      showToast,
+      refreshItems,
+      refreshList: mock(async () => {}),
       regularSessions: [],
       agentSessions: [],
       selectedPrimaryItem: undefined,
@@ -558,6 +813,8 @@ describe('app handler factory', () => {
       closeModal,
       openRenameModal: mock(() => {}),
       openSettingsModal: mock(() => {}),
+      openSettingOptions: mock(() => {}),
+      setModalState: mock(() => {}),
       requestKillSession: mock(() => {}),
       setAppMode: mock(() => {}),
       setViewMode: mock(() => {}),
@@ -566,20 +823,29 @@ describe('app handler factory', () => {
       setCursor: mock(() => {}),
       setSearchQuery: mock(() => {}),
       setAgentCursor: mock(() => {}),
-      setPendingKillSessionName: mock(() => {}),
+      requestMarkedClose: mock(async () => {}),
+      toggleMark: mock(() => {}),
+      clearMarks: mock(() => {}),
+      markedItems: new Map(),
+      reloadSessions: mock(async () => undefined),
       saveConfig: mock(async () => {}),
       setConfig: mock(() => {}),
       setSettingEditorError: mock(() => {}),
       settingEditorValue: '',
       settingEditorPlainText: undefined,
-      renameTarget: 'alpha',
+      renameTarget,
       renamedValue: 'alpha',
-      searchTerm: '',
-      loadOpencodeStatsForSession: mock(async () => null),
+      launchPreview: INACTIVE_LAUNCH,
+      rememberedSessions: mock(() => {}),
+      inventoryRevision: () => 0,
+      toggleDetails: mock(() => {}),
     })
 
     await handlers.handleRenameSubmit()
 
     expect(closeModal).toHaveBeenCalled()
+    expect(run).not.toHaveBeenCalled()
+    expect(refreshItems).not.toHaveBeenCalled()
+    expect(showToast).not.toHaveBeenCalled()
   })
 })

@@ -1,0 +1,16 @@
+{
+  "sessions": [
+    {
+      "session_id": "session:01a22053-383c-7e73-9628-4665f76bdacf",
+      "label": "alpha"
+    },
+    {
+      "session_id": "session:01a22053-3861-781e-a006-b5e42f37c576",
+      "label": "beta"
+    },
+    {
+      "session_id": "session:01a22053-3878-7479-9bb1-c0782c1f33c7",
+      "label": "humming-willow"
+    }
+  ]
+}

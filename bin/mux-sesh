@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+invocation_cwd="$(pwd -P)"
+
 # Get the real path of this script, resolving any symlinks
 script_path="$0"
 while [ -L "$script_path" ]; do
@@ -11,24 +13,50 @@ while [ -L "$script_path" ]; do
     esac
 done
 script_dir="$(dirname "$script_path")"
-script_dir="$(cd "$script_dir" && pwd)"
+script_dir="$(cd "$script_dir" && pwd -P)"
+package_root="${script_dir%/*}"
 
-# Find the package directory and run with bun
-resolved=""
-current_dir="$script_dir"
-while [ "$current_dir" != "/" ]; do
-    candidate="$current_dir/src/index.tsx"
-    if [ -f "$candidate" ]; then
-        resolved="$candidate"
-        break
+. "$script_dir/platform.sh"
+
+# A dev checkout runs from source; Bun needs the package directory to bootstrap its JSX settings.
+run_source() {
+    current_dir="$script_dir"
+    while [ "$current_dir" != "/" ]; do
+        if [ -f "$current_dir/src/index.tsx" ]; then
+            if ! command -v bun >/dev/null 2>&1; then
+                printf 'mux-sesh: running from source in %s needs Bun on PATH. Install Bun from https://bun.sh, then retry.\n' "$current_dir" >&2
+                exit 1
+            fi
+
+            cd "$current_dir"
+            MUX_SESH_INVOCATION_CWD="$invocation_cwd" exec bun "$current_dir/src/index.tsx" "$@"
+        fi
+        current_dir="$(dirname "$current_dir")"
+    done
+}
+
+# exec replaces this shell, so the binary owns the terminal, signals, and exit status directly.
+run_binary() {
+    binary=""
+
+    # bin/postinstall links the binary it resolved; without the link, search as postinstall would.
+    if [ -x "$script_dir/.platform-binary" ]; then
+        binary="$script_dir/.platform-binary"
+    else
+        binary="$(mux_sesh_find_binary "$package_root")" || binary=""
     fi
-    current_dir="$(dirname "$current_dir")"
-done
 
-if [ -z "$resolved" ]; then
-    printf "Could not find mux-sesh source files\n" >&2
-    exit 1
+    if [ -n "$binary" ]; then
+        MUX_SESH_INVOCATION_CWD="$invocation_cwd" exec "$binary" "$@"
+    fi
+}
+
+if [ "${MUX_SESH_DEV:-}" = 1 ]; then
+    run_source "$@"
 fi
 
-# Execute with bun
-cd "$(dirname "$resolved")/.." && exec bun "$resolved" "$@"
+run_binary "$@"
+run_source "$@"
+
+mux_sesh_missing_binary_message >&2
+exit 1

@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, jest, test } from 'bun:test'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { subscribeThemeFollow } from '../src/styles/theme-follow'
@@ -23,24 +23,33 @@ async function waitForExit(proc: Bun.Subprocess, timeoutMs: number): Promise<num
 }
 
 describe('subscribeThemeFollow', () => {
-  test('debounces watch and SIGUSR2 into one refresh', async () => {
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  test('debounces watch and SIGUSR2 into one refresh', () => {
+    jest.useFakeTimers()
     const watchers: Array<() => void> = []
     const signals: Array<() => void> = []
     let refreshCount = 0
 
     const subscription = subscribeThemeFollow(
       '/tmp/fake-home',
-      { onRefresh: () => {
-        refreshCount += 1
-      } },
+      {
+        onRefresh: () => {
+          refreshCount += 1
+        },
+      },
       {
         debounceMs: 15,
         watch: (_path, listener) => {
           watchers.push(listener)
+
           return { close: () => {} }
         },
         onSignal: (_signal, listener) => {
           signals.push(listener)
+
           return () => {}
         },
       }
@@ -52,14 +61,18 @@ describe('subscribeThemeFollow', () => {
     watchers[0]?.()
     signals[0]?.()
 
+    expect(jest.getTimerCount()).toBe(1)
+    jest.advanceTimersByTime(14)
     expect(refreshCount).toBe(0)
-    await Bun.sleep(30)
+    jest.advanceTimersByTime(1)
     expect(refreshCount).toBe(1)
+    expect(jest.getTimerCount()).toBe(0)
 
     subscription.stop()
   })
 
-  test('stop prevents further refreshes', async () => {
+  test('stop prevents further refreshes', () => {
+    jest.useFakeTimers()
     const watchers: Array<() => void> = []
     let refreshCount = 0
     let closed = false
@@ -67,13 +80,16 @@ describe('subscribeThemeFollow', () => {
 
     const subscription = subscribeThemeFollow(
       '/tmp/fake-home',
-      { onRefresh: () => {
-        refreshCount += 1
-      } },
+      {
+        onRefresh: () => {
+          refreshCount += 1
+        },
+      },
       {
         debounceMs: 10,
         watch: (_path, listener) => {
           watchers.push(listener)
+
           return {
             close: () => {
               closed = true
@@ -91,12 +107,14 @@ describe('subscribeThemeFollow', () => {
     expect(unsubscribed).toBe(true)
 
     watchers[0]?.()
-    await Bun.sleep(20)
+    expect(jest.getTimerCount()).toBe(0)
+    jest.advanceTimersByTime(10)
     expect(refreshCount).toBe(0)
   })
 
   test('SIGUSR2 does not shut the process down', async () => {
     const followModule = pathToFileURL(join(repoRoot, 'src/styles/theme-follow.ts')).href
+
     const script = `
       import { ignoreUnhandledThemeFollowSignal } from ${JSON.stringify(followModule)}
       ignoreUnhandledThemeFollowSignal()
@@ -104,6 +122,7 @@ describe('subscribeThemeFollow', () => {
       process.kill(process.pid, 'SIGUSR2')
       setTimeout(() => process.exit(0), 80)
     `
+
     const proc = Bun.spawn([process.execPath, '--eval', script], {
       cwd: repoRoot,
       stdout: 'ignore',
@@ -111,6 +130,7 @@ describe('subscribeThemeFollow', () => {
     })
 
     const exitCode = await waitForExit(proc, 500)
+
     if (exitCode === null) {
       proc.kill()
       await proc.exited

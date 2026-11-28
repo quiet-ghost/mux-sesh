@@ -1,0 +1,8 @@
+{
+  "rex_version": "0.1.0-snapshot.2702",
+  "platform": "linux_amd64",
+  "commit": "52814bde69318c5403c381d5406581cc6a9622c2",
+  "built_at": "2026-11-27T23:25:14Z",
+  "dirty": false,
+  "api_revision": 27
+}

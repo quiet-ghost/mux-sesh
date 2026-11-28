@@ -1,38 +1,41 @@
 import type { TextareaRenderable } from '@opentui/core'
-import { isHerdrAgentItem } from '../multiplexer/items'
+import type { CommandEntry } from '../app/action-catalog'
+import { getCommandLabelMatches, rankCommandEntries } from '../app/command-search'
 import { useTheme } from '../styles/theme'
 import { useTextareaFocus } from './use-textarea-focus'
-import { AppMode, type Item, type KeybindMode } from '../types'
+import {
+  DIALOG_FILTER_ROWS,
+  getDialogChromeRows,
+  getDialogContentWidth,
+  getDialogListRows,
+  getDialogRowWidth,
+  getDialogWidth,
+  getNoMatchMessage,
+  truncateDialogText,
+} from './dialog-layout'
+import { DialogFilter, DialogRow, DialogSectionHeader } from './DialogList'
+import type { KeyHint } from './key-hints'
+import { getVisibleWindow } from './list-window'
 import Modal from './Modal'
 
-export type CommandId =
-  | 'search'
-  | 'new-session'
-  | 'open-settings'
-  | 'open-themes'
-  | 'view-projects'
-  | 'view-sessions'
-  | 'rename-session'
-  | 'kill-session'
-  | 'toggle-pin-session'
-  | 'last-session'
-  | 'root-session'
-  | 'edit-target'
-  | 'open-agents'
-  | 'refresh'
-  | 'back'
+const COMMANDS_HINTS: readonly KeyHint[] = [
+  { label: 'navigate', key: '↑/↓' },
+  { label: 'run', key: 'enter' },
+  { label: 'close', key: 'esc' },
+]
 
-export interface CommandEntry {
-  id: CommandId
-  category: string
-  title: string
-  keybind: string
-  keywords?: string
-}
+const COMMANDS_PREFERRED_WIDTH = 68
+
+export type { CommandEntry, CommandId } from '../app/action-catalog'
+
+type CommandRow =
+  | { kind: 'gap'; key: string }
+  | { kind: 'heading'; key: string; category: string }
+  | { kind: 'entry'; key: string; entry: CommandEntry; index: number }
 
 interface Props {
   columns: number
-  themeId: string
+  rows: number
   entries: CommandEntry[]
   cursor: number
   searchQuery: string
@@ -40,137 +43,39 @@ interface Props {
   onContentChange: () => void
 }
 
-function prefixed(prefixKey: string | undefined, suffix: string): string {
-  return `${prefixKey ?? 'ctrl+x'} ${suffix}`
-}
-
-export function getCommandEntries(
-  appMode: AppMode,
-  keybindMode: KeybindMode = 'vim',
-  prefixKey: string | undefined,
-  selectedItem?: Item
-): CommandEntry[] {
-  const commandKey = (suffix: string, fallback: string) =>
-    prefixKey ? prefixed(prefixKey, suffix) : fallback
-  const prefixCategory = prefixKey ? `Prefix ${prefixKey}` : 'Prefix'
-
-  if (appMode === AppMode.AgentsManage) {
-    const canManageSession = !isHerdrAgentItem(selectedItem)
-    return [
-      { id: 'back', category: 'Direct', title: 'Back', keybind: 'esc' },
-      ...(canManageSession
-        ? [{ id: 'kill-session' as const, category: 'Direct', title: 'Kill session', keybind: 'd' }]
-        : []),
-      { id: 'open-settings', category: 'Direct', title: 'Settings', keybind: 'ctrl+p' },
-      {
-        id: 'open-themes',
-        category: 'Direct',
-        title: 'Themes',
-        keybind: 'ctrl+p',
-        keywords: 'theme color scheme appearance',
-      },
-      ...(canManageSession
-        ? [
-            {
-              id: 'rename-session' as const,
-              category: prefixCategory,
-              title: 'Rename session',
-              keybind: commandKey('r', 'r'),
-            },
-          ]
-        : []),
-    ]
-  }
-
-  return [
-    { id: 'search', category: 'Direct', title: 'Search', keybind: 'i' },
-    { id: 'new-session', category: 'Direct', title: 'New session', keybind: 'n' },
-    { id: 'open-agents', category: 'Direct', title: 'Open agent sessions', keybind: 'o' },
-    { id: 'kill-session', category: 'Direct', title: 'Kill session', keybind: 'd' },
-    ...(selectedItem && (selectedItem.isSession || selectedItem.itemKind === 'configured')
-      ? [
-          {
-            id: 'toggle-pin-session' as const,
-            category: 'Direct',
-            title: selectedItem.isPinned ? 'Unpin session' : 'Pin session',
-            keybind: 'ctrl+f',
-          },
-        ]
-      : []),
-    { id: 'open-settings', category: 'Direct', title: 'Open settings', keybind: 'ctrl+p' },
-    {
-      id: 'open-themes',
-      category: 'Direct',
-      title: 'Themes',
-      keybind: 'ctrl+p',
-      keywords: 'theme color scheme appearance',
-    },
-    {
-      id: 'view-projects',
-      category: prefixCategory,
-      title: 'Show projects',
-      keybind: commandKey('p', 'p'),
-    },
-    {
-      id: 'view-sessions',
-      category: prefixCategory,
-      title: 'Show sessions',
-      keybind: commandKey('s', 's'),
-    },
-    {
-      id: 'rename-session',
-      category: prefixCategory,
-      title: 'Rename session',
-      keybind: commandKey('r', 'r'),
-    },
-    {
-      id: 'last-session',
-      category: prefixCategory,
-      title: 'Last session',
-      keybind: commandKey('l', 'l'),
-    },
-    {
-      id: 'root-session',
-      category: prefixCategory,
-      title: 'Root session',
-      keybind: commandKey('g', 'g'),
-    },
-    ...(selectedItem?.itemKind === 'configured'
-      ? [
-          {
-            id: 'edit-target' as const,
-            category: prefixCategory,
-            title: 'Edit target',
-            keybind: commandKey('e', 'e'),
-          },
-        ]
-      : []),
-    {
-      id: 'refresh',
-      category: prefixCategory,
-      title: 'Refresh',
-      keybind: commandKey('shift+r', 'R'),
-    },
-  ]
-}
-
 export function filterCommandEntries(entries: CommandEntry[], query: string): CommandEntry[] {
-  const normalizedQuery = query.trim().toLowerCase()
+  return rankCommandEntries(entries, query)
+}
 
-  if (!normalizedQuery) {
-    return entries
-  }
+export function getCommandEntryKey(entry: CommandEntry): string {
+  return `${entry.category}:${entry.id}`
+}
 
-  return entries.filter(entry => {
-    const haystack =
-      `${entry.category} ${entry.title} ${entry.keybind} ${entry.keywords ?? ''}`.toLowerCase()
-    return haystack.includes(normalizedQuery)
+function getCommandRows(entries: CommandEntry[]): CommandRow[] {
+  return entries.flatMap((entry, index): CommandRow[] => {
+    const key = getCommandEntryKey(entry)
+    const row: CommandRow = { kind: 'entry', key, entry, index }
+
+    if (index > 0 && entries[index - 1]?.category === entry.category) {
+      return [row]
+    }
+
+    const heading: CommandRow = { kind: 'heading', key: `heading:${key}`, category: entry.category }
+
+    return index === 0 ? [heading, row] : [{ kind: 'gap', key: `gap:${key}` }, heading, row]
   })
+}
+
+// A window cut just after a section break would end on a header with none of its commands.
+function dropTrailingHeadings(rows: CommandRow[]): CommandRow[] {
+  const last = rows.findLastIndex(row => row.kind === 'entry')
+
+  return last === rows.length - 1 ? rows : rows.slice(0, last + 1)
 }
 
 export default function CommandsModal({
   columns,
-  themeId,
+  rows,
   entries,
   cursor,
   searchQuery,
@@ -180,63 +85,63 @@ export default function CommandsModal({
   const theme = useTheme()
   useTextareaFocus(textareaRef, [])
 
+  const width = getDialogWidth(columns, COMMANDS_PREFERRED_WIDTH)
+  const rowWidth = getDialogRowWidth(width)
+
+  const listRows = getDialogListRows(rows, getDialogChromeRows({}) + DIALOG_FILTER_ROWS)
+
+  const commandRows = getCommandRows(entries)
+  const cursorRow = commandRows.findIndex(row => row.kind === 'entry' && row.index === cursor)
+  const visibleRows = dropTrailingHeadings(getVisibleWindow(commandRows, cursorRow, listRows).items)
+
   return (
     <Modal
       title="Commands"
-      description={themeId}
-      footer="↑/↓ navigate  enter run  esc close"
+      hints={COMMANDS_HINTS}
       columns={columns}
-      preferredWidth={68}
+      preferredWidth={COMMANDS_PREFERRED_WIDTH}
     >
-      <box
-        style={{
-          backgroundColor: theme.surfaceAlt,
-          paddingLeft: 1,
-          paddingRight: 1,
-          marginBottom: 1,
-        }}
-      >
-        <textarea
-          ref={textareaRef}
-          initialValue={searchQuery}
-          onContentChange={onContentChange}
-          focused
-          placeholder="Search"
-        />
-      </box>
+      <DialogFilter
+        placeholder="Search"
+        searchQuery={searchQuery}
+        textareaRef={textareaRef}
+        onContentChange={onContentChange}
+      />
 
       <box style={{ flexDirection: 'column' }}>
         {entries.length === 0 ? (
-          <text style={{ fg: theme.textMuted }}>No commands found</text>
+          <text style={{ fg: theme.textMuted }}>
+            {getNoMatchMessage(searchQuery, 'No commands found')}
+          </text>
         ) : (
-          entries.map((row, index) => {
-            const showCategory = index === 0 || entries[index - 1]?.category !== row.category
-            const selected = index === cursor
+          visibleRows.map((row, index) => {
+            if (row.kind === 'gap') {
+              return index === 0 ? null : <box key={row.key} style={{ height: 1 }} />
+            }
+
+            if (row.kind === 'heading') {
+              return (
+                <DialogSectionHeader
+                  key={row.key}
+                  text={truncateDialogText(row.category, getDialogContentWidth(width))}
+                />
+              )
+            }
 
             return (
-              <box key={`${row.category}:${row.id}`} style={{ flexDirection: 'column' }}>
-                {showCategory && (
-                  <text style={{ fg: theme.accent, marginTop: index === 0 ? 0 : 1 }}>
-                    {row.category}
-                  </text>
-                )}
-                <box
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    backgroundColor: selected ? theme.selection : 'transparent',
-                    paddingLeft: 1,
-                    paddingRight: 1,
-                  }}
-                >
-                  <text style={{ fg: selected ? theme.selectionText : theme.text }}>
-                    {row.title}
-                  </text>
-                  <text style={{ fg: selected ? theme.selectionText : theme.textMuted }}>
-                    {row.keybind}
-                  </text>
-                </box>
-              </box>
+              <DialogRow
+                key={row.key}
+                label={row.entry.title}
+                value={
+                  row.entry.availability.kind === 'unavailable'
+                    ? row.entry.availability.reason
+                    : row.entry.keybind
+                }
+                selected={row.index === cursor}
+                disabled={row.entry.availability.kind === 'unavailable'}
+                width={rowWidth}
+                matches={getCommandLabelMatches(row.entry, searchQuery)}
+              />
             )
           })
         )}

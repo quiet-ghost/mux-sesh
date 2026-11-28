@@ -1,23 +1,30 @@
 import type { TextareaRenderable } from '@opentui/core'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
-import type { SettingsEntry, SettingsOption, SettingsFieldId } from '../settings'
+import type { SettingsEntry, SettingsOption, SettingsFieldId } from '../settings/settings-catalog'
+import { getSettingEditorDescription } from '../settings/settings-view'
 import type { CommandEntry } from '../ui/CommandsModal'
 import type { ModalState } from './modals'
+import type { SettingPaneState } from './setting-panes'
 import { syncTextareaValue } from './textarea'
-import CommandsModal from '../ui/CommandsModal'
+import CloseReviewBatch from '../ui/CloseReviewBatch'
+import CloseReviewResults from '../ui/CloseReviewResults'
+import CommandsModal, { getCommandEntryKey } from '../ui/CommandsModal'
+import OperationOutcomeModal from '../ui/OperationOutcomeModal'
 import RenameModal from '../ui/RenameModal'
 import SettingEditorModal from '../ui/SettingEditorModal'
+import SettingPaneModal from '../ui/SettingPaneModal'
+import SettingJsonModal from '../ui/SettingJsonModal'
+import IconsFormModal from '../ui/IconsFormModal'
+import type { IconsFormEntry } from '../settings/settings-icons'
 import SettingOptionsModal from '../ui/SettingOptionsModal'
 import SettingsModal from '../ui/SettingsModal'
+import { useItemSelection } from '../ui/use-item-selection'
 
 interface Props {
   modalState: ModalState
   columns: number
   rows: number
   configPath: string
-  themeId: string
-  themeName: string
-  colorMode: string
   filteredCommandEntries: CommandEntry[]
   commandsCursor: number
   commandsSearchQuery: string
@@ -29,6 +36,8 @@ interface Props {
   setSettingsCursor: Dispatch<SetStateAction<number>>
   setSettingsSearchQuery: Dispatch<SetStateAction<string>>
   filteredSettingOptions: SettingsOption[]
+  savedSettingOption: string | undefined
+  iconsFormEntries: IconsFormEntry[]
   settingOptionsCursor: number
   settingOptionsSearchQuery: string
   setSettingOptionsCursor: Dispatch<SetStateAction<number>>
@@ -36,6 +45,10 @@ interface Props {
   settingEditorValue: string
   settingEditorError: string
   setSettingEditorValue: Dispatch<SetStateAction<string>>
+  settingPane: SettingPaneState
+  settingFieldDraft: string
+  setSettingFieldDraft: Dispatch<SetStateAction<string>>
+  settingFieldTextareaRef: MutableRefObject<TextareaRenderable | null>
   modalInputValue: string
   setModalInputValue: Dispatch<SetStateAction<string>>
   commandsSearchTextareaRef: MutableRefObject<TextareaRenderable | null>
@@ -46,14 +59,19 @@ interface Props {
   getSettingEditorTitle: (field: SettingsFieldId) => string
 }
 
+function getSettingsEntryKey(entry: SettingsEntry): string {
+  return entry.id
+}
+
+function getSettingOptionKey(option: SettingsOption): string {
+  return option.value
+}
+
 export function AppModalsLayer({
   modalState,
   columns,
   rows,
   configPath,
-  themeId,
-  themeName,
-  colorMode,
   filteredCommandEntries,
   commandsCursor,
   commandsSearchQuery,
@@ -65,6 +83,8 @@ export function AppModalsLayer({
   setSettingsCursor,
   setSettingsSearchQuery,
   filteredSettingOptions,
+  savedSettingOption,
+  iconsFormEntries,
   settingOptionsCursor,
   settingOptionsSearchQuery,
   setSettingOptionsCursor,
@@ -72,6 +92,10 @@ export function AppModalsLayer({
   settingEditorValue,
   settingEditorError,
   setSettingEditorValue,
+  settingPane,
+  settingFieldDraft,
+  setSettingFieldDraft,
+  settingFieldTextareaRef,
   modalInputValue,
   setModalInputValue,
   commandsSearchTextareaRef,
@@ -81,8 +105,29 @@ export function AppModalsLayer({
   modalTextareaRef,
   getSettingEditorTitle,
 }: Props) {
+  useItemSelection(filteredCommandEntries, commandsCursor, setCommandsCursor, getCommandEntryKey)
+  useItemSelection(filteredSettingsEntries, settingsCursor, setSettingsCursor, getSettingsEntryKey)
+  useItemSelection(
+    filteredSettingOptions,
+    settingOptionsCursor,
+    setSettingOptionsCursor,
+    getSettingOptionKey
+  )
+
   return (
     <>
+      {modalState?.type === 'outcome' && (
+        <OperationOutcomeModal report={modalState.report} columns={columns} />
+      )}
+
+      {modalState?.type === 'close-batch-review' && (
+        <CloseReviewBatch batch={modalState.batch} columns={columns} />
+      )}
+
+      {modalState?.type === 'close-batch-results' && (
+        <CloseReviewResults receipt={modalState.receipt} columns={columns} />
+      )}
+
       {modalState?.type === 'rename' && (
         <RenameModal
           target={modalState.target}
@@ -96,13 +141,13 @@ export function AppModalsLayer({
       {modalState?.type === 'commands' && (
         <CommandsModal
           columns={columns}
-          themeId={themeId}
+          rows={rows}
           entries={filteredCommandEntries}
           cursor={commandsCursor}
           searchQuery={commandsSearchQuery}
           textareaRef={commandsSearchTextareaRef}
           onContentChange={() =>
-            syncTextareaValue(commandsSearchTextareaRef, setCommandsSearchQuery, setCommandsCursor)
+            syncTextareaValue(commandsSearchTextareaRef, setCommandsSearchQuery)
           }
         />
       )}
@@ -110,15 +155,15 @@ export function AppModalsLayer({
       {modalState?.type === 'settings' && (
         <SettingsModal
           configPath={configPath}
-          themeName={themeName}
-          colorMode={colorMode}
           columns={columns}
+          rows={rows}
           entries={filteredSettingsEntries}
           cursor={settingsCursor}
           searchQuery={settingsSearchQuery}
+          picker={modalState.picker}
           textareaRef={settingsSearchTextareaRef}
           onContentChange={() =>
-            syncTextareaValue(settingsSearchTextareaRef, setSettingsSearchQuery, setSettingsCursor)
+            syncTextareaValue(settingsSearchTextareaRef, setSettingsSearchQuery)
           }
         />
       )}
@@ -128,16 +173,15 @@ export function AppModalsLayer({
           title={getSettingEditorTitle(modalState.field)}
           description="Select an option to apply it immediately"
           columns={columns}
+          rows={rows}
           options={filteredSettingOptions}
+          savedValue={savedSettingOption}
           cursor={settingOptionsCursor}
           searchQuery={settingOptionsSearchQuery}
+          picker={modalState.picker}
           textareaRef={settingOptionsSearchTextareaRef}
           onContentChange={() =>
-            syncTextareaValue(
-              settingOptionsSearchTextareaRef,
-              setSettingOptionsSearchQuery,
-              setSettingOptionsCursor
-            )
+            syncTextareaValue(settingOptionsSearchTextareaRef, setSettingOptionsSearchQuery)
           }
         />
       )}
@@ -145,7 +189,43 @@ export function AppModalsLayer({
       {modalState?.type === 'setting-editor' && (
         <SettingEditorModal
           title={getSettingEditorTitle(modalState.field)}
-          description="Edit value and press Enter to apply immediately"
+          description={getSettingEditorDescription(modalState.field)}
+          value={settingEditorValue}
+          error={settingEditorError}
+          columns={columns}
+          rows={rows}
+          textareaRef={settingEditorTextareaRef}
+          onContentChange={() => syncTextareaValue(settingEditorTextareaRef, setSettingEditorValue)}
+        />
+      )}
+
+      {settingPane.model && (
+        <SettingPaneModal
+          model={settingPane.model}
+          columns={columns}
+          rows={rows}
+          draft={settingFieldDraft}
+          textareaRef={settingFieldTextareaRef}
+          onContentChange={() => syncTextareaValue(settingFieldTextareaRef, setSettingFieldDraft)}
+        />
+      )}
+
+      {modalState?.type === 'icons-form' && (
+        <IconsFormModal
+          entries={iconsFormEntries}
+          row={modalState.row}
+          mode={modalState.mode}
+          draft={settingEditorValue}
+          error={settingEditorError}
+          columns={columns}
+          textareaRef={settingEditorTextareaRef}
+          onContentChange={() => syncTextareaValue(settingEditorTextareaRef, setSettingEditorValue)}
+        />
+      )}
+
+      {modalState?.type === 'setting-json' && (
+        <SettingJsonModal
+          title={getSettingEditorTitle(modalState.field)}
           value={settingEditorValue}
           error={settingEditorError}
           columns={columns}

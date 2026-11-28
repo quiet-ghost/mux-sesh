@@ -3,7 +3,7 @@ import {
   formatPanePreview,
   formatWindowCommand,
   sanitizeTmuxSessionName,
-} from '../src/tmux/helpers'
+} from '../src/multiplexer/tmux-text'
 
 describe('tmux helpers', () => {
   test('formats pane previews by stripping ansi and trimming empty lines', () => {

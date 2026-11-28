@@ -1,0 +1,152 @@
+import { getListedSessionItems, mergeSessionItems } from '../config/listed-sessions'
+import { orderProjectItems, orderSessionItems } from '../items/order'
+import { annotateProjectItemsWithSessionLinks } from '../projects/session-links'
+import { clearMatchIndices } from '../search'
+import { workspaceToItem } from '../multiplexer/items'
+import type { MultiplexerBackend } from '../multiplexer'
+import { getItemKey } from '../multiplexer/items'
+import type { ProjectDiscovery } from '../projects/discovery-service'
+import { PROJECT_DISCOVERY } from '../projects/project-items'
+import { filterHiddenSessions } from '../sessions/session-filters'
+import { isAgentSessionItem } from '../agents/session-name'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
+import { clampCursorIndex } from '../ui/list-window'
+
+export type Measure = <T>(name: string, fn: () => Promise<T>) => Promise<T>
+
+export function getSessionSelectionIndex(
+  nextItems: Item[],
+  selection?: string | null,
+  fallbackIndex = 0
+): number {
+  const regularItems = nextItems.filter(item => !isAgentSessionItem(item))
+
+  const index = selection
+    ? regularItems.findIndex(item => getItemKey(item) === selection || item.title === selection)
+    : -1
+
+  return index >= 0 ? index : clampCursorIndex(regularItems.length, fallbackIndex)
+}
+
+export function getProjectSelectionIndex(nextItems: Item[], selection?: string | null): number {
+  if (nextItems.length === 0 || !selection) {
+    return 0
+  }
+
+  const index = nextItems.findIndex(item => item.path === selection)
+
+  return index >= 0 ? index : 0
+}
+
+export function getAgentSelectionIndex(
+  nextItems: Item[],
+  selection: string | undefined,
+  currentCursor: number
+): number {
+  const agentSessions = nextItems.filter(isAgentSessionItem)
+
+  const selectedIndex = selection
+    ? agentSessions.findIndex(item => getItemKey(item) === selection)
+    : -1
+
+  return selectedIndex >= 0 ? selectedIndex : clampCursorIndex(agentSessions.length, currentCursor)
+}
+
+export function reuseSessionItemIdentities(previous: Item[], next: Item[]): Item[] {
+  const previousByKey = new Map(previous.map(item => [getItemKey(item), item]))
+
+  return next.map(item => {
+    const existing = previousByKey.get(getItemKey(item))
+
+    return existing && JSON.stringify(existing) === JSON.stringify(item) ? existing : item
+  })
+}
+
+export async function loadSessionItems(
+  config: Config,
+  measure: Measure,
+  backend: MultiplexerBackend,
+  labelPrefix = 'sessions'
+): Promise<{ liveSessions: Item[]; visibleSessions: Item[]; sessionItems: Item[] }> {
+  const sessions = await measure(`${labelPrefix}:listWorkspaces`, async () =>
+    (await backend.list()).map(workspaceToItem)
+  )
+
+  const visibleSessions = filterHiddenSessions(sessions, config.hiddenSessions)
+
+  const listedSessions = await measure(`${labelPrefix}:getListedSessionItems`, () =>
+    getListedSessionItems(config)
+  )
+
+  const sessionItems = clearMatchIndices(
+    orderSessionItems(
+      mergeSessionItems(visibleSessions, listedSessions),
+      config.sortOrder,
+      config.pinnedSessions
+    )
+  )
+
+  return {
+    liveSessions: sessions,
+    visibleSessions,
+    sessionItems,
+  }
+}
+
+export async function loadProjectItemsWithLinks(
+  config: Config,
+  liveSessions: Item[],
+  measure: Measure,
+  projects: ProjectDiscovery = PROJECT_DISCOVERY
+): Promise<{ projectSourceItems: Item[]; projectItems: Item[] }> {
+  const projectSourceItems = await loadProjectSourceItems(config, measure, projects)
+
+  const projectItems = clearMatchIndices(
+    orderProjectItems(
+      await measure('projects:linkProjectItems', () =>
+        annotateProjectItemsWithSessionLinks(projectSourceItems, liveSessions, config)
+      ),
+      config.sortOrder
+    )
+  )
+
+  return {
+    projectSourceItems,
+    projectItems,
+  }
+}
+
+export async function loadProjectSourceItems(
+  config: Config,
+  measure: Measure,
+  projects: ProjectDiscovery = PROJECT_DISCOVERY
+): Promise<Item[]> {
+  return orderProjectItems(
+    await measure(
+      'projects:getProjectItems',
+      async () => (await projects.load(config, 'projects')).items
+    ),
+    config.sortOrder
+  )
+}
+
+export async function loadSessionCandidateItems(
+  config: Config,
+  measure: Measure,
+  backend: MultiplexerBackend,
+  projects: ProjectDiscovery = PROJECT_DISCOVERY
+): Promise<Item[]> {
+  const [candidates, sessions] = await measure('loadSessionCandidateItems', () =>
+    Promise.all([
+      projects.load(config, 'session-candidates').then(result => result.items),
+      backend.list().then(items => items.map(workspaceToItem)),
+    ])
+  )
+
+  const visibleSessions = filterHiddenSessions(sessions, config.hiddenSessions)
+
+  return measure('linkSessionCandidateItems', () =>
+    annotateProjectItemsWithSessionLinks(candidates, visibleSessions, config)
+  )
+}

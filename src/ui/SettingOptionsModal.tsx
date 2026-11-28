@@ -1,16 +1,62 @@
 import type { TextareaRenderable } from '@opentui/core'
+import { getDialogHints } from '../app/dialog-actions'
+import { OptionPicker } from '../app/option-picker'
 import { useTheme } from '../styles/theme'
-import type { SettingsOption } from '../settings'
+import { getOptionLabelMatches } from '../settings/settings-search'
+import type { SettingsOption } from '../settings/settings-catalog'
+import {
+  DIALOG_FILTER_ROWS,
+  fitsOptionalDialogRows,
+  getDialogChromeRows,
+  getDialogContentWidth,
+  getDialogListRows,
+  getDialogRowWidth,
+  getDialogWidth,
+  getNoMatchMessage,
+  truncateDialogText,
+} from './dialog-layout'
+import { DialogFilter, DialogRow } from './DialogList'
+import { getVisibleWindow } from './list-window'
 import Modal from './Modal'
 import { useTextareaFocus } from './use-textarea-focus'
+
+const OPTIONS_HINTS = getDialogHints({ kind: 'setting-options' })
+
+const OPTIONS_PREFERRED_WIDTH = 68
+const OPTIONS_DETAIL_ROWS = 3
+const NOTICE_MARGIN_ROWS = 1
+
+function wrapNotice(text: string, width: number): string[] {
+  const lines: string[] = []
+  let line = ''
+
+  for (const word of text.split(' ')) {
+    const next = line ? `${line} ${word}` : word
+
+    if (next.length <= width || !line) {
+      line = next
+    } else {
+      lines.push(line)
+      line = word
+    }
+  }
+
+  if (line) lines.push(line)
+
+  return lines.map(wrapped => truncateDialogText(wrapped, width))
+}
 
 interface Props {
   title: string
   description: string
   columns: number
+  rows: number
   options: SettingsOption[]
+  // The value in the config, which changes only after a save succeeds; the highlight is a preview.
+  savedValue: string | undefined
   cursor: number
   searchQuery: string
+  picker: OptionPicker
   textareaRef: { current: TextareaRenderable | null }
   onContentChange: () => void
 }
@@ -19,9 +65,12 @@ export default function SettingOptionsModal({
   title,
   description,
   columns,
+  rows,
   options,
+  savedValue,
   cursor,
   searchQuery,
+  picker,
   textareaRef,
   onContentChange,
 }: Props) {
@@ -29,65 +78,77 @@ export default function SettingOptionsModal({
   const selected = options[cursor]
   useTextareaFocus(textareaRef, [])
 
+  const width = getDialogWidth(columns, OPTIONS_PREFERRED_WIDTH)
+  const contentWidth = getDialogContentWidth(width)
+  const rowWidth = getDialogRowWidth(width)
+
+  const noticeLines = OptionPicker.notice(picker).flatMap(text => wrapNotice(text, contentWidth))
+  const noticeRows = noticeLines.length > 0 ? NOTICE_MARGIN_ROWS + noticeLines.length : 0
+
+  const reservedRows = getDialogChromeRows({ description }) + DIALOG_FILTER_ROWS + noticeRows
+
+  const hasDetails = options.some(option => option.description)
+  const showDetail = hasDetails && fitsOptionalDialogRows(rows, reservedRows, OPTIONS_DETAIL_ROWS)
+  const listRows = getDialogListRows(rows, reservedRows + (showDetail ? OPTIONS_DETAIL_ROWS : 0))
+  const visibleWindow = getVisibleWindow(options, cursor, listRows)
+
   return (
     <Modal
       title={title}
       description={description}
-      footer="↑/↓ navigate  enter apply  esc back"
+      hints={OPTIONS_HINTS}
       columns={columns}
-      preferredWidth={68}
+      preferredWidth={OPTIONS_PREFERRED_WIDTH}
     >
-      <box
-        style={{
-          backgroundColor: theme.surfaceAlt,
-          paddingLeft: 1,
-          paddingRight: 1,
-          marginBottom: 1,
-        }}
-      >
-        <textarea
-          ref={textareaRef}
-          initialValue={searchQuery}
-          onContentChange={onContentChange}
-          focused
-          placeholder="Filter options"
-        />
-      </box>
+      <DialogFilter
+        placeholder="Filter options"
+        searchQuery={searchQuery}
+        textareaRef={textareaRef}
+        onContentChange={onContentChange}
+      />
 
       <box style={{ flexDirection: 'column' }}>
         {options.length === 0 ? (
-          <text style={{ fg: theme.textMuted }}>No options found</text>
+          <text style={{ fg: theme.textMuted }}>
+            {getNoMatchMessage(searchQuery, 'No options found')}
+          </text>
         ) : (
-          options.map((option, index) => {
-            const active = index === cursor
-
-            return (
-              <box
-                key={option.value}
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  backgroundColor: active ? theme.selection : 'transparent',
-                  paddingLeft: 1,
-                  paddingRight: 1,
-                }}
-              >
-                <text style={{ fg: active ? theme.selectionText : theme.text }}>
-                  {option.label}
-                </text>
-                <text style={{ fg: active ? theme.selectionText : theme.textMuted }}>
-                  {option.value}
-                </text>
-              </box>
-            )
-          })
+          visibleWindow.items.map((option, index) => (
+            <DialogRow
+              key={option.value}
+              label={option.label}
+              value={option.value}
+              selected={visibleWindow.startIndex + index === cursor}
+              current={option.value === savedValue}
+              width={rowWidth}
+              matches={getOptionLabelMatches(option, searchQuery)}
+            />
+          ))
         )}
       </box>
 
-      {selected && selected.description && (
+      {noticeLines.length > 0 && (
+        <box style={{ flexDirection: 'column', marginTop: NOTICE_MARGIN_ROWS }}>
+          {noticeLines.map((line, index) => (
+            <text
+              key={index}
+              wrapMode="none"
+              style={{ fg: picker.kind === 'save-failed' ? theme.danger : theme.textMuted }}
+            >
+              {line}
+            </text>
+          ))}
+        </box>
+      )}
+
+      {showDetail && selected?.description && (
         <box style={{ flexDirection: 'column', marginTop: 1 }}>
-          <text style={{ fg: theme.accent }}>{selected.label}</text>
-          <text style={{ fg: theme.textMuted }}>{selected.description}</text>
+          <text style={{ fg: theme.accent }}>
+            {truncateDialogText(selected.label, contentWidth)}
+          </text>
+          <text style={{ fg: theme.textMuted }}>
+            {truncateDialogText(selected.description, contentWidth)}
+          </text>
         </box>
       )}
     </Modal>

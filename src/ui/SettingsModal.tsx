@@ -1,100 +1,169 @@
 import type { TextareaRenderable } from '@opentui/core'
+import { useLayoutEffect } from 'react'
+import { getDialogHints } from '../app/dialog-actions'
+import type { OptionPicker } from '../app/option-picker'
+import { reconcileTextareaValue } from '../app/textarea'
 import { useTheme } from '../styles/theme'
-import type { SettingsEntry } from '../settings'
+import { getSettingsLabelMatches } from '../settings/settings-search'
+import type { SettingsEntry } from '../settings/settings-catalog'
+import { toHomeRelativePath } from '../util/path-display'
+import {
+  DIALOG_FILTER_ROWS,
+  fitsOptionalDialogRows,
+  getDialogChromeRows,
+  getDialogContentWidth,
+  getDialogListRows,
+  getDialogRowWidth,
+  getDialogWidth,
+  getNoMatchMessage,
+  truncateDialogText,
+} from './dialog-layout'
+import { DialogFilter, DialogSectionHeader } from './DialogList'
+import { getVisibleWindow } from './list-window'
 import Modal from './Modal'
+import SettingRow from './SettingRow'
 import { useTextareaFocus } from './use-textarea-focus'
+
+const SETTINGS_PREFERRED_WIDTH = 74
+
+// A blank row, then the selected setting's description.
+const SETTINGS_DETAIL_ROWS = 2
+
+type SettingsRow =
+  | { kind: 'heading'; key: string; category: string }
+  | { kind: 'entry'; key: string; entry: SettingsEntry; index: number }
 
 interface Props {
   configPath: string
-  themeName: string
-  colorMode: string
   columns: number
+  rows: number
   entries: SettingsEntry[]
   cursor: number
   searchQuery: string
+  // A row change in flight or failed; its message replaces the selected row's description.
+  picker: OptionPicker
   textareaRef: { current: TextareaRenderable | null }
   onContentChange: () => void
 }
 
+function settingsNotice(picker: OptionPicker): string | undefined {
+  switch (picker.kind) {
+    case 'browsing':
+      return undefined
+    case 'saving':
+      return `Saving ${picker.draft.label}…`
+    case 'save-failed':
+      return picker.reason
+  }
+}
+
+// Headers group the list by category; while searching it is one ranked list.
+function settingsRows(entries: readonly SettingsEntry[], searching: boolean): SettingsRow[] {
+  return entries.flatMap((entry, index): SettingsRow[] => {
+    const row: SettingsRow = { kind: 'entry', key: entry.id, entry, index }
+
+    if (searching || entries[index - 1]?.category === entry.category) return [row]
+
+    return [{ kind: 'heading', key: `heading:${entry.category}`, category: entry.category }, row]
+  })
+}
+
+// A window cut just after a header would end on a header with none of its settings.
+function dropTrailingHeadings(rows: SettingsRow[]): SettingsRow[] {
+  const last = rows.findLastIndex(row => row.kind === 'entry')
+
+  return last === rows.length - 1 ? rows : rows.slice(0, last + 1)
+}
+
 export default function SettingsModal({
   configPath,
-  themeName,
-  colorMode,
   columns,
+  rows,
   entries,
   cursor,
   searchQuery,
+  picker,
   textareaRef,
   onContentChange,
 }: Props) {
   const theme = useTheme()
   const selected = entries[cursor]
+  const searching = searchQuery.trim().length > 0
+  const description = toHomeRelativePath(configPath)
   useTextareaFocus(textareaRef, [])
+
+  // Esc clears the query in state; the field follows.
+  useLayoutEffect(() => {
+    reconcileTextareaValue(textareaRef.current, searchQuery)
+  }, [textareaRef, searchQuery])
+
+  const width = getDialogWidth(columns, SETTINGS_PREFERRED_WIDTH)
+  const contentWidth = getDialogContentWidth(width)
+  const rowWidth = getDialogRowWidth(width)
+
+  const reservedRows = getDialogChromeRows({ description }) + DIALOG_FILTER_ROWS
+  const showDetail = fitsOptionalDialogRows(rows, reservedRows, SETTINGS_DETAIL_ROWS)
+  const listRows = getDialogListRows(rows, reservedRows + (showDetail ? SETTINGS_DETAIL_ROWS : 0))
+
+  const allRows = settingsRows(entries, searching)
+  const cursorRow = allRows.findIndex(row => row.kind === 'entry' && row.index === cursor)
+  const visibleRows = dropTrailingHeadings(getVisibleWindow(allRows, cursorRow, listRows).items)
+
+  const notice = settingsNotice(picker)
+
+  const detail =
+    notice ??
+    (selected &&
+      (searching ? `${selected.category} · ${selected.description}` : selected.description))
 
   return (
     <Modal
       title="Settings"
-      description="Search for a setting, then open its option or editor screen"
-      footer="↑/↓ navigate  enter open  esc close"
+      description={description}
+      hints={getDialogHints({ kind: 'settings', entry: selected, query: searchQuery })}
       columns={columns}
-      preferredWidth={74}
+      preferredWidth={SETTINGS_PREFERRED_WIDTH}
     >
-      <box style={{ flexDirection: 'column', marginBottom: 1 }}>
-        <text style={{ fg: theme.textMuted }}>Path: {configPath}</text>
-        <text style={{ fg: theme.textMuted }}>
-          {themeName} ({colorMode})
-        </text>
-      </box>
-
-      <box
-        style={{
-          backgroundColor: theme.surfaceAlt,
-          paddingLeft: 1,
-          paddingRight: 1,
-          marginBottom: 1,
-        }}
-      >
-        <textarea
-          ref={textareaRef}
-          initialValue={searchQuery}
-          onContentChange={onContentChange}
-          focused
-          placeholder="Search settings"
-        />
-      </box>
+      <DialogFilter
+        placeholder="Search settings"
+        searchQuery={searchQuery}
+        textareaRef={textareaRef}
+        onContentChange={onContentChange}
+      />
 
       <box style={{ flexDirection: 'column' }}>
         {entries.length === 0 ? (
-          <text style={{ fg: theme.textMuted }}>No settings found</text>
+          <text style={{ fg: theme.textMuted }}>
+            {getNoMatchMessage(searchQuery, 'No settings found')}
+          </text>
         ) : (
-          entries.map((entry, index) => {
-            const active = index === cursor
-
-            return (
-              <box
-                key={entry.id}
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  backgroundColor: active ? theme.selection : 'transparent',
-                  paddingLeft: 1,
-                  paddingRight: 1,
-                }}
-              >
-                <text style={{ fg: active ? theme.selectionText : theme.text }}>{entry.label}</text>
-                <text style={{ fg: active ? theme.selectionText : theme.textMuted }}>
-                  {entry.value}
-                </text>
-              </box>
+          visibleRows.map(row =>
+            row.kind === 'heading' ? (
+              <DialogSectionHeader
+                key={row.key}
+                text={truncateDialogText(row.category, contentWidth)}
+              />
+            ) : (
+              <SettingRow
+                key={row.key}
+                entry={row.entry}
+                selected={row.index === cursor}
+                width={rowWidth}
+                matches={getSettingsLabelMatches(row.entry, searchQuery)}
+              />
             )
-          })
+          )
         )}
       </box>
 
-      {selected && (
+      {showDetail && detail && (
         <box style={{ flexDirection: 'column', marginTop: 1 }}>
-          <text style={{ fg: theme.accent }}>{selected.label}</text>
-          <text style={{ fg: theme.textMuted }}>{selected.hint}</text>
+          <text
+            wrapMode="none"
+            style={{ fg: picker.kind === 'save-failed' ? theme.danger : theme.textMuted }}
+          >
+            {truncateDialogText(detail, contentWidth)}
+          </text>
         </box>
       )}
     </Modal>

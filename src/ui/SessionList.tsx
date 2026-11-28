@@ -1,116 +1,87 @@
 import { useTheme } from '../styles/theme'
-import type { IconConfig, Item } from '../types'
+import type { IconConfig } from '../config/config-model'
+import type { Item } from '../items/item'
 import { getSessionSection } from '../items/order'
 import { getItemKey } from '../multiplexer/items'
-import HighlightedText from './HighlightedText'
-import { formatSectionHeader, getItemIconPresentation } from './item-icon'
-import { getVisibleWindow } from './list-window'
-import { getMutedLabelColumnWidth, getMutedLabelSpacer } from './text-columns'
+import { formatSectionHeader } from './item-icon'
+import ItemRow from './ItemRow'
+import type { VisibleWindow } from './list-window'
+import { getTitleColumnWidth } from './session-viewport'
 import { getSessionMeta } from './session-meta'
 
 interface Props {
   items: Item[]
+  window: VisibleWindow<Item>
   cursor: number
-  maxItems?: number
+  active: boolean
+  width: number
+  emptyLabel: string
   searchQuery?: string
   icons?: IconConfig
-  pendingKillSessionName?: string | null
+  marked?: ReadonlyMap<string, Item>
+  // The item key whose close waits for a second key, if any.
+  closingKey: string | undefined
+}
+
+function getSessionContext(item: Item): string {
+  return item.isSession && item.desc ? item.desc : ''
 }
 
 export default function SessionList({
   items,
+  window,
   cursor,
-  maxItems = 20,
+  active,
+  width,
+  emptyLabel,
   searchQuery = '',
   icons,
-  pendingKillSessionName,
+  marked,
+  closingKey,
 }: Props) {
   const theme = useTheme()
   const isSearching = searchQuery.trim().length > 0
-  const visibleWindow = getVisibleWindow(items, cursor, maxItems)
-  const mutedLabelColumnWidth = getMutedLabelColumnWidth(items)
+  const titleColumn = getTitleColumnWidth(items, getSessionContext)
+
+  if (items.length === 0) {
+    return <text style={{ fg: theme.textMuted, wrapMode: 'none' }}>{emptyLabel}</text>
+  }
 
   return (
     <>
-      {visibleWindow.items.map((item, i) => {
-        const absoluteIndex = visibleWindow.startIndex + i
-        const matchIndices = item.searchMatch?.titleIndices
-        const itemMeta = getSessionMeta(item)
-        const icon = getItemIconPresentation(theme, item, icons)
+      {window.items.map((item, i) => {
+        const absoluteIndex = window.startIndex + i
         const currentSection = getSessionSection(item)
-        const previousItem = absoluteIndex > 0 ? items[absoluteIndex - 1] : undefined
-        const previousSection = previousItem ? getSessionSection(previousItem) : undefined
-        const showSectionHeader = i === 0 || currentSection !== previousSection
+        const previousItem = window.items[i - 1]
+
+        const showSectionHeader =
+          !previousItem || currentSection !== getSessionSection(previousItem)
+
         const sectionHeader = formatSectionHeader(theme, currentSection, icons, item.backend)
-        const pendingKill = getItemKey(item) === pendingKillSessionName
-        const selected = absoluteIndex === cursor
-        const mutedLabelSpacer =
-          item.isSession && item.desc ? getMutedLabelSpacer(item.title, mutedLabelColumnWidth) : ''
 
         return (
           <box
             key={item.isSession ? getItemKey(item) : `${getItemKey(item)}:${item.path}`}
-            style={{ flexDirection: 'column' }}
+            style={{ flexDirection: 'column', flexShrink: 0 }}
           >
             {showSectionHeader && (
-              <text
-                style={{
-                  fg: theme.textSubtle,
-                  marginTop: absoluteIndex === 0 ? 0 : 1,
-                  marginBottom: 1,
-                }}
-              >
+              <text style={{ fg: theme.textSubtle, marginTop: i === 0 ? 0 : 1, wrapMode: 'none' }}>
                 <span style={{ fg: sectionHeader.color }}>{sectionHeader.text}</span>
               </text>
             )}
 
-            <box
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                backgroundColor: pendingKill
-                  ? theme.dangerSurface
-                  : selected
-                    ? theme.surfaceAlt
-                    : 'transparent',
-                paddingLeft: 1,
-                paddingRight: 1,
-              }}
-            >
-              <text>
-                <span style={{ fg: selected ? theme.primary : theme.textSubtle }}>
-                  {selected ? '› ' : '  '}
-                </span>
-                <span style={{ fg: item.isAttached ? theme.active : theme.inactive }}>
-                  {item.isAttached ? '●' : '○'}
-                </span>
-                <span style={{ fg: icon.color }}>{icon.glyph ? ` ${icon.glyph}` : ''}</span>{' '}
-                {isSearching && matchIndices && matchIndices.length > 0 ? (
-                  <HighlightedText text={item.title} matchIndices={matchIndices} />
-                ) : (
-                  <span style={{ fg: theme.text }}>{item.title}</span>
-                )}
-                {item.isSession && item.desc ? (
-                  <span style={{ fg: theme.textSubtle }}>{`${mutedLabelSpacer}${item.desc}`}</span>
-                ) : null}
-              </text>
-
-              <text
-                style={{
-                  fg: pendingKill
-                    ? theme.danger
-                    : item.agentStatus === 'blocked'
-                      ? theme.danger
-                      : item.agentStatus === 'working'
-                        ? theme.active
-                        : theme.textSubtle,
-                }}
-              >
-                {pendingKill
-                  ? `press d again to ${item.itemKind === 'herdr' ? 'close' : 'kill'}`
-                  : itemMeta}
-              </text>
-            </box>
+            <ItemRow
+              item={item}
+              selected={active && absoluteIndex === cursor}
+              marked={marked?.has(getItemKey(item)) ?? false}
+              closing={getItemKey(item) === closingKey}
+              width={width}
+              titleColumn={titleColumn}
+              context={getSessionContext(item)}
+              meta={getSessionMeta(item)}
+              searching={isSearching}
+              icons={icons}
+            />
           </box>
         )
       })}

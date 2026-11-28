@@ -1,5 +1,6 @@
 import { resolve } from 'path'
-import type { Config, Item } from '../types'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import { isLiveSessionItem } from '../multiplexer/items'
 import { resolveProjectSession } from '../config/session-rules'
 import { buildFileSessionName, isFileItem, resolveFileSession } from '../files/target'
@@ -14,17 +15,22 @@ export async function annotateProjectItemsWithSessionLinks(
       const sessionName = isFileItem(projectItem)
         ? buildFileSessionName(projectItem.path)
         : (await resolveProjectSession(projectItem.path, config)).sessionName
+
       const sessionPath = isFileItem(projectItem)
         ? resolveFileSession(projectItem.path, config).cwd
         : projectItem.path
+
       const liveItems = liveSessions.filter(session => session.isSession)
+
       const pathMatches = liveItems.filter(
         session =>
           session.title === sessionName &&
           session.path &&
           resolve(session.path) === resolve(sessionPath)
       )
+
       const titleMatches = liveItems.filter(session => session.title === sessionName)
+
       const linkedSession =
         pathMatches[0] ?? (titleMatches.length === 1 ? titleMatches[0] : undefined)
 

@@ -4,12 +4,18 @@ Change the mux-sesh theme from the TUI. You do not need to edit `config.json` fo
 
 ## Switch Theme
 
-1. Press `Ctrl+P`
+1. Press `ctrl+p`
 2. Type `theme`
-3. Enter on **Themes**
-4. Move to preview. Enter saves. Esc restores the previous theme.
+3. Press `enter` on **Themes**
+4. Move with `↑` / `↓` to preview; type to filter. `enter` saves the highlighted theme.
+   `esc` restores the saved theme.
 
-Settings → Theme opens the same list.
+Settings → Theme opens the same list. The picker opens on the saved theme, so nothing changes
+until you move. Previewing never writes `config.json`; only `enter` does. `esc` from the palette
+returns to the main screen, and from Settings returns to Settings.
+
+If a save fails, the picker stays open on the unsaved preview and says why; `enter` tries again,
+and `esc` restores the saved theme.
 
 The picker includes built-in catalog ids, custom `themes` ids, and **System**. There is no `omarchy` option. Omarchy is how System resolves on Omarchy machines.
 
@@ -29,11 +35,11 @@ Named catalog ids stay pinned. They do not follow desktop or terminal changes.
 
 `color_scheme` is separate from `theme`:
 
-| Value    | Effect                                      |
-| -------- | ------------------------------------------- |
-| `system` | Follow Omarchy `mode` or the terminal mode  |
-| `dark`   | Lock reported mode to dark                  |
-| `light`  | Lock reported mode to light                 |
+| Value    | Effect                                     |
+| -------- | ------------------------------------------ |
+| `system` | Follow Omarchy `mode` or the terminal mode |
+| `dark`   | Lock reported mode to dark                 |
+| `light`  | Lock reported mode to light                |
 
 A locked scheme does not invent the opposite Omarchy palette. System still uses the current desktop or terminal colors.
 

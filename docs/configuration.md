@@ -2,17 +2,33 @@
 
 `mux-sesh` reads configuration from `~/.config/mux-sesh/config.json`.
 
-You only need to set the values you want to change. Everything else falls back to sane defaults.
+You only need to set the values you want to change. Everything else falls back to defaults.
+
+A value you do set must be valid. If any are not, mux-sesh opens its startup screen listing each
+invalid field by path (for example `projects[0].path (required)`), without showing the values, and
+leaves the file unchanged; fix them and press `r` to retry. Empty strings and an empty
+`project_paths` list still mean "use the default". Keys mux-sesh does not know are ignored, and
+saving from the settings screen keeps them. A save refuses to overwrite a file that is no longer
+valid JSON.
+
+Every option accepts a snake_case or a camelCase spelling (`project_paths` or `projectPaths`);
+the snake_case spelling wins when both are set. Settings saves write snake_case.
+
+## Schema
+
+[`mux-sesh.schema.json`](../mux-sesh.schema.json) is a JSON Schema (draft-07) for editor
+completion and checks. It is generated from the same contract that validates `config.json` at
+startup (`bun run schema`), so it accepts exactly the fields and values mux-sesh accepts. The
+startup check remains the final authority. A complete example is in
+[`config.example.json`](../config.example.json).
 
 ## Starter Config
 
 ```json
 {
-  "backend": "tmux",
   "project_paths": ["~/dev", "~/personal"],
   "repos_path": "~/dev/repos",
   "editor": "nvim",
-  "editor_cmd": "nvim -c \"lua vim.defer_fn(function() if pcall(require, 'telescope') then vim.cmd('Telescope find_files') end end, 100)\"",
   "keybind_mode": "vim",
   "prefix_key": "ctrl+x",
   "theme": "rosepine",
@@ -24,60 +40,121 @@ You only need to set the values you want to change. Everything else falls back t
 }
 ```
 
-## Defaults
+## Options
 
-| Setting         | Default               |
-| --------------- | --------------------- |
-| `backend`       | auto detected         |
-| `project_paths` | `~/dev`, `~/personal` |
-| `repos_path`    | `~/dev/repos`         |
-| `editor`        | `nvim`                |
-| `keybind_mode`  | `vim`                 |
-| `prefix_key`    | `ctrl+x`              |
-| `theme`         | `rosepine`            |
-| `color_scheme`  | `system`              |
-| `sort_order`    | `live-first`          |
-| `zoxide_mode`   | `off`                 |
-| `auto_update`   | `true`                |
-| `dir_length`    | `1`                   |
+<!-- config-options -->
 
-## Core Options
+| Option            | Default               | Purpose                                                                      |
+| ----------------- | --------------------- | ---------------------------------------------------------------------------- |
+| `backend`         | auto detected         | `tmux` or `herdr`; omit for auto detection (see below)                       |
+| `project_paths`   | `~/dev`, `~/personal` | Directories scanned for projects and searched by the New file step           |
+| `repos_path`      | `~/dev/repos`         | Destination for repositories cloned from New                                 |
+| `editor`          | `nvim`                | Editor used to open files picked in New                                      |
+| `editor_cmd`      | `nvim` with Telescope | Legacy; used when `default_session.startup_command` is unset                 |
+| `keybind_mode`    | `vim`                 | `vim` or `standard`; see [keybindings.md](keybindings.md)                    |
+| `prefix_key`      | `ctrl+x`              | Prefix for secondary actions; an empty value means the default               |
+| `theme`           | `rosepine`            | Built-in theme id, custom `themes` id, or `system`                           |
+| `color_scheme`    | `system`              | `system`, `dark`, or `light`                                                 |
+| `themes`          | none                  | Custom theme definitions; see [themes.md](themes.md)                         |
+| `sort_order`      | `live-first`          | `live-first`, `configured-first`, `zoxide-first`, or `alphabetical`          |
+| `zoxide_mode`     | `off`                 | `off`, `rank`, or `merge`                                                    |
+| `auto_update`     | `true`                | Background updates for npm and Bun installs; mise and Homebrew get a command |
+| `search_history`  | `true`                | Rank search matches by what you open; see [Search History](#search-history)  |
+| `dir_length`      | `1`                   | Path depth used when generating session names (a whole number, ≥ 1)          |
+| `hidden_sessions` | none                  | Glob patterns for live sessions to hide                                      |
+| `pinned_sessions` | none                  | Session names kept at the top; `ctrl+f` and the palette edit the list        |
+| `icons`           | none                  | Row icons: `tmux`, `herdr`, `configured`, `config`, `project`, `opencode`    |
+| `default_session` | none                  | Fallback `startup_command` and `preview_command`                             |
+| `projects`        | none                  | Exact-path project rules                                                     |
+| `wildcards`       | none                  | Pattern-based project rules                                                  |
 
-| Option            | Purpose                                                              |
-| ----------------- | -------------------------------------------------------------------- |
-| `backend`         | Strict backend selection: `tmux` or `herdr`; omit for auto detection |
-| `project_paths`   | Directories scanned for candidate projects                           |
-| `repos_path`      | Destination for cloned GitHub repositories                           |
-| `editor`          | Short editor label used in settings                                  |
-| `editor_cmd`      | Command used to open or start workspaces                             |
-| `keybind_mode`    | `vim` or `standard`                                                  |
-| `prefix_key`      | Prefix for secondary actions                                         |
-| `theme`           | Built-in, custom, or `system`                                        |
-| `color_scheme`    | `system`, `dark`, or `light`                                         |
-| `sort_order`      | `live-first`, `configured-first`, `zoxide-first`, or `alphabetical`  |
-| `zoxide_mode`     | `off`, `rank`, or `merge`                                            |
-| `auto_update`     | Enables background update checks for supported installs              |
-| `dir_length`      | Path depth used when generating session names                        |
-| `hidden_sessions` | Glob patterns for sessions to hide                                   |
-| `icons`           | Icons for tmux, Herdr, configured, project, and agent rows           |
-| `themes`          | Custom theme definitions                                             |
-| `default_session` | Fallback startup and preview commands                                |
-| `projects`        | Exact path rules                                                     |
-| `wildcards`       | Pattern-based project rules                                          |
+Environment overrides: `MUX_SESH_COLOR_SCHEME=light|dark` overrides the reported color scheme,
+`MUX_SESH_DISABLE_FFF=1` turns off native file search, and `MUX_SESH_DISABLE_AUTOUPDATE=1` turns
+off update checks. `MUX_SESH_NO_ANIMATION=1` replaces the busy spinner with a still `…`; output
+that is not a terminal never animates. The spinner runs only while work is pending: a refresh, a
+clone or launch, New planning what Enter will open, or the details inspector reading.
+
+## Settings Screen
+
+Open settings from the command palette (`ctrl+p`). Settings are grouped by category and save as
+soon as they change; the value is muted while it is the default. `←` / `→` change a choice or
+number in place, `enter` opens a picker or editor, and `ctrl+r` puts back the default (lists and
+rules are not reset this way). See [keybindings.md](keybindings.md#dialogs).
+
+Project folders, Hidden sessions and Pinned sessions open as a list with one row per entry. Each
+row shows what the entry does now: a folder's project count (or `missing`), how many live sessions
+a pattern hides (`hides 2`), or `not running` for a pin with no session. Add, edit, remove and
+reorder entries in place; each change saves at once, `~` is expanded, and an empty or duplicate
+entry is refused inline. `Edit as JSON…` opens the whole list as JSON.
+
+Project rules and Wildcard rules open as a rule list, each row summing up the rule's overrides
+(session name · startup command · listed). `Add rule…` asks for the path or pattern first and
+refuses an empty or duplicate one; a folder that does not exist yet is only a warning. The new rule
+then opens in its form, where every field saves as soon as it is applied. An unset field shows the
+value it inherits, muted, as `default · …`, and `ctrl+r` clears an override back to it. Rules are
+removed with `d` (after an inline confirmation) and reordered with `shift+↑` / `shift+↓`; for
+wildcards the first match wins.
+
+`Edit as JSON…` opens a list or rules as raw JSON, the value as the config file holds it, with
+line numbers. `enter`
+adds a line and nothing is saved until `ctrl+s`, which checks the text the way the file is checked
+on load: a JSON mistake names its line, and a value the config rejects names its path, such as
+`[0].listed must be true or false`. The config stays unchanged until the text is valid; `esc`
+discards the draft and goes back to the list.
+
+Prefix key offers the presets and `Custom…`, which takes any key the prefix can use: `ctrl` or
+`shift` with a key (such as `ctrl+a`), or one symbol, `space`, `tab` or `f1`–`f12` alone. A
+letter or digit needs `ctrl`, since alone it would type into search. A configured key that is not
+a preset is listed as the current one.
+
+Icons opens a form that saves each change as it is made. Its Icons row turns icons on, filling
+`tmux`, `configured` and `project` with the Nerd Font glyphs shown below, or off, clearing every
+glyph. Each icon kind has its own row: `enter` edits the glyph in place and `ctrl+r` clears it.
+
+| Category   | Setting         | Option                                            |
+| ---------- | --------------- | ------------------------------------------------- |
+| Appearance | Theme           | `theme`                                           |
+|            | Color scheme    | `color_scheme`                                    |
+|            | Icons           | `icons`                                           |
+| Keys       | Keybind mode    | `keybind_mode`                                    |
+|            | Prefix key      | `prefix_key`                                      |
+| Sessions   | Sort order      | `sort_order`                                      |
+|            | Pinned sessions | `pinned_sessions`                                 |
+|            | Hidden sessions | `hidden_sessions`                                 |
+|            | Name depth      | `dir_length` (1–6 here; larger values still load) |
+| Launch     | Startup command | `default_session.startup_command`                 |
+|            | Preview command | `default_session.preview_command`                 |
+|            | File editor     | `editor`                                          |
+| Projects   | Project folders | `project_paths`                                   |
+|            | Project rules   | `projects`                                        |
+|            | Wildcard rules  | `wildcards`                                       |
+|            | Zoxide          | `zoxide_mode`                                     |
+|            | Clone folder    | `repos_path`                                      |
+| General    | Backend         | `backend`                                         |
+|            | Auto update     | `auto_update`                                     |
+|            | Search history  | `search_history`                                  |
+
+`editor_cmd` and custom `themes` are edited in the file only.
 
 ## Backend Selection
 
-mux-sesh supports tmux sessions and Herdr 0.7.5 or newer workspaces without a Herdr plugin. It maps Herdr workspaces, tabs, and panes to session, window, and pane concepts.
+mux-sesh supports tmux sessions and Herdr 0.7.5 or newer (protocol 17 or newer) workspaces,
+without a Herdr plugin. It maps Herdr workspaces, tabs, and panes to session, window, and pane.
 
-| Priority | Selection rule                                         |
-| -------- | ------------------------------------------------------ |
-| 1        | `HERDR_ENV=1` selects Herdr                            |
-| 2        | `TMUX` selects tmux                                    |
-| 3        | `backend` selects the configured backend strictly      |
-| 4        | A sole running server is selected; tmux wins a tie     |
-| 5        | Installed tmux is the default when neither server runs |
+The first matching rule decides:
 
-Explicit `backend: "herdr"` requires a compatible Herdr server already running. mux-sesh does not start Herdr or fall back to tmux, and setting changes take effect on the next launch.
+| Priority | Selection rule                                                |
+| -------- | ------------------------------------------------------------- |
+| 1        | `HERDR_ENV=1` (running inside Herdr) selects Herdr            |
+| 2        | `TMUX` (running inside tmux) selects tmux                     |
+| 3        | `backend` selects that backend strictly                       |
+| 4        | Auto: a running, protocol-compatible Herdr server             |
+| 5        | Auto: an installed tmux, whether or not its server is running |
+
+An explicit `backend` never falls back. `"herdr"` requires a compatible Herdr server that is
+already running; `"tmux"` requires the `tmux` executable. mux-sesh never starts Herdr. If the
+configured backend is not usable, the startup screen says why and `r` retries. Backend changes
+take effect on the next launch.
 
 ```json
 {
@@ -85,13 +162,16 @@ Explicit `backend: "herdr"` requires a compatible Herdr server already running. 
 }
 ```
 
-Icons can distinguish backend rows. `icons.herdr` is empty by default and can be customized.
+Rows and section headers show no icons by default. Set an icon to show it before matching row
+titles and their section header; `config` is an alias for `configured`, and a project's own
+`icon` overrides `project`. This example restores the earlier Nerd Font icons.
 
 ```json
 {
   "icons": {
     "tmux": "",
-    "herdr": ""
+    "configured": "",
+    "project": ""
   }
 }
 ```
@@ -109,15 +189,21 @@ Icons can distinguish backend rows. `icons.herdr` is empty by default and can be
 }
 ```
 
-- `startup_command` is used when creating a session for a project.
-- `preview_command` renders in the details panel when it succeeds.
-- If you do not set `startup_command`, it falls back to `editor_cmd`.
+- `startup_command` runs when a session is created for a project. Settings → Startup command edits
+  it. Without it, the legacy `editor_cmd` is used; new configs need only `startup_command`.
+- `preview_command` runs in the details panel only while you inspect details (`v`); see
+  [Preview Behavior](#preview-behavior).
+- New's startup step (`ctrl+t`) can replace the startup command for one launch, or clear it so
+  nothing runs.
 
-For file targets picked in the new-session flow:
+For files opened from New (the file step or a typed file path):
 
-- If `startup_command` contains `{file}`, `{dir}`, or `{}`, the placeholders are interpolated with shell-quoted paths.
-- Otherwise the file opens with `editor` plus the quoted file path (for example `nvim '/path/to/file'`).
-- File search roots come from `project_paths`. Set `MUX_SESH_DISABLE_FFF=1` to disable fff-backed file search.
+- If `default_session.startup_command` contains `{file}`, `{dir}`, or `{}`, the placeholders are
+  replaced with shell-quoted paths (`{}` is the file).
+- Otherwise the file opens with `editor` plus the quoted file path (for example
+  `nvim '/path/to/file'`).
+- File search roots come from `project_paths`. Set `MUX_SESH_DISABLE_FFF=1` to turn off native
+  file search; typed file paths still work.
 
 ## Project Rules
 
@@ -130,7 +216,7 @@ Use `projects` for exact path matches and `wildcards` for broader defaults.
       "path": "~/.dotfiles/hypr/.config/hypr",
       "session_name": "hyprland",
       "listed": true,
-      "icon": "",
+      "icon": "",
       "startup_command": "nvim"
     }
   ],
@@ -143,15 +229,15 @@ Use `projects` for exact path matches and `wildcards` for broader defaults.
 }
 ```
 
-Supported project rule fields:
+Rule fields:
 
-- `path` for exact path matching
-- `pattern` for wildcard matching
-- `session_name` to override the generated tmux session name
+- `path` (required in `projects`) for exact path matching
+- `pattern` (required in `wildcards`) for wildcard matching
+- `session_name` to override the generated session name
 - `startup_command` to override the default startup command
 - `preview_command` to override the default preview command
-- `listed` to keep an exact-path target visible in the sessions view
-- `icon` to customize the row icon for exact-path entries
+- `listed` (`projects` only) to keep the target visible in the sessions view
+- `icon` (`projects` only) to customize the row icon
 
 Rule resolution order:
 
@@ -159,15 +245,14 @@ Rule resolution order:
 2. First matching `wildcards[]` rule
 3. `default_session`
 
-If no explicit `session_name` is set, mux-sesh prefers the git root name and then applies `dir_length`.
+Without `session_name`, mux-sesh prefers the git root name and then applies `dir_length`. tmux
+replaces `.` and spaces in names; New shows the final name before anything is created.
 
 ## Listed Sessions
 
-Set `listed: true` on a project rule to keep it visible in the sessions view even before tmux has started it.
-
-This works well for dotfiles, dashboards, and long-lived targets you want one keypress away.
-
-If a live tmux session already exists with the same title, the live session takes precedence.
+Set `listed: true` on a project rule to keep it visible in the sessions view before a session
+exists for it. Opening it creates the session from its rule. A live session with the same name
+takes the row's place.
 
 ## Sorting And Zoxide
 
@@ -178,13 +263,48 @@ If a live tmux session already exists with the same title, the live session take
 - `zoxide-first` preserves discovery and zoxide ordering
 - `alphabetical` sorts projects and sessions alphabetically
 
+Pinned sessions stay at the top in every order.
+
 `zoxide_mode` controls how zoxide influences project discovery:
 
 - `off` scans configured roots only
 - `rank` reorders discovered projects by zoxide score
 - `merge` adds extra zoxide-ranked projects that fall inside configured roots
 
+## Search History
+
+While you type a query, matches you open often and recently rank a little higher. The empty list
+is never reordered, and a clearly better match still wins: history only reorders matches of
+similar quality (the lift is capped at ×1.4, below the gap between an exact name, a prefix, and
+an inner match).
+
+Each confirmed open (a session or workspace focused or attached, or a session created or focused
+from a project) is appended to `$XDG_STATE_HOME/mux-sesh/frecency.jsonl`
+(`~/.local/state/mux-sesh/frecency.jsonl` by default). The file is created with `0600`
+permissions. Each line holds one key, an open count and the time of the last open:
+
+- `session:<backend>:<name>`: a tmux session or Herdr workspace by name (a Herdr agent pane counts
+  as its workspace)
+- `path:<directory>`: the directory a project or file launch opened in
+
+Nothing else is stored, and the file never leaves your machine. It keeps the newest 1000 entries.
+A failed or refused open records nothing. If the file cannot be written, the open still goes
+ahead unrecorded; run with `MUX_SESH_DEBUG_PERF=1` to log why. To clear the history, delete the
+file; to stop recording and ranking, set `search_history` to `false` (or switch it off in
+settings). Turning it off keeps the file; delete it as well to forget what was recorded.
+
+```json
+{
+  "search_history": false
+}
+```
+
 ## Preview Behavior
+
+The details panel needs a terminal at least 120 columns wide and is not shown on the New
+screen. It starts compact: moving through the list shows only what the list already knows.
+Toggle details (`v`, or `ctrl+x v` in standard mode) to inspect the selected row; only then
+does mux-sesh read session details or run `preview_command`. Toggle again to go back to compact.
 
 `preview_command` supports `{}` interpolation for the shell-quoted selected path.
 
@@ -202,17 +322,19 @@ If a live tmux session already exists with the same title, the live session take
 }
 ```
 
-When a preview is requested:
+While inspecting:
 
-- mux-sesh runs the configured preview command
+- mux-sesh runs the configured preview command with a short time limit
 - if it fails or times out, mux-sesh falls back to a directory listing
-- if the project already has a linked tmux session, the preview also includes tmux context
+- if the project already has a linked session, the preview also includes its windows or tabs
+- a failed refresh keeps the earlier details and marks them stale
 
 ## Themes
 
-Change themes from the TUI: `Ctrl+P`, type `theme`, Enter. Full guide: [themes.md](themes.md).
+Change themes from the TUI: `ctrl+p`, type `theme`, `enter`. Full guide: [themes.md](themes.md).
 
-The default theme is `rosepine`. The picker also lists custom `themes` ids and **System**. `system` follows Omarchy when present, otherwise the terminal palette.
+The default theme is `rosepine`. The picker also lists custom `themes` ids and **System**.
+`system` follows Omarchy when present, otherwise the terminal palette.
 
 Custom themes follow the shape below:
 

@@ -2,57 +2,75 @@ import { useTheme } from '../styles/theme'
 
 interface Props {
   text: string
-  matchIndices?: number[]
+  // Ascending positions into `text`, as the matcher returns them.
+  matchIndices?: readonly number[]
+  color?: string
   highlightColor?: string
+  highlightAttributes?: number
 }
 
-/**
- * Renders text with highlighted characters at specified indices
- * Used for fuzzy search match visualization (like fzf/telescope)
- */
-export default function HighlightedText({ text, matchIndices = [], highlightColor }: Props) {
-  const theme = useTheme()
-  const resolvedHighlightColor = highlightColor ?? theme.action
+interface Segment {
+  readonly text: string
+  readonly highlighted: boolean
+}
 
-  // If no matches, return plain text
-  if (matchIndices.length === 0) {
-    return <>{text}</>
-  }
+const NO_MATCHES: readonly number[] = []
 
-  // Build array of text segments with their highlight status
-  const segments: Array<{ text: string; highlighted: boolean }> = []
-  let currentSegment = ''
-  let isHighlighted = false
+// One pass over the positions: each run of consecutive positions is one highlighted slice.
+function getSegments(text: string, matchIndices: readonly number[]): Segment[] {
+  const segments: Segment[] = []
+  let plainStart = 0
+  let index = 0
 
-  for (let i = 0; i < text.length; i++) {
-    const shouldHighlight = matchIndices.includes(i)
+  while (index < matchIndices.length) {
+    const start = matchIndices[index] ?? 0
+    let end = start + 1
+    index++
 
-    // If highlight status changes, start a new segment
-    if (shouldHighlight !== isHighlighted) {
-      if (currentSegment) {
-        segments.push({ text: currentSegment, highlighted: isHighlighted })
-        currentSegment = ''
-      }
-      isHighlighted = shouldHighlight
+    while (index < matchIndices.length && matchIndices[index] === end) {
+      end++
+      index++
     }
 
-    currentSegment += text[i]
+    if (start < plainStart || start >= text.length) continue
+
+    const stop = Math.min(end, text.length)
+
+    if (start > plainStart)
+      segments.push({ text: text.slice(plainStart, start), highlighted: false })
+    segments.push({ text: text.slice(start, stop), highlighted: true })
+    plainStart = stop
   }
 
-  // Add the final segment
-  if (currentSegment) {
-    segments.push({ text: currentSegment, highlighted: isHighlighted })
-  }
+  if (plainStart < text.length) segments.push({ text: text.slice(plainStart), highlighted: false })
+
+  return segments
+}
+
+export default function HighlightedText({
+  text,
+  matchIndices = NO_MATCHES,
+  color,
+  highlightColor,
+  highlightAttributes,
+}: Props) {
+  const theme = useTheme()
+
+  if (matchIndices.length === 0) return <span style={{ fg: color }}>{text}</span>
+
+  const resolvedHighlightColor = highlightColor ?? theme.action
 
   return (
     <>
-      {segments.map((segment, i) =>
+      {getSegments(text, matchIndices).map((segment, i) =>
         segment.highlighted ? (
-          <span key={i} style={{ fg: resolvedHighlightColor }}>
+          <span key={i} style={{ fg: resolvedHighlightColor, attributes: highlightAttributes }}>
             {segment.text}
           </span>
         ) : (
-          <span key={i}>{segment.text}</span>
+          <span key={i} style={{ fg: color }}>
+            {segment.text}
+          </span>
         )
       )}
     </>

@@ -1,4 +1,4 @@
-import type { Item } from '../types'
+import type { Item } from '../items/item'
 
 const AGENT_SESSION_PREFIXES = ['opencode-', 'pi-', 'codex-', 'claude-'] as const
 const SIDE_SESSION_NAMES = new Set(['tui_chat'])
@@ -17,8 +17,6 @@ export function isAgentSessionItem(
     return false
   }
 
-  return item.itemKind === 'herdr'
-    ? item.target?.kind === 'agent' ||
-        (item.agentStatus !== undefined && item.agentStatus !== 'unknown')
-    : isAgentSessionName(item.title)
+  // Herdr lists each agent pane as its own target; a workspace stays a session whatever its status.
+  return item.itemKind === 'herdr' ? item.target?.kind === 'agent' : isAgentSessionName(item.title)
 }

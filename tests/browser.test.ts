@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { getBrowserCommand, openBrowser } from '../src/util/browser'
+import { getBrowserCommand, openBrowser } from '../src/diagnostics/browser'
 
 describe('browser opener', () => {
   test('passes the full URL as one argument without shell interpolation', () => {

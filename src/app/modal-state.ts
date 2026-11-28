@@ -13,13 +13,15 @@ export function useAppModalState() {
   const [settingOptionsSearchQuery, setSettingOptionsSearchQuery] = useState('')
   const [settingEditorValue, setSettingEditorValue] = useState('')
   const [settingEditorError, setSettingEditorError] = useState('')
-  const [themePreviewId, setThemePreviewId] = useState<string | null>(null)
+  // The text of a list or rule pane's open field.
+  const [settingFieldDraft, setSettingFieldDraft] = useState('')
 
   const modalTextareaRef = useRef<TextareaRenderable | null>(null)
   const commandsSearchTextareaRef = useRef<TextareaRenderable | null>(null)
   const settingsSearchTextareaRef = useRef<TextareaRenderable | null>(null)
   const settingOptionsSearchTextareaRef = useRef<TextareaRenderable | null>(null)
   const settingEditorTextareaRef = useRef<TextareaRenderable | null>(null)
+  const settingFieldTextareaRef = useRef<TextareaRenderable | null>(null)
 
   return {
     modalState,
@@ -42,12 +44,13 @@ export function useAppModalState() {
     setSettingEditorValue,
     settingEditorError,
     setSettingEditorError,
-    themePreviewId,
-    setThemePreviewId,
+    settingFieldDraft,
+    setSettingFieldDraft,
     modalTextareaRef,
     commandsSearchTextareaRef,
     settingsSearchTextareaRef,
     settingOptionsSearchTextareaRef,
     settingEditorTextareaRef,
+    settingFieldTextareaRef,
   }
 }

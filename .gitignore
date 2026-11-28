@@ -2,8 +2,8 @@
 Thumbs.db
 node_modules/
 dist/
+bin/.platform-binary
 .bun/
-bun.lockb
 .worktrees/
 .idea/
 .vscode/

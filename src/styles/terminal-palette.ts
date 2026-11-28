@@ -1,4 +1,4 @@
-import type { ThemeColors } from '../types'
+import type { ThemeColors } from './theme-model'
 
 export type TerminalMode = 'light' | 'dark'
 
@@ -41,7 +41,13 @@ function normalizeHex(color: string): string | null {
   return `#${hex.slice(0, 6)}`
 }
 
-function hexToRgb(hex: string): { r: number; g: number; b: number } {
+interface RgbColor {
+  r: number
+  g: number
+  b: number
+}
+
+function hexToRgb(hex: string): RgbColor {
   const normalized = hex.slice(1)
   const channel = (offset: number) => parseInt(normalized.slice(offset, offset + 2), 16)
 
@@ -58,6 +64,7 @@ function rgbToHex(r: number, g: number, b: number): string {
 
 function luminance(color: string): number {
   const { r, g, b } = hexToRgb(color)
+
   return 0.299 * r + 0.587 * g + 0.114 * b
 }
 
@@ -91,6 +98,7 @@ export function colorSchemeFromColorFgbg(value?: string): TerminalMode | null {
     .filter(part => Number.isInteger(part))
 
   const background = parts.at(-1)
+
   if (background === undefined) {
     return null
   }

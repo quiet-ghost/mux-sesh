@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'path'
-import type { ThemeColors } from '../types'
+import type { ThemeColors } from './theme-model'
 
-export const OMARCHY_STATE_DIR = ['.local', 'state', 'omarchy', 'current'] as const
+const OMARCHY_STATE_DIR = ['.local', 'state', 'omarchy', 'current'] as const
 
 export type OmarchyMode = 'light' | 'dark'
 
@@ -88,7 +88,13 @@ function normalizeHex(color: string): string {
   return color.startsWith('#') ? color : `#${color}`
 }
 
-function hexToRgb(hex: string): { r: number; g: number; b: number } {
+interface RgbColor {
+  r: number
+  g: number
+  b: number
+}
+
+function hexToRgb(hex: string): RgbColor {
   const normalized = normalizeHex(hex).slice(1)
   const channel = (offset: number) => parseInt(normalized.slice(offset, offset + 2), 16)
 
@@ -105,6 +111,7 @@ function rgbToHex(r: number, g: number, b: number): string {
 
 function luminance(color: string): number {
   const { r, g, b } = hexToRgb(color)
+
   return 0.299 * r + 0.587 * g + 0.114 * b
 }
 
@@ -147,6 +154,7 @@ function stripQuotes(value: string): string {
 
 function parseMode(value: string): OmarchyMode | null {
   const normalized = stripQuotes(value).toLowerCase()
+
   return normalized === 'light' || normalized === 'dark' ? normalized : null
 }
 
@@ -158,10 +166,6 @@ export function getOmarchyColorsPath(homeDir: string): string {
   return join(homeDir, ...OMARCHY_STATE_DIR, 'theme', 'colors.toml')
 }
 
-export function isOmarchyPresent(homeDir: string): boolean {
-  return existsSync(getOmarchyColorsPath(homeDir))
-}
-
 export function parseOmarchyColorsToml(text: string): OmarchyPalette | null {
   const colors: Partial<Record<OmarchyColorKey, string>> = {}
   let mode: OmarchyMode | null = null
@@ -169,11 +173,13 @@ export function parseOmarchyColorsToml(text: string): OmarchyPalette | null {
 
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim()
+
     if (!line || line.startsWith('#')) {
       continue
     }
 
     const separator = line.indexOf('=')
+
     if (separator === -1) {
       continue
     }
@@ -196,10 +202,12 @@ export function parseOmarchyColorsToml(text: string): OmarchyPalette | null {
     }
 
     const color = parseHexColor(value)
+
     if (!color) {
       if (key === 'background' || key === 'foreground') {
         return null
       }
+
       continue
     }
 
@@ -208,6 +216,7 @@ export function parseOmarchyColorsToml(text: string): OmarchyPalette | null {
 
   const background = colors.background
   const foreground = colors.foreground
+
   if (!background || !foreground) {
     return null
   }
@@ -247,6 +256,7 @@ export function parseOmarchyColorsToml(text: string): OmarchyPalette | null {
 export function readOmarchyPalette(homeDir: string): OmarchyPalette | null {
   try {
     const colorsPath = getOmarchyColorsPath(homeDir)
+
     if (!existsSync(colorsPath)) {
       return null
     }

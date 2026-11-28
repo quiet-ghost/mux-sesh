@@ -1,10 +1,32 @@
 import { describe, expect, test } from 'bun:test'
+import { getLiveSessionGroupLabel, getLiveSessionSortKey } from '../src/items/session-groups'
 import {
-  getLiveSessionGroupLabel,
-  getLiveSessionSortKey,
   getPathContextLabel,
   getPathGroupLabel,
+  toHomeRelativePath,
 } from '../src/util/path-display'
+
+describe('toHomeRelativePath', () => {
+  test('shows paths under an explicit home with a tilde', () => {
+    expect(toHomeRelativePath('/home/tester', '/home/tester')).toBe('~')
+    expect(toHomeRelativePath('/home/tester/dev/app', '/home/tester')).toBe('~/dev/app')
+    expect(toHomeRelativePath('/home/testers/app', '/home/tester')).toBe('/home/testers/app')
+    expect(toHomeRelativePath('', '/home/tester')).toBe('')
+  })
+
+  test('leaves paths unchanged when HOME is unset', () => {
+    const originalHome = process.env.HOME
+    delete process.env.HOME
+
+    try {
+      expect(toHomeRelativePath('/home/tester/dev/app')).toBe('/home/tester/dev/app')
+      expect(toHomeRelativePath('/')).toBe('/')
+    } finally {
+      if (originalHome === undefined) delete process.env.HOME
+      else process.env.HOME = originalHome
+    }
+  })
+})
 
 describe('path display helpers', () => {
   test('returns the parent directory name for grouping', () => {

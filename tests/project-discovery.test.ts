@@ -3,15 +3,15 @@ import { mkdtemp, mkdir, rm, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import {
-  applyZoxideMode,
   getProjectItems,
   getSessionCandidateItems,
-  parseZoxideOutput,
-} from '../src/tmux/projects'
-import { filterHiddenSessions, getLastSessionTarget } from '../src/tmux/workflows'
+  refreshProjectDiscovery,
+} from '../src/projects/project-items'
+import { applyZoxideMode, getZoxideEntries, parseZoxideOutput } from '../src/projects/zoxide'
+import { filterHiddenSessions, getLastSessionTarget } from '../src/sessions/session-filters'
 import { getDefaultConfig } from '../src/config'
 import { annotateProjectItemsWithSessionLinks } from '../src/projects/session-links'
-import type { Item } from '../src/types'
+import type { Item } from '../src/items/item'
 
 describe('project discovery helpers', () => {
   test('parses zoxide score output', () => {
@@ -98,6 +98,30 @@ describe('project discovery helpers', () => {
     }
   })
 
+  test('manual refresh shows a project added inside the cache TTL', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'mux-sesh-projects-refresh-'))
+
+    try {
+      const dev = join(root, 'dev')
+      const first = join(dev, 'first')
+      const second = join(dev, 'second')
+      const config = { ...getDefaultConfig(root), projectPaths: [dev], zoxideMode: 'off' as const }
+
+      await mkdir(first, { recursive: true })
+      await writeFile(join(first, 'package.json'), '{}')
+      expect((await getProjectItems(config)).map(item => item.path)).toEqual([first])
+
+      await mkdir(second, { recursive: true })
+      await writeFile(join(second, 'package.json'), '{}')
+      expect((await getProjectItems(config)).map(item => item.path)).toEqual([first])
+
+      refreshProjectDiscovery()
+      expect((await getProjectItems(config)).map(item => item.path)).toEqual([first, second])
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   test('includes plain directories as new-session candidates', async () => {
     const root = await mkdtemp(join(tmpdir(), 'mux-sesh-session-candidates-'))
 
@@ -140,6 +164,90 @@ describe('project discovery helpers', () => {
       expect(items.map(item => item.path)).not.toContain(buildProject)
     } finally {
       await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  test('does not list folders inside hidden, cache or virtualenv folders as session candidates', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'mux-sesh-session-candidate-noise-'))
+
+    try {
+      const project = join(home, 'dev', 'tools')
+
+      const noise = [
+        join(home, '.config', 'Cursor', 'CachedProfilesData'),
+        join(home, 'dev', 'repo', '.husky', '_'),
+        join(home, 'dev', 'tools', '__pycache__'),
+        join(home, 'dev', 'tools', 'venv', 'lib'),
+        join(home, 'dev', 'tools', '.venv', 'lib'),
+        join(home, 'dev', 'tools', 'venv', 'lib', 'site-packages', 'pkg'),
+      ]
+
+      for (const path of [project, ...noise]) await mkdir(path, { recursive: true })
+
+      const paths = (
+        await getSessionCandidateItems({
+          ...getDefaultConfig(home),
+          projectPaths: [home],
+          zoxideMode: 'off',
+        })
+      ).map(item => item.path)
+
+      expect(paths).toContain(project)
+
+      for (const path of noise) expect(paths).not.toContain(path)
+      expect(paths.some(path => path.includes('/.config/'))).toBe(false)
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  test('zoxide adds no session candidates from inside hidden or cache folders', async () => {
+    const zoxide = async () => ({
+      exitCode: 0,
+      output: [
+        '9.0 /home/me/dev/tools',
+        '8.0 /home/me/.config/Cursor/CachedProfilesData',
+        '7.0 /home/me/dev/tools/__pycache__',
+        '6.0 /home/me/dev/tools/.venv/lib',
+        '5.0 /home/me/.dotfiles/hypr',
+      ].join('\n'),
+    })
+
+    const fromHome = await getZoxideEntries(zoxide, ['/home/me'], false)
+    expect(fromHome.map(entry => entry.path)).toEqual(['/home/me/dev/tools'])
+
+    // Below a hidden root you listed yourself, folders are fair game.
+    const fromDotfiles = await getZoxideEntries(zoxide, ['/home/me/.dotfiles'], false)
+    expect(fromDotfiles.map(entry => entry.path)).toEqual(['/home/me/.dotfiles/hypr'])
+  })
+
+  test('a hidden folder listed as a root is still scanned, and a hidden repo is still a project', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'mux-sesh-hidden-root-'))
+
+    try {
+      const dotfiles = join(home, '.dotfiles')
+      const hypr = join(dotfiles, 'hypr')
+
+      await mkdir(hypr, { recursive: true })
+      await mkdir(join(dotfiles, '.git'), { recursive: true })
+
+      const candidates = await getSessionCandidateItems({
+        ...getDefaultConfig(home),
+        projectPaths: [dotfiles],
+        zoxideMode: 'off',
+      })
+
+      expect(candidates.map(item => item.path)).toContain(hypr)
+
+      const projects = await getProjectItems({
+        ...getDefaultConfig(home),
+        projectPaths: [home],
+        zoxideMode: 'off',
+      })
+
+      expect(projects.map(item => item.path)).toContain(dotfiles)
+    } finally {
+      await rm(home, { recursive: true, force: true })
     }
   })
 
@@ -206,6 +314,7 @@ describe('project discovery helpers', () => {
 
   test('links duplicate Herdr file labels by the file parent directory', async () => {
     const config = getDefaultConfig('/home/tester')
+
     const annotated = await annotateProjectItemsWithSessionLinks(
       [
         {

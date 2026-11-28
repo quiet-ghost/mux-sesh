@@ -1,23 +1,23 @@
-import { useEffect, useState } from 'react'
-import { getFilePreview, getProjectPreview, type ProjectPreview } from '../preview/project'
-import { isFileItem } from '../files/target'
+import type { DetailsContent, DetailsView, InspectorMode } from '../app/inspector'
+import { getDetailsContent, getInspectionKey } from '../app/inspector'
+import type { ProjectPreview } from '../preview/project'
 import { getDetailPanelStyle, useTheme } from '../styles/theme'
-import type { Config, Item } from '../types'
-import type { MultiplexerBackend, WorkspaceDetails, WorkspaceRef } from '../multiplexer'
-import { getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
+import type { Item } from '../items/item'
+import type { WorkspaceDetails } from '../multiplexer'
+import { fitPath } from '../util/path-display'
+import { getCompactDetails } from './session-meta'
+import { Spinner } from './Spinner'
 
 interface Props {
+  width: number
   selectedItem?: Item
-  config: Config | null
-  backend: MultiplexerBackend | null
+  mode: InspectorMode
+  view: DetailsView
+  // How to ask for details, e.g. "v" or "ctrl+x v"; empty when only the palette offers it.
+  inspectHint: string
 }
 
-type DetailState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'session'; details: WorkspaceDetails }
-  | { status: 'project'; details: ProjectPreview }
-  | { status: 'error'; message: string }
+const PANEL_PADDING_COLUMNS = 2
 
 function formatSourceLabel(source: ProjectPreview['source']): string {
   switch (source) {
@@ -43,18 +43,30 @@ function MetaRow(props: { label: string; value: string; color?: string }) {
   )
 }
 
+// One row: a long path keeps its start and end instead of wrapping or losing its tail.
+function PathLine(props: { path: string; width: number; marginTop?: number }) {
+  const theme = useTheme()
+
+  return (
+    <text style={{ fg: theme.fileTree, wrapMode: 'none', marginTop: props.marginTop }}>
+      {fitPath(props.path, props.width)}
+    </text>
+  )
+}
+
 function SectionLabel(props: { children: string }) {
   const theme = useTheme()
+
   return <text style={{ fg: theme.textSubtle, marginTop: 1 }}>{props.children}</text>
 }
 
-function ProjectPreviewView({ preview }: { preview: ProjectPreview }) {
+function ProjectPreviewView({ preview, width }: { preview: ProjectPreview; width: number }) {
   const theme = useTheme()
 
   return (
     <box style={{ flexDirection: 'column' }}>
       <text style={{ fg: theme.secondary }}>{preview.sessionName}</text>
-      <text style={{ fg: theme.fileTree, marginTop: 1 }}>{preview.path}</text>
+      <PathLine path={preview.path} width={width} marginTop={1} />
 
       <box style={{ flexDirection: 'column', marginTop: 1 }}>
         <MetaRow label="Source" value={formatSourceLabel(preview.source)} color={theme.action} />
@@ -102,7 +114,7 @@ function ProjectPreviewView({ preview }: { preview: ProjectPreview }) {
   )
 }
 
-function SessionDetailsView({ details }: { details: WorkspaceDetails }) {
+function SessionDetailsView({ details, width }: { details: WorkspaceDetails; width: number }) {
   const theme = useTheme()
 
   return (
@@ -126,7 +138,7 @@ function SessionDetailsView({ details }: { details: WorkspaceDetails }) {
           details.units.map(unit => (
             <box key={unit.id} style={{ flexDirection: 'column', marginBottom: 1 }}>
               <text style={{ fg: theme.text }}>{unit.name}</text>
-              {unit.currentPath && <text style={{ fg: theme.fileTree }}>{unit.currentPath}</text>}
+              {unit.currentPath && <PathLine path={unit.currentPath} width={width} />}
               {unit.currentCommand && (
                 <text style={{ fg: theme.textSubtle }}>{unit.currentCommand}</text>
               )}
@@ -144,7 +156,7 @@ function SessionDetailsView({ details }: { details: WorkspaceDetails }) {
                 <text style={{ fg: theme.action }}>
                   {agent.name} · {agent.status}
                 </text>
-                {agent.cwd && <text style={{ fg: theme.fileTree }}>{agent.cwd}</text>}
+                {agent.cwd && <PathLine path={agent.cwd} width={width} />}
               </box>
             ))}
           </box>
@@ -170,103 +182,107 @@ function SessionDetailsView({ details }: { details: WorkspaceDetails }) {
   )
 }
 
-export default function SessionDetailsPanel({ selectedItem, config, backend }: Props) {
+function CompactDetailsView(props: { item: Item; inspectHint: string; width: number }) {
   const theme = useTheme()
-  const [detailState, setDetailState] = useState<DetailState>({ status: 'idle' })
+  const compact = getCompactDetails(props.item)
 
-  useEffect(() => {
-    let cancelled = false
+  return (
+    <box style={{ flexDirection: 'column' }}>
+      <text style={{ fg: theme.secondary }}>{props.item.title}</text>
+      {compact.path && <PathLine path={compact.path} width={props.width} marginTop={1} />}
 
-    async function loadDetails() {
-      if (!selectedItem) {
-        setDetailState({ status: 'idle' })
-        return
-      }
+      <box style={{ flexDirection: 'column', marginTop: 1 }}>
+        {compact.rows.map(row => (
+          <MetaRow key={row.label} label={row.label} value={row.value} />
+        ))}
+      </box>
 
-      setDetailState({ status: 'loading' })
+      <text style={{ fg: theme.textSubtle, marginTop: 1 }}>
+        {`${props.inspectHint || 'ctrl+p'} · Toggle details`}
+      </text>
+    </box>
+  )
+}
 
-      try {
-        if (isLiveSessionItem(selectedItem)) {
-          if (!backend) throw new Error('Multiplexer backend is not loaded yet')
-          const details = await backend.details(getWorkspaceRef(selectedItem))
-          if (!cancelled) {
-            setDetailState({ status: 'session', details })
-          }
-          return
-        }
+function ContentView({ content, width }: { content: DetailsContent; width: number }) {
+  return content.kind === 'session' ? (
+    <SessionDetailsView details={content.details} width={width} />
+  ) : (
+    <ProjectPreviewView preview={content.preview} width={width} />
+  )
+}
 
-        if (!config) {
-          if (!cancelled) {
-            setDetailState({ status: 'error', message: 'Config is not loaded yet' })
-          }
-          return
-        }
+function InspectedDetails(props: { item: Item; view: DetailsView; width: number }) {
+  const theme = useTheme()
+  const { item, view } = props
+  const key = getInspectionKey(item)
+  const content = getDetailsContent(view, key)
 
-        const linkedWorkspace: WorkspaceRef | undefined =
-          selectedItem.linkedSessionId && selectedItem.linkedSessionBackend
-            ? {
-                backend: selectedItem.linkedSessionBackend,
-                id: selectedItem.linkedSessionId,
-                title: selectedItem.linkedSessionName ?? selectedItem.linkedSessionId,
-              }
-            : undefined
-        const details = isFileItem(selectedItem)
-          ? await getFilePreview(selectedItem.path, config, linkedWorkspace, workspace => {
-              if (!backend) throw new Error('Multiplexer backend is not loaded yet')
-              return backend.details(workspace)
-            })
-          : await getProjectPreview(selectedItem.path, config, linkedWorkspace, workspace => {
-              if (!backend) throw new Error('Multiplexer backend is not loaded yet')
-              return backend.details(workspace)
-            })
-        if (!cancelled) {
-          setDetailState({ status: 'project', details })
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unable to load details'
-        if (!cancelled) {
-          setDetailState({ status: 'error', message })
-        }
-      }
-    }
+  // A view for another target is never shown: the selection moved and its read is pending.
+  if (!content) {
+    return (
+      <>
+        <text style={{ fg: theme.secondary }}>{item.title}</text>
+        {view.kind === 'failed' && view.key === key ? (
+          <text style={{ fg: theme.danger, marginTop: 1 }}>{view.message}</text>
+        ) : (
+          <text style={{ fg: theme.textSubtle, marginTop: 1 }}>
+            <Spinner still="" />
+            Loading…
+          </text>
+        )}
+      </>
+    )
+  }
 
-    void loadDetails()
+  return (
+    <>
+      {view.kind === 'refreshing' && (
+        <text style={{ fg: theme.textSubtle, marginBottom: 1 }}>
+          <Spinner still="" />
+          Refreshing…
+        </text>
+      )}
+      {view.kind === 'stale' && (
+        <text style={{ fg: theme.danger, marginBottom: 1 }}>
+          {`Stale: ${view.message} Showing the last details read.`}
+        </text>
+      )}
+      <ContentView content={content} width={props.width} />
+    </>
+  )
+}
 
-    return () => {
-      cancelled = true
-    }
-  }, [backend, config, selectedItem])
+export default function SessionDetailsPanel({
+  width,
+  selectedItem,
+  mode,
+  view,
+  inspectHint,
+}: Props) {
+  const theme = useTheme()
+  const contentWidth = Math.max(1, width - PANEL_PADDING_COLUMNS)
 
   const panelStyle = {
     ...getDetailPanelStyle(theme),
-    flexGrow: 1,
-    flexShrink: 1,
-    minWidth: 40,
+    width,
+    flexShrink: 0,
+    overflow: 'hidden' as const,
   }
 
   return (
     <box style={panelStyle}>
-      {detailState.status === 'idle' ? (
+      {!selectedItem ? (
         <>
           <text style={{ fg: theme.textMuted }}>Nothing selected</text>
           <text style={{ fg: theme.textSubtle, marginTop: 1 }}>
             Pick a session or project to see details.
           </text>
         </>
-      ) : detailState.status === 'loading' ? (
-        <>
-          <text style={{ fg: theme.secondary }}>{selectedItem?.title ?? 'Details'}</text>
-          <text style={{ fg: theme.textSubtle, marginTop: 1 }}>Loading…</text>
-        </>
-      ) : detailState.status === 'error' ? (
-        <>
-          <text style={{ fg: theme.secondary }}>{selectedItem?.title ?? 'Details'}</text>
-          <text style={{ fg: theme.danger, marginTop: 1 }}>{detailState.message}</text>
-        </>
-      ) : detailState.status === 'session' ? (
-        <SessionDetailsView details={detailState.details} />
+      ) : mode === 'compact' ? (
+        <CompactDetailsView item={selectedItem} inspectHint={inspectHint} width={contentWidth} />
       ) : (
-        <ProjectPreviewView preview={detailState.details} />
+        <InspectedDetails item={selectedItem} view={view} width={contentWidth} />
       )}
     </box>
   )

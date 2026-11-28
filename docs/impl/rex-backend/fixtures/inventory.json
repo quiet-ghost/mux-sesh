@@ -1,0 +1,286 @@
+{
+  "sessions": [
+    {
+      "focused_process": {
+        "child": {
+          "argv0": "-zsh",
+          "cwd": "/fixture/work/alpha",
+          "invoked_path": "/usr/bin/zsh",
+          "name": "zsh",
+          "path": "/usr/bin/zsh",
+          "pid": 3387356,
+          "user": "fixture",
+          "user_id": 1000
+        },
+        "foreground": {
+          "argv0": "-zsh",
+          "cwd": "/fixture/work/alpha",
+          "invoked_path": "/usr/bin/zsh",
+          "name": "zsh",
+          "path": "/usr/bin/zsh",
+          "pid": 3387356,
+          "user": "fixture",
+          "user_id": 1000
+        },
+        "home": "/fixture/home"
+      },
+      "view": {
+        "active_window_id": "window:01a22053-384b-7a8c-b42e-1fd7bf8d364d",
+        "label": "alpha",
+        "revision": 5,
+        "session_id": "session:01a22053-383c-7e73-9628-4665f76bdacf",
+        "windows": [
+          {
+            "focused_block_id": "block:01a22053-383d-71d8-b91d-7fd9dacc2418",
+            "label": "Window bf8d364d",
+            "layers": [
+              {
+                "blocks": [
+                  {
+                    "block_id": "block:01a22053-383d-71d8-b91d-7fd9dacc2418",
+                    "creator_name": "com.superlogical.terminal",
+                    "flavor": "com.superlogical.terminal.shell",
+                    "host_id": "00000000-0000-4000-8000-000000000001",
+                    "label": "shell"
+                  }
+                ],
+                "bounds": [0, 0, 1, 1],
+                "kind": "tiled",
+                "layer_id": "layer:01a22053-384b-7a92-870b-c320919eb7ef",
+                "layout": {
+                  "block_id": "block:01a22053-383d-71d8-b91d-7fd9dacc2418",
+                  "rect": [0, 0, 1, 1]
+                }
+              }
+            ],
+            "window_id": "window:01a22053-384b-7a8c-b42e-1fd7bf8d364d"
+          },
+          {
+            "focused_block_id": "block:01a2205a-a693-7f02-bf50-b4cbd5a142d1",
+            "label": "editor",
+            "layers": [
+              {
+                "blocks": [
+                  {
+                    "block_id": "block:01a2205a-a693-7f02-bf50-b4cbd5a142d1",
+                    "creator_name": "com.superlogical.terminal",
+                    "flavor": "com.superlogical.terminal.shell",
+                    "host_id": "00000000-0000-4000-8000-000000000001",
+                    "label": "shell"
+                  }
+                ],
+                "bounds": [0, 0, 1, 1],
+                "kind": "tiled",
+                "layer_id": "layer:01a2205a-a695-70b9-91de-bbcb5428462c",
+                "layout": {
+                  "block_id": "block:01a2205a-a693-7f02-bf50-b4cbd5a142d1",
+                  "rect": [0, 0, 1, 1]
+                }
+              }
+            ],
+            "window_id": "window:01a2205a-a695-70b2-b525-8ac401ec0bc5"
+          },
+          {
+            "focused_block_id": "block:01a2205a-a6aa-7940-b349-190a64b4b159",
+            "label": "Window 4fec3b82",
+            "layers": [
+              {
+                "blocks": [
+                  {
+                    "block_id": "block:01a2205a-a6aa-7940-b349-190a64b4b159",
+                    "creator_name": "com.superlogical.terminal",
+                    "flavor": "com.superlogical.terminal.shell",
+                    "host_id": "00000000-0000-4000-8000-000000000001",
+                    "label": "agent"
+                  }
+                ],
+                "bounds": [0, 0, 1, 1],
+                "kind": "tiled",
+                "layer_id": "layer:01a2205a-a6ab-7a77-9d4a-eed6e150b2fa",
+                "layout": {
+                  "block_id": "block:01a2205a-a6aa-7940-b349-190a64b4b159",
+                  "rect": [0, 0, 1, 1]
+                }
+              }
+            ],
+            "window_id": "window:01a2205a-a6ab-7a70-bf0a-ba264fec3b82"
+          }
+        ]
+      }
+    },
+    {
+      "focused_process": {
+        "child": {
+          "argv0": "sh",
+          "cwd": "/fixture/work/beta",
+          "invoked_path": "/usr/bin/sh",
+          "name": "bash",
+          "path": "/usr/bin/bash",
+          "pid": 3387378,
+          "user": "fixture",
+          "user_id": 1000
+        },
+        "foreground": {
+          "argv0": "sh",
+          "cwd": "/fixture/work/beta",
+          "invoked_path": "/usr/bin/sh",
+          "name": "bash",
+          "path": "/usr/bin/bash",
+          "pid": 3387378,
+          "user": "fixture",
+          "user_id": 1000
+        },
+        "home": "/fixture/home"
+      },
+      "view": {
+        "active_window_id": "window:01a22053-3862-7a0f-99e9-f504ec3cb66a",
+        "label": "beta",
+        "revision": 1,
+        "session_id": "session:01a22053-3861-781e-a006-b5e42f37c576",
+        "windows": [
+          {
+            "focused_block_id": "block:01a22053-3861-78de-97d9-65ff724642ea",
+            "label": "main",
+            "layers": [
+              {
+                "blocks": [
+                  {
+                    "block_id": "block:01a22053-3861-78de-97d9-65ff724642ea",
+                    "creator_name": "com.superlogical.terminal",
+                    "flavor": "com.superlogical.terminal.shell",
+                    "host_id": "00000000-0000-4000-8000-000000000001",
+                    "label": "shell"
+                  }
+                ],
+                "bounds": [0, 0, 1, 1],
+                "kind": "tiled",
+                "layer_id": "layer:01a22053-3862-7a17-b77e-29f358c899dd",
+                "layout": {
+                  "block_id": "block:01a22053-3861-78de-97d9-65ff724642ea",
+                  "rect": [0, 0, 1, 1]
+                }
+              }
+            ],
+            "window_id": "window:01a22053-3862-7a0f-99e9-f504ec3cb66a"
+          }
+        ]
+      }
+    },
+    {
+      "focused_process": {
+        "child": {
+          "argv0": "-zsh",
+          "cwd": "/fixture",
+          "invoked_path": "/usr/bin/zsh",
+          "name": "zsh",
+          "path": "/usr/bin/zsh",
+          "pid": 3387409,
+          "user": "fixture",
+          "user_id": 1000
+        },
+        "foreground": {
+          "argv0": "-zsh",
+          "cwd": "/fixture",
+          "invoked_path": "/usr/bin/zsh",
+          "name": "zsh",
+          "path": "/usr/bin/zsh",
+          "pid": 3387409,
+          "user": "fixture",
+          "user_id": 1000
+        },
+        "home": "/fixture/home"
+      },
+      "view": {
+        "active_window_id": "window:01a22053-3879-7680-9c0f-83332d3117f4",
+        "label": "my proj/x:y",
+        "revision": 5,
+        "session_id": "session:01a22053-3878-7479-9bb1-c0782c1f33c7",
+        "windows": [
+          {
+            "focused_block_id": "block:01a22053-3878-7533-8bcf-100c6c8b029c",
+            "label": "Window 2d3117f4",
+            "layers": [
+              {
+                "blocks": [
+                  {
+                    "block_id": "block:01a22053-3878-7533-8bcf-100c6c8b029c",
+                    "creator_name": "com.superlogical.terminal",
+                    "flavor": "com.superlogical.terminal.shell",
+                    "host_id": "00000000-0000-4000-8000-000000000001",
+                    "label": "shell"
+                  }
+                ],
+                "bounds": [0, 0, 1, 1],
+                "kind": "tiled",
+                "layer_id": "layer:01a22053-3879-7687-af1f-eb6e3bce7260",
+                "layout": {
+                  "block_id": "block:01a22053-3878-7533-8bcf-100c6c8b029c",
+                  "rect": [0, 0, 1, 1]
+                }
+              }
+            ],
+            "window_id": "window:01a22053-3879-7680-9c0f-83332d3117f4"
+          }
+        ]
+      }
+    },
+    {
+      "focused_process": {
+        "child": {
+          "argv0": "-zsh",
+          "cwd": "/fixture/work/beta",
+          "invoked_path": "/usr/bin/zsh",
+          "name": "zsh",
+          "path": "/usr/bin/zsh",
+          "pid": 3432970,
+          "user": "fixture",
+          "user_id": 1000
+        },
+        "foreground": {
+          "argv0": "-zsh",
+          "cwd": "/fixture/work/beta",
+          "invoked_path": "/usr/bin/zsh",
+          "name": "zsh",
+          "path": "/usr/bin/zsh",
+          "pid": 3432970,
+          "user": "fixture",
+          "user_id": 1000
+        },
+        "home": "/fixture/home"
+      },
+      "view": {
+        "active_window_id": "window:01a2205a-a67e-748f-a111-61469f88fd9f",
+        "label": "beta",
+        "revision": 1,
+        "session_id": "session:01a2205a-a67d-71cf-af20-328f8374e0ec",
+        "windows": [
+          {
+            "focused_block_id": "block:01a2205a-a67d-72a8-9055-644e4d7e6ac4",
+            "label": "Window 9f88fd9f",
+            "layers": [
+              {
+                "blocks": [
+                  {
+                    "block_id": "block:01a2205a-a67d-72a8-9055-644e4d7e6ac4",
+                    "creator_name": "com.superlogical.terminal",
+                    "flavor": "com.superlogical.terminal.shell",
+                    "host_id": "00000000-0000-4000-8000-000000000001",
+                    "label": "shell"
+                  }
+                ],
+                "bounds": [0, 0, 1, 1],
+                "kind": "tiled",
+                "layer_id": "layer:01a2205a-a67e-7495-b897-fe8e8a385a9c",
+                "layout": {
+                  "block_id": "block:01a2205a-a67d-72a8-9055-644e4d7e6ac4",
+                  "rect": [0, 0, 1, 1]
+                }
+              }
+            ],
+            "window_id": "window:01a2205a-a67e-748f-a111-61469f88fd9f"
+          }
+        ]
+      }
+    }
+  ]
+}

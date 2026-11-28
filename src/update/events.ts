@@ -1,4 +1,4 @@
-import type { UpdateEventListener, UpdateEvent } from '../types'
+import type { UpdateEventListener, UpdateEvent } from './update-event'
 
 class UpdateEvents {
   private listeners: UpdateEventListener[] = []
@@ -8,6 +8,7 @@ class UpdateEvents {
 
     return () => {
       const index = this.listeners.indexOf(listener)
+
       if (index > -1) {
         this.listeners.splice(index, 1)
       }

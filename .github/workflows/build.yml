@@ -1,0 +1,26 @@
+name: build
+
+on:
+  pull_request:
+
+jobs:
+  binary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+
+      - name: Build this runner's binary
+        run: bun run build
+
+      - name: Smoke test the binary
+        run: bun run smoke:binary --runs 1
+
+      - name: Pack and check the npm packages
+        run: |
+          bun tools/build/pack.ts --single > dist/packed.txt
+          while read -r directory; do
+            npm pack --dry-run "$directory"
+          done < dist/packed.txt

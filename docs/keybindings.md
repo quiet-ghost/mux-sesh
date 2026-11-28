@@ -1,141 +1,204 @@
 # Keybindings
 
-`mux-sesh` supports two input styles for tmux sessions and Herdr workspaces: `vim` and `standard`.
+`mux-sesh` has two input styles, set with `keybind_mode`: `vim` (the default) and `standard`.
+Secondary actions sit behind `prefix_key`, which defaults to `ctrl+x`. The tables below use the
+default prefix; replace `ctrl+x` with your own `prefix_key` if you changed it.
 
-Defaults:
+Keys are written the way the footer and the command palette show them. The footer shows each
+action before its key, such as `search i` or `commands ctrl+p`. Screen actions sit on the left
+and actions on the selected row sit on the right, next to the version. The footer lists only
+actions that are available right now, and an unavailable key says why instead of doing
+something else. Every action is also in the command palette (`ctrl+p`, everywhere except the
+New screen), which lists every key of an action, such as `d / ctrl+x d`. While the prefix key
+waits for its second key, the footer shows `prefix ctrl+x …`.
 
-- mode: `vim`
-- prefix: `ctrl+x`
+The action tables on this page are checked against the action catalog by the test suite.
+
+## Focus
+
+- Where a text field has focus (search, New, rename, palette, settings, theme picker), letters
+  and digits type into the field. Only non-text keys such as arrows, `enter`, `esc`, and
+  `ctrl+…` combinations act.
+- In vim mode the main list has no text field, so single letters are commands.
+- In dialogs, `↑` / `↓` move, `enter` confirms, and `esc` cancels or goes back.
+
+## Feedback
+
+- Confirmations, refusals, and failures replace the footer hints for a moment. The first word
+  says the kind: `done`, `warn` (a refusal that changed nothing), `error`, or `info`. The version
+  stays at the right. A message too long for one row continues below it, up to three rows.
+- A notice leaves after 5 seconds and the hints return. An error stays for 8 seconds or until the
+  next key, as `any key` at its right says; newer notices wait behind it, counted as `+N more`.
+- A stale session list (`stale`) or degraded file search (`warn`) stays on the line above the
+  footer until it recovers.
 
 ## Vim Mode
 
-Vim mode keeps common actions on direct keys.
+<!-- keys: vim normal -->
 
-| Key         | Action                                       |
-| ----------- | -------------------------------------------- |
-| `j` / `k`   | Move down or up                              |
-| `Enter`     | Attach to a session or create from a project |
-| `i`         | Enter search mode                            |
-| `n`         | Enter new-session mode                       |
-| `o`         | Open agent sessions                          |
-| `d`         | Kill selected live session                   |
-| `1-9`       | Quick select visible rows                    |
-| `Ctrl+P`    | Open the command palette                     |
-| `q` / `Esc` | Quit                                         |
+| Key              | Action                                                                     |
+| ---------------- | -------------------------------------------------------------------------- |
+| `enter`          | Open the selected row: focus a live session, or create from a project      |
+| `i`              | Search                                                                     |
+| `n`              | New session (the project-first launcher)                                   |
+| `o`              | Agents, when agent rows are listed in the sessions view                    |
+| `d` / `ctrl+x d` | Close the selected live session on a second `d`, or review the marked rows |
+| `m` / `ctrl+x m` | Mark or unmark the selected row for a batch close                          |
+| `v` / `ctrl+x v` | Toggle details                                                             |
+| `ctrl+f`         | Pin or unpin the selected session (sessions view)                          |
+| `s` / `ctrl+x s` | Show sessions                                                              |
+| `p` / `ctrl+x p` | Show projects                                                              |
+| `ctrl+x r`       | Rename the selected live session                                           |
+| `ctrl+x l`       | Last session (tmux only; Herdr does not track the previous workspace)      |
+| `ctrl+x g`       | Root session: open the git root of the selected row                        |
+| `ctrl+x e`       | Edit target: open a listed configured target in your `editor`              |
+| `ctrl+x shift+r` | Refresh sessions and projects                                              |
+| `ctrl+p`         | Command palette                                                            |
 
-## Prefix Actions In Vim Mode
+Also in vim mode:
 
-When a prefix key is configured, secondary actions are also available behind that prefix. With the default config, these are `ctrl+x` combinations.
+| Key                    | Action                                                                 |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `j` / `k` or `↑` / `↓` | Move                                                                   |
+| `1`–`9`                | Open the matching visible row; a project row opens as `enter` plans it |
+| `q` / `esc`            | Quit                                                                   |
 
-| Prefix + key | Action                                                   |
-| ------------ | -------------------------------------------------------- |
-| `s`          | Switch to sessions view                                  |
-| `p`          | Switch to projects view                                  |
-| `r`          | Rename selected live session                             |
-| `d`          | Kill selected live session                               |
-| `l`          | Jump to the previous tmux session (unavailable in Herdr) |
-| `g`          | Open the git-root session for the selected item          |
-| `e`          | Edit the configured target for the selected item         |
-| `Shift+R`    | Refresh sessions and projects                            |
+### Vim Search
 
-In vim mode, `s` and `p` also work directly even when a prefix key is configured.
+`i` opens search; the query field then has focus.
 
-## Vim Mode Without A Prefix
+<!-- keys: vim search -->
 
-If `prefix_key` is unset, a subset of actions becomes direct again:
+| Key      | Action                   |
+| -------- | ------------------------ |
+| `enter`  | Open the highlighted row |
+| `ctrl+p` | Command palette          |
 
-| Key | Action                                       |
-| --- | -------------------------------------------- |
-| `l` | Previous tmux session (unavailable in Herdr) |
-| `g` | Git-root session                             |
-| `e` | Edit configured target                       |
-| `r` | Rename selected live session                 |
-| `R` | Refresh sessions and projects                |
-
-## Search Mode
-
-Search mode is explicit in vim mode and continuous in standard mode.
-
-| Key       | Action                                                       |
-| --------- | ------------------------------------------------------------ |
-| Type      | Filter results                                               |
-| `Enter`   | Select the first result                                      |
-| `↑` / `↓` | Move through results                                         |
-| `Esc`     | Exit search in vim mode, or clear the query in standard mode |
+Type to filter, `↑` / `↓` to move, and `esc` to leave search and clear the query.
 
 ## Standard Mode
 
-Standard mode is search-first. The query stays active, arrow keys handle movement, and the prefix key becomes the main command layer.
+Standard mode is search-first: the query field always has focus, arrows move, and the prefix key
+is the command layer.
 
-| Key       | Action                   |
-| --------- | ------------------------ |
-| Type      | Filter immediately       |
-| `↑` / `↓` | Move through results     |
-| `Enter`   | Select the first result  |
-| `Esc`     | Clear the current search |
-| `Ctrl+Q`  | Quit                     |
-| `Ctrl+P`  | Open the command palette |
+<!-- keys: standard search -->
 
-## Prefix Actions In Standard Mode
+| Key              | Action                                                                     |
+| ---------------- | -------------------------------------------------------------------------- |
+| `enter`          | Open the highlighted row                                                   |
+| `ctrl+x n`       | New session (the project-first launcher)                                   |
+| `ctrl+x o`       | Agents, when agent rows are listed in the sessions view                    |
+| `ctrl+x d`       | Close the selected live session on a second `d`, or review the marked rows |
+| `ctrl+x m`       | Mark or unmark the selected row for a batch close                          |
+| `ctrl+x v`       | Toggle details                                                             |
+| `ctrl+x s`       | Open settings                                                              |
+| `ctrl+x r`       | Rename the selected live session                                           |
+| `ctrl+x l`       | Last session (tmux only)                                                   |
+| `ctrl+x g`       | Root session: open the git root of the selected row                        |
+| `ctrl+x shift+r` | Refresh sessions and projects                                              |
+| `ctrl+p`         | Command palette                                                            |
 
-| Prefix + key | Action                                       |
-| ------------ | -------------------------------------------- |
-| `n`          | New session                                  |
-| `o`          | Open agent sessions                          |
-| `s`          | Open settings                                |
-| `l`          | Previous tmux session (unavailable in Herdr) |
-| `g`          | Git-root session                             |
-| `r`          | Rename selected live session                 |
-| `d`          | Kill selected live session                   |
-| `Shift+R`    | Refresh sessions and projects                |
+Type to filter, `↑` / `↓` to move, `esc` to clear the query, and `ctrl+q` to quit. Standard mode
+has no key for pinning, switching to projects, editing a configured target, or themes; run them
+from the command palette.
 
-## New-Session Mode
+## New Session
 
-Use new-session mode to create from a discovered project, a configured target, a custom name, or a GitHub URL.
+`n` (vim) or `ctrl+x n` (standard) opens the project-first launcher with the first project
+selected. A summary row above the list names exactly what `enter` will do, and the footer shows
+it as `create enter`, `focus enter`, or `clone enter`.
 
-| Key              | Action                                           |
-| ---------------- | ------------------------------------------------ |
-| Type             | Filter candidate projects or enter a custom name |
-| Paste GitHub URL | Clone and create a session                       |
-| `Enter`          | Confirm selection                                |
-| `↑` / `↓`        | Move through candidates                          |
-| `Esc`            | Cancel                                           |
+<!-- keys: vim new -->
 
-In standard mode, `Ctrl+I` returns from new-session mode to search, and `Ctrl+D` can kill a selected live session if one is focused.
+| Key      | Action                                                         |
+| -------- | -------------------------------------------------------------- |
+| `enter`  | Run what the summary row says: create, focus, or clone         |
+| `ctrl+n` | Name: edit the name of the session about to be created         |
+| `ctrl+t` | Startup: edit its startup command; empty runs nothing          |
+| `ctrl+g` | Here: create a named session in the directory you started from |
+| `ctrl+o` | File: search for a file, or type its path, and open it         |
 
-## Agent Sessions
+In standard mode New has two more keys:
 
-Agent sessions have their own manage view. Matching names include `opencode-*`, `pi-*`, `codex-*`, `claude-*`, and `tui_chat`.
+<!-- keys: standard new -->
 
-| Backend | Agent behavior                                                          |
-| ------- | ----------------------------------------------------------------------- |
-| tmux    | Named agent sessions support manage actions below                       |
-| Herdr   | Native agent status and details are read-only; controls are unavailable |
+| Key      | Action                                                                     |
+| -------- | -------------------------------------------------------------------------- |
+| `enter`  | Run what the summary row says: create, focus, or clone                     |
+| `ctrl+n` | Name: edit the name of the session about to be created                     |
+| `ctrl+t` | Startup: edit its startup command; empty runs nothing                      |
+| `ctrl+g` | Here: create a named session in the directory you started from             |
+| `ctrl+o` | File: search for a file, or type its path, and open it                     |
+| `ctrl+i` | Back to search                                                             |
+| `ctrl+d` | Close the selected live session on a second `d`, or review the marked rows |
 
-| Key                    | Action                                                     |
-| ---------------------- | ---------------------------------------------------------- |
-| `j` / `k` or `↑` / `↓` | Move                                                       |
-| `d`                    | Kill selected agent session in vim mode                    |
-| `r`                    | Rename selected agent session when no prefix is configured |
-| `Ctrl+P`               | Open the command palette                                   |
-| `Esc`                  | Leave the agent sessions view                              |
+Type to filter projects, `↑` / `↓` to move, and `esc` to cancel. Inside a step, `enter` applies
+or opens, and `esc` returns to the project list with its query and selection unchanged.
+`ctrl+n` and `ctrl+t` are offered only when the selected row would create a session; they are not
+offered for a live session, a typed path, or a GitHub URL. See [workflows.md](workflows.md).
 
-With a prefix configured, agent session actions follow the prefix as well:
+## Agents
 
-- `prefix + o` back
-- `prefix + d` kill
-- `prefix + r` rename
+<!-- keys: vim agents -->
 
-## Command Palette And Settings
+| Key                | Action                                                                           |
+| ------------------ | -------------------------------------------------------------------------------- |
+| `esc` / `ctrl+x o` | Back                                                                             |
+| `enter`            | Focus the selected agent                                                         |
+| `d` / `ctrl+x d`   | Close the selected tmux agent session on a second `d`, or review the marked rows |
+| `m` / `ctrl+x m`   | Mark or unmark the selected row                                                  |
+| `v` / `ctrl+x v`   | Toggle details                                                                   |
+| `ctrl+x r`         | Rename the selected tmux agent session                                           |
+| `ctrl+p`           | Command palette                                                                  |
 
-The command palette is available with `Ctrl+P`.
+<!-- keys: standard agents -->
 
-Inside the command palette or settings screen:
+| Key                | Action                                                                           |
+| ------------------ | -------------------------------------------------------------------------------- |
+| `esc` / `ctrl+x o` | Back                                                                             |
+| `enter`            | Focus the selected agent                                                         |
+| `ctrl+x d`         | Close the selected tmux agent session on a second `d`, or review the marked rows |
+| `ctrl+x m`         | Mark or unmark the selected row                                                  |
+| `ctrl+x v`         | Toggle details                                                                   |
+| `ctrl+x r`         | Rename the selected tmux agent session                                           |
+| `ctrl+p`           | Command palette                                                                  |
 
-| Key       | Action      |
-| --------- | ----------- |
-| `↑` / `↓` | Move        |
-| `Enter`   | Run or open |
-| `Esc`     | Close       |
+`↑` / `↓` move (also `j` / `k` in vim mode). Herdr agent rows are panes inside a workspace: they
+can be focused and inspected, but rename and close are unavailable and say to use Herdr instead.
 
-In standard mode, opening settings directly is also available as `prefix + s`.
+## Confirming a Close
+
+The first close key on an unmarked row turns that row red and its right side reads
+`d again to close`; any warnings show in the status line above the footer. Then:
+
+- `d` closes exactly that row, in every mode. In standard mode, `ctrl+x d` works too, and so
+  does `ctrl+d` in New.
+- `esc` cancels and does nothing else.
+- Any other key cancels, then does what it normally does: a movement still moves, a letter still
+  types into the search, and `m` still marks.
+- A refresh or view change that puts another row under the cursor, or a dialog opening, cancels.
+
+With rows marked, `d` opens the batch close review instead, even for one marked row.
+
+## Dialogs
+
+The settings rows are checked against the action catalog by the test suite.
+
+| Dialog              | Keys                                                                                                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Command palette     | Type to filter, `↑` / `↓` move, `enter` runs, `esc` closes                                                                                                                                                    |
+| Settings            | Type to filter, `↑` / `↓` move, `←` / `→` change the value in place, `enter` opens it (or switches a two-value setting), `ctrl+r` resets it to the default, `esc` clears the filter, then closes              |
+| Setting picker      | `↑` / `↓` move (Theme previews each one), `enter` saves, `esc` goes back (Theme restores the saved theme)                                                                                                     |
+| Setting editor      | Type the value, `enter` applies and saves, `esc` goes back                                                                                                                                                    |
+| Raw JSON            | `enter` adds a new line, `ctrl+s` checks and saves, `esc` discards the draft and goes back to the list                                                                                                        |
+| Icons               | `↑` / `↓` move, `←` / `→` / `enter` turn icons on or off, `enter` edits a glyph in place (`enter` applies and saves, `esc` cancels), `ctrl+r` clears a glyph, `esc` goes back                                 |
+| Setting list        | `↑` / `↓` move (`j` / `k` in vim mode), `enter` edits the entry (a rule opens its form; the add and JSON rows open), `a` adds, `d` removes, `shift+↑` / `shift+↓` move the entry, `esc` goes back to Settings |
+| Remove confirmation | `enter` removes, `esc` keeps                                                                                                                                                                                  |
+| List field          | Type the value, `enter` applies or adds it and saves, `esc` cancels                                                                                                                                           |
+| Rule form           | `↑` / `↓` move, `enter` edits the field inline, `←` / `→` (or `enter`) switch Listed, `ctrl+r` clears the override so the rule inherits it again, `esc` goes back to the rule list                            |
+| Rename              | Type the name, `enter` renames, `esc` cancels                                                                                                                                                                 |
+| Batch close review  | `enter` closes exactly the marked set shown, `esc` keeps it                                                                                                                                                   |
+| Close results       | `enter` retries what is still open (or closes the dialog), `esc` closes                                                                                                                                       |
+| Operation report    | `enter` retries when the footer offers it (otherwise closes), `esc` closes                                                                                                                                    |
+| Startup failure     | `r` retries, `q` / `esc` / `ctrl+c` quit                                                                                                                                                                      |
+| Crash recovery      | See [Crash Recovery](workflows.md#crash-recovery)                                                                                                                                                             |

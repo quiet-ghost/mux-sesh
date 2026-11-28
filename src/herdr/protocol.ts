@@ -1,4 +1,9 @@
-import { MultiplexerError, type AgentStatus } from '../multiplexer'
+import * as Option from 'effect/Option'
+import * as Result from 'effect/Result'
+import * as Schema from 'effect/Schema'
+import * as SchemaIssue from 'effect/SchemaIssue'
+import * as SchemaTransformation from 'effect/SchemaTransformation'
+import { MultiplexerError, type AgentStatus } from '../multiplexer/types'
 
 export interface HerdrWorkspace {
   id: string
@@ -78,9 +83,190 @@ export interface HerdrStatus {
 
 export const MIN_SUPPORTED_HERDR_PROTOCOL = 17
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
+const AGENT_STATUSES = [
+  'idle',
+  'working',
+  'blocked',
+  'done',
+  'unknown',
+] as const satisfies readonly AgentStatus[]
+
+const RequiredText = Schema.String.check(Schema.isNonEmpty({ expected: 'a non-empty string' }))
+
+const isText = Schema.is(RequiredText)
+
+const isBoolean = Schema.is(Schema.Boolean)
+
+const isNumber = Schema.is(Schema.Finite)
+
+const isAgentStatus = Schema.is(Schema.Literals(AGENT_STATUSES))
+
+// Herdr omits, nulls, or blanks optional fields, so unusable values decode as absent.
+const OptionalText = Schema.optionalKey(Schema.Unknown).pipe(
+  Schema.decodeTo(
+    Schema.optionalKey(Schema.String),
+    SchemaTransformation.transformOptional({
+      decode: value => Option.filter(value, isText),
+      encode: value => value,
+    })
+  )
+)
+
+const OptionalBoolean = Schema.optionalKey(Schema.Unknown).pipe(
+  Schema.decodeTo(
+    Schema.optionalKey(Schema.Boolean),
+    SchemaTransformation.transformOptional({
+      decode: value => Option.filter(value, isBoolean),
+      encode: value => value,
+    })
+  )
+)
+
+const OptionalNumber = Schema.optionalKey(Schema.Unknown).pipe(
+  Schema.decodeTo(
+    Schema.optionalKey(Schema.Finite),
+    SchemaTransformation.transformOptional({
+      decode: value => Option.filter(value, isNumber),
+      encode: value => value,
+    })
+  )
+)
+
+const Status = Schema.optionalKey(Schema.Unknown).pipe(
+  Schema.decodeTo(
+    Schema.Literals(AGENT_STATUSES),
+    SchemaTransformation.transformOptional({
+      decode: value =>
+        Option.some(
+          Option.getOrElse(Option.filter(value, isAgentStatus), (): AgentStatus => 'unknown')
+        ),
+      encode: value => value,
+    })
+  )
+)
+
+const WorktreePath = Schema.optionalKey(
+  Schema.Struct({ checkout_path: OptionalText }).pipe(
+    Schema.decodeTo(
+      Schema.UndefinedOr(Schema.String),
+      SchemaTransformation.transform({
+        decode: worktree => worktree.checkout_path,
+        encode: checkoutPath => ({ checkout_path: checkoutPath }),
+      })
+    )
+  )
+)
+
+const Workspace = Schema.Struct({
+  id: RequiredText,
+  label: RequiredText,
+  focused: Schema.Boolean,
+  tabCount: Schema.Finite,
+  activeTabId: RequiredText,
+  agentStatus: Status,
+  worktreePath: WorktreePath,
+}).pipe(
+  Schema.encodeKeys({
+    id: 'workspace_id',
+    tabCount: 'tab_count',
+    activeTabId: 'active_tab_id',
+    agentStatus: 'agent_status',
+    worktreePath: 'worktree',
+  })
+)
+
+const Tab = Schema.Struct({
+  id: RequiredText,
+  workspaceId: RequiredText,
+  number: Schema.Finite,
+  label: RequiredText,
+}).pipe(Schema.encodeKeys({ id: 'tab_id', workspaceId: 'workspace_id' }))
+
+const Pane = Schema.Struct({
+  id: RequiredText,
+  workspaceId: RequiredText,
+  tabId: RequiredText,
+  focused: Schema.Boolean,
+  agentStatus: Status,
+  cwd: OptionalText,
+  foregroundCwd: OptionalText,
+  displayAgent: OptionalText,
+  label: OptionalText,
+  title: OptionalText,
+}).pipe(
+  Schema.encodeKeys({
+    id: 'pane_id',
+    workspaceId: 'workspace_id',
+    tabId: 'tab_id',
+    agentStatus: 'agent_status',
+    foregroundCwd: 'foreground_cwd',
+    displayAgent: 'display_agent',
+  })
+)
+
+const Agent = Schema.Struct({
+  paneId: RequiredText,
+  workspaceId: RequiredText,
+  tabId: RequiredText,
+  status: Status,
+  name: OptionalText,
+  agent: OptionalText,
+  displayAgent: OptionalText,
+  cwd: OptionalText,
+  foregroundCwd: OptionalText,
+}).pipe(
+  Schema.encodeKeys({
+    paneId: 'pane_id',
+    workspaceId: 'workspace_id',
+    tabId: 'tab_id',
+    status: 'agent_status',
+    displayAgent: 'display_agent',
+    foregroundCwd: 'foreground_cwd',
+  })
+)
+
+const Layout = Schema.Struct({
+  workspaceId: RequiredText,
+  tabId: RequiredText,
+  focusedPaneId: RequiredText,
+}).pipe(
+  Schema.encodeKeys({
+    workspaceId: 'workspace_id',
+    tabId: 'tab_id',
+    focusedPaneId: 'focused_pane_id',
+  })
+)
+
+const Snapshot = Schema.Struct({
+  focusedWorkspaceId: OptionalText,
+  focusedTabId: OptionalText,
+  focusedPaneId: OptionalText,
+  workspaces: Schema.mutable(Schema.Array(Workspace)),
+  tabs: Schema.mutable(Schema.Array(Tab)),
+  panes: Schema.mutable(Schema.Array(Pane)),
+  layouts: Schema.mutable(Schema.Array(Layout)),
+  agents: Schema.mutable(Schema.Array(Agent)),
+}).pipe(
+  Schema.encodeKeys({
+    focusedWorkspaceId: 'focused_workspace_id',
+    focusedTabId: 'focused_tab_id',
+    focusedPaneId: 'focused_pane_id',
+  })
+)
+
+const RootPane = Schema.Struct({ pane_id: RequiredText })
+
+const RejectedRequest = Schema.Struct({ message: OptionalText })
+
+const StatusResponse = Schema.fromJsonString(
+  Schema.Struct({
+    server: Schema.Struct({
+      running: Schema.Boolean,
+      compatible: OptionalBoolean,
+      protocol: OptionalNumber,
+    }),
+  })
+)
 
 function invalid(message: string): never {
   throw new MultiplexerError(
@@ -89,180 +275,149 @@ function invalid(message: string): never {
   )
 }
 
-function record(value: unknown, field: string): Record<string, unknown> {
-  return isRecord(value) ? value : invalid(`expected ${field} to be an object`)
+const formatIssue = SchemaIssue.makeFormatterDefault()
+
+interface LocatedIssue {
+  path: ReadonlyArray<PropertyKey>
+  issue: SchemaIssue.Issue
 }
 
-function array(value: unknown, field: string): unknown[] {
-  return Array.isArray(value) ? value : invalid(`expected ${field} to be an array`)
-}
+function firstIssue(issue: SchemaIssue.Issue, path: ReadonlyArray<PropertyKey>): LocatedIssue {
+  switch (issue._tag) {
+    case 'Pointer':
+      return firstIssue(issue.issue, [...path, ...issue.path])
+    case 'Encoding':
+      return firstIssue(issue.issue, path)
+    case 'Composite':
+    case 'AnyOf': {
+      const [first] = issue.issues
 
-function string(value: unknown, field: string): string {
-  return typeof value === 'string' && value.length > 0
-    ? value
-    : invalid(`expected ${field} to be a non-empty string`)
-}
+      return first ? firstIssue(first, path) : { path, issue }
+    }
 
-function optionalString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined
-}
-
-function number(value: unknown, field: string): number {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? value
-    : invalid(`expected ${field} to be a number`)
-}
-
-function boolean(value: unknown, field: string): boolean {
-  return typeof value === 'boolean' ? value : invalid(`expected ${field} to be a boolean`)
-}
-
-function agentStatus(value: unknown): AgentStatus {
-  return value === 'idle' ||
-    value === 'working' ||
-    value === 'blocked' ||
-    value === 'done' ||
-    value === 'unknown'
-    ? value
-    : 'unknown'
-}
-
-function parseWorkspace(value: unknown): HerdrWorkspace {
-  const raw = record(value, 'workspace')
-  const worktree =
-    raw.worktree === undefined ? undefined : record(raw.worktree, 'workspace.worktree')
-  return {
-    id: string(raw.workspace_id, 'workspace.workspace_id'),
-    label: string(raw.label, 'workspace.label'),
-    focused: boolean(raw.focused, 'workspace.focused'),
-    tabCount: number(raw.tab_count, 'workspace.tab_count'),
-    activeTabId: string(raw.active_tab_id, 'workspace.active_tab_id'),
-    agentStatus: agentStatus(raw.agent_status),
-    worktreePath: optionalString(worktree?.checkout_path),
+    case 'Filter':
+    case 'Forbidden':
+    case 'InvalidType':
+    case 'InvalidValue':
+    case 'MissingKey':
+    case 'OneOf':
+    case 'UnexpectedKey':
+      return { path, issue }
   }
 }
 
-function parseTab(value: unknown): HerdrTab {
-  const raw = record(value, 'tab')
-  return {
-    id: string(raw.tab_id, 'tab.tab_id'),
-    workspaceId: string(raw.workspace_id, 'tab.workspace_id'),
-    number: number(raw.number, 'tab.number'),
-    label: string(raw.label, 'tab.label'),
-  }
+function issuePath(path: ReadonlyArray<PropertyKey>): string {
+  return path
+    .map((key, index) =>
+      Number.isInteger(key) ? `[${String(key)}]` : `${index === 0 ? '' : '.'}${String(key)}`
+    )
+    .join('')
 }
 
-function parsePane(value: unknown): HerdrPane {
-  const raw = record(value, 'pane')
-  return {
-    id: string(raw.pane_id, 'pane.pane_id'),
-    workspaceId: string(raw.workspace_id, 'pane.workspace_id'),
-    tabId: string(raw.tab_id, 'pane.tab_id'),
-    focused: boolean(raw.focused, 'pane.focused'),
-    agentStatus: agentStatus(raw.agent_status),
-    cwd: optionalString(raw.cwd),
-    foregroundCwd: optionalString(raw.foreground_cwd),
-    displayAgent: optionalString(raw.display_agent),
-    label: optionalString(raw.label),
-    title: optionalString(raw.title),
-  }
+function invalidAt(issue: SchemaIssue.Issue, path: ReadonlyArray<PropertyKey>): never {
+  const located = firstIssue(issue, path)
+  const field = located.path.length === 0 ? 'response' : issuePath(located.path)
+
+  return invalid(`${field}: ${formatIssue(located.issue)}`)
 }
 
-function parseAgent(value: unknown): HerdrAgent {
-  const raw = record(value, 'agent')
-  return {
-    paneId: string(raw.pane_id, 'agent.pane_id'),
-    workspaceId: string(raw.workspace_id, 'agent.workspace_id'),
-    tabId: string(raw.tab_id, 'agent.tab_id'),
-    status: agentStatus(raw.agent_status),
-    name: optionalString(raw.name),
-    agent: optionalString(raw.agent),
-    displayAgent: optionalString(raw.display_agent),
-    cwd: optionalString(raw.cwd),
-    foregroundCwd: optionalString(raw.foreground_cwd),
-  }
+function decode<T>(schema: Schema.ConstraintDecoder<T>, output: string): T {
+  const decoded = Schema.decodeUnknownResult(schema)(output)
+
+  if (Result.isSuccess(decoded)) return decoded.success
+
+  if (decoded.failure.issue._tag === 'Encoding') return invalid('output was not valid JSON')
+
+  return invalidAt(decoded.failure.issue, [])
 }
 
-function parseLayout(value: unknown): HerdrLayout {
-  const raw = record(value, 'layout')
-  return {
-    workspaceId: string(raw.workspace_id, 'layout.workspace_id'),
-    tabId: string(raw.tab_id, 'layout.tab_id'),
-    focusedPaneId: string(raw.focused_pane_id, 'layout.focused_pane_id'),
+// The error envelope decodes first so a rejection wins over whatever `result` holds.
+const Envelope = Schema.fromJsonString(
+  Schema.Struct({
+    error: Schema.optionalKey(RejectedRequest),
+    result: Schema.optionalKey(Schema.Unknown),
+  })
+)
+
+function decodeResult<T>(schema: Schema.ConstraintDecoder<T>, output: string): T {
+  const envelope = decode(Envelope, output)
+
+  if (envelope.error) {
+    throw new MultiplexerError(
+      'command-failed',
+      `Herdr rejected the request: ${envelope.error.message ?? 'unknown Herdr API error'}`
+    )
   }
+
+  if (envelope.result === undefined) return invalid('result: Missing key')
+
+  const result = Schema.decodeUnknownResult(schema)(envelope.result)
+
+  return Result.isSuccess(result) ? result.success : invalidAt(result.failure.issue, ['result'])
+}
+
+const SnapshotResult = Schema.Struct({
+  type: Schema.Literal('session_snapshot'),
+  snapshot: Snapshot,
+})
+
+const CreatedWorkspaceResult = Schema.Struct({
+  type: Schema.Literal('workspace_created'),
+  workspace: Schema.Struct({ workspace_id: RequiredText, label: RequiredText }),
+  root_pane: RootPane,
+})
+
+const CreatedTabResult = Schema.Struct({
+  type: Schema.Literal('tab_created'),
+  tab: Schema.Struct({ tab_id: RequiredText }),
+  root_pane: RootPane,
+})
+
+// Agents become focus targets, so each must name a pane that exists in its own tab and workspace.
+function checkAgentReferences(snapshot: HerdrSnapshot): HerdrSnapshot {
+  const workspaceIds = new Set(snapshot.workspaces.map(workspace => workspace.id))
+
+  for (const agent of snapshot.agents) {
+    if (!workspaceIds.has(agent.workspaceId)) {
+      invalid(`agent pane '${agent.paneId}' names missing workspace '${agent.workspaceId}'`)
+    }
+
+    const pane = snapshot.panes.find(entry => entry.id === agent.paneId)
+
+    if (!pane || pane.tabId !== agent.tabId || pane.workspaceId !== agent.workspaceId) {
+      invalid(
+        `agent pane '${agent.paneId}' is not a pane of tab '${agent.tabId}' in workspace '${agent.workspaceId}'`
+      )
+    }
+  }
+
+  return snapshot
 }
 
 export function parseHerdrSnapshot(output: string): HerdrSnapshot {
-  const result = parseHerdrResult(output, 'session_snapshot')
-  const snapshot = record(result.snapshot, 'result.snapshot')
-  return {
-    focusedWorkspaceId: optionalString(snapshot.focused_workspace_id),
-    focusedTabId: optionalString(snapshot.focused_tab_id),
-    focusedPaneId: optionalString(snapshot.focused_pane_id),
-    workspaces: array(snapshot.workspaces, 'snapshot.workspaces').map(parseWorkspace),
-    tabs: array(snapshot.tabs, 'snapshot.tabs').map(parseTab),
-    panes: array(snapshot.panes, 'snapshot.panes').map(parsePane),
-    layouts: array(snapshot.layouts, 'snapshot.layouts').map(parseLayout),
-    agents: array(snapshot.agents, 'snapshot.agents').map(parseAgent),
-  }
+  return checkAgentReferences(decodeResult(SnapshotResult, output).snapshot)
 }
 
-export function parseHerdrResult(output: string, expectedType: string): Record<string, unknown> {
-  let decoded: unknown
-  try {
-    decoded = JSON.parse(output)
-  } catch {
-    invalid('output was not valid JSON')
-  }
-
-  const envelope = record(decoded, 'response')
-  if (envelope.error !== undefined) {
-    const error = record(envelope.error, 'error')
-    const message = optionalString(error.message) ?? 'unknown Herdr API error'
-    throw new MultiplexerError('command-failed', `Herdr rejected the request: ${message}`)
-  }
-
-  const result = record(envelope.result, 'result')
-  if (result.type !== expectedType) {
-    invalid(`expected result.type to be '${expectedType}'`)
-  }
-
-  return result
+export function parseHerdrResult(output: string, expectedType: string): { readonly type: string } {
+  return decodeResult(Schema.Struct({ type: Schema.Literal(expectedType) }), output)
 }
 
 export function parseHerdrCreatedWorkspace(output: string): HerdrCreatedWorkspace {
-  const result = parseHerdrResult(output, 'workspace_created')
-  const workspace = record(result.workspace, 'result.workspace')
-  const rootPane = record(result.root_pane, 'result.root_pane')
+  const result = decodeResult(CreatedWorkspaceResult, output)
+
   return {
-    workspaceId: string(workspace.workspace_id, 'workspace.workspace_id'),
-    workspaceTitle: string(workspace.label, 'workspace.label'),
-    rootPaneId: string(rootPane.pane_id, 'root_pane.pane_id'),
+    workspaceId: result.workspace.workspace_id,
+    workspaceTitle: result.workspace.label,
+    rootPaneId: result.root_pane.pane_id,
   }
 }
 
 export function parseHerdrCreatedTab(output: string): HerdrCreatedTab {
-  const result = parseHerdrResult(output, 'tab_created')
-  const tab = record(result.tab, 'result.tab')
-  const rootPane = record(result.root_pane, 'result.root_pane')
-  return {
-    tabId: string(tab.tab_id, 'tab.tab_id'),
-    rootPaneId: string(rootPane.pane_id, 'root_pane.pane_id'),
-  }
+  const result = decodeResult(CreatedTabResult, output)
+
+  return { tabId: result.tab.tab_id, rootPaneId: result.root_pane.pane_id }
 }
 
 export function parseHerdrStatus(output: string): HerdrStatus {
-  let decoded: unknown
-  try {
-    decoded = JSON.parse(output)
-  } catch {
-    invalid('status output was not valid JSON')
-  }
-  const root = record(decoded, 'status')
-  const server = record(root.server, 'status.server')
-  return {
-    running: boolean(server.running, 'status.server.running'),
-    compatible: typeof server.compatible === 'boolean' ? server.compatible : undefined,
-    protocol: typeof server.protocol === 'number' ? server.protocol : undefined,
-  }
+  return decode(StatusResponse, output).server
 }

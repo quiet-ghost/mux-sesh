@@ -15,5 +15,8 @@ jobs:
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
 
-      - name: Type check
+      - name: Type check source
         run: bun run typecheck
+
+      - name: Type check tests
+        run: bun run typecheck:tests

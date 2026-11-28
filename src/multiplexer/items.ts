@@ -1,6 +1,6 @@
-import type { Item } from '../types'
+import type { Item } from '../items/item'
 import type { HerdrAgentTarget, LiveWorkspace, WorkspaceRef } from './types'
-import { getLiveSessionGroupLabel } from '../util/path-display'
+import { getLiveSessionGroupLabel } from '../items/session-groups'
 
 export interface LiveSessionItem extends Item {
   isSession: true
@@ -34,7 +34,7 @@ export function isLiveSessionItem(item: Item): item is LiveSessionItem {
     item.isSession &&
     (item.itemKind === 'tmux' || item.itemKind === 'herdr') &&
     item.backend === item.itemKind &&
-    typeof item.sessionId === 'string'
+    item.sessionId !== undefined
   )
 }
 

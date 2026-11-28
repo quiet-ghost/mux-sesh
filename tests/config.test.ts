@@ -250,13 +250,38 @@ describe('config normalization', () => {
     })
   })
 
+  test('rows have no icons by default, and a partial icons object keeps the rest empty', () => {
+    const empty = { tmux: '', herdr: '', configured: '', project: '', opencode: '' }
+
+    expect(getDefaultConfig('/home/tester').icons).toEqual(empty)
+    expect(normalizeConfig({}, '/home/tester').icons).toEqual(empty)
+    expect(normalizeConfig({ icons: { tmux: 'T', config: 'C' } }, '/home/tester').icons).toEqual({
+      ...empty,
+      tmux: 'T',
+      configured: 'C',
+    })
+  })
+
   test('preserves theme system without changing the default theme', () => {
     expect(getDefaultConfig('/home/tester').theme).toBe('rosepine')
     expect(normalizeConfig({ theme: 'system' }, '/home/tester').theme).toBe('system')
   })
 
+  test('search history is on by default, and either spelling turns it off and saves snake_case', () => {
+    expect(getDefaultConfig('/home/tester').searchHistory).toBe(true)
+    expect(normalizeConfig({}, '/home/tester').searchHistory).toBe(true)
+
+    const snake = normalizeConfig({ search_history: false }, '/home/tester')
+    const camel = normalizeConfig({ searchHistory: false }, '/home/tester')
+
+    expect(snake.searchHistory).toBe(false)
+    expect(camel.searchHistory).toBe(false)
+    expect(serializeConfig(camel).search_history).toBe(false)
+  })
+
   test('returns defaults for invalid config values', () => {
     const defaults = getDefaultConfig('/home/tester')
+
     const config = normalizeConfig(
       {
         keybind_mode: 'invalid',
@@ -309,7 +334,7 @@ describe('config storage', () => {
       await mkdir(join(home, '.config', 'mux-sesh'), { recursive: true })
       await writeFile(configPath, '{bad json')
 
-      await expect(loadConfig()).rejects.toThrow('Failed to parse mux-sesh config')
+      expect((await rejectionOf(loadConfig())).message).toContain('Failed to parse mux-sesh config')
       expect(await readFile(configPath, 'utf8')).toBe('{bad json')
     } finally {
       await rm(root, { recursive: true, force: true })
@@ -448,3 +473,13 @@ describe('project session resolution', () => {
     expect(merged[0]?.isSession).toBe(true)
   })
 })
+
+async function rejectionOf(run: Promise<unknown>): Promise<Error> {
+  try {
+    await run
+  } catch (cause) {
+    if (cause instanceof Error) return cause
+  }
+
+  throw new Error('Expected the operation to fail with an Error')
+}

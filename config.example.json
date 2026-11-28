@@ -44,6 +44,7 @@
   "sort_order": "zoxide-first",
   "zoxide_mode": "rank",
   "auto_update": true,
+  "search_history": true,
   "dir_length": 2,
   "hidden_sessions": ["scratch", "tmp*"],
   "icons": {

@@ -1,6 +1,7 @@
-import type { Item, SortOrder } from '../types'
+import type { SortOrder } from '../config/config-model'
+import type { Item } from './item'
 import { isAgentSessionItem } from '../agents/session-name'
-import { getLiveSessionSortKey } from '../util/path-display'
+import { getLiveSessionSortKey } from './session-groups'
 
 export type SessionSection = 'pinned' | 'live' | 'configured'
 
@@ -44,6 +45,7 @@ function splitPinnedItems(items: Item[], pinnedSessions: readonly string[]) {
 function sortByGroup(items: Item[], groups: Array<'live' | 'configured'>): Item[] {
   const configuredItems = items.filter(isConfiguredSession).sort(compareByTitle)
   const liveItems = items.filter(item => !isConfiguredSession(item)).sort(compareLiveSessions)
+
   const groupedItems = new Map([
     ['configured', configuredItems],
     ['live', liveItems],

@@ -1,7 +1,14 @@
 import type { TextareaRenderable } from '@opentui/core'
-import { useRef, useState } from 'react'
-import { AppMode, ViewMode, type Config, type Item } from '../types'
+import { useMemo, useRef, useState } from 'react'
+import { AppMode, ViewMode } from './app-mode'
+import type { Config } from '../config/config-model'
+import type { Item } from '../items/item'
 import type { MultiplexerBackend } from '../multiplexer'
+import type { StatusLine } from '../ui/status-line'
+import { useToasts } from './notifications'
+import { PendingClose } from './pending-close'
+
+const NO_MARKS: ReadonlyMap<string, Item> = new Map()
 
 export function useAppCoreState() {
   const [appMode, setAppMode] = useState(AppMode.Normal)
@@ -11,21 +18,37 @@ export function useAppCoreState() {
   const [projectSourceItems, setProjectSourceItems] = useState<Item[]>([])
   const [sessionCandidateItems, setSessionCandidateItems] = useState<Item[]>([])
   const [sessionItems, setSessionItems] = useState<Item[]>([])
+  // Every live session, hidden ones included.
+  const [liveSessions, setLiveSessions] = useState<Item[]>([])
   const [cursor, setCursor] = useState(0)
   const [agentCursor, setAgentCursor] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
-  const [message, setMessage] = useState('')
+  // Persistent status lines above the footer: stale inventory, and degraded file search.
+  const [inventoryStatus, setInventoryStatus] = useState('')
+  const [fileSearchStatus, setFileSearchStatus] = useState('')
+  // A single close waiting for its second key; its warnings show as a status line meanwhile.
+  const [pendingClose, setPendingClose] = useState<PendingClose>(PendingClose.none)
+
+  const statusLines = useMemo(
+    (): readonly StatusLine[] => [
+      ...(inventoryStatus ? [{ kind: 'stale' as const, text: inventoryStatus }] : []),
+      ...(fileSearchStatus ? [{ kind: 'warn' as const, text: fileSearchStatus }] : []),
+      ...PendingClose.statusLines(pendingClose),
+    ],
+    [inventoryStatus, fileSearchStatus, pendingClose]
+  )
+
   const [renameTarget, setRenameTarget] = useState<Item | null>(null)
   const [config, setConfig] = useState<Config | null>(null)
   const [backend, setBackend] = useState<MultiplexerBackend | null>(null)
-  const [pendingKillSessionName, setPendingKillSessionName] = useState<string | null>(null)
+  // Rows the user marked for a batch close, keyed by item key, in the order they were marked.
+  const [markedItems, setMarkedItems] = useState<ReadonlyMap<string, Item>>(NO_MARKS)
   const [prefixActive, setPrefixActive] = useState(false)
   const prefixTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const textareaRef = useRef<TextareaRenderable | null>(null)
   const lastSessionSelectionRef = useRef<string | null>(null)
   const lastProjectSelectionRef = useRef<string | null>(null)
-  const [toastMessage, setToastMessage] = useState('')
-  const [toastVisible, setToastVisible] = useState(false)
+  const toasts = useToasts()
   const [updatedVersion, setUpdatedVersion] = useState<string | null>(null)
 
   return {
@@ -43,32 +66,37 @@ export function useAppCoreState() {
     setSessionCandidateItems,
     sessionItems,
     setSessionItems,
+    liveSessions,
+    setLiveSessions,
     cursor,
     setCursor,
     agentCursor,
     setAgentCursor,
     searchQuery,
     setSearchQuery,
-    message,
-    setMessage,
+    statusLines,
+    setInventoryStatus,
+    setFileSearchStatus,
+    pendingClose,
+    setPendingClose,
     renameTarget,
     setRenameTarget,
     config,
     setConfig,
     backend,
     setBackend,
-    pendingKillSessionName,
-    setPendingKillSessionName,
+    markedItems,
+    setMarkedItems,
     prefixActive,
     setPrefixActive,
     prefixTimeoutRef,
     textareaRef,
     lastSessionSelectionRef,
     lastProjectSelectionRef,
-    toastMessage,
-    setToastMessage,
-    toastVisible,
-    setToastVisible,
+    toast: toasts.current,
+    moreToasts: toasts.more,
+    showToast: toasts.showToast,
+    acknowledgeToast: toasts.acknowledgeToast,
     updatedVersion,
     setUpdatedVersion,
   }

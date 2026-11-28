@@ -1,12 +1,15 @@
 import { resolve } from 'path'
 import {
   MultiplexerError,
+  type CreatedSessionReceipt,
+  type CreateSessionInput,
+  type FocusOutcome,
   type LiveWorkspace,
   type MultiplexerBackend,
   type OpenWorkspaceInput,
   type WorkspaceDetails,
   type WorkspaceRef,
-} from '../multiplexer'
+} from '../multiplexer/types'
 import type { CommandOptions, CommandRunner } from '../multiplexer/command'
 import {
   parseHerdrCreatedWorkspace,
@@ -24,8 +27,6 @@ export interface HerdrBackendOptions {
   insideHerdr: boolean
 }
 
-const AGENTS_WORKSPACE_LABEL = 'Agents'
-
 function isAgentTarget(workspace: WorkspaceRef): workspace is Extract<
   WorkspaceRef,
   { backend: 'herdr' }
@@ -37,6 +38,7 @@ function isAgentTarget(workspace: WorkspaceRef): workspace is Extract<
 
 function workspacePaths(snapshot: HerdrSnapshot, workspace: HerdrWorkspace): string[] {
   const panes = snapshot.panes.filter(pane => pane.workspaceId === workspace.id)
+
   const activePane =
     panes.find(
       pane =>
@@ -45,9 +47,8 @@ function workspacePaths(snapshot: HerdrSnapshot, workspace: HerdrWorkspace): str
     ) ??
     panes.find(pane => pane.tabId === workspace.activeTabId) ??
     panes[0]
-  return [activePane?.cwd, workspace.worktreePath].filter(
-    (path): path is string => typeof path === 'string' && path.length > 0
-  )
+
+  return [activePane?.cwd, workspace.worktreePath].flatMap(path => (path ? [path] : []))
 }
 
 function workspacePath(snapshot: HerdrSnapshot, workspace: HerdrWorkspace): string {
@@ -56,6 +57,7 @@ function workspacePath(snapshot: HerdrSnapshot, workspace: HerdrWorkspace): stri
 
 function focusedPaneForTab(snapshot: HerdrSnapshot, tabId: string) {
   const focusedPaneId = snapshot.layouts.find(layout => layout.tabId === tabId)?.focusedPaneId
+
   return (
     snapshot.panes.find(pane => pane.id === focusedPaneId) ??
     snapshot.panes.find(pane => pane.tabId === tabId)
@@ -65,8 +67,9 @@ function focusedPaneForTab(snapshot: HerdrSnapshot, tabId: string) {
 export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBackend {
   let latestSnapshot: HerdrSnapshot | undefined
 
-  async function snapshot(): Promise<HerdrSnapshot> {
-    const result = await options.runner.run(['herdr', 'api', 'snapshot'])
+  async function snapshot(readOptions?: CommandOptions): Promise<HerdrSnapshot> {
+    const result = await options.runner.run(['herdr', 'api', 'snapshot'], readOptions)
+
     if (result.exitCode !== 0) {
       const reason = result.stderr.trim()
       throw new MultiplexerError(
@@ -76,12 +79,15 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
           : 'Failed to load Herdr workspaces. Run herdr status --json to verify the server.'
       )
     }
+
     latestSnapshot = parseHerdrSnapshot(result.stdout)
+
     return latestSnapshot
   }
 
   async function command(argv: readonly string[], expectedType: string): Promise<string> {
     const result = await options.runner.run(argv)
+
     if (result.exitCode !== 0) {
       const reason = result.stderr.trim()
       throw new MultiplexerError(
@@ -91,12 +97,15 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
           : `Herdr command failed: ${argv.slice(1).join(' ')}`
       )
     }
+
     parseHerdrResult(result.stdout, expectedType)
+
     return result.stdout
   }
 
   async function commandWithoutOutput(argv: readonly string[]): Promise<void> {
     const result = await options.runner.run(argv)
+
     if (result.exitCode !== 0) {
       const reason = result.stderr.trim()
       throw new MultiplexerError(
@@ -113,17 +122,27 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
     latestSnapshot = undefined
   }
 
-  async function attachIfNeeded(): Promise<void> {
-    if (options.insideHerdr) {
-      return
-    }
-    const result = await options.runner.run(['herdr'], { inheritStdio: true })
+  // Focus the exact pane. Never substitute its tab: that focuses whichever pane the tab last used.
+  async function focusAgent(paneId: string): Promise<void> {
+    const result = await options.runner.run(['herdr', 'agent', 'focus', paneId])
+
     if (result.exitCode !== 0) {
+      const reason = result.stderr.trim() || `exit code ${result.exitCode}`
+
       throw new MultiplexerError(
         'command-failed',
-        'Failed to attach the Herdr client. The selected workspace remains focused.'
+        `Herdr could not focus agent pane '${paneId}': ${reason}. The agent may have exited, so nothing was focused. Refresh the list; if this Herdr version lacks 'herdr agent focus', update Herdr.`
       )
     }
+
+    latestSnapshot = undefined
+  }
+
+  // Outside Herdr the focused workspace is shown by attaching a client after the picker exits.
+  function focusOutcome(): FocusOutcome {
+    return options.insideHerdr
+      ? { kind: 'focused' }
+      : { kind: 'handoff', handoff: { command: ['herdr'], description: 'attach the Herdr client' } }
   }
 
   return {
@@ -131,26 +150,24 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
     capabilities: { previousWorkspace: false },
     async list(): Promise<LiveWorkspace[]> {
       const state = await snapshot()
-      return state.workspaces.flatMap(workspace => {
-        if (workspace.label !== AGENTS_WORKSPACE_LABEL) {
-          return [
-            {
-              backend: 'herdr' as const,
-              id: workspace.id,
-              title: workspace.label,
-              path: workspacePath(state, workspace),
-              isActive: workspace.focused,
-              unitCount: workspace.tabCount,
-              agentStatus: workspace.agentStatus,
-            },
-          ]
-        }
 
-        return state.agents
+      // Every workspace is listed, whatever its label; agents are separate targets beside it.
+      return state.workspaces.flatMap(workspace => [
+        {
+          backend: 'herdr' as const,
+          id: workspace.id,
+          title: workspace.label,
+          path: workspacePath(state, workspace),
+          isActive: workspace.focused,
+          unitCount: workspace.tabCount,
+          agentStatus: workspace.agentStatus,
+        },
+        ...state.agents
           .filter(agent => agent.workspaceId === workspace.id)
           .map(agent => {
             const pane = state.panes.find(entry => entry.id === agent.paneId)
             const tab = state.tabs.find(entry => entry.id === agent.tabId)
+
             return {
               backend: 'herdr' as const,
               id: workspace.id,
@@ -170,37 +187,41 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
               agentStatus: agent.status,
               target: { kind: 'agent' as const, tabId: agent.tabId, paneId: agent.paneId },
             }
-          })
-      })
+          }),
+      ])
     },
-    async open(workspace: WorkspaceRef): Promise<void> {
+    async open(workspace: WorkspaceRef): Promise<FocusOutcome> {
       if (isAgentTarget(workspace)) {
-        await command(['herdr', 'tab', 'focus', workspace.target.tabId], 'tab_info')
-        latestSnapshot = undefined
+        await focusAgent(workspace.target.paneId)
       } else {
         await focus(workspace.id)
       }
-      await attachIfNeeded()
+
+      return focusOutcome()
     },
-    async openOrCreate(input: OpenWorkspaceInput): Promise<void> {
+    async openOrCreate(input: OpenWorkspaceInput): Promise<FocusOutcome> {
       const state = await snapshot()
       const normalizedPath = resolve(input.path)
+
       const existing = state.workspaces.find(
         workspace =>
           workspace.label === input.title &&
           workspacePaths(state, workspace).some(path => resolve(path) === normalizedPath)
       )
+
       if (existing) {
         await focus(existing.id)
-        await attachIfNeeded()
-        return
+
+        return focusOutcome()
       }
 
       const output = await command(
         ['herdr', 'workspace', 'create', '--cwd', input.path, '--label', input.title, '--focus'],
         'workspace_created'
       )
+
       const created = parseHerdrCreatedWorkspace(output)
+
       if (input.startupCommand) {
         await commandWithoutOutput([
           'herdr',
@@ -210,18 +231,40 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
           input.startupCommand,
         ])
       }
+
       latestSnapshot = undefined
-      await attachIfNeeded()
+
+      return focusOutcome()
     },
-    async rename(workspace: WorkspaceRef, title: string): Promise<void> {
+    async create(input: CreateSessionInput): Promise<CreatedSessionReceipt> {
+      const output = await command(
+        ['herdr', 'workspace', 'create', '--cwd', input.path, '--label', input.title],
+        'workspace_created'
+      )
+
+      const created = parseHerdrCreatedWorkspace(output)
+      latestSnapshot = undefined
+
+      return {
+        workspace: { backend: 'herdr', id: created.workspaceId, title: created.workspaceTitle },
+        rootPaneId: created.rootPaneId,
+      }
+    },
+    async start(receipt: CreatedSessionReceipt, startupCommand: string): Promise<void> {
+      await commandWithoutOutput(['herdr', 'pane', 'run', receipt.rootPaneId, startupCommand])
+    },
+    async rename(workspace: WorkspaceRef, title: string): Promise<WorkspaceRef> {
       if (isAgentTarget(workspace)) {
         throw new MultiplexerError(
           'unsupported',
           'Cannot rename an agent tab from mux-sesh. Rename it in Herdr instead.'
         )
       }
+
       await command(['herdr', 'workspace', 'rename', workspace.id, title], 'workspace_info')
       latestSnapshot = undefined
+
+      return { backend: 'herdr', id: workspace.id, title }
     },
     async close(workspace: WorkspaceRef): Promise<void> {
       if (isAgentTarget(workspace)) {
@@ -230,26 +273,36 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
           'Cannot close an agent tab from mux-sesh. Close it in Herdr instead.'
         )
       }
+
       await command(['herdr', 'workspace', 'close', workspace.id], 'ok')
       latestSnapshot = undefined
     },
     async current(): Promise<WorkspaceRef | undefined> {
       const state = latestSnapshot ?? (await snapshot())
       const workspace = state.workspaces.find(entry => entry.id === state.focusedWorkspaceId)
+
       return workspace ? { backend: 'herdr', id: workspace.id, title: workspace.label } : undefined
     },
     async directory(workspace: WorkspaceRef): Promise<string | undefined> {
       const state = latestSnapshot ?? (await snapshot())
+
       if (isAgentTarget(workspace)) {
         const pane = state.panes.find(entry => entry.id === workspace.target.paneId)
+
         return pane?.foregroundCwd ?? pane?.cwd
       }
+
       const target = state.workspaces.find(entry => entry.id === workspace.id)
+
       return target ? workspacePath(state, target) || undefined : undefined
     },
-    async details(workspace: WorkspaceRef): Promise<WorkspaceDetails> {
-      const state = latestSnapshot ?? (await snapshot())
+    async details(
+      workspace: WorkspaceRef,
+      readOptions?: CommandOptions
+    ): Promise<WorkspaceDetails> {
+      const state = latestSnapshot ?? (await snapshot(readOptions))
       const target = state.workspaces.find(entry => entry.id === workspace.id)
+
       if (!target) {
         throw new MultiplexerError(
           'command-failed',
@@ -262,27 +315,36 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
           tab.workspaceId === workspace.id &&
           (!isAgentTarget(workspace) || tab.id === workspace.target.tabId)
       )
+
       const workspacePanes = state.panes.filter(pane => pane.workspaceId === workspace.id)
+
       const previewPane = isAgentTarget(workspace)
         ? state.panes.find(pane => pane.id === workspace.target.paneId)
         : (focusedPaneForTab(state, target.activeTabId) ?? workspacePanes[0])
+
       let previewLines: string[] | undefined
+
       if (previewPane) {
-        const preview = await options.runner.run([
-          'herdr',
-          'pane',
-          'read',
-          previewPane.id,
-          '--source',
-          'recent-unwrapped',
-          '--lines',
-          '16',
-        ])
+        const preview = await options.runner.run(
+          [
+            'herdr',
+            'pane',
+            'read',
+            previewPane.id,
+            '--source',
+            'recent-unwrapped',
+            '--lines',
+            '16',
+          ],
+          readOptions
+        )
+
         if (preview.exitCode === 0) {
           const lines = preview.stdout
             .split('\n')
             .map(line => line.trimEnd())
             .filter(line => line.length > 0)
+
           previewLines = lines.length > 0 ? lines : undefined
         }
       }
@@ -299,6 +361,7 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
         unitLabel: 'Tabs',
         units: workspaceTabs.map(tab => {
           const pane = focusedPaneForTab(state, tab.id)
+
           return {
             id: tab.id,
             name: tab.label,
@@ -325,14 +388,17 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
       if (!options.insideHerdr) {
         return false
       }
+
       const state = latestSnapshot ?? (await snapshot())
       const workspaceId = state.focusedWorkspaceId
+
       if (!workspaceId) {
         throw new MultiplexerError(
           'command-failed',
           'Herdr has no focused workspace for the editor tab.'
         )
       }
+
       const output = await command(
         [
           'herdr',
@@ -348,9 +414,11 @@ export function createHerdrBackend(options: HerdrBackendOptions): MultiplexerBac
         ],
         'tab_created'
       )
+
       const created = parseHerdrCreatedTab(output)
       await commandWithoutOutput(['herdr', 'pane', 'run', created.rootPaneId, editorCommand])
       latestSnapshot = undefined
+
       return true
     },
   }

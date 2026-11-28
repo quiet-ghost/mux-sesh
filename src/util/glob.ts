@@ -10,7 +10,7 @@ export function normalizePathForMatching(value: string): string {
   return value.replaceAll('\\', '/').replace(/\/+/g, '/').replace(/\/$/, '') || '/'
 }
 
-export function globToRegExp(pattern: string, options: MatchGlobOptions = {}): RegExp {
+function globToRegExp(pattern: string, options: MatchGlobOptions = {}): RegExp {
   const { pathSeparatorAware = false } = options
   let regex = '^'
 

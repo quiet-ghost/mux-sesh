@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { createHerdrBackend, type CommandOptions, type CommandRunner } from '../src/herdr/backend'
+import { MultiplexerError } from '../src/multiplexer'
 
 const snapshot = JSON.stringify({
   id: 'cli:api:snapshot',
@@ -198,13 +199,10 @@ const agentsWorkspaceSnapshot = JSON.stringify({
   },
 })
 
-function recordingRunner(responses: Array<{ exitCode: number; stdout: string; stderr: string }>): {
-  runner: CommandRunner
-  commands: string[][]
-  options: Array<CommandOptions | undefined>
-} {
+function recordingRunner(responses: Array<{ exitCode: number; stdout: string; stderr: string }>) {
   const commands: string[][] = []
   const options: Array<CommandOptions | undefined> = []
+
   return {
     commands,
     options,
@@ -212,20 +210,31 @@ function recordingRunner(responses: Array<{ exitCode: number; stdout: string; st
       async run(command, commandOptions) {
         commands.push([...command])
         options.push(commandOptions)
+
         return responses.shift() ?? { exitCode: 0, stdout: '', stderr: '' }
       },
-    },
+    } satisfies CommandRunner,
   }
 }
 
 describe('Herdr backend', () => {
-  test('lists detected agents from the Agents workspace as individual targets', async () => {
+  test('lists the Agents workspace and each detected agent as an individual target', async () => {
     const { runner } = recordingRunner([
       { exitCode: 0, stdout: agentsWorkspaceSnapshot, stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     expect(await backend.list()).toEqual([
+      {
+        backend: 'herdr',
+        id: 'agents',
+        title: 'Agents',
+        path: '/repo/api',
+        isActive: true,
+        unitCount: 2,
+        agentStatus: 'done',
+      },
       {
         backend: 'herdr',
         id: 'agents',
@@ -267,6 +276,17 @@ describe('Herdr backend', () => {
       },
       {
         backend: 'herdr',
+        id: 'w1',
+        title: 'opencode-api',
+        workspaceTitle: 'api',
+        path: '/repo/api/src',
+        isActive: true,
+        unitCount: 1,
+        agentStatus: 'working',
+        target: { kind: 'agent', tabId: 'w1:t1', paneId: 'w1:p1' },
+      },
+      {
+        backend: 'herdr',
         id: 'w2',
         title: 'api',
         path: '/repo/api-copy',
@@ -278,39 +298,236 @@ describe('Herdr backend', () => {
     expect(commands).toEqual([['herdr', 'api', 'snapshot']])
   })
 
+  test('keeps an empty Agents workspace and distinct agents that share one tab', async () => {
+    const shared = JSON.stringify({
+      result: {
+        type: 'session_snapshot',
+        snapshot: {
+          workspaces: [
+            {
+              workspace_id: 'empty',
+              label: 'Agents',
+              focused: false,
+              tab_count: 1,
+              active_tab_id: 'empty:t1',
+            },
+            {
+              workspace_id: 'w3',
+              label: 'pair',
+              focused: false,
+              tab_count: 1,
+              active_tab_id: 'w3:t1',
+            },
+          ],
+          tabs: [{ tab_id: 'w3:t1', workspace_id: 'w3', number: 1, label: 'main' }],
+          panes: [
+            {
+              pane_id: 'w3:p1',
+              workspace_id: 'w3',
+              tab_id: 'w3:t1',
+              focused: false,
+              cwd: '/repo/a',
+            },
+            {
+              pane_id: 'w3:p2',
+              workspace_id: 'w3',
+              tab_id: 'w3:t1',
+              focused: false,
+              cwd: '/repo/b',
+            },
+          ],
+          layouts: [],
+          agents: [
+            { workspace_id: 'w3', tab_id: 'w3:t1', pane_id: 'w3:p1', name: 'twin' },
+            {
+              workspace_id: 'w3',
+              tab_id: 'w3:t1',
+              pane_id: 'w3:p2',
+              name: 'twin',
+              agent_status: 'surprise',
+            },
+          ],
+        },
+      },
+    })
+
+    const { runner } = recordingRunner([{ exitCode: 0, stdout: shared, stderr: '' }])
+    const listed = await createHerdrBackend({ runner, insideHerdr: true }).list()
+
+    expect(
+      listed.map(row => [
+        row.id,
+        row.title,
+        row.backend === 'herdr' ? row.target?.paneId : undefined,
+      ])
+    ).toEqual([
+      ['empty', 'Agents', undefined],
+      ['w3', 'pair', undefined],
+      ['w3', 'twin', 'w3:p1'],
+      ['w3', 'twin', 'w3:p2'],
+    ])
+    expect(listed[3]?.agentStatus).toBe('unknown')
+  })
+
+  test('names the focused workspace as current, never the agent in its focused pane', async () => {
+    const { runner, commands } = recordingRunner([{ exitCode: 0, stdout: snapshot, stderr: '' }])
+    const backend = createHerdrBackend({ runner, insideHerdr: true })
+
+    await backend.list()
+
+    expect(await backend.current()).toEqual({ backend: 'herdr', id: 'w1', title: 'api' })
+    expect(commands).toEqual([['herdr', 'api', 'snapshot']])
+  })
+
+  test('has no current workspace when the snapshot reports none focused', async () => {
+    const unfocused = snapshot.replace('"focused_workspace_id":"w1"', '"focused_workspace_id":null')
+    expect(unfocused).not.toBe(snapshot)
+    const { runner } = recordingRunner([{ exitCode: 0, stdout: unfocused, stderr: '' }])
+
+    expect(await createHerdrBackend({ runner, insideHerdr: true }).current()).toBeUndefined()
+  })
+
+  test('rejects an agent whose pane is not in the same snapshot', async () => {
+    const dangling = JSON.stringify({
+      result: {
+        type: 'session_snapshot',
+        snapshot: {
+          workspaces: [
+            {
+              workspace_id: 'w1',
+              label: 'api',
+              focused: false,
+              tab_count: 1,
+              active_tab_id: 'w1:t1',
+            },
+          ],
+          tabs: [],
+          panes: [],
+          layouts: [],
+          agents: [{ workspace_id: 'w1', tab_id: 'w1:t1', pane_id: 'w1:gone', name: 'ghost' }],
+        },
+      },
+    })
+
+    const { runner } = recordingRunner([{ exitCode: 0, stdout: dangling, stderr: '' }])
+    const backend = createHerdrBackend({ runner, insideHerdr: true })
+
+    expect.assertions(2)
+
+    try {
+      await backend.list()
+    } catch (cause) {
+      expect(cause).toBeInstanceOf(MultiplexerError)
+      expect(cause instanceof Error ? cause.message : '').toContain(
+        "agent pane 'w1:gone' is not a pane of tab 'w1:t1' in workspace 'w1'"
+      )
+    }
+  })
+
   test('focuses by workspace id and attaches when launched outside Herdr', async () => {
     const response = JSON.stringify({
       id: 'cli:workspace:focus',
       result: { type: 'workspace_info', workspace: {} },
     })
+
     const { runner, commands, options } = recordingRunner([
       { exitCode: 0, stdout: response, stderr: '' },
       { exitCode: 0, stdout: '', stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: false })
 
-    await backend.open({ backend: 'herdr', id: 'w7', title: 'duplicate label' })
+    const outcome = await backend.open({ backend: 'herdr', id: 'w7', title: 'duplicate label' })
 
-    expect(commands).toEqual([['herdr', 'workspace', 'focus', 'w7'], ['herdr']])
-    expect(options).toEqual([undefined, { inheritStdio: true }])
+    expect(commands).toEqual([['herdr', 'workspace', 'focus', 'w7']])
+    expect(options).toEqual([undefined])
+    expect(outcome).toEqual({
+      kind: 'handoff',
+      handoff: { command: ['herdr'], description: 'attach the Herdr client' },
+    })
   })
 
-  test('focuses the exact tab for an agent target', async () => {
-    const response = JSON.stringify({
-      id: 'cli:tab:focus',
-      result: { type: 'tab_info', tab: {} },
-    })
-    const { runner, commands } = recordingRunner([{ exitCode: 0, stdout: response, stderr: '' }])
+  test('focuses the exact agent pane, not its tab, for agents sharing one tab', async () => {
+    const focused = JSON.stringify({ result: { type: 'agent_info', agent: {} } })
+
+    const { runner, commands, options } = recordingRunner([
+      { exitCode: 0, stdout: focused, stderr: '' },
+      { exitCode: 0, stdout: focused, stderr: '' },
+    ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
-    await backend.open({
-      backend: 'herdr',
-      id: 'agents',
-      title: 'pi-web',
-      target: { kind: 'agent', tabId: 'agents:t2', paneId: 'agents:p2' },
+    for (const paneId of ['w3:p1', 'w3:p2']) {
+      await backend.open({
+        backend: 'herdr',
+        id: 'w3',
+        title: 'twin',
+        target: { kind: 'agent', tabId: 'w3:t1', paneId },
+      })
+    }
+
+    expect(commands).toEqual([
+      ['herdr', 'agent', 'focus', 'w3:p1'],
+      ['herdr', 'agent', 'focus', 'w3:p2'],
+    ])
+    expect(options.every(option => option === undefined)).toBe(true)
+  })
+
+  test('a failed agent focus explains recovery without focusing another pane or attaching', async () => {
+    const { runner, commands } = recordingRunner([
+      { exitCode: 1, stdout: '', stderr: '{"error":{"message":"agent not found"}}' },
+    ])
+
+    const backend = createHerdrBackend({ runner, insideHerdr: false })
+
+    expect.assertions(3)
+
+    try {
+      await backend.open({
+        backend: 'herdr',
+        id: 'w3',
+        title: 'twin',
+        target: { kind: 'agent', tabId: 'w3:t1', paneId: 'w3:p2' },
+      })
+    } catch (cause) {
+      expect(cause instanceof Error ? cause.message : '').toContain(
+        "Herdr could not focus agent pane 'w3:p2'"
+      )
+      expect(cause instanceof Error ? cause.message : '').toContain('Refresh the list')
+    }
+
+    expect(commands).toEqual([['herdr', 'agent', 'focus', 'w3:p2']])
+  })
+
+  test('creates without focusing and returns the native workspace and root pane', async () => {
+    const created = JSON.stringify({
+      result: {
+        type: 'workspace_created',
+        workspace: { workspace_id: 'w3', label: 'web' },
+        tab: { tab_id: 'w3:t1' },
+        root_pane: { pane_id: 'w3:p1' },
+      },
     })
 
-    expect(commands).toEqual([['herdr', 'tab', 'focus', 'agents:t2']])
+    const { runner, commands, options } = recordingRunner([
+      { exitCode: 0, stdout: created, stderr: '' },
+      { exitCode: 0, stdout: '', stderr: '' },
+    ])
+
+    const backend = createHerdrBackend({ runner, insideHerdr: false })
+
+    const receipt = await backend.create({ title: 'web', path: '/repo/web' })
+    await backend.start(receipt, 'bun dev')
+
+    expect(receipt).toEqual({
+      workspace: { backend: 'herdr', id: 'w3', title: 'web' },
+      rootPaneId: 'w3:p1',
+    })
+    expect(commands).toEqual([
+      ['herdr', 'workspace', 'create', '--cwd', '/repo/web', '--label', 'web'],
+      ['herdr', 'pane', 'run', 'w3:p1', 'bun dev'],
+    ])
+    expect(options.every(option => option === undefined)).toBe(true)
   })
 
   test('creates a workspace, runs startup command in its root pane, then focuses it', async () => {
@@ -323,11 +540,13 @@ describe('Herdr backend', () => {
         root_pane: { pane_id: 'w3:p1' },
       },
     })
+
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: snapshot, stderr: '' },
       { exitCode: 0, stdout: created, stderr: '' },
       { exitCode: 0, stdout: '', stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     await backend.openOrCreate({ title: 'web', path: '/repo/web', startupCommand: 'bun dev' })
@@ -344,10 +563,12 @@ describe('Herdr backend', () => {
       id: 'cli:workspace:focus',
       result: { type: 'workspace_info', workspace: {} },
     })
+
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: snapshot, stderr: '' },
       { exitCode: 0, stdout: focused, stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     await backend.openOrCreate({ title: 'api', path: '/repo/api' })
@@ -360,14 +581,17 @@ describe('Herdr backend', () => {
 
   test('reuses a repository-root workspace after its shell changes directory', async () => {
     const changedCwdSnapshot = snapshot.replace('"cwd":"/repo/api"', '"cwd":"/repo/src"')
+
     const focused = JSON.stringify({
       id: 'cli:workspace:focus',
       result: { type: 'workspace_info', workspace: {} },
     })
+
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: changedCwdSnapshot, stderr: '' },
       { exitCode: 0, stdout: focused, stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     await backend.openOrCreate({ title: 'api', path: '/repo' })
@@ -383,11 +607,14 @@ describe('Herdr backend', () => {
       id: 'cli:workspace:rename',
       result: { type: 'workspace_info', workspace: {} },
     })
+
     const closed = JSON.stringify({ id: 'cli:workspace:close', result: { type: 'ok' } })
+
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: renamed, stderr: '' },
       { exitCode: 0, stdout: closed, stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
     const workspace = { backend: 'herdr' as const, id: 'w9', title: 'api' }
 
@@ -403,6 +630,7 @@ describe('Herdr backend', () => {
   test('does not rename or close a targeted agent through its shared workspace', async () => {
     const { runner, commands } = recordingRunner([])
     const backend = createHerdrBackend({ runner, insideHerdr: true })
+
     const agent = {
       backend: 'herdr' as const,
       id: 'agents',
@@ -410,8 +638,10 @@ describe('Herdr backend', () => {
       target: { kind: 'agent' as const, tabId: 'agents:t1', paneId: 'agents:p1' },
     }
 
-    await expect(backend.rename(agent, 'renamed')).rejects.toThrow('Cannot rename an agent tab')
-    await expect(backend.close(agent)).rejects.toThrow('Cannot close an agent tab')
+    expect((await rejectionOf(backend.rename(agent, 'renamed'))).message).toContain(
+      'Cannot rename an agent tab'
+    )
+    expect((await rejectionOf(backend.close(agent))).message).toContain('Cannot close an agent tab')
     expect(commands).toEqual([])
   })
 
@@ -420,6 +650,7 @@ describe('Herdr backend', () => {
       { exitCode: 0, stdout: snapshot, stderr: '' },
       { exitCode: 0, stdout: 'working\nready\n', stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     expect(await backend.details({ backend: 'herdr', id: 'w1', title: 'api' })).toEqual({
@@ -443,11 +674,30 @@ describe('Herdr backend', () => {
     ])
   })
 
+  test('passes the caller signal to the snapshot and pane reads behind details', async () => {
+    const { runner, options } = recordingRunner([
+      { exitCode: 0, stdout: snapshot, stderr: '' },
+      { exitCode: 0, stdout: 'ready\n', stderr: '' },
+    ])
+
+    const backend = createHerdrBackend({ runner, insideHerdr: true })
+    const controller = new AbortController()
+
+    await backend.details(
+      { backend: 'herdr', id: 'w1', title: 'api' },
+      { signal: controller.signal }
+    )
+
+    expect(options).toHaveLength(2)
+    expect(options.every(option => option?.signal === controller.signal)).toBe(true)
+  })
+
   test('returns details and preview for the targeted agent tab', async () => {
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: agentsWorkspaceSnapshot, stderr: '' },
       { exitCode: 0, stdout: 'web agent output\n', stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     expect(
@@ -492,11 +742,13 @@ describe('Herdr backend', () => {
         root_pane: { pane_id: 'w1:p2' },
       },
     })
+
     const { runner, commands } = recordingRunner([
       { exitCode: 0, stdout: snapshot, stderr: '' },
       { exitCode: 0, stdout: tabCreated, stderr: '' },
       { exitCode: 0, stdout: '', stderr: '' },
     ])
+
     const backend = createHerdrBackend({ runner, insideHerdr: true })
 
     expect(await backend.openEditor('/repo/api', "nvim '/repo/api'")).toBe(true)
@@ -518,3 +770,13 @@ describe('Herdr backend', () => {
     ])
   })
 })
+
+async function rejectionOf(run: Promise<unknown>): Promise<Error> {
+  try {
+    await run
+  } catch (cause) {
+    if (cause instanceof Error) return cause
+  }
+
+  throw new Error('Expected the operation to fail with an Error')
+}

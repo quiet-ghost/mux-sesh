@@ -1,18 +1,46 @@
-import type { InstallMethod } from '../types'
-
-interface PackageMetadata {
-  name?: string
-  version?: string
-}
+import * as Option from 'effect/Option'
+import * as Schema from 'effect/Schema'
+import type { InstallMethod } from './update-event'
+import { isCompiledBinary } from './build'
 
 const PACKAGE_NAME = 'mux-sesh'
+
+// Compiled installs run from a platform package such as mux-sesh-linux-x64 or mux-sesh-darwin-arm64.
+const PACKAGE_DIRECTORY = String.raw`${PACKAGE_NAME}(?:-(?:linux|darwin)-[a-z0-9-]+)?`
+
+const BUN_GLOBAL_PACKAGE_PATH = new RegExp(
+  String.raw`/\.bun/install/global/node_modules/${PACKAGE_DIRECTORY}/`
+)
+
+const NODE_MODULES_PACKAGE_PATH = new RegExp(String.raw`/node_modules/${PACKAGE_DIRECTORY}/`)
+
+// mise installs each version under <data dir>/installs/npm-mux-sesh/<version>/. It looks like npm
+// from inside, but a global npm install would land beside it, hidden behind mise's own command.
+const MISE_INSTALL_PATH = new RegExp(String.raw`/installs/npm-${PACKAGE_NAME}/`)
+
+const isMuxSeshPackage = Schema.is(
+  Schema.Struct({
+    name: Schema.Union([
+      Schema.Literal(PACKAGE_NAME),
+      Schema.TemplateLiteral([
+        `${PACKAGE_NAME}-`,
+        Schema.Literals(['linux', 'darwin']),
+        '-',
+        Schema.String,
+      ]),
+    ]),
+  })
+)
+
+const decodePackageVersion = Schema.decodeUnknownOption(Schema.Struct({ version: Schema.String }))
 
 function normalizePath(path: string): string {
   return path.replaceAll('\\', '/')
 }
 
-function getDefaultRuntimePath(): string {
-  return process.argv[1] ?? import.meta.path
+// A compiled binary's modules live in its embedded filesystem; only the executable shows the install location.
+export function getDefaultRuntimePath(compiled = isCompiledBinary()): string {
+  return compiled ? process.execPath : (process.argv[1] ?? import.meta.path)
 }
 
 async function findPackageRoot(startPath: string): Promise<string | null> {
@@ -23,6 +51,7 @@ async function findPackageRoot(startPath: string): Promise<string | null> {
   }
 
   const lastSlash = current.lastIndexOf('/')
+
   if (lastSlash === -1) {
     return null
   }
@@ -34,8 +63,9 @@ async function findPackageRoot(startPath: string): Promise<string | null> {
 
     if (await packageFile.exists()) {
       try {
-        const packageJson = (await packageFile.json()) as PackageMetadata
-        if (packageJson.name === PACKAGE_NAME) {
+        const packageJson: unknown = await packageFile.json()
+
+        if (isMuxSeshPackage(packageJson)) {
           return current
         }
       } catch {
@@ -44,9 +74,11 @@ async function findPackageRoot(startPath: string): Promise<string | null> {
     }
 
     const parent = current.slice(0, current.lastIndexOf('/')) || '/'
+
     if (parent === current) {
       return null
     }
+
     current = parent
   }
 
@@ -56,7 +88,11 @@ async function findPackageRoot(startPath: string): Promise<string | null> {
 async function detectInstallMethodFromPath(runtimePath: string): Promise<InstallMethod> {
   const normalizedPath = normalizePath(runtimePath)
 
-  if (normalizedPath.includes(`/.bun/install/global/node_modules/${PACKAGE_NAME}/`)) {
+  if (MISE_INSTALL_PATH.test(normalizedPath)) {
+    return 'mise'
+  }
+
+  if (BUN_GLOBAL_PACKAGE_PATH.test(normalizedPath)) {
     return 'bun'
   }
 
@@ -64,7 +100,7 @@ async function detectInstallMethodFromPath(runtimePath: string): Promise<Install
     return 'brew'
   }
 
-  if (normalizedPath.includes(`/node_modules/${PACKAGE_NAME}/`)) {
+  if (NODE_MODULES_PACKAGE_PATH.test(normalizedPath)) {
     return 'npm'
   }
 
@@ -75,6 +111,7 @@ export async function detectInstallMethod(
   runtimePath = getDefaultRuntimePath()
 ): Promise<InstallMethod> {
   const activeMethod = await detectInstallMethodFromPath(runtimePath)
+
   if (activeMethod !== 'unknown') {
     return activeMethod
   }
@@ -102,15 +139,31 @@ export async function detectInstallMethod(
       if (output.includes(PACKAGE_NAME)) {
         return check.name
       }
-    } catch (error) {
+    } catch {
       continue
     }
   }
+
   return 'unknown'
 }
 
 export function canAutoUpdate(method: InstallMethod): boolean {
   return method === 'npm' || method === 'bun'
+}
+
+// The command to tell the user when mux-sesh leaves the upgrade to the tool that installed it.
+export function upgradeCommand(method: InstallMethod): string | undefined {
+  switch (method) {
+    case 'mise':
+      return `mise upgrade npm:${PACKAGE_NAME}`
+    case 'brew':
+      return `brew upgrade ${PACKAGE_NAME}`
+    case 'npm':
+    case 'bun':
+    case 'source':
+    case 'unknown':
+      return undefined
+  }
 }
 
 export async function getInstalledVersion(
@@ -123,10 +176,12 @@ export async function getInstalledVersion(
   }
 
   try {
-    const packageJson = (await Bun.file(`${packageRoot}/package.json`).json()) as PackageMetadata
-    return typeof packageJson.version === 'string' ? packageJson.version : null
+    const packageJson: unknown = await Bun.file(`${packageRoot}/package.json`).json()
+
+    return Option.getOrNull(Option.map(decodePackageVersion(packageJson), pkg => pkg.version))
   } catch (error) {
     console.error('Failed to read installed version:', error)
+
     return null
   }
 }
@@ -135,10 +190,12 @@ export async function performUpgrade(
   method: InstallMethod,
   targetVersion: string
 ): Promise<boolean> {
-  if (method === 'unknown' || method === 'source') {
+  if (method === 'unknown' || method === 'source' || method === 'mise') {
     return false
   }
+
   let command: string[]
+
   switch (method) {
     case 'npm':
       command = ['npm', 'install', '-g', `${PACKAGE_NAME}@${targetVersion}`]
@@ -150,12 +207,15 @@ export async function performUpgrade(
       command = ['brew', 'upgrade', PACKAGE_NAME]
       break
   }
+
   try {
     const proc = Bun.spawn(command, { stdout: 'ignore', stderr: 'ignore' })
     await proc.exited
+
     return proc.exitCode === 0
   } catch (error) {
     console.error('Upgrade Failed:', error)
+
     return false
   }
 }

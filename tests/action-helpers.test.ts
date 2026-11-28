@@ -1,16 +1,17 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, mock, test } from 'bun:test'
 import { mkdtemp, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { getDefaultConfig } from '../src/config'
+import { createHerdrBackend } from '../src/herdr/backend'
 import {
   buildEditorCommand,
   getNextSessionName,
   getRootSessionPath,
-  quoteShellArg,
   requireConfig,
   requireConfiguredItem,
-} from '../src/handlers/action-helpers'
+} from '../src/app/session-action-helpers'
+import { quoteShellArg } from '../src/util/shell'
 
 describe('action helpers', () => {
   test('quotes shell arguments safely for editor launch commands', () => {
@@ -36,6 +37,7 @@ describe('action helpers', () => {
       isSession: false,
       itemKind: 'configured' as const,
     }
+
     expect(requireConfiguredItem(item)).toBe(item)
     expect(() => requireConfiguredItem(undefined)).toThrow(
       'Select a configured session to edit its target'
@@ -45,19 +47,29 @@ describe('action helpers', () => {
   test('uses the parent directory as root-session path for file items', async () => {
     const root = await mkdtemp(join(tmpdir(), 'mux-sesh-root-session-'))
 
+    const run = mock(async () => {
+      throw new Error('File root resolution must not query the backend')
+    })
+
+    const backend = createHerdrBackend({ runner: { run }, insideHerdr: true })
+
     try {
       const filePath = join(root, 'todo.md')
       await writeFile(filePath, 'hello')
 
-      const rootPath = await getRootSessionPath({
-        title: 'todo.md',
-        desc: '',
-        path: filePath,
-        isSession: false,
-        itemKind: 'file',
-      })
+      const rootPath = await getRootSessionPath(
+        {
+          title: 'todo.md',
+          desc: '',
+          path: filePath,
+          isSession: false,
+          itemKind: 'file',
+        },
+        backend
+      )
 
       expect(rootPath).toBe(root)
+      expect(run).not.toHaveBeenCalled()
     } finally {
       await rm(root, { recursive: true, force: true })
     }

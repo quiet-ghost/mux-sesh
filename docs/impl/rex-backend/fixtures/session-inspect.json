@@ -1,0 +1,55 @@
+{
+  "revision": 1,
+  "session_id": "session:01a22053-383c-7e73-9628-4665f76bdacf",
+  "label": "alpha",
+  "active_window_id": "window:01a22053-384b-7a8c-b42e-1fd7bf8d364d",
+  "windows": [
+    {
+      "window_id": "window:01a22053-384b-7a8c-b42e-1fd7bf8d364d",
+      "label": "Window bf8d364d",
+      "focused_block_id": "block:01a22053-383d-71d8-b91d-7fd9dacc2418",
+      "layers": [
+        {
+          "layer_id": "layer:01a22053-384b-7a92-870b-c320919eb7ef",
+          "kind": "tiled",
+          "bounds": [0, 0, 1, 1],
+          "layout": {
+            "rect": [0, 0, 1, 1],
+            "block_id": "block:01a22053-383d-71d8-b91d-7fd9dacc2418"
+          },
+          "blocks": [
+            {
+              "block_id": "block:01a22053-383d-71d8-b91d-7fd9dacc2418",
+              "label": "shell",
+              "creator_name": "com.superlogical.terminal",
+              "flavor": "com.superlogical.terminal.shell",
+              "host_id": "00000000-0000-4000-8000-000000000001"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "client_id": "client:01a22054-f24d-768b-b1cf-c2327df116c1",
+      "principal": {
+        "kind": "peer",
+        "transport": "unix",
+        "display": "uid 1000",
+        "remote_addr": "@",
+        "uid": 1000,
+        "gid": 1000,
+        "pid": 3395946
+      },
+      "info": {
+        "kind": "cli",
+        "platform": "linux",
+        "name": "rex",
+        "version": "0.1.0-snapshot.2702"
+      },
+      "connected_at": "2026-11-27T23:06:07.693919425-05:00",
+      "connection_state": "connected"
+    }
+  ]
+}

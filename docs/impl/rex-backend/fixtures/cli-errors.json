@@ -1,0 +1,89 @@
+[
+  {
+    "case": "server unreachable (no server at the socket, --autostart=false)",
+    "argv": ["rex", "-S", "/fixture/s.sock", "--autostart=false", "ls", "--json"],
+    "exitCode": 4,
+    "stdout": "",
+    "stderr": "Error: no Rex server is running at /fixture/s.sock, and autostart is disabled"
+  },
+  {
+    "case": "ambiguous label (labels are not unique and match case-insensitively)",
+    "argv": ["rex", "session", "inspect", "alpha", "--json"],
+    "exitCode": 3,
+    "stdout": "",
+    "stderr": "Error: session target \"alpha\" is ambiguous\n  alpha  …6bdacf\n  Alpha  …1f33c7"
+  },
+  {
+    "case": "unknown session id",
+    "argv": ["rex", "session", "inspect", "session:01a22053-0000-7000-8000-000000000000", "--json"],
+    "exitCode": 3,
+    "stdout": "",
+    "stderr": "Error: session target \"session:01a22053-0000-7000-8000-000000000000\" not found"
+  },
+  {
+    "case": "kill a session that is already gone",
+    "argv": ["rex", "kill", "session:01a2205a-a67d-71cf-af20-328f8374e0ec"],
+    "exitCode": 3,
+    "stdout": "",
+    "stderr": "Error: session target \"session:01a2205a-a67d-71cf-af20-328f8374e0ec\" not found"
+  },
+  {
+    "case": "explicit stale block id as the session target",
+    "argv": ["rex", "session", "inspect", "block:01a22053-0000-7000-8000-000000000000", "--json"],
+    "exitCode": 3,
+    "stdout": "",
+    "stderr": "Error: session target \"block:01a22053-0000-7000-8000-000000000000\" not found: no open block has ID \"block:01a22053-0000-7000-8000-000000000000\""
+  },
+  {
+    "case": "stale REX_BLOCK with no target: falls back to the default session, ambiguous with several sessions",
+    "env": {
+      "REX_BLOCK": "block:01a22053-0000-7000-8000-000000000000"
+    },
+    "argv": ["rex", "session", "inspect", "--json"],
+    "exitCode": null,
+    "exitCodeNote": "not recorded (piped); the stderr is the ambiguity error, so exit 3 is expected",
+    "stdout": "",
+    "stderr": "Error: session target default is ambiguous: multiple sessions are available\n  alpha        …6bdacf\n  beta         …37c576\n  my proj/x:y  …1f33c7"
+  },
+  {
+    "case": "label longer than 128 characters",
+    "argv": [
+      "rex",
+      "session",
+      "rename",
+      "session:01a22053-3878-7479-9bb1-c0782c1f33c7",
+      "<130 x characters>"
+    ],
+    "exitCode": 2,
+    "stdout": "",
+    "stderr": "Error: label must be at most 128 characters"
+  },
+  {
+    "case": "label with a control character",
+    "argv": ["rex", "new", "bad\tlabel", "--json"],
+    "exitCode": 2,
+    "stdout": "",
+    "stderr": "Error: label contains control character U+0009"
+  },
+  {
+    "case": "window ls across sessions has no JSON form",
+    "argv": ["rex", "window", "ls", "-A", "--json"],
+    "exitCode": null,
+    "exitCodeNote": "not recorded; usage error text, so exit 2 is expected",
+    "stdout": "",
+    "stderr": "Error: rex window ls --json requires one session. Pass -s SESSION"
+  },
+  {
+    "case": "client action with no Rex app connected",
+    "argv": ["rex", "do", "session.select", "id=session:01a22053-383c-7e73-9628-4665f76bdacf"],
+    "exitCode": 3,
+    "stdout": "",
+    "stderr": "Error: client target default not found: no app client is connected"
+  },
+  {
+    "case": "Lua session.view without session.attach_all first",
+    "argv": ["rex", "do", "-e", "<script calling rex.call(\"session.view\", …)>", "--json"],
+    "exitCode": 0,
+    "luaError": "stream response \"control-2\" failed: stream is not attached to session session:01a22053-383c-7e73-9628-4665f76bdacf (status=409 code=conflict)"
+  }
+]

@@ -1,11 +1,11 @@
-import { test, expect, describe, mock } from 'bun:test'
+import { test, expect, describe, mock, spyOn } from 'bun:test'
 import { isNewerVersion, getLatestVersion, CURRENT_VERSION } from '../src/update/version'
 
 describe('version', () => {
   describe('CURRENT_VERSION', () => {
     test('should match package.json version', () => {
       expect(CURRENT_VERSION).toBeDefined()
-      expect(typeof CURRENT_VERSION).toBe('string')
+      expect(CURRENT_VERSION).toBeString()
       expect(CURRENT_VERSION).toMatch(/^\d+\.\d+\.\d+/)
     })
   })
@@ -61,45 +61,37 @@ describe('version', () => {
     test('should fetch latest version from npm registry', async () => {
       const version = await getLatestVersion()
       expect(version).toBeDefined()
+
       if (version) {
-        expect(typeof version).toBe('string')
+        expect(version).toBeString()
         expect(version).toMatch(/^\d+\.\d+\.\d+/)
       }
     })
 
     test('should return null on fetch error', async () => {
-      // Mock fetch to simulate network error
-      const originalFetch = global.fetch
       const originalConsoleError = console.error
       console.error = mock(() => {})
-      global.fetch = (async () => {
-        throw new Error('Network error')
-      }) as unknown as typeof fetch
+      const fetchSpy = spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Network error'))
 
       const version = await getLatestVersion()
       expect(version).toBe(null)
 
-      // Restore original fetch
-      global.fetch = originalFetch
+      fetchSpy.mockRestore()
       console.error = originalConsoleError
     })
 
     test('should return null on non-ok response', async () => {
-      // Mock fetch to return error status
-      const originalFetch = global.fetch
       const originalConsoleError = console.error
       console.error = mock(() => {})
-      global.fetch = (async () =>
-        ({
-          ok: false,
-          status: 404,
-        }) as Response) as unknown as typeof fetch
+
+      const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(null, { status: 404 })
+      )
 
       const version = await getLatestVersion()
       expect(version).toBe(null)
 
-      // Restore original fetch
-      global.fetch = originalFetch
+      fetchSpy.mockRestore()
       console.error = originalConsoleError
     })
   })

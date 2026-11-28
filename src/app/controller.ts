@@ -1,22 +1,41 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useAppCoreState } from './core-state'
-import { useAutoUpdateScheduler, useAppBehaviors } from './effects'
-import { createAppControls } from './controls'
-import { getSessionCommandState, getSettingsState } from './derived'
-import { useAppKeyboard } from './keyboard'
+import { useAutoUpdateScheduler, useAppBehaviors, usePendingCloseReset } from './app-hooks'
+import { createAppControls } from './modal-controls'
+import { getSessionCommandState, getSettingsState } from './view-state'
+import { FocusOwner } from './focus-owner'
+import { useDetailsInspector } from './inspector'
+import { useAppKeyboard } from './keyboard/use-app-keyboard'
 import { useAppModalState } from './modal-state'
-import { createAppRuntime } from './runtime'
-import { createAppHandlers, handleKillSessionWithFeedback } from './handlers'
-import { useAppStartup } from './state'
-import { getConfigPath, getHomeDir, saveConfig } from '../config'
-import { getOpencodeSessionStats } from '../opencode'
-import { resolveTheme } from '../styles/theme'
-import type { TerminalPalette } from '../styles/terminal-palette'
-import { useTerminalSize } from '../util/terminal'
+import { openOutcomeModal } from './modals'
+import { OptionPicker } from './option-picker'
+import { createAppRuntime } from './list-refresh'
+import { createAppHandlers } from './action-feedback'
+import { createSettingPaneActions } from './setting-pane-actions'
+import { getSettingPaneState } from './setting-panes'
+import { useSessionInventory } from './session-inventory'
+import { useAppStartup } from './startup'
+import { useEffectRuntime } from './use-effect-runtime'
+import { useLiveResolvedTheme } from './resolved-theme'
+import { shouldShowDetailPanel, useTerminalSize } from '../ui/terminal-size'
+import { AppMode } from './app-mode'
+import { anyPending, createPendingFlag } from '../util/pending'
 import { mark, measure } from '../util/perf'
-import { getSettingEditorTitle, isOptionSetting } from '../settings'
+import { getSettingEditorTitle, isOptionSetting } from '../settings/settings-catalog'
+import { useLaunchPreview } from '../ui/launch-preview'
+import {
+  getLaunchScope,
+  planProjectRow,
+  useLaunchRequest,
+  type LaunchPlanning,
+} from './launch-scope'
+import { useLauncherQuery } from './launcher-query'
+import { getNewSessionStepControls, useNewSessionSteps } from './new-session-step'
+import { APP_SERVICES, type AppServices } from './app-services'
 
-export function useAppController() {
+export function useAppController(invocationCwd: string, services: AppServices = APP_SERVICES) {
+  const effects = useEffectRuntime()
+
   const {
     appMode,
     setAppMode,
@@ -32,32 +51,37 @@ export function useAppController() {
     setSessionCandidateItems,
     sessionItems,
     setSessionItems,
+    liveSessions,
+    setLiveSessions,
     cursor,
     setCursor,
     agentCursor,
     setAgentCursor,
     searchQuery,
     setSearchQuery,
-    message,
-    setMessage,
+    statusLines,
+    setInventoryStatus,
+    setFileSearchStatus,
     renameTarget,
     setRenameTarget,
     config,
     setConfig,
     backend,
     setBackend,
-    pendingKillSessionName,
-    setPendingKillSessionName,
+    markedItems,
+    setMarkedItems,
+    pendingClose,
+    setPendingClose,
     prefixActive,
     setPrefixActive,
     prefixTimeoutRef,
     textareaRef,
     lastSessionSelectionRef,
     lastProjectSelectionRef,
-    toastMessage,
-    setToastMessage,
-    toastVisible,
-    setToastVisible,
+    toast,
+    moreToasts,
+    showToast,
+    acknowledgeToast,
     updatedVersion,
     setUpdatedVersion,
   } = useAppCoreState()
@@ -78,81 +102,51 @@ export function useAppController() {
     settingOptionsCursor,
     setSettingOptionsCursor,
     settingOptionsSearchQuery,
-    themePreviewId,
-    setThemePreviewId,
     setSettingOptionsSearchQuery,
     settingEditorValue,
     setSettingEditorValue,
     settingEditorError,
     setSettingEditorError,
+    settingFieldDraft,
+    setSettingFieldDraft,
     modalTextareaRef,
     commandsSearchTextareaRef,
     settingsSearchTextareaRef,
     settingOptionsSearchTextareaRef,
     settingEditorTextareaRef,
+    settingFieldTextareaRef,
   } = useAppModalState()
 
   const { columns, rows } = useTerminalSize()
-  const configPath = getConfigPath()
-  const homeDir = getHomeDir()
-  const [systemThemeEpoch, setSystemThemeEpoch] = useState(0)
-  const [terminalPalette, setTerminalPalette] = useState<TerminalPalette | null>(null)
-  const resolvedTheme = resolveTheme(
-    themePreviewId ?? config?.theme,
-    config?.themes,
-    config?.colorScheme,
-    { homeDir, terminalPalette }
+  const configPath = services.configPath()
+  const homeDir = services.homeDir()
+
+  const { filteredSettingsEntries, filteredSettingOptions, savedSettingOption, iconsFormEntries } =
+    getSettingsState(config, modalState, settingsSearchQuery, settingOptionsSearchQuery, homeDir)
+
+  const resolvedTheme = useLiveResolvedTheme(
+    {
+      themeId:
+        OptionPicker.previewedThemeId(modalState, filteredSettingOptions, settingOptionsCursor) ??
+        config?.theme,
+      customThemes: config?.themes,
+      colorScheme: config?.colorScheme,
+      homeDir,
+    },
+    services.theme
   )
-  void systemThemeEpoch
+
   const theme = resolvedTheme.colors
-  const { filteredSettingsEntries, filteredSettingOptions } = getSettingsState(
-    config,
-    modalState,
-    settingsSearchQuery,
-    settingOptionsSearchQuery
-  )
-  const hasScheduledAutoUpdateRef = useRef(false)
 
-  useAppStartup(
-    measure,
-    lastSessionSelectionRef,
-    lastProjectSelectionRef,
-    mark,
-    setConfig,
-    setBackend,
-    setMessage,
-    setAppMode,
-    setViewMode,
-    setSessionItems,
-    setProjectSourceItems,
-    setAllItems,
-    setItems,
-    setCursor
-  )
-
-  useAutoUpdateScheduler(config, hasScheduledAutoUpdateRef)
-
-  const { showMessage, refreshItems, loadOpencodeStatsForSession } = createAppRuntime({
-    config,
-    backend,
-    viewMode,
-    measure,
-    lastSessionSelectionRef,
-    lastProjectSelectionRef,
-    setSessionItems,
-    setProjectSourceItems,
-    setAllItems,
-    setItems,
-    setCursor,
-    setMessage,
-    getOpencodeSessionStats,
-  })
+  // Also the busy signal: a running clone or launch keeps the header spinner going.
+  const [launchGuard] = useState(createPendingFlag)
 
   const {
     regularSessions,
     agentSessions,
     selectedAgentSession,
     selectedPrimaryItem,
+    actionContext,
     filteredCommandEntries,
   } = getSessionCommandState(
     appMode,
@@ -161,37 +155,140 @@ export function useAppController() {
     cursor,
     agentCursor,
     config,
-    commandsSearchQuery
+    commandsSearchQuery,
+    backend,
+    markedItems,
+    pendingClose
   )
 
+  usePendingCloseReset(pendingClose, selectedPrimaryItem, modalState !== null, setPendingClose)
+
+  const inventory = useSessionInventory(
+    effects,
+    measure,
+    {
+      viewMode,
+      config,
+      backend,
+      cursor,
+      agentCursor,
+      selectedAgentSession,
+      lastSessionSelectionRef,
+      lastProjectSelectionRef,
+      setViewMode,
+      setSessionItems,
+      setLiveSessions,
+      setProjectSourceItems,
+      setAllItems,
+      setItems,
+      setCursor,
+      setAgentCursor,
+      setMessage: setInventoryStatus,
+    },
+    services.projects
+  )
+
+  const [busy] = useState(() => anyPending([inventory.loading, launchGuard]))
+
+  const { startup, retryStartup } = useAppStartup(
+    effects,
+    measure,
+    inventory,
+    mark,
+    setConfig,
+    setBackend,
+    setAppMode,
+    setProjectSourceItems,
+    services.startup,
+    services.projects
+  )
+
+  useAutoUpdateScheduler(config, services.autoUpdate)
+
+  const details = useDetailsInspector({
+    effects,
+    inventory,
+    visible: shouldShowDetailPanel(columns, appMode === AppMode.NewSession),
+    item: selectedPrimaryItem,
+    config,
+    backend,
+  })
+
+  const launcherFiles = useLauncherQuery(
+    {
+      appMode,
+      config,
+      backend,
+      searchQuery,
+      allItems,
+      sessionItems,
+      items,
+      cursor,
+      setAllItems,
+      setItems,
+      setCursor,
+      setSessionCandidateItems,
+      setMessage: setFileSearchStatus,
+      showToast,
+    },
+    services.launcher
+  )
+
+  const newSession = useNewSessionSteps({
+    active: appMode === AppMode.NewSession,
+    config,
+    searchQuery,
+    setSearchQuery,
+    selected: selectedPrimaryItem,
+    files: launcherFiles,
+    onDefect: services.onDefect,
+  })
+
+  const launchScope = getLaunchScope(appMode, viewMode, selectedPrimaryItem)
+  const launchRequest = useLaunchRequest(launchScope, newSession.request, selectedPrimaryItem)
+
+  const launchPlanning: LaunchPlanning = {
+    config,
+    backend: backend?.kind,
+    invocationCwd,
+    liveSessions: sessionItems,
+    clone: services.clone,
+  }
+
+  const launchPreview = useLaunchPreview({
+    ...launchPlanning,
+    active: launchScope !== 'none',
+    request: launchRequest,
+    onDefect: services.onDefect,
+  })
+
+  const { refreshItems, refreshList, reloadSessions } = createAppRuntime({
+    config,
+    backend,
+    viewMode,
+    inventory,
+    showToast,
+  })
+
   const {
-    clearPendingKill,
     requestKillSession,
+    toggleMark,
+    clearMarks,
+    requestMarkedClose,
     openRenameModal,
     openCommandsModal,
     openSettingsModal,
-    openSettingOptions,
+    openSettingOptions: openSettingOptionsAtFirst,
     openSettingEditor,
     closeModal,
   } = createAppControls({
     config,
-    pendingKillSessionName,
-    handleKillSession: item =>
-      handleKillSessionWithFeedback(item, {
-        backend,
-        config,
-        items,
-        sessionItems,
-        cursor,
-        showMessage,
-        refreshItems,
-        setPendingKillSessionName,
-        regularSessions,
-        rememberedSessions: (key: string | null) => {
-          lastSessionSelectionRef.current = key
-        },
-      }),
-    setPendingKillSessionName,
+    backend,
+    sessionItems,
+    inventoryRevision: () => inventory.revision(),
+    markedItems,
+    setMarkedItems,
+    setPendingClose,
     setRenameTarget,
     setModalInputValue,
     setModalState,
@@ -205,33 +302,48 @@ export function useAppController() {
     setSettingEditorValue,
   })
 
+  const openSettingOptions = OptionPicker.openAtSaved(
+    config,
+    openSettingOptionsAtFirst,
+    setSettingOptionsCursor
+  )
+
   const {
-    handleKillSessionWrapper,
+    confirmCloseReview,
+    confirmBatchClose,
+    retryBatchClose,
     handleSelectWrapper,
     handleLastSessionWrapper,
     handleRootSessionWrapper,
     handleEditTargetWrapper,
     handleRenameSubmit,
     handleNewSessionSubmit,
+    handleOutcomeRetry,
     handleSettingsEditorSubmit,
     handleSettingOptionSubmit,
+    handleSettingStep,
+    handleSettingReset,
+    handleIconsChange,
     handleTogglePinnedSessionWrapper,
     executeCommand,
   } = createAppHandlers({
+    clone: services.clone,
+    history: services.openHistory,
+    launchGuard,
     backend,
-    appMode,
     viewMode,
     config,
     items,
     sessionItems,
     cursor,
-    showMessage,
+    showToast,
+    showOutcome: report => openOutcomeModal(report, setModalState),
     refreshItems,
-    agentCursor,
     regularSessions,
     rememberedSessions: (key: string | null) => {
       lastSessionSelectionRef.current = key
     },
+    inventoryRevision: () => inventory.revision(),
     agentSessions,
     selectedPrimaryItem,
     sessionCandidateItems,
@@ -240,7 +352,13 @@ export function useAppController() {
     openRenameModal,
     openSettingsModal,
     openSettingOptions,
+    setModalState,
     requestKillSession,
+    requestMarkedClose,
+    toggleMark,
+    clearMarks,
+    markedItems,
+    reloadSessions,
     setAppMode,
     setViewMode,
     setAllItems,
@@ -248,19 +366,46 @@ export function useAppController() {
     setCursor,
     setSearchQuery,
     setAgentCursor,
-    setPendingKillSessionName,
-    saveConfig,
+    saveConfig: services.saveConfig,
     setConfig,
     setSettingEditorError,
     settingEditorValue,
     settingEditorPlainText: settingEditorTextareaRef.current?.plainText,
     renameTarget,
     renamedValue: (modalTextareaRef.current?.plainText ?? modalInputValue).trim(),
-    searchTerm: searchQuery.trim(),
-    loadOpencodeStatsForSession,
+    launchPreview,
+    toggleDetails: details.toggle,
+    refreshList,
+  })
+
+  const settingPane = getSettingPaneState({
+    config,
+    modalState,
+    draft: settingFieldDraft,
+    homeDir,
+    liveSessions,
+    projects: projectSourceItems,
+  })
+
+  const { openSettingPane, handleSettingPaneAction } = createSettingPaneActions({
+    config,
+    homeDir,
+    modalState,
+    setModalState,
+    readDraft: () => settingFieldTextareaRef.current?.plainText ?? settingFieldDraft,
+    setDraft: setSettingFieldDraft,
+    openJsonEditor: openSettingEditor,
+    returnToSettings: () => setModalState({ type: 'settings', picker: OptionPicker.browsing }),
+    saveConfig: services.saveConfig,
+    setConfig,
+    refreshItems,
+    showToast,
+    showOutcome: report => openOutcomeModal(report, setModalState),
   })
 
   useAppKeyboard({
+    active: startup.kind === 'loading' || startup.kind === 'ready',
+    toggleDetails: details.toggle,
     appMode,
     viewMode,
     config,
@@ -273,6 +418,7 @@ export function useAppController() {
     cursor,
     agentCursor,
     searchQuery,
+    actionContext,
     prefixActive,
     prefixTimeoutRef,
     modalState,
@@ -287,29 +433,52 @@ export function useAppController() {
     setSettingOptionsCursor,
     setModalState,
     setSettingEditorError,
+    settingEditorTextareaRef,
+    setSettingEditorValue,
+    iconsFormEntries,
+    handleIconsChange,
     executeCommand,
     handleSettingOptionSubmit,
     handleSettingsEditorSubmit,
+    handleSettingStep,
+    handleSettingReset,
+    settingsSearchQuery,
+    setSettingsSearchQuery,
     handleRenameSubmit,
-    handleNewSessionSubmit,
+    newSession: getNewSessionStepControls(
+      newSession,
+      launchPreview,
+      handleNewSessionSubmit,
+      showToast
+    ),
+    handleOutcomeRetry,
+    confirmCloseReview,
+    setPendingClose,
+    confirmBatchClose,
+    retryBatchClose,
+    onDefect: services.onDefect,
     isOptionSetting,
     openSettingOptions,
-    previewThemeOption: setThemePreviewId,
     openSettingEditor,
+    settingPaneView: settingPane.view,
+    openSettingPane,
+    handleSettingPaneAction,
     closeModal,
-    clearPendingKill,
     requestKillSession,
+    requestMarkedClose,
+    toggleMark,
     togglePinnedSession: handleTogglePinnedSessionWrapper,
     openRenameModal,
     openCommandsModal,
     openSettingsModal,
     refreshItems,
+    refreshList,
     handleSelect: handleSelectWrapper,
-    handleKillSession: handleKillSessionWrapper,
+    launchPlanned: handleNewSessionSubmit,
+    launchProjectRow: item => handleNewSessionSubmit(planProjectRow(item, launchPlanning)),
     handleLastSession: handleLastSessionWrapper,
     handleRootSession: handleRootSessionWrapper,
     handleEditTarget: handleEditTargetWrapper,
-    loadOpencodeStatsForSession,
     setAppMode,
     setViewMode,
     setCursor,
@@ -318,29 +487,26 @@ export function useAppController() {
     setAllItems,
     setItems,
     setPrefixActive,
-    setMessage,
+    showToast,
+    acknowledgeToast,
   })
 
   useAppBehaviors({
+    inventory,
+    showToast,
     appMode,
     viewMode,
     config,
     backend,
     sessionItems,
-    projectSourceItems,
-    sessionCandidateItems,
     lastSessionSelectionRef,
     lastProjectSelectionRef,
     setAllItems,
     setItems,
-    setSessionItems,
     setCursor,
-    setAgentCursor,
-    setMessage,
     setSessionCandidateItems,
     filteredCommandEntriesLength: filteredCommandEntries.length,
     setCommandsCursor,
-    commandsSearchQuery,
     filteredSettingsEntriesLength: filteredSettingsEntries.length,
     setSettingsCursor,
     filteredSettingOptionsLength: filteredSettingOptions.length,
@@ -348,54 +514,52 @@ export function useAppController() {
     cursor,
     items,
     selectedPrimaryItem,
-    pendingKillSessionName,
-    agentSessions,
-    agentCursor,
     regularSessions,
-    setPendingKillSessionName,
     searchQuery,
     allItems,
-    selectedAgentSession,
-    loadOpencodeStatsForSession,
     setUpdatedVersion,
-    setToastMessage,
-    setToastVisible,
-    homeDir,
-    onSystemThemeRefresh: () => {
-      setSystemThemeEpoch(current => current + 1)
-    },
-    onTerminalPalette: setTerminalPalette,
+    services,
   })
 
   return {
+    startup,
+    retryStartup,
     theme,
     resolvedTheme,
     columns,
     rows,
+    busy,
+    refreshItems,
     screenProps: {
       theme,
+      actionContext,
+      focusOwner: FocusOwner.of({ appMode, modalState, prefixActive }),
       appMode,
       viewMode,
       config,
       backend,
       items,
+      allItems,
       regularSessions,
       agentSessions,
       selectedPrimaryItem,
+      details,
       cursor,
       agentCursor,
       searchQuery,
+      launchPreview,
+      newSession,
       prefixActive,
-      pendingKillSessionName,
+      markedItems,
       projectCount: projectSourceItems.length,
       sessionItems,
       rows,
       columns,
       textareaRef,
       setSearchQuery,
-      message,
-      toastMessage,
-      toastVisible,
+      statusLines,
+      toast,
+      moreToasts,
       updatedVersion,
     },
     modalProps: {
@@ -403,9 +567,6 @@ export function useAppController() {
       columns,
       rows,
       configPath,
-      themeId: resolvedTheme.id,
-      themeName: resolvedTheme.name,
-      colorMode: resolvedTheme.mode,
       filteredCommandEntries,
       commandsCursor,
       commandsSearchQuery,
@@ -417,6 +578,8 @@ export function useAppController() {
       setSettingsCursor,
       setSettingsSearchQuery,
       filteredSettingOptions,
+      savedSettingOption,
+      iconsFormEntries,
       settingOptionsCursor,
       settingOptionsSearchQuery,
       setSettingOptionsCursor,
@@ -424,6 +587,10 @@ export function useAppController() {
       settingEditorValue,
       settingEditorError,
       setSettingEditorValue,
+      settingPane,
+      settingFieldDraft,
+      setSettingFieldDraft,
+      settingFieldTextareaRef,
       modalInputValue,
       setModalInputValue,
       commandsSearchTextareaRef,
