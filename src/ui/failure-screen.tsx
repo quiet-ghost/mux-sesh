@@ -3,7 +3,7 @@ import type { ToastKind } from '../app/notifications'
 import { ThemeProvider, useTheme } from '../styles/theme'
 import type { ThemeColors } from '../types'
 import { truncateDialogText } from './dialog-layout'
-import { KeyHint, KeyHints } from './key-hints'
+import { GROUP_GAP_COLUMNS, KeyHint, KeyHints } from './key-hints'
 import { Pane, PaneRule } from './pane'
 import { toastColor } from './notice-kind'
 
@@ -12,9 +12,6 @@ const ROOMY_ROWS = 24
 
 // Body text sits one space inside each side border.
 const PANE_INSET_COLUMNS = 2
-
-// Wider than the gap between hints, so the two footer groups never read as one list.
-const GROUP_GAP_COLUMNS = 3
 
 const HEX_COLOR = /^#(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/i
 

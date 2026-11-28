@@ -2,6 +2,7 @@ import { memo, type ReactNode } from 'react'
 import type { ActionFooter, FooterHint } from '../app/action-catalog'
 import type { QueuedToast } from '../app/notifications'
 import { useTheme } from '../styles/theme'
+import { GROUP_GAP_COLUMNS, HINT_GAP } from './key-hints'
 import { toastColor } from './notice-kind'
 import {
   DISMISS_HINT,
@@ -14,10 +15,6 @@ import {
 } from './status-line'
 
 const PADDING_COLUMNS = STATUS_PADDING_COLUMNS
-const HINT_GAP = '  '
-
-// Wider than the gap between hints, so the two groups never read as one list.
-const GROUP_GAP_COLUMNS = 3
 const PREFIX_WAITING = ' …'
 
 // These lead to every other key, so they are the last screen hints a narrow footer drops.

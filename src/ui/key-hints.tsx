@@ -7,7 +7,10 @@ export interface KeyHint {
   key: string
 }
 
-const HINT_GAP = '  '
+export const HINT_GAP = '  '
+
+// Wider than the gap between hints, so two footer groups never read as one list.
+export const GROUP_GAP_COLUMNS = 3
 
 function width(hint: KeyHint): number {
   return hint.label.length + 1 + hint.key.length
