@@ -27,8 +27,10 @@ interface NativeLibrary {
   readonly file: string
 }
 
-export function binaryPath(target: BuildTarget): string {
-  return join(REPO_ROOT, 'dist/npm', BuildTarget.packageName(target), 'bin', BINARY_NAME)
+export const NPM_ROOT = join(REPO_ROOT, 'dist/npm')
+
+export function binaryPath(target: BuildTarget, npmRoot = NPM_ROOT): string {
+  return join(npmRoot, BuildTarget.packageName(target), 'bin', BINARY_NAME)
 }
 
 // The libraries OpenTUI and FFF load through FFI; Bun embeds the one each import names for the target.

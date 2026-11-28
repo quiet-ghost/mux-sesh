@@ -185,7 +185,11 @@ To see the failure screens from source:
   `MUX_SESH_BINARY_SMOKE=1 bun test tests/compiled-binary.test.ts` runs the same check.
 - `bun run build:all` cross-compiles every target. It needs every platform's native packages:
   `bun install --frozen-lockfile --os='*' --cpu='*' --libc='*'`.
-- `bun run pack` writes the npm packages to `dist/npm`.
+- `bun run pack` writes the npm packages to `dist/npm`. `build` and `pack` take `--version <semver>`
+  to stamp a version other than `package.json`'s.
+- `bun run check:upgrade` is a pre-release check. It installs the published 1.10.0 with npm and with Bun
+  into a temporary prefix and runs 1.10's own updater. It also installs fresh, and over 1.10 by hand.
+  The new version comes from a registry on 127.0.0.1, so nothing is published.
 
 ## License
 

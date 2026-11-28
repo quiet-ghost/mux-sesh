@@ -23,6 +23,7 @@
     "build:all": "bun tools/build/build.ts",
     "pack": "bun tools/build/pack.ts",
     "smoke:binary": "bun tools/build/smoke.ts",
+    "check:upgrade": "bun tools/build/upgrade-check.ts",
     "start": "bun run src/index.tsx",
     "lint": "bun run --bun oxlint --deny-warnings",
     "typecheck": "tsc --noEmit && tsc --noEmit --project tools/build/tsconfig.json",

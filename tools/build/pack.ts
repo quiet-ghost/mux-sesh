@@ -2,11 +2,9 @@ import { existsSync } from 'fs'
 import { chmod, copyFile, mkdir, rm } from 'fs/promises'
 import { join } from 'path'
 import * as Schema from 'effect/Schema'
-import { selectTargets } from './build'
-import { BINARY_NAME, REPO_ROOT, binaryPath } from './compile'
+import { type BuildArgs, parseBuildArgs } from './build'
+import { BINARY_NAME, NPM_ROOT, REPO_ROOT, binaryPath } from './compile'
 import { BUILD_TARGETS, BuildTarget, PACKAGE_NAME } from './targets'
-
-export const NPM_ROOT = join(REPO_ROOT, 'dist/npm')
 
 const LAUNCHER_FILES = ['bin/mux-sesh', 'bin/platform.sh', 'bin/postinstall'] as const
 
@@ -25,6 +23,13 @@ const decodeRootManifest = Schema.decodeUnknownSync(
 )
 
 export type RootManifest = ReturnType<typeof decodeRootManifest>
+
+export interface PackOptions {
+  // Defaults to package.json's version.
+  readonly version?: string
+  // Where the binaries are read from and the packages are written; defaults to dist/npm.
+  readonly npmRoot?: string
+}
 
 export type PackOutcome =
   | { readonly ok: true; readonly directories: readonly string[] }
@@ -81,8 +86,12 @@ export async function readRootManifest(): Promise<RootManifest> {
   return decodeRootManifest(await Bun.file(join(REPO_ROOT, 'package.json')).json())
 }
 
-export async function pack(targets: readonly BuildTarget[]): Promise<PackOutcome> {
-  const missing = targets.filter(target => !existsSync(binaryPath(target)))
+export async function pack(
+  targets: readonly BuildTarget[],
+  options: PackOptions = {}
+): Promise<PackOutcome> {
+  const npmRoot = options.npmRoot ?? NPM_ROOT
+  const missing = targets.filter(target => !existsSync(binaryPath(target, npmRoot)))
 
   if (missing.length > 0) {
     const names = missing.map(target => BuildTarget.packageName(target))
@@ -96,18 +105,19 @@ export async function pack(targets: readonly BuildTarget[]): Promise<PackOutcome
     }
   }
 
-  const root = await readRootManifest()
+  const manifest = await readRootManifest()
+  const root = options.version ? { ...manifest, version: options.version } : manifest
   const directories: string[] = []
 
   for (const target of targets) {
-    const directory = join(NPM_ROOT, BuildTarget.packageName(target))
-    await chmod(binaryPath(target), 0o755)
+    const directory = join(npmRoot, BuildTarget.packageName(target))
+    await chmod(binaryPath(target, npmRoot), 0o755)
     await copyFile(join(REPO_ROOT, 'LICENSE'), join(directory, 'LICENSE'))
     await writeJson(join(directory, 'package.json'), platformManifest(root, target))
     directories.push(directory)
   }
 
-  const main = join(NPM_ROOT, PACKAGE_NAME)
+  const main = join(npmRoot, PACKAGE_NAME)
   await rm(main, { recursive: true, force: true })
   await mkdir(join(main, 'bin'), { recursive: true })
 
@@ -123,10 +133,10 @@ export async function pack(targets: readonly BuildTarget[]): Promise<PackOutcome
 }
 
 async function main(args: readonly string[]): Promise<number> {
-  let selection: ReturnType<typeof selectTargets>
+  let selection: BuildArgs
 
   try {
-    selection = selectTargets(args)
+    selection = parseBuildArgs(args)
   } catch (cause) {
     console.error(cause instanceof Error ? cause.message : String(cause))
 
@@ -139,7 +149,7 @@ async function main(args: readonly string[]): Promise<number> {
     return 1
   }
 
-  const outcome = await pack(selection.targets)
+  const outcome = await pack(selection.targets, { version: selection.version })
 
   if (!outcome.ok) {
     console.error(outcome.message)

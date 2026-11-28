@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { parseArgs } from 'util'
 import * as Schema from 'effect/Schema'
-import { readPackageVersion, selectTargets, singleTarget } from './build'
+import { parseBuildArgs, readPackageVersion, singleTarget } from './build'
 import { APP_ENTRYPOINT, REPO_ROOT, binaryPath, compileBinary } from './compile'
 import { BuildTarget } from './targets'
 
@@ -32,13 +32,13 @@ const decodeProbeReport = Schema.decodeUnknownSync(
 
 type ProbeReport = ReturnType<typeof decodeProbeReport>
 
-interface Sandbox {
+export interface Sandbox {
   readonly root: string
   readonly home: string
   readonly env: Readonly<Record<string, string>>
 }
 
-interface TerminalRun {
+export interface TerminalRun {
   readonly exitCode: number
   readonly firstFrameMs: number | undefined
   readonly failureScreenMs: number | undefined
@@ -153,7 +153,7 @@ async function runProbe(
 }
 
 // Starts mux-sesh in a pseudo-terminal, waits for the failure screen, and quits with `q`.
-async function runInTerminal(
+export async function runInTerminal(
   command: readonly string[],
   sandbox: Sandbox,
   cwd: string
@@ -209,7 +209,7 @@ async function runInTerminal(
   }
 }
 
-function terminalFailures(label: string, run: TerminalRun): string[] {
+export function terminalFailures(label: string, run: TerminalRun): string[] {
   const failures: string[] = []
 
   if (run.failureScreenMs === undefined) failures.push(`${label} never showed "${FAILURE_SCREEN}".`)
@@ -381,7 +381,7 @@ async function main(args: readonly string[]): Promise<number> {
   }
 
   const selection =
-    values.target === undefined ? singleTarget() : selectTargets(['--target', values.target])
+    values.target === undefined ? singleTarget() : parseBuildArgs(['--target', values.target])
 
   const [target] = selection.ok ? selection.targets : []
 
