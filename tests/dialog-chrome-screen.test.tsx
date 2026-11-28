@@ -212,12 +212,12 @@ const DIALOGS: readonly DialogCase[] = [
     open: async size => {
       const fixture = await sessions(size)
       await runCommand(fixture, 'Open settings')
-      await fixture.replaceQuery('Editor Command')
+      await fixture.replaceQuery('Startup Command')
       await fixture.pressKey('RETURN')
 
       return fixture
     },
-    title: 'Editor Command',
+    title: 'Startup Command',
     tone: 'text',
     description: 'Edit value and press Enter',
     hints: [
@@ -482,10 +482,10 @@ describe('dialog contents', () => {
 
     await screen.pressKey('ESCAPE')
     await runCommand(screen, 'Open settings')
-    await screen.replaceQuery('Editor Command')
+    await screen.replaceQuery('Startup Command')
     await screen.pressKey('RETURN')
 
-    const editor = await paneOf(screen, 'Editor Command')
+    const editor = await paneOf(screen, 'Startup Command')
     expect(paneRowText(editor, editor.top + 2)).toMatch(/^ › nvim /)
   })
 })

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { getDefaultConfig } from '../src/config'
+import * as Schema from 'effect/Schema'
+import { getDefaultConfig, normalizeConfig, serializeConfig } from '../src/config'
 import {
   applyEditorSetting,
   applyOptionSetting,
@@ -9,6 +10,8 @@ import {
   getSettingsEntries,
   isOptionSetting,
 } from '../src/settings'
+
+const decodeJsonText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Json))
 
 describe('settings metadata', () => {
   const config = getDefaultConfig('/home/tester')
@@ -29,8 +32,7 @@ describe('settings metadata', () => {
       'dirLength',
       'reposPath',
       'editor',
-      'editorCmd',
-      'defaultStartupCommand',
+      'startupCommand',
       'defaultPreviewCommand',
       'projectPaths',
       'hiddenSessions',
@@ -81,6 +83,25 @@ describe('settings metadata', () => {
     expect(updatedConfig.projectPaths).toEqual(config.projectPaths)
     expect(updatedConfig.icons).toEqual(config.icons)
     expect(() => applyEditorSetting(config, 'projects', '[{', '/home/tester')).toThrow()
+  })
+
+  test('the startup command survives a save and reload', () => {
+    const updated = applyEditorSetting(config, 'startupCommand', 'helix', '/home/tester')
+
+    const reloaded = normalizeConfig(
+      decodeJsonText(JSON.stringify(serializeConfig(updated))),
+      '/home/tester'
+    )
+
+    expect(reloaded.defaultSession?.startupCommand).toBe('helix')
+    expect(getSettingEditorValue(reloaded, 'startupCommand')).toBe('helix')
+  })
+
+  test('a legacy editor_cmd is the startup command until one is set', () => {
+    const legacy = normalizeConfig({ editor_cmd: 'hx .' }, '/home/tester')
+
+    expect(getSettingEditorValue(legacy, 'startupCommand')).toBe('hx .')
+    expect(getSettingsEntries(legacy).some(entry => entry.value === 'hx .')).toBe(true)
   })
 
   test('sets and clears backend preference', () => {

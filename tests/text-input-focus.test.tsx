@@ -194,7 +194,7 @@ describe('modal focus lifecycle', () => {
     async keybindMode => {
       screen = await renderSessionScreen({ width: 120, height: 36 }, { keybindMode })
       await openSettings(screen)
-      await screen.replaceQuery('Editor Command')
+      await screen.replaceQuery('Startup Command')
       await screen.pressKey('RETURN')
       const editor = focusedTextarea(screen)
       expect(await screen.frame()).toContain('Edit value and press Enter')
@@ -206,7 +206,7 @@ describe('modal focus lifecycle', () => {
 
       expect(await screen.frame()).toContain(SETTINGS_HINT)
       expect(editor.isDestroyed).toBe(true)
-      expect(focusedTextarea(screen).plainText).toBe('Editor Command')
+      expect(focusedTextarea(screen).plainText).toBe('Startup Command')
     }
   )
 

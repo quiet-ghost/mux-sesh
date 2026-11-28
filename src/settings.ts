@@ -17,8 +17,7 @@ export type SettingsFieldId =
   | 'dirLength'
   | 'reposPath'
   | 'editor'
-  | 'editorCmd'
-  | 'defaultStartupCommand'
+  | 'startupCommand'
   | 'defaultPreviewCommand'
   | 'projectPaths'
   | 'hiddenSessions'
@@ -79,7 +78,6 @@ interface SerializedSessionDefaults {
 interface SerializedConfigPatch {
   repos_path?: string
   editor?: string
-  editor_cmd?: string
   default_session?: SerializedSessionDefaults
   project_paths?: unknown
   hidden_sessions?: unknown
@@ -321,24 +319,15 @@ const SETTINGS_FIELD_MAP = {
     getEditorValue: config => config.editor,
     applyEditor: (_config, value) => ({ editor: value.trim() }),
   },
-  editorCmd: {
-    id: 'editorCmd',
-    label: 'Editor Command',
-    hint: 'Launch command',
+  // Writes default_session.startup_command, which wins over the legacy editor_cmd on reload.
+  startupCommand: {
+    id: 'startupCommand',
+    label: 'Startup Command',
+    hint: 'Runs in new sessions without a project rule',
     kind: 'text',
-    title: 'Editor Command',
-    getValue: config => config.editorCmd,
-    getEditorValue: config => config.editorCmd,
-    applyEditor: (_config, value) => ({ editor_cmd: value }),
-  },
-  defaultStartupCommand: {
-    id: 'defaultStartupCommand',
-    label: 'Default Startup',
-    hint: 'Fallback project startup command',
-    kind: 'text',
-    title: 'Default Startup Command',
-    getValue: config => config.defaultSession?.startupCommand ?? '',
-    getEditorValue: config => config.defaultSession?.startupCommand ?? '',
+    title: 'Startup Command',
+    getValue: config => config.defaultSession?.startupCommand ?? config.editorCmd,
+    getEditorValue: config => config.defaultSession?.startupCommand ?? config.editorCmd,
     applyEditor: (config, value) => ({
       default_session: {
         startup_command: value,

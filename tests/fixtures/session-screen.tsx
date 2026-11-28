@@ -409,6 +409,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     saveConfig: fixture.saveConfig,
     setConfig,
     renamedValue: '',
+    settingEditorPlainText: modal.settingEditorTextareaRef.current?.plainText,
     launchPreview,
     rememberedSessions: () => {},
     inventoryRevision: () => inventory.revision(),
@@ -442,7 +443,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
         toggleDetails: details.toggle,
       }),
     handleSettingOptionSubmit: handlers.handleSettingOptionSubmit,
-    handleSettingsEditorSubmit: unsupportedFixtureAction,
+    handleSettingsEditorSubmit: handlers.handleSettingsEditorSubmit,
     handleRenameSubmit: unsupportedFixtureAction,
     newSession: getNewSessionStepControls(
       newSession,

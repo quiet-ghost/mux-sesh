@@ -29,7 +29,6 @@ startup check remains the final authority. A complete example is in
   "project_paths": ["~/dev", "~/personal"],
   "repos_path": "~/dev/repos",
   "editor": "nvim",
-  "editor_cmd": "nvim",
   "keybind_mode": "vim",
   "prefix_key": "ctrl+x",
   "theme": "rosepine",
@@ -51,7 +50,7 @@ startup check remains the final authority. A complete example is in
 | `project_paths`   | `~/dev`, `~/personal` | Directories scanned for projects and searched by the New file step           |
 | `repos_path`      | `~/dev/repos`         | Destination for repositories cloned from New                                 |
 | `editor`          | `nvim`                | Editor used to open files picked in New                                      |
-| `editor_cmd`      | `nvim` with Telescope | Startup command when no `default_session.startup_command` is set             |
+| `editor_cmd`      | `nvim` with Telescope | Legacy; used when `default_session.startup_command` is unset                 |
 | `keybind_mode`    | `vim`                 | `vim` or `standard`; see [keybindings.md](keybindings.md)                    |
 | `prefix_key`      | `ctrl+x`              | Prefix for secondary actions; an empty value means the default               |
 | `theme`           | `rosepine`            | Built-in theme id, custom `themes` id, or `system`                           |
@@ -128,7 +127,8 @@ titles and their section header; `config` is an alias for `configured`, and a pr
 }
 ```
 
-- `startup_command` runs when a session is created for a project. Without it, `editor_cmd` is used.
+- `startup_command` runs when a session is created for a project. Settings → Startup command edits
+  it. Without it, the legacy `editor_cmd` is used; new configs need only `startup_command`.
 - `preview_command` runs in the details panel only while you inspect details (`v`); see
   [Preview Behavior](#preview-behavior).
 - New's startup step (`ctrl+t`) can replace the startup command for one launch, or clear it so
