@@ -1,4 +1,5 @@
 import type { TextareaRenderable } from '@opentui/core'
+import { getDialogHints } from '../app/action-catalog'
 import { OptionPicker } from '../app/option-picker'
 import { useTheme } from '../styles/theme'
 import { getOptionLabelMatches } from '../search/lists'
@@ -15,16 +16,11 @@ import {
   truncateDialogText,
 } from './dialog-layout'
 import { DialogFilter, DialogRow } from './DialogList'
-import type { KeyHint } from './key-hints'
 import { getVisibleWindow } from './list-window'
 import Modal from './Modal'
 import { useTextareaFocus } from './use-textarea-focus'
 
-const OPTIONS_HINTS: readonly KeyHint[] = [
-  { label: 'navigate', key: '↑/↓' },
-  { label: 'apply', key: 'enter' },
-  { label: 'back', key: 'esc' },
-]
+const OPTIONS_HINTS = getDialogHints({ kind: 'setting-options' })
 
 const OPTIONS_PREFERRED_WIDTH = 68
 const OPTIONS_DETAIL_ROWS = 3

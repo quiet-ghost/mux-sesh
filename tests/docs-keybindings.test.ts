@@ -1,9 +1,9 @@
 import { join } from 'path'
 import { describe, expect, test } from 'bun:test'
-import { getActionKeys, type ActionContext } from '../src/app/action-catalog'
+import { getActionKeys, getDialogActionKeys, type ActionContext } from '../src/app/action-catalog'
 import { PendingClose } from '../src/app/pending-close'
 import { AppMode, ViewMode, type KeybindMode } from '../src/types'
-import { ACTION_IDS, EVERY_ACTION_LISTED } from './fixtures/action-ids'
+import { ACTION_IDS, DIALOG_ACTION_IDS, EVERY_ACTION_LISTED } from './fixtures/action-ids'
 
 const ROOT = join(import.meta.dir, '..')
 
@@ -139,5 +139,39 @@ describe('documented keys match the action catalog', () => {
     for (const key of documented) expect(expected).toContain(key)
 
     if (!table.subset) expect(documented).toEqual(expected)
+  })
+})
+
+// Each settings dialog's row in the Dialogs table, by the prefix of its action ids.
+const DIALOG_ROWS = [
+  ['Settings', 'settings-'],
+  ['Setting picker', 'option-'],
+  ['Setting editor', 'editor-'],
+] as const
+
+function dialogRowKeys(markdown: string, title: string): string[] {
+  const [, dialogs = ''] = markdown.split('## Dialogs')
+  const row = dialogs.split('\n').find(line => line.split('|')[1]?.trim() === title)
+
+  if (!row) throw new Error(`docs/keybindings.md has no Dialogs row for ${title}`)
+
+  return [...(row.split('|')[2] ?? '').matchAll(/`([^`]+)`/g)].flatMap(match =>
+    match[1] ? [match[1]] : []
+  )
+}
+
+describe('documented dialog keys match the action catalog', () => {
+  test.each(DIALOG_ROWS)('%s', async (title, prefix) => {
+    const markdown = await Bun.file(join(ROOT, 'docs/keybindings.md')).text()
+
+    const expected = [
+      ...new Set(
+        DIALOG_ACTION_IDS.filter(id => id.startsWith(prefix)).flatMap(id =>
+          getDialogActionKeys(id).map(key => key.label)
+        )
+      ),
+    ].sort()
+
+    expect([...new Set(dialogRowKeys(markdown, title))].sort()).toEqual(expected)
   })
 })

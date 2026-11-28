@@ -4,9 +4,16 @@ import {
   getActionKeys,
   getActionTarget,
   getCommandEntry,
+  getDialogActionKeys,
+  getDialogActions,
   type ActionContext,
   type ActionId,
+  type DialogActionId,
+  type DialogView,
 } from '../src/app/action-catalog'
+import { handleModalKeyboard } from '../src/app/modal-keyboard'
+import type { ModalState } from '../src/app/modals'
+import { OptionPicker } from '../src/app/option-picker'
 import { PendingClose } from '../src/app/pending-close'
 import type { NewSessionStepControls } from '../src/app/new-session-step'
 import {
@@ -17,8 +24,14 @@ import {
   type KeyboardHandlerContext,
   type KeyboardInput,
 } from '../src/handlers/keyboard'
+import type { SettingsControl, SettingsEntry, SettingsReset } from '../src/settings'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../src/types'
-import { ACTION_IDS, COMMAND_IDS } from './fixtures/action-ids'
+import {
+  ACTION_IDS,
+  COMMAND_IDS,
+  DIALOG_ACTION_IDS,
+  EVERY_DIALOG_ACTION_LISTED,
+} from './fixtures/action-ids'
 
 const PREFIX = 'ctrl+x'
 
@@ -295,6 +308,196 @@ describe('the action catalog lists exactly the keys the handlers run', () => {
       expect(press(keybindMode, mode, { name: 'x', ctrl: true }, false).activatedPrefix).toBe(
         prefixed
       )
+    }
+  )
+})
+
+// Settings dialogs: a focused text field takes letters, so only non-text keys are actions.
+type DialogKeyboardContext = Parameters<typeof handleModalKeyboard>[1]
+
+interface DialogPress {
+  readonly label: string
+  readonly input: { name: string; ctrl?: boolean }
+}
+
+const DIALOG_LETTER_PRESSES: readonly DialogPress[] = LETTERS.map(name => ({
+  label: name,
+  input: { name },
+}))
+
+// Every key a dialog could act on, written as the catalog writes it.
+const DIALOG_PRESSES: readonly DialogPress[] = [
+  ...DIALOG_LETTER_PRESSES,
+  ...LETTERS.map(name => ({ label: `ctrl+${name}`, input: { name, ctrl: true } })),
+  ...['space', 'tab', '/'].map(name => ({ label: name, input: { name } })),
+  { label: '↑', input: { name: 'up' } },
+  { label: '↓', input: { name: 'down' } },
+  { label: '←', input: { name: 'left' } },
+  { label: '→', input: { name: 'right' } },
+  { label: 'enter', input: { name: 'return' } },
+  { label: 'esc', input: { name: 'escape' } },
+]
+
+interface DialogCase {
+  readonly name: string
+  readonly view: DialogView
+  readonly modalState: ModalState
+  readonly entry: SettingsEntry | undefined
+}
+
+function settingsRow(control: SettingsControl, reset: SettingsReset): SettingsEntry {
+  return {
+    id: control === 'step' ? 'dirLength' : 'sortOrder',
+    title: 'Fixture setting',
+    category: 'Sessions',
+    description: 'A setting for key checks',
+    keywords: '',
+    value: 'value',
+    control,
+    reset,
+  }
+}
+
+const SETTINGS_CONTROLS: readonly SettingsControl[] = ['toggle', 'cycle', 'step', 'open']
+const SETTINGS_RESETS: readonly SettingsReset[] = ['default', 'available', 'unavailable']
+
+const DIALOG_CASES: readonly DialogCase[] = [
+  ...SETTINGS_CONTROLS.flatMap(control =>
+    SETTINGS_RESETS.flatMap(reset =>
+      ['', 'sort'].map(query => {
+        const row = settingsRow(control, reset)
+
+        return {
+          name: `Settings ${control} ${reset} ${query ? 'searching' : 'idle'}`,
+          view: { kind: 'settings', entry: row, query },
+          modalState: { type: 'settings', picker: OptionPicker.browsing },
+          entry: row,
+        } satisfies DialogCase
+      })
+    )
+  ),
+  {
+    name: 'Settings with no match',
+    view: { kind: 'settings', entry: undefined, query: 'zzz' },
+    modalState: { type: 'settings', picker: OptionPicker.browsing },
+    entry: undefined,
+  },
+  {
+    name: 'setting picker',
+    view: { kind: 'setting-options' },
+    modalState: {
+      type: 'setting-options',
+      field: 'sortOrder',
+      openedFrom: 'settings',
+      picker: OptionPicker.browsing,
+    },
+    entry: undefined,
+  },
+  {
+    name: 'setting editor',
+    view: { kind: 'setting-editor' },
+    modalState: { type: 'setting-editor', field: 'startupCommand' },
+    entry: undefined,
+  },
+]
+
+function notADialogAction(): never {
+  throw new Error('A dialog key reached an action outside the settings dialogs')
+}
+
+// The actions one key press ran, and whether the dialog kept the key from the text field.
+interface DialogOutcome {
+  readonly actions: readonly DialogActionId[]
+  readonly consumed: boolean
+}
+
+function pressDialog(dialog: DialogCase, input: DialogPress['input']): DialogOutcome {
+  const actions: DialogActionId[] = []
+  const query = dialog.view.kind === 'settings' ? dialog.view.query : ''
+  const row = dialog.entry
+
+  const record = (id: DialogActionId) => () => {
+    actions.push(id)
+  }
+
+  const recordAsync = (id: DialogActionId) => async () => {
+    actions.push(id)
+  }
+
+  const ctx: DialogKeyboardContext = {
+    modalState: dialog.modalState,
+    filteredCommandEntries: [],
+    commandsCursor: 0,
+    setCommandsCursor: notADialogAction,
+    filteredSettingsEntries: row ? [row] : [],
+    settingsCursor: 0,
+    setSettingsCursor: record('settings-move'),
+    settingsSearchQuery: query,
+    setSettingsSearchQuery: record('settings-clear'),
+    filteredSettingOptions: [{ value: 'live-first', label: 'live first' }],
+    settingOptionsCursor: 0,
+    setSettingOptionsCursor: record('option-move'),
+    closeModal: record(dialog.view.kind === 'settings' ? 'settings-close' : 'option-back'),
+    openSettingOptions: record('settings-open'),
+    openSettingEditor: record('settings-open'),
+    isOptionSetting: field => field === 'sortOrder',
+    setModalState: record(dialog.view.kind === 'setting-editor' ? 'editor-back' : 'option-back'),
+    setSettingEditorError: () => {},
+    runAction: task => {
+      task().catch(cause => {
+        throw cause
+      })
+    },
+    executeCommand: notADialogAction,
+    showToast: notADialogAction,
+    handleSettingOptionSubmit: recordAsync('option-apply'),
+    handleSettingsEditorSubmit: recordAsync('editor-apply'),
+    handleSettingStep: recordAsync(
+      row?.control === 'toggle' ? 'settings-toggle' : 'settings-change'
+    ),
+    handleSettingReset: recordAsync('settings-reset'),
+    handleRenameSubmit: notADialogAction,
+    handleOutcomeRetry: notADialogAction,
+    confirmBatchClose: notADialogAction,
+    retryBatchClose: notADialogAction,
+  }
+
+  const consumed = handleModalKeyboard(input, ctx)
+
+  if (actions.length > 1) throw new Error(`One key ran several actions: ${actions.join(', ')}`)
+
+  return { actions, consumed }
+}
+
+function dialogHandlerBindings(dialog: DialogCase): string[] {
+  return DIALOG_PRESSES.flatMap(key =>
+    pressDialog(dialog, key.input).actions.map(action => `${key.label} => ${action}`)
+  ).sort()
+}
+
+function dialogCatalogBindings(view: DialogView): string[] {
+  return getDialogActions(view)
+    .flatMap(id => getDialogActionKeys(id).map(key => `${key.label} => ${id}`))
+    .sort()
+}
+
+describe('the action catalog lists exactly the keys the settings dialogs run', () => {
+  test('every dialog action id is listed', () => {
+    expect(EVERY_DIALOG_ACTION_LISTED).toBe(true)
+    expect(new Set(DIALOG_CASES.flatMap(dialog => getDialogActions(dialog.view)))).toEqual(
+      new Set(DIALOG_ACTION_IDS)
+    )
+  })
+
+  test.each(DIALOG_CASES.map(dialog => [dialog.name, dialog] as const))('%s', (_name, dialog) => {
+    expect(dialogHandlerBindings(dialog)).toEqual(dialogCatalogBindings(dialog.view))
+  })
+
+  test.each(DIALOG_CASES.map(dialog => [dialog.name, dialog] as const))(
+    '%s: letters type into the field',
+    (_name, dialog) => {
+      for (const key of DIALOG_LETTER_PRESSES)
+        expect(pressDialog(dialog, key.input).consumed).toBe(false)
     }
   )
 })

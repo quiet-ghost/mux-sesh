@@ -5,6 +5,7 @@ import {
   type LiveSessionItem,
 } from '../multiplexer/items'
 import type { MultiplexerBackend } from '../multiplexer/types'
+import type { SettingsEntry } from '../settings'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../types'
 import { CONFIRM_CLOSE_KEY, type PendingClose } from './pending-close'
 
@@ -582,4 +583,170 @@ export function getActionFooter(
     global: hints.filter(hint => !isTargetHint(hint)),
     target: hints.filter(isTargetHint),
   }
+}
+
+// Settings dialogs keep a text field focused, so their actions are non-text keys only; letters
+// always type. Each action declares its keys once: the dialogs' footers and modal-keyboard both
+// read them here.
+export type SettingsActionId =
+  | 'settings-move'
+  | 'settings-change'
+  | 'settings-toggle'
+  | 'settings-open'
+  | 'settings-reset'
+  | 'settings-clear'
+  | 'settings-close'
+
+export type OptionActionId = 'option-move' | 'option-apply' | 'option-back'
+
+export type EditorActionId = 'editor-apply' | 'editor-back'
+
+export type DialogActionId = SettingsActionId | OptionActionId | EditorActionId
+
+// The dialog on screen, with what the selected Settings row offers.
+export type DialogView =
+  | {
+      kind: 'settings'
+      entry: Pick<SettingsEntry, 'control' | 'reset'> | undefined
+      query: string
+    }
+  | { kind: 'setting-options' }
+  | { kind: 'setting-editor' }
+
+export interface DialogKey {
+  readonly name: string
+  readonly ctrl: boolean
+  // As the footer and the docs write it.
+  readonly label: string
+}
+
+export interface DialogAction {
+  readonly label: string
+  readonly keys: readonly DialogKey[]
+  // Settings moves without saying so; its footer is about the selected row.
+  readonly footer: boolean
+}
+
+// Shown as `label key`, like the main footer's hints.
+export interface DialogHint {
+  readonly label: string
+  readonly key: string
+}
+
+function dialogKey(name: string, label: string, ctrl = false): DialogKey {
+  return { name, ctrl, label }
+}
+
+const UP = dialogKey('up', '↑')
+const DOWN = dialogKey('down', '↓')
+const LEFT = dialogKey('left', '←')
+const RIGHT = dialogKey('right', '→')
+const ENTER = dialogKey('return', 'enter')
+const ESC = dialogKey('escape', 'esc')
+const CTRL_R = dialogKey('r', 'ctrl+r', true)
+
+export const DIALOG_ACTIONS = {
+  'settings-move': { label: 'navigate', keys: [UP, DOWN], footer: false },
+  'settings-change': { label: 'change', keys: [LEFT, RIGHT], footer: true },
+  'settings-toggle': { label: 'change', keys: [LEFT, RIGHT, ENTER], footer: true },
+  'settings-open': { label: 'open', keys: [ENTER], footer: true },
+  'settings-reset': { label: 'reset', keys: [CTRL_R], footer: true },
+  'settings-clear': { label: 'clear', keys: [ESC], footer: true },
+  'settings-close': { label: 'close', keys: [ESC], footer: true },
+  'option-move': { label: 'navigate', keys: [UP, DOWN], footer: true },
+  'option-apply': { label: 'apply', keys: [ENTER], footer: true },
+  'option-back': { label: 'back', keys: [ESC], footer: true },
+  'editor-apply': { label: 'apply', keys: [ENTER], footer: true },
+  'editor-back': { label: 'back', keys: [ESC], footer: true },
+} as const satisfies Record<DialogActionId, DialogAction>
+
+// In footer order. A Settings row offers ←/→ only where they change it, Enter only where it opens
+// or switches, and reset only once the value differs from the default.
+function settingsActions(
+  entry: Pick<SettingsEntry, 'control' | 'reset'> | undefined,
+  query: string
+): SettingsActionId[] {
+  const row: SettingsActionId[] = []
+
+  switch (entry?.control) {
+    case 'toggle':
+      row.push('settings-toggle')
+      break
+    case 'cycle':
+      row.push('settings-change', 'settings-open')
+      break
+    case 'step':
+      row.push('settings-change')
+      break
+    case 'open':
+      row.push('settings-open')
+      break
+    case undefined:
+      break
+  }
+
+  if (entry?.reset === 'available') row.push('settings-reset')
+
+  return ['settings-move', ...row, query.length > 0 ? 'settings-clear' : 'settings-close']
+}
+
+const OPTION_ACTIONS: readonly OptionActionId[] = ['option-move', 'option-apply', 'option-back']
+const EDITOR_ACTIONS: readonly EditorActionId[] = ['editor-apply', 'editor-back']
+
+export function getDialogActions(view: DialogView): readonly DialogActionId[] {
+  switch (view.kind) {
+    case 'settings':
+      return settingsActions(view.entry, view.query)
+    case 'setting-options':
+      return OPTION_ACTIONS
+    case 'setting-editor':
+      return EDITOR_ACTIONS
+  }
+}
+
+export function getDialogActionKeys(id: DialogActionId): readonly DialogKey[] {
+  return DIALOG_ACTIONS[id].keys
+}
+
+export function getDialogHints(view: DialogView): DialogHint[] {
+  return getDialogActions(view).flatMap(id => {
+    const action: DialogAction = DIALOG_ACTIONS[id]
+
+    return action.footer
+      ? [{ label: action.label, key: action.keys.map(key => key.label).join('/') }]
+      : []
+  })
+}
+
+export interface DialogKeyInput {
+  name?: string
+  ctrl?: boolean
+}
+
+// The offered action this key runs, or 'none'.
+function firstMatch<Id extends DialogActionId>(
+  ids: readonly Id[],
+  input: DialogKeyInput
+): Id | 'none' {
+  const matched = ids.find(id =>
+    getDialogActionKeys(id).some(key => key.name === input.name && key.ctrl === Boolean(input.ctrl))
+  )
+
+  return matched ?? 'none'
+}
+
+export function matchSettingsAction(
+  entry: Pick<SettingsEntry, 'control' | 'reset'> | undefined,
+  query: string,
+  input: DialogKeyInput
+): SettingsActionId | 'none' {
+  return firstMatch(settingsActions(entry, query), input)
+}
+
+export function matchOptionAction(input: DialogKeyInput): OptionActionId | 'none' {
+  return firstMatch(OPTION_ACTIONS, input)
+}
+
+export function matchEditorAction(input: DialogKeyInput): EditorActionId | 'none' {
+  return firstMatch(EDITOR_ACTIONS, input)
 }

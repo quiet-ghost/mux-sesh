@@ -182,11 +182,14 @@ With rows marked, `d` opens the batch close review instead, even for one marked 
 
 ## Dialogs
 
+The settings rows are checked against the action catalog by the test suite.
+
 | Dialog             | Keys                                                                                                                                                                                             |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Command palette    | Type to filter, `↑` / `↓` move, `enter` runs, `esc` closes                                                                                                                                       |
 | Settings           | Type to filter, `↑` / `↓` move, `←` / `→` change the value in place, `enter` opens it (or switches a two-value setting), `ctrl+r` resets it to the default, `esc` clears the filter, then closes |
-| Theme picker       | `↑` / `↓` preview, `enter` saves, `esc` restores the saved theme                                                                                                                                 |
+| Setting picker     | `↑` / `↓` move (Theme previews each one), `enter` saves, `esc` goes back (Theme restores the saved theme)                                                                                        |
+| Setting editor     | Type the value, `enter` applies and saves, `esc` goes back                                                                                                                                       |
 | Rename             | Type the name, `enter` renames, `esc` cancels                                                                                                                                                    |
 | Batch close review | `enter` closes exactly the marked set shown, `esc` keeps it                                                                                                                                      |
 | Close results      | `enter` retries what is still open (or closes the dialog), `esc` closes                                                                                                                          |

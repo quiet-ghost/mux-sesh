@@ -1,4 +1,9 @@
-import { describeUnavailableAction } from './action-catalog'
+import {
+  describeUnavailableAction,
+  matchEditorAction,
+  matchOptionAction,
+  matchSettingsAction,
+} from './action-catalog'
 import type { OperationReport } from './action-outcome'
 import type { ModalState } from './modals'
 import { OptionPicker } from './option-picker'
@@ -65,42 +70,49 @@ function changeSetting(
 }
 
 // Settings keeps its filter focused: letters type, and ←/→ belong to the list, not the query.
+function cursorStep(key: KeyboardInput): 1 | -1 {
+  return key.name === 'up' || key.name === 'left' ? -1 : 1
+}
+
 function handleSettingsKey(
   key: KeyboardInput,
   ctx: ModalKeyboardContext,
   picker: OptionPicker
 ): boolean {
   const entry = ctx.filteredSettingsEntries[ctx.settingsCursor]
+  const action = matchSettingsAction(entry, ctx.settingsSearchQuery, key)
+  const count = ctx.filteredSettingsEntries.length
 
-  if (key.name === 'escape') {
-    if (ctx.settingsSearchQuery.length > 0) ctx.setSettingsSearchQuery('')
-    else ctx.closeModal()
-  } else if (key.name === 'down') {
-    ctx.setSettingsCursor(current =>
-      clampCursorIndex(ctx.filteredSettingsEntries.length, current + 1)
-    )
-  } else if (key.name === 'up') {
-    ctx.setSettingsCursor(current =>
-      clampCursorIndex(ctx.filteredSettingsEntries.length, current - 1)
-    )
-  } else if (key.name === 'left' || key.name === 'right') {
-    const direction = key.name === 'right' ? 1 : -1
+  switch (action) {
+    case 'settings-move':
+      ctx.setSettingsCursor(current => clampCursorIndex(count, current + cursorStep(key)))
 
-    if (entry && entry.control !== 'open') {
-      changeSetting(ctx, picker, () => ctx.handleSettingStep(entry.id, direction))
-    }
-  } else if (key.name === 'return') {
-    if (entry?.control === 'toggle')
-      changeSetting(ctx, picker, () => ctx.handleSettingStep(entry.id, 1))
-    else if (entry?.control === 'cycle' || entry?.control === 'open') openSetting(ctx, entry)
-  } else if (key.ctrl && key.name === 'r') {
-    if (entry?.reset === 'available')
-      changeSetting(ctx, picker, () => ctx.handleSettingReset(entry.id))
-  } else {
-    return false
+      return true
+    case 'settings-change':
+    case 'settings-toggle':
+      if (entry) changeSetting(ctx, picker, () => ctx.handleSettingStep(entry.id, cursorStep(key)))
+
+      return true
+    case 'settings-open':
+      if (entry) openSetting(ctx, entry)
+
+      return true
+    case 'settings-reset':
+      if (entry) changeSetting(ctx, picker, () => ctx.handleSettingReset(entry.id))
+
+      return true
+    case 'settings-clear':
+      ctx.setSettingsSearchQuery('')
+
+      return true
+    case 'settings-close':
+      ctx.closeModal()
+
+      return true
+    case 'none':
+      // ←/→ belong to the list, even on a row they do not change; the filter never gets them.
+      return key.name === 'left' || key.name === 'right'
   }
-
-  return true
 }
 
 // Every modal is a focused text field, so only non-text keys act; letters stay in the field.
@@ -202,47 +214,50 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
 
   if (ctx.modalState?.type === 'setting-options') {
     const { field, openedFrom, picker } = ctx.modalState
+    const count = ctx.filteredSettingOptions.length
 
-    // The preview is the highlighted option, so leaving the picker restores the saved theme.
-    if (key.name === 'escape') {
-      if (openedFrom === 'commands') {
-        ctx.closeModal()
-      } else {
-        ctx.setModalState({ type: 'settings', picker: OptionPicker.browsing })
+    switch (matchOptionAction(key)) {
+      // The preview is the highlighted option, so leaving the picker restores the saved theme.
+      case 'option-back':
+        if (openedFrom === 'commands') ctx.closeModal()
+        else ctx.setModalState({ type: 'settings', picker: OptionPicker.browsing })
+
+        return true
+      case 'option-move':
+        ctx.setSettingOptionsCursor(current => clampCursorIndex(count, current + cursorStep(key)))
+
+        return true
+      case 'option-apply': {
+        const option = ctx.filteredSettingOptions[ctx.settingOptionsCursor]
+
+        if (option && picker.kind !== 'saving') {
+          ctx.runAction(() => ctx.handleSettingOptionSubmit(field, option.value))
+        }
+
+        return true
       }
-    } else if (key.name === 'down') {
-      ctx.setSettingOptionsCursor(current =>
-        clampCursorIndex(ctx.filteredSettingOptions.length, current + 1)
-      )
-    } else if (key.name === 'up') {
-      ctx.setSettingOptionsCursor(current =>
-        clampCursorIndex(ctx.filteredSettingOptions.length, current - 1)
-      )
-    } else if (key.name === 'return') {
-      const option = ctx.filteredSettingOptions[ctx.settingOptionsCursor]
 
-      if (!option || picker.kind === 'saving') return true
-      ctx.runAction(() => ctx.handleSettingOptionSubmit(field, option.value))
-    } else {
-      return false
+      case 'none':
+        return false
     }
-
-    return true
   }
 
   if (ctx.modalState?.type === 'setting-editor') {
     const { field } = ctx.modalState
 
-    if (key.name === 'escape') {
-      ctx.setModalState({ type: 'settings', picker: OptionPicker.browsing })
-      ctx.setSettingEditorError('')
-    } else if (key.name === 'return') {
-      ctx.runAction(() => ctx.handleSettingsEditorSubmit(field))
-    } else {
-      return false
-    }
+    switch (matchEditorAction(key)) {
+      case 'editor-back':
+        ctx.setModalState({ type: 'settings', picker: OptionPicker.browsing })
+        ctx.setSettingEditorError('')
 
-    return true
+        return true
+      case 'editor-apply':
+        ctx.runAction(() => ctx.handleSettingsEditorSubmit(field))
+
+        return true
+      case 'none':
+        return false
+    }
   }
 
   return false

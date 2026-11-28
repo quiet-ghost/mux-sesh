@@ -1,5 +1,6 @@
 import type { TextareaRenderable } from '@opentui/core'
 import { useLayoutEffect } from 'react'
+import { getDialogHints } from '../app/action-catalog'
 import type { OptionPicker } from '../app/option-picker'
 import { reconcileTextareaValue } from '../app/textarea'
 import { useTheme } from '../styles/theme'
@@ -18,7 +19,6 @@ import {
   truncateDialogText,
 } from './dialog-layout'
 import { DialogFilter, DialogSectionHeader } from './DialogList'
-import type { KeyHint } from './key-hints'
 import { getVisibleWindow } from './list-window'
 import Modal from './Modal'
 import SettingRow from './SettingRow'
@@ -75,27 +75,6 @@ function dropTrailingHeadings(rows: SettingsRow[]): SettingsRow[] {
   return last === rows.length - 1 ? rows : rows.slice(0, last + 1)
 }
 
-// Only what the selected row offers: ←/→ where it changes in place, Enter where it opens, and
-// reset only once the value differs from the default.
-function settingsHints(entry: SettingsEntry | undefined, searching: boolean): KeyHint[] {
-  const hints: KeyHint[] = []
-
-  if (entry?.control === 'toggle') hints.push({ label: 'change', key: '←/→/enter' })
-
-  if (entry?.control === 'cycle' || entry?.control === 'step') {
-    hints.push({ label: 'change', key: '←/→' })
-  }
-
-  if (entry?.control === 'cycle' || entry?.control === 'open') {
-    hints.push({ label: 'open', key: 'enter' })
-  }
-
-  if (entry?.reset === 'available') hints.push({ label: 'reset', key: 'ctrl+r' })
-  hints.push(searching ? { label: 'clear', key: 'esc' } : { label: 'close', key: 'esc' })
-
-  return hints
-}
-
 export default function SettingsModal({
   configPath,
   columns,
@@ -141,7 +120,7 @@ export default function SettingsModal({
     <Modal
       title="Settings"
       description={description}
-      hints={settingsHints(selected, searching)}
+      hints={getDialogHints({ kind: 'settings', entry: selected, query: searchQuery })}
       columns={columns}
       preferredWidth={SETTINGS_PREFERRED_WIDTH}
     >

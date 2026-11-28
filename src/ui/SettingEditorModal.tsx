@@ -1,14 +1,11 @@
 import type { TextareaRenderable } from '@opentui/core'
+import { getDialogHints } from '../app/action-catalog'
 import { useTheme } from '../styles/theme'
 import { DialogField } from './DialogList'
-import type { KeyHint } from './key-hints'
 import Modal from './Modal'
 import { useTextareaFocus } from './use-textarea-focus'
 
-const EDITOR_HINTS: readonly KeyHint[] = [
-  { label: 'apply', key: 'enter' },
-  { label: 'back', key: 'esc' },
-]
+const EDITOR_HINTS = getDialogHints({ kind: 'setting-editor' })
 
 interface Props {
   title: string
