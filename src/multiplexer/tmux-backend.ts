@@ -10,7 +10,7 @@ import {
   type WorkspaceDetails,
   type WorkspaceRef,
 } from './types'
-import { formatPanePreview, formatWindowCommand, sanitizeTmuxSessionName } from '../tmux/helpers'
+import { formatPanePreview, formatWindowCommand, sanitizeTmuxSessionName } from './tmux-text'
 import { toHomeRelativePath } from '../util/path-display'
 
 export interface TmuxBackendOptions {

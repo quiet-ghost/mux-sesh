@@ -20,7 +20,7 @@ import type {
   WorkspaceRef,
 } from '../multiplexer/types'
 import type { FileStepSearch } from '../search/file-step'
-import { sanitizeTmuxSessionName } from '../tmux/helpers'
+import { sanitizeTmuxSessionName } from '../multiplexer/tmux-text'
 import type { Config, Item } from '../types'
 import { isGitHubURL, parseGitHubURL, type GitHubURL } from './github-url'
 import {

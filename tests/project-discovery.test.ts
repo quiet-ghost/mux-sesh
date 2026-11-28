@@ -8,7 +8,7 @@ import {
   refreshProjectDiscovery,
 } from '../src/projects/project-items'
 import { applyZoxideMode, getZoxideEntries, parseZoxideOutput } from '../src/projects/zoxide'
-import { filterHiddenSessions, getLastSessionTarget } from '../src/tmux/workflows'
+import { filterHiddenSessions, getLastSessionTarget } from '../src/sessions/session-filters'
 import { getDefaultConfig } from '../src/config'
 import { annotateProjectItemsWithSessionLinks } from '../src/projects/session-links'
 import type { Item } from '../src/types'

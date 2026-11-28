@@ -2,7 +2,7 @@ import * as Result from 'effect/Result'
 import type { Item, Config } from '../types'
 import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey, getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
-import { getLastSessionTarget } from '../tmux/workflows'
+import { getLastSessionTarget } from '../sessions/session-filters'
 import { isFileItem } from '../files/target'
 import { isBackendFailure } from '../multiplexer/failure'
 import {
