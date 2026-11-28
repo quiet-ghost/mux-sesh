@@ -4,6 +4,7 @@ import { normalizePathForMatching } from '../util/glob'
 import {
   filterProjectCandidatePaths,
   isIgnoredProjectDirectory,
+  isInsideIgnoredDirectory,
   toProjectItem,
 } from './project-discovery'
 
@@ -117,7 +118,7 @@ export async function getZoxideEntries(
     )
 
     if (!requireProjectMarker) {
-      return entriesWithinRoots.filter(entry => !isIgnoredProjectDirectory(basename(entry.path)))
+      return entriesWithinRoots.filter(entry => !isInsideIgnoredDirectory(entry.path, projectRoots))
     }
 
     const projectCandidatePaths = await filterProjectCandidatePaths(

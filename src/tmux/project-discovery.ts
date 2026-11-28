@@ -17,6 +17,9 @@ const PROJECT_MARKERS = [
   'flake.nix',
 ]
 
+// Caches and virtual environments: never a project, and never somewhere to start a session.
+const CACHE_DIRECTORY_NAMES = ['__pycache__', 'venv', 'site-packages']
+
 export const PRUNED_PROJECT_DIRECTORY_NAMES = [
   '.git',
   '.jj',
@@ -24,10 +27,33 @@ export const PRUNED_PROJECT_DIRECTORY_NAMES = [
   'target',
   'build',
   'dist',
+  ...CACHE_DIRECTORY_NAMES,
 ]
 
 export function isIgnoredProjectDirectory(baseName: string): boolean {
   return baseName.startsWith('.') || PRUNED_PROJECT_DIRECTORY_NAMES.includes(baseName)
+}
+
+// Below its root, a path inside a hidden or pruned folder is noise (`~/.config/…`, `…/__pycache__`).
+// A hidden root listed on purpose, such as `~/.dotfiles`, still counts: only the part below it is checked.
+export function isInsideIgnoredDirectory(path: string, roots: readonly string[]): boolean {
+  const normalized = normalizePathForMatching(path)
+
+  // The deepest root holding the path decides, so a hidden root inside another root still counts.
+  const root = roots
+    .flatMap(entry => {
+      const candidate = normalizePathForMatching(entry)
+
+      return normalized.startsWith(`${candidate}/`) ? [candidate] : []
+    })
+    .sort((left, right) => right.length - left.length)[0]
+
+  if (root === undefined) return false
+
+  return normalized
+    .slice(root.length + 1)
+    .split('/')
+    .some(isIgnoredProjectDirectory)
 }
 
 export function toProjectItem(projectPath: string): Item {

@@ -57,6 +57,8 @@ type RootScan =
 interface ScopeSettings {
   scanDepth: number
   requireProjectMarker: boolean
+  // Session candidates skip hidden folders below a root; projects keep repos like ~/.dotfiles.
+  pruneHidden: boolean
   selectPaths: (paths: string[]) => Promise<string[]>
 }
 
@@ -64,11 +66,13 @@ const SCOPE_SETTINGS: Record<DiscoveryScope, ScopeSettings> = {
   projects: {
     scanDepth: 3,
     requireProjectMarker: true,
+    pruneHidden: false,
     selectPaths: filterProjectCandidatePaths,
   },
   'session-candidates': {
     scanDepth: 5,
     requireProjectMarker: false,
+    pruneHidden: true,
     selectPaths: async paths => filterSessionCandidatePaths(paths),
   },
 }
@@ -108,8 +112,12 @@ async function checkRoot(root: string): Promise<DiscoveryFailureReason | undefin
   }
 }
 
-function findCommand(root: string, maxDepth: number): string[] {
-  const pruneExpression = PRUNED_PROJECT_DIRECTORY_NAMES.flatMap((name, index) =>
+function findCommand(root: string, maxDepth: number, pruneHidden: boolean): string[] {
+  const names = pruneHidden
+    ? ['.*', ...PRUNED_PROJECT_DIRECTORY_NAMES]
+    : PRUNED_PROJECT_DIRECTORY_NAMES
+
+  const pruneExpression = names.flatMap((name, index) =>
     index === 0 ? ['-name', name] : ['-o', '-name', name]
   )
 
@@ -139,7 +147,11 @@ function parseFindOutput(output: string): string[] {
     .map(path => normalizePathForMatching(path))
 }
 
-async function scanRoot(root: string, maxDepth: number, runner: CommandRunner): Promise<RootScan> {
+async function scanRoot(
+  root: string,
+  settings: ScopeSettings,
+  runner: CommandRunner
+): Promise<RootScan> {
   const rootFailure = await checkRoot(root)
 
   if (rootFailure) {
@@ -147,7 +159,7 @@ async function scanRoot(root: string, maxDepth: number, runner: CommandRunner): 
   }
 
   try {
-    const result = await runner.run(findCommand(root, maxDepth))
+    const result = await runner.run(findCommand(root, settings.scanDepth, settings.pruneHidden))
     const paths = parseFindOutput(result.stdout)
 
     if (result.exitCode === 0) {
@@ -201,7 +213,7 @@ export async function runProjectDiscovery(
   const scans = await mapWithConcurrency(
     uniqueNormalizedPaths(config.projectPaths),
     ROOT_SCAN_CONCURRENCY,
-    root => scanRoot(root, settings.scanDepth, runner)
+    root => scanRoot(root, settings, runner)
   )
 
   const failures = scans.flatMap(scan => (scan.kind === 'ok' ? [] : [scan.failure]))
