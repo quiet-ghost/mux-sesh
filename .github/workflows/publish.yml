@@ -60,6 +60,22 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "New version: $VERSION"
 
+      # A finished release has its tag and its mux-sesh package (published last). Stop before building
+      # if either exists; a run that failed partway has neither, so it can be retried as is.
+      - name: Check the version is free
+        run: |
+          version="${{ steps.version.outputs.version }}"
+
+          if git rev-parse -q --verify "refs/tags/v$version" > /dev/null; then
+            echo "::error::Tag v$version already exists. Choose another version in the 'version' input."
+            exit 1
+          fi
+
+          if npm view "mux-sesh@$version" version > /dev/null 2>&1; then
+            echo "::error::mux-sesh@$version is already on npm, and npm never reuses a version. Choose another version in the 'version' input."
+            exit 1
+          fi
+
       # Bun cross-compiles every target from Linux; the native packages come from all-platforms.
       - name: Build platform binaries
         run: bun run build:all
@@ -97,9 +113,8 @@ jobs:
 
       # pack lists the platform packages first, so mux-sesh is published once its binaries exist.
       # Versions already on the registry are skipped: retry a failed run with the same `version` input.
-      # npm authenticates with trusted publishing (OIDC) where a package has it configured, and falls
-      # back to NPM_TOKEN otherwise, e.g. for a platform package's first publish. Provenance is signed
-      # either way.
+      # npm authenticates with trusted publishing (OIDC): every package trusts this workflow, so no
+      # token is stored. Provenance is signed for each package.
       - name: Publish to npm
         run: |
           while read -r directory; do
@@ -113,8 +128,6 @@ jobs:
 
             npm publish "$directory" --provenance --access public
           done < dist/packed.txt
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Push changes
         run: |
