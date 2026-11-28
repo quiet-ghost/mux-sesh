@@ -16,8 +16,7 @@ attach to, rename or close the user's live tmux, Herdr or Rex work.
 - Use a temp `HOME` and `XDG_*` dirs. `tests/preload.ts` does this for `bun test`; the `dev:*`
   screens use throwaway XDG config and state. `bun run dev` and `start` use the real config, so
   don't run them yourself. Never read or write `~/.config/mux-sesh`.
-- Never publish to npm, push, or tag. `check:upgrade` serves its test version from a local
-  registry and only downloads the published 1.10.0.
+- Never publish to npm, push, or tag.
 
 ## Commands
 
@@ -36,7 +35,6 @@ Bun only: `bun`, `bun test`, `bun install`, `bun run <script>`, `bunx`. Bun load
 | `bun run build` / `build:all`                                  | compile the binary for this host / every target into `dist/`        |
 | `bun run pack`                                                 | assemble the npm packages from compiled binaries                    |
 | `bun run smoke:binary`                                         | compile and launch the binary in a sandbox                          |
-| `bun run check:upgrade`                                        | pre-release: a 1.10.0 install upgrades to the packed 2.0 build      |
 | `bun run schema`                                               | regenerate `mux-sesh.schema.json`                                   |
 
 Build only when you need the compiled binary; TypeScript changes need only typecheck and tests.

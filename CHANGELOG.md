@@ -4,7 +4,18 @@ All notable changes to mux-sesh are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased] — 2.0.0
+## [Unreleased]
+
+### Changed
+
+- Releases are published only through npm trusted publishing (OIDC), with signed provenance; no
+  npm token is stored for publishing.
+- A release run stops before building when its version is already tagged or published.
+
+## [2.0.1] — 2026-11-28
+
+The 2.0 release. It is numbered 2.0.1 because an early, accidental release already used 2.0.0 on
+npm in 2025; that version is deprecated.
 
 2.0 rebuilds the picker around one rule: you see what a key will do before it does it, and nothing
 is closed, created or cloned that you didn't confirm. mux-sesh now ships as a compiled binary and
@@ -102,7 +113,7 @@ Keep a backup of your config before a major upgrade.
 - Updates detect compiled installs, verify the installed version afterwards, and leave mise and
   Homebrew installs to their own tools.
 - The README and the configuration, keybinding, workflow and theme docs are rewritten for 2.0.
-- Releases are published from GitHub Actions with signed npm provenance, using npm trusted publishing (OIDC) for every package that has it configured.
+- Releases are published from GitHub Actions with signed npm provenance.
 - Internal: the source tree is reorganized into domain modules; no behaviour change.
 
 ### Removed

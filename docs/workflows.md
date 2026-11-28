@@ -325,6 +325,3 @@ bun run dev
   `bun install --frozen-lockfile --os='*' --cpu='*' --libc='*'`.
 - `bun run pack` writes the npm packages to `dist/npm`. `build` and `pack` take
   `--version <semver>` to stamp a version other than `package.json`'s.
-- `bun run check:upgrade` is a pre-release check. It installs the published 1.10.0 with npm and
-  with Bun into a temporary prefix and runs 1.10's own updater, and also installs fresh and over
-  1.10 by hand. The new version comes from a registry on 127.0.0.1, so nothing is published.
