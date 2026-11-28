@@ -51,4 +51,5 @@ jobs:
       - name: Run opencode
         uses: anomalyco/opencode/github@latest
         with:
-          model: opencode/claude-sonnet-4-5
+          model: opencode/glm-5.3
+          variant: high
