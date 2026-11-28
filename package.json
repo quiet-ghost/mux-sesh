@@ -21,7 +21,7 @@
     "check:upgrade": "bun tools/build/upgrade-check.ts",
     "start": "bun run src/index.tsx",
     "lint": "bun run --bun oxlint --deny-warnings",
-    "typecheck": "tsc --noEmit && tsc --noEmit --project tools/build/tsconfig.json",
+    "typecheck": "tsc --noEmit && tsc --noEmit --project tools/build/tsconfig.json && tsc --noEmit --project tools/dev/tsconfig.json && tsc --noEmit --project tools/schema/tsconfig.json",
     "typecheck:tests": "tsc --noEmit --project tests/tsconfig.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
