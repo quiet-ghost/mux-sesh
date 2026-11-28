@@ -17,7 +17,7 @@ import { AppMode, ViewMode, type Config, type Item } from '../types'
 import { isGitHubURL } from '../sessions/github-url'
 import { mark, measure } from '../util/perf'
 import { requestFatalShutdown } from '../lifecycle/shutdown'
-import { loadSessionCandidateItems } from './data'
+import { loadSessionCandidateItems } from './inventory-load'
 import type { ShowToast } from './notifications'
 
 const FILE_SEARCH_DEBOUNCE_MS = 120

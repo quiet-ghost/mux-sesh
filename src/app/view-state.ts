@@ -20,7 +20,7 @@ import {
 } from './action-catalog'
 import type { ModalState } from './modals'
 import { PendingClose } from './pending-close'
-import { splitVisibleSessions } from './view'
+import { splitVisibleSessions } from './screen-layout'
 
 const NO_MARKS: ReadonlyMap<string, Item> = new Map()
 

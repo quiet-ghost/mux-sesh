@@ -20,7 +20,7 @@ import {
   loadSessionItems,
   reuseSessionItemIdentities,
   type Measure,
-} from './data'
+} from './inventory-load'
 import {
   readEffect,
   type AppEffectRuntime,

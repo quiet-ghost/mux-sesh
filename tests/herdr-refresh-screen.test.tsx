@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 import { testRender } from '@opentui/react/test-utils'
 import { act, useRef, useState } from 'react'
-import { loadSessionItems } from '../src/app/data'
+import { loadSessionItems } from '../src/app/inventory-load'
 import { createEffectRuntime, type AppEffectRuntime } from '../src/app/effect-runtime'
 import { useHerdrAgentPolling } from '../src/app/herdr-refresh'
 import { useSessionInventory } from '../src/app/session-inventory'

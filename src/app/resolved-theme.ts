@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { useSystemThemeFollow, useTerminalPalette } from './effects'
+import { useSystemThemeFollow, useTerminalPalette } from './app-hooks'
 import {
   resolveTheme,
   SYSTEM_THEME_ID,

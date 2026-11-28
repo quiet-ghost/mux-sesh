@@ -3,18 +3,18 @@ import type { TestRendererOptions, TestRendererSetup } from '@opentui/core/testi
 import { useRenderer } from '@opentui/react'
 import { testRender } from '@opentui/react/test-utils'
 import { act, useCallback, useEffect, useLayoutEffect, useState } from 'react'
-import { executeCommand as executeAppCommand } from '../../src/app/commands'
-import { createAppControls } from '../../src/app/controls'
+import { executeCommand as executeAppCommand } from '../../src/app/command-dispatch'
+import { createAppControls } from '../../src/app/modal-controls'
 import { useAppCoreState } from '../../src/app/core-state'
-import { loadSessionItems } from '../../src/app/data'
-import { getSessionCommandState, getSettingsState } from '../../src/app/derived'
+import { loadSessionItems } from '../../src/app/inventory-load'
+import { getSessionCommandState, getSettingsState } from '../../src/app/view-state'
 import {
   useNormalModeSessionReset,
   useOpenHistory,
   usePendingCloseReset,
   useSearchFiltering,
   useSelectionMemory,
-} from '../../src/app/effects'
+} from '../../src/app/app-hooks'
 import { FocusOwner } from '../../src/app/focus-owner'
 import { createAppHandlers, handleSelectItem } from '../../src/app/action-feedback'
 import { useDetailsInspector } from '../../src/app/inspector'
@@ -38,7 +38,7 @@ import { OptionPicker } from '../../src/app/option-picker'
 import { createSettingPaneActions } from '../../src/app/setting-pane-actions'
 import { getSettingPaneState } from '../../src/app/setting-panes'
 import { useLiveResolvedTheme } from '../../src/app/resolved-theme'
-import { createAppRuntime } from '../../src/app/runtime'
+import { createAppRuntime } from '../../src/app/list-refresh'
 import { AppScreen } from '../../src/app/screen'
 import { useSessionInventory } from '../../src/app/session-inventory'
 import { useStartOnCurrentSession } from '../../src/app/start-cursor'

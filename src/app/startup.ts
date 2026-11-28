@@ -6,7 +6,7 @@ import { resolveMultiplexerBackend, type MultiplexerBackend } from '../multiplex
 import { CommandInterrupted, type CommandRunner } from '../multiplexer/command'
 import { isBackendFailure } from '../multiplexer/failure'
 import { requestFatalShutdown } from '../lifecycle/shutdown'
-import { loadProjectSourceItems, type Measure } from './data'
+import { loadProjectSourceItems, type Measure } from './inventory-load'
 import type { SessionInventory } from './session-inventory'
 
 export type StartupFailureStage = 'config' | 'backend' | 'inventory'

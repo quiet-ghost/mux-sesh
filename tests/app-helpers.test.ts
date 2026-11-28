@@ -7,20 +7,20 @@ import {
 } from '../src/app/action-catalog'
 import { PendingClose } from '../src/app/pending-close'
 import { ActionRefused } from '../src/app/action-outcome'
-import { createAppControls } from '../src/app/controls'
+import { createAppControls } from '../src/app/modal-controls'
 import { getDefaultConfig } from '../src/config'
 import {
   getAgentSelectionIndex,
   getProjectSelectionIndex,
   getSessionSelectionIndex,
   reuseSessionItemIdentities,
-} from '../src/app/data'
-import { getSessionCommandState, getSettingsState } from '../src/app/derived'
+} from '../src/app/inventory-load'
+import { getSessionCommandState, getSettingsState } from '../src/app/view-state'
 import { createAppHandlers, getPinnedSessionsAfterToggle } from '../src/app/action-feedback'
-import { persistConfigUpdate, runWithErrorToast } from '../src/app/operations'
+import { persistConfigUpdate, runWithErrorToast } from '../src/app/toast-operations'
 import type { ToastInput } from '../src/app/notifications'
 import { OptionPicker } from '../src/app/option-picker'
-import { createAppRuntime } from '../src/app/runtime'
+import { createAppRuntime } from '../src/app/list-refresh'
 import {
   publishInventory,
   type InventoryOutcome,
@@ -31,7 +31,7 @@ import {
   getEmptyStateMessage,
   getStatusLabel,
   splitVisibleSessions,
-} from '../src/app/view'
+} from '../src/app/screen-layout'
 import { AppMode, ViewMode, type Item } from '../src/types'
 import { createHerdrBackend } from '../src/herdr/backend'
 import { getItemKey, workspaceToItem } from '../src/multiplexer/items'

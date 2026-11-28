@@ -15,7 +15,7 @@ import type { ListPaneActionId, RulePaneActionId } from './action-catalog'
 import { ActionOutcome, type OperationReport } from './action-outcome'
 import type { ModalState } from './modals'
 import type { ShowToast } from './notifications'
-import { persistConfigUpdate } from './operations'
+import { persistConfigUpdate } from './toast-operations'
 import { OptionPicker } from './option-picker'
 import {
   SettingPane,

@@ -1,5 +1,5 @@
 import { useKeyboard, useTerminalDimensions } from '@opentui/react'
-import type { StartupFailureStage, StartupState } from '../app/state'
+import type { StartupFailureStage, StartupState } from '../app/startup'
 import { FailureScreen, useFailurePalette } from './failure-screen'
 import type { KeyHint } from './key-hints'
 

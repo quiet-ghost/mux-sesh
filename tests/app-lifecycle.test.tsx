@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { testRender } from '@opentui/react/test-utils'
 import { act, useState, type Dispatch, type SetStateAction } from 'react'
-import { useAutoUpdateScheduler, useTerminalPalette } from '../src/app/effects'
+import { useAutoUpdateScheduler, useTerminalPalette } from '../src/app/app-hooks'
 import { getDefaultConfig } from '../src/config'
 import { SYSTEM_THEME_ID } from '../src/styles/theme'
 import type { TerminalPalette } from '../src/styles/terminal-palette'

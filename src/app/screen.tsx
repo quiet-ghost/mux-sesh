@@ -11,7 +11,7 @@ import {
   getScreenLayout,
   getSearchNoMatchHint,
   getStatusLabel,
-} from './view'
+} from './screen-layout'
 import { syncTextareaValue } from './textarea'
 import { getActionFooter, getActionKeyHint, type ActionContext } from './action-catalog'
 import type { FocusOwner } from './focus-owner'

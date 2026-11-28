@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import { testRender } from '@opentui/react/test-utils'
 import { act, type ReactNode } from 'react'
-import type { StartupState } from '../src/app/state'
+import type { StartupState } from '../src/app/startup'
 import { resolveTheme, ThemeProvider } from '../src/styles/theme'
 import type { ThemeColors } from '../src/types'
 import { ErrorScreen } from '../src/ui/ErrorScreen'

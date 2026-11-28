@@ -1,4 +1,4 @@
-import { executeCommand as runCommand } from './commands'
+import { executeCommand as runCommand } from './command-dispatch'
 import {
   ActionOutcome,
   failureKind,
@@ -8,7 +8,7 @@ import {
 } from './action-outcome'
 import { leaveJsonEditor, type IconsFormMode, type ModalState } from './modals'
 import type { ShowToast } from './notifications'
-import { persistConfigUpdate, runWithErrorToast } from './operations'
+import { persistConfigUpdate, runWithErrorToast } from './toast-operations'
 import { OptionPicker } from './option-picker'
 import type { Dispatch, SetStateAction } from 'react'
 import { AppMode, type Config, type Item, type ViewMode } from '../types'
