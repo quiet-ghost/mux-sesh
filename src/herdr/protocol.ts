@@ -3,7 +3,7 @@ import * as Result from 'effect/Result'
 import * as Schema from 'effect/Schema'
 import * as SchemaIssue from 'effect/SchemaIssue'
 import * as SchemaTransformation from 'effect/SchemaTransformation'
-import { MultiplexerError, type AgentStatus } from '../multiplexer'
+import { MultiplexerError, type AgentStatus } from '../multiplexer/types'
 
 export interface HerdrWorkspace {
   id: string

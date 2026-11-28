@@ -9,7 +9,7 @@ import {
   type OpenWorkspaceInput,
   type WorkspaceDetails,
   type WorkspaceRef,
-} from '../multiplexer'
+} from '../multiplexer/types'
 import type { CommandOptions, CommandRunner } from '../multiplexer/command'
 import {
   parseHerdrCreatedWorkspace,
