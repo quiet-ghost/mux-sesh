@@ -5,6 +5,7 @@ import type { LiveWorkspace, MultiplexerBackend, WorkspaceRef } from '../src/mul
 import { footerHints } from './fixtures/footer'
 import { withoutSideBorders } from './fixtures/pane'
 import { renderSessionScreen } from './fixtures/session-screen'
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -32,10 +33,6 @@ function workspace(id: string, title: string, extra: Partial<LiveWorkspace> = {}
   }
 }
 
-function unsupported(): never {
-  throw new Error('The close-batch backend does not implement that operation')
-}
-
 // How the fake backend answers a close of one id; anything unscripted closes cleanly.
 type CloseScript =
   | { readonly kind: 'fail'; readonly message: string }
@@ -53,7 +50,7 @@ function recordingBackend(initial: LiveWorkspace[], options: BackendOptions = {}
   const opened: string[] = []
   const scripts = new Map<string, CloseScript>()
 
-  const backend: MultiplexerBackend = {
+  const backend: MultiplexerBackend = unsupportedBackend({
     kind: options.kind ?? 'tmux',
     capabilities: { previousWorkspace: true },
     async list() {
@@ -87,13 +84,7 @@ function recordingBackend(initial: LiveWorkspace[], options: BackendOptions = {}
 
       state.workspaces = state.workspaces.filter(entry => entry.id !== target.id)
     },
-    openOrCreate: unsupported,
-    create: unsupported,
-    start: unsupported,
-    rename: unsupported,
-    directory: unsupported,
-    openEditor: unsupported,
-  }
+  })
 
   return { backend, closed, opened, state, scripts }
 }

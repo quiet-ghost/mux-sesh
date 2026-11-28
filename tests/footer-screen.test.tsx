@@ -7,6 +7,7 @@ import { CURRENT_VERSION } from '../src/update/version'
 import { footerHints, footerLineOf, hints, readFooter } from './fixtures/footer'
 import { cellsOf, contrastRatio, sameColor } from './fixtures/selection'
 import { renderSessionScreen } from './fixtures/session-screen'
+import { waitForFrame } from './fixtures/wait'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -49,15 +50,13 @@ function project(title: string): Item {
 }
 
 async function waitForFooter(fixture: Screen, label: string): Promise<string> {
-  const deadline = Date.now() + 4_000
+  const frame = await waitForFrame(
+    fixture,
+    shown => footerHints(shown).some(text => text.startsWith(label)),
+    4_000
+  )
 
-  while (Date.now() < deadline) {
-    await fixture.settle()
-    const frame = await fixture.frame()
-
-    if (footerHints(frame).some(text => text.startsWith(label))) return frame
-    await Bun.sleep(5)
-  }
+  if (frame !== undefined) return frame
 
   throw new Error(`The footer never offered '${label}':\n${await fixture.frame()}`)
 }

@@ -9,14 +9,11 @@ import {
 import type { LaunchPreview } from '../src/sessions/launch-plan'
 import type { ToastInput } from '../src/app/notifications'
 import { NO_GIT } from './fixtures/local-github'
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 const receipt: CreatedSessionReceipt = {
   workspace: { backend: 'herdr', id: 'w9', title: 'scratch' },
   rootPaneId: 'w9:p1',
-}
-
-function unsupported(): never {
-  throw new Error('The submit test backend only creates')
 }
 
 const scratch: LaunchPreview = {
@@ -32,7 +29,7 @@ test('a second Enter while a launch runs is refused, and a failed launch refresh
   const reports: OperationReport[] = []
   let refreshes = 0
 
-  const backend: MultiplexerBackend = {
+  const backend: MultiplexerBackend = unsupportedBackend({
     kind: 'herdr',
     capabilities: { previousWorkspace: false },
     async create(input) {
@@ -46,15 +43,7 @@ test('a second Enter while a launch runs is refused, and a failed launch refresh
 
       throw new Error('fixture client unavailable')
     },
-    openOrCreate: unsupported,
-    list: unsupported,
-    rename: unsupported,
-    close: unsupported,
-    current: unsupported,
-    directory: unsupported,
-    details: unsupported,
-    openEditor: unsupported,
-  }
+  })
 
   const launchGuard: LaunchGuard = { active: false }
 
@@ -96,7 +85,7 @@ function recording() {
   const calls: string[] = []
   const messages: string[] = []
 
-  const backend: MultiplexerBackend = {
+  const backend: MultiplexerBackend = unsupportedBackend({
     kind: 'herdr',
     capabilities: { previousWorkspace: false },
     async create(input) {
@@ -110,15 +99,7 @@ function recording() {
 
       throw new MultiplexerError('command-failed', 'fixture client unavailable')
     },
-    openOrCreate: unsupported,
-    list: unsupported,
-    rename: unsupported,
-    close: unsupported,
-    current: unsupported,
-    directory: unsupported,
-    details: unsupported,
-    openEditor: unsupported,
-  }
+  })
 
   const options = {
     clone: NO_GIT,

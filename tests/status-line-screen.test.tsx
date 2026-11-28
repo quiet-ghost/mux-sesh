@@ -12,6 +12,8 @@ import { fitStatusText, STATUS_LINE_MAX_ROWS } from '../src/ui/status-line'
 import { readFooter } from './fixtures/footer'
 import { renderSessionScreen } from './fixtures/session-screen'
 import { noticeOf, readNotice, statusLinesOf, statusWordColor } from './fixtures/status-line'
+import { unsupportedBackend } from './fixtures/fake-backend'
+import { waitForFrame } from './fixtures/wait'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -44,13 +46,9 @@ const agentWorkspaces: LiveWorkspace[] = [
 
 const LONG_FAILURE = "tmux could not switch to 'web-frontend': no current client"
 
-function unsupported(): never {
-  throw new Error('The status-line fixture backend does not implement that operation')
-}
-
 // Opening fails with an expected error, so Enter reports instead of exiting the test.
 function failingOpenBackend(message = 'the fixture has no attached client'): MultiplexerBackend {
-  return {
+  return unsupportedBackend({
     kind: 'tmux',
     capabilities: { previousWorkspace: false },
     async list() {
@@ -71,22 +69,14 @@ function failingOpenBackend(message = 'the fixture has no attached client'): Mul
     async open() {
       throw new MultiplexerError('command-failed', message)
     },
-    openOrCreate: unsupported,
-    create: unsupported,
-    start: unsupported,
-    rename: unsupported,
-    close: unsupported,
-    current: unsupported,
-    directory: unsupported,
-    openEditor: unsupported,
-  }
+  })
 }
 
 // Each list() answers with the latest scripted rows or failure.
 function scriptedBackend(initial: LiveWorkspace[]) {
   let next = async (): Promise<LiveWorkspace[]> => initial
 
-  const backend: MultiplexerBackend = {
+  const backend: MultiplexerBackend = unsupportedBackend({
     kind: 'tmux',
     capabilities: { previousWorkspace: false },
     async list() {
@@ -95,16 +85,7 @@ function scriptedBackend(initial: LiveWorkspace[]) {
     async details(workspace) {
       return { workspace, isActive: false, unitLabel: 'Windows', units: [], agents: [] }
     },
-    open: unsupported,
-    openOrCreate: unsupported,
-    create: unsupported,
-    start: unsupported,
-    rename: unsupported,
-    close: unsupported,
-    current: unsupported,
-    directory: unsupported,
-    openEditor: unsupported,
-  }
+  })
 
   return {
     backend,
@@ -300,20 +281,20 @@ async function openNew(fixture: Screen): Promise<void> {
 
 async function warningAfterEnter(fixture: Screen, text: string): Promise<string> {
   await fixture.pressKey('RETURN')
-  const deadline = Date.now() + 10_000
 
-  while (Date.now() < deadline) {
-    await fixture.settle()
-    const notice = noticeOf(await fixture.frame())
+  const frame = await waitForFrame(
+    fixture,
+    shown => noticeOf(shown)?.text.includes(text) ?? false,
+    10_000
+  )
 
-    if (notice?.text.includes(text)) {
-      expect(notice.kind).toBe('warn')
-      expect(wordColor(fixture, 'warn')).toEqual(hex(colors.key))
+  const notice = frame === undefined ? undefined : noticeOf(frame)
 
-      return notice.text
-    }
+  if (notice) {
+    expect(notice.kind).toBe('warn')
+    expect(wordColor(fixture, 'warn')).toEqual(hex(colors.key))
 
-    await Bun.sleep(5)
+    return notice.text
   }
 
   throw new Error(`No notice containing '${text}' appeared after Enter`)

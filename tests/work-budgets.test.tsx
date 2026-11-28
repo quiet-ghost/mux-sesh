@@ -28,6 +28,8 @@ import { renderSessionScreen } from './fixtures/session-screen'
 import { listRow, selectedRowText } from './fixtures/selection'
 import { createFakeSpinnerMotion } from './fixtures/spinner-motion'
 import { createPickerCorpus, createPickerOpenHistory, PICKER_QUERIES } from './perf/picker-corpus'
+import { unsupportedBackend } from './fixtures/fake-backend'
+import { settleTicks } from './fixtures/wait'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -298,7 +300,7 @@ describe('the header spinner runs only while work is pending', () => {
       unitCount: 1,
     }
 
-    const backend: MultiplexerBackend = {
+    const backend: MultiplexerBackend = unsupportedBackend({
       kind: 'herdr',
       capabilities: { previousWorkspace: false },
       list() {
@@ -313,17 +315,7 @@ describe('the header spinner runs only while work is pending', () => {
 
         return deferred.promise
       },
-      open: unsupported,
-      openOrCreate: unsupported,
-      create: unsupported,
-      start: unsupported,
-      rename: unsupported,
-      close: unsupported,
-      current: unsupported,
-      directory: unsupported,
-      details: unsupported,
-      openEditor: unsupported,
-    }
+    })
 
     const screen = mountScreen(
       await renderSessionScreen(
@@ -436,21 +428,10 @@ describe('owned resources are released', () => {
       dispose: () => {},
     }
 
-    const backend: MultiplexerBackend = {
+    const backend: MultiplexerBackend = unsupportedBackend({
       kind: 'herdr',
       capabilities: { previousWorkspace: false },
-      list: unsupported,
-      open: unsupported,
-      openOrCreate: unsupported,
-      create: unsupported,
-      start: unsupported,
-      rename: unsupported,
-      close: unsupported,
-      current: unsupported,
-      directory: unsupported,
-      details: unsupported,
-      openEditor: unsupported,
-    }
+    })
 
     const config = getDefaultConfig('/fixture')
 
@@ -518,7 +499,7 @@ describe('owned resources are released', () => {
     const published: unknown[] = []
     const defects: unknown[] = []
 
-    const backend: MultiplexerBackend = {
+    const backend: MultiplexerBackend = unsupportedBackend({
       kind: 'tmux',
       capabilities: { previousWorkspace: false },
       list: () => {
@@ -526,17 +507,7 @@ describe('owned resources are released', () => {
 
         return listed.promise
       },
-      open: unsupported,
-      openOrCreate: unsupported,
-      create: unsupported,
-      start: unsupported,
-      rename: unsupported,
-      close: unsupported,
-      current: unsupported,
-      directory: unsupported,
-      details: unsupported,
-      openEditor: unsupported,
-    }
+    })
 
     const inventory = createSessionInventory({
       effects,
@@ -559,7 +530,7 @@ describe('owned resources are released', () => {
 
     listed.resolve(workspaces(3))
 
-    for (let tick = 0; tick < 10; tick++) await Bun.sleep(0)
+    await settleTicks(10)
 
     expect(listCalls).toBe(1)
     expect(published).toEqual([])

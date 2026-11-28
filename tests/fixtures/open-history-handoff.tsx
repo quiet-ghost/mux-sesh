@@ -4,6 +4,7 @@ import type { LiveWorkspace, MultiplexerBackend } from '../../src/multiplexer'
 import type { FocusOutcome } from '../../src/multiplexer/types'
 import { OPEN_HISTORY } from '../../src/search/frecency-store'
 import { initializeShutdown } from '../../src/lifecycle/shutdown'
+import { unsupportedBackend } from './fake-backend'
 import { renderSessionScreen } from './session-screen'
 
 // Usage: open-history-handoff.tsx <select|launch|off> <project dir> <history file>
@@ -43,11 +44,7 @@ const workspaces: LiveWorkspace[] = [
   },
 ]
 
-function unsupported(): never {
-  throw new Error('The open-history handoff fixture does not implement that operation')
-}
-
-const backend: MultiplexerBackend = {
+const backend: MultiplexerBackend = unsupportedBackend({
   kind: 'herdr',
   capabilities: { previousWorkspace: false },
   list: async () => workspaces,
@@ -64,13 +61,7 @@ const backend: MultiplexerBackend = {
     rootPaneId: 'w9:p1',
   }),
   start: async () => {},
-  openOrCreate: unsupported,
-  rename: unsupported,
-  close: unsupported,
-  current: unsupported,
-  directory: unsupported,
-  openEditor: unsupported,
-}
+})
 
 const screen = await renderSessionScreen(
   { width: 100, height: 24 },

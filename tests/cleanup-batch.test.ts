@@ -5,6 +5,7 @@ import { workspaceToItem } from '../src/multiplexer/items'
 import type { LiveWorkspace, MultiplexerBackend, WorkspaceRef } from '../src/multiplexer/types'
 import { CleanupBatch, CloseReceipt } from '../src/sessions/cleanup-batch'
 import type { Item } from '../src/types'
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 function tmux(id: string, title: string, extra: Partial<LiveWorkspace> = {}): Item {
   return workspaceToItem({
@@ -41,30 +42,17 @@ function batchOf(marked: Item[], inventory: Item[]): CleanupBatch {
   return review.batch
 }
 
-function unsupported(): never {
-  throw new Error('This batch backend only lists, closes and reports current')
-}
-
 function backendClosing(onClose: (target: WorkspaceRef) => void): MultiplexerBackend {
-  return {
+  return unsupportedBackend({
     kind: 'tmux',
     capabilities: { previousWorkspace: true },
-    list: unsupported,
-    details: unsupported,
-    open: unsupported,
     async current() {
       return undefined
     },
     async close(target) {
       onClose(target)
     },
-    openOrCreate: unsupported,
-    create: unsupported,
-    start: unsupported,
-    rename: unsupported,
-    directory: unsupported,
-    openEditor: unsupported,
-  }
+  })
 }
 
 describe('CleanupBatch.review', () => {

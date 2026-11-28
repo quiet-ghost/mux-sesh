@@ -6,6 +6,7 @@ import { MultiplexerError } from '../src/multiplexer/types'
 import { resolveTheme } from '../src/styles/theme'
 import { renderSessionScreen } from './fixtures/session-screen'
 import { listRow, selectedRowText } from './fixtures/selection'
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 let screen: Awaited<ReturnType<typeof renderSessionScreen>> | undefined
 
@@ -156,16 +157,12 @@ interface ScriptedBackendState {
 
 // Each list() answers with the latest scripted rows or failure; the test counts every query.
 function createScriptedBackend(initial: LiveWorkspace[]) {
-  function unsupportedBackendCall(): never {
-    throw new Error('The inventory screen probe only lists and previews sessions')
-  }
-
   const state: ScriptedBackendState = {
     lists: 0,
     next: async () => initial,
   }
 
-  const backend: MultiplexerBackend = {
+  const backend: MultiplexerBackend = unsupportedBackend({
     kind: 'tmux',
     capabilities: { previousWorkspace: false },
     async list() {
@@ -176,16 +173,7 @@ function createScriptedBackend(initial: LiveWorkspace[]) {
     async details(workspace) {
       return { workspace, isActive: false, unitLabel: 'Windows', units: [], agents: [] }
     },
-    open: unsupportedBackendCall,
-    openOrCreate: unsupportedBackendCall,
-    create: unsupportedBackendCall,
-    start: unsupportedBackendCall,
-    rename: unsupportedBackendCall,
-    close: unsupportedBackendCall,
-    current: unsupportedBackendCall,
-    directory: unsupportedBackendCall,
-    openEditor: unsupportedBackendCall,
-  }
+  })
 
   return {
     backend,

@@ -68,6 +68,7 @@ import {
 } from '../../src/ui/Spinner'
 import { anyPending, createPendingFlag } from '../../src/util/pending'
 import { shouldShowDetailPanel, useTerminalSize } from '../../src/ui/terminal-size'
+import { settleTicks } from './wait'
 
 type BackendCall = { operation: 'list' } | { operation: 'details' | 'open'; id: string }
 
@@ -730,18 +731,14 @@ export async function renderSessionScreen(
       await act(async () => input.setText(text))
     },
     async settle(): Promise<void> {
-      await act(async () => {
-        for (let tick = 0; tick < 10; tick++) await Bun.sleep(0)
-      })
+      await act(() => settleTicks(10))
     },
     async refresh(): Promise<void> {
       const { refresh } = handle
 
       if (!refresh) throw new Error('The session-screen fixture has not mounted its refresh handle')
       await act(async () => refresh())
-      await act(async () => {
-        for (let tick = 0; tick < 10; tick++) await Bun.sleep(0)
-      })
+      await act(() => settleTicks(10))
     },
     async resize(width: number, height: number): Promise<void> {
       await act(async () => setup.resize(width, height))

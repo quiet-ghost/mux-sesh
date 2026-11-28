@@ -19,6 +19,7 @@ import {
 } from './fixtures/pane'
 import { renderSessionScreen } from './fixtures/session-screen'
 import { cellsOf, contrastRatio, sameColor, selectedRowText, type Cell } from './fixtures/selection'
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -70,15 +71,11 @@ function workspace(id: string, title: string, extra: Partial<LiveWorkspace> = {}
   }
 }
 
-function unsupported(): never {
-  throw new Error('The dialog-chrome backend does not implement that operation')
-}
-
 // alpha is attached, beta has a working agent, and closing charlie fails.
 function closingBackend(workspaces: LiveWorkspace[]): MultiplexerBackend {
   let live = workspaces
 
-  return {
+  return unsupportedBackend({
     kind: 'tmux',
     capabilities: { previousWorkspace: true },
     async list() {
@@ -100,13 +97,7 @@ function closingBackend(workspaces: LiveWorkspace[]): MultiplexerBackend {
 
       live = live.filter(entry => entry.id !== target.id)
     },
-    openOrCreate: unsupported,
-    create: unsupported,
-    start: unsupported,
-    rename: unsupported,
-    directory: unsupported,
-    openEditor: unsupported,
-  }
+  })
 }
 
 const SESSIONS = [
@@ -116,7 +107,7 @@ const SESSIONS = [
 ]
 
 // Creating works and opening fails, so a new workspace ends on the outcome dialog.
-const openFailingBackend: MultiplexerBackend = {
+const openFailingBackend: MultiplexerBackend = unsupportedBackend({
   kind: 'herdr',
   capabilities: { previousWorkspace: false },
   async list() {
@@ -132,13 +123,7 @@ const openFailingBackend: MultiplexerBackend = {
   async open() {
     throw new MultiplexerError('command-failed', 'Herdr has no attached client')
   },
-  openOrCreate: unsupported,
-  rename: unsupported,
-  close: unsupported,
-  current: unsupported,
-  directory: unsupported,
-  openEditor: unsupported,
-}
+})
 
 async function sessions(size: { width: number; height: number }): Promise<Screen> {
   const fixture = await renderSessionScreen(size, {

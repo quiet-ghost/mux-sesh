@@ -9,6 +9,7 @@ import {
   selectedRowText,
 } from './fixtures/selection'
 import { noticeOf, statusLinesOf } from './fixtures/status-line'
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -36,16 +37,12 @@ function workspace(id: string, title: string, extra: Partial<LiveWorkspace> = {}
   }
 }
 
-function unsupported(): never {
-  throw new Error('The close-confirm backend does not implement that operation')
-}
-
 // Records every mutation; the list it serves can change between the first and second d.
 function recordingBackend(initial: LiveWorkspace[]) {
   const state = { workspaces: initial }
   const closed: WorkspaceRef[] = []
 
-  const backend: MultiplexerBackend = {
+  const backend: MultiplexerBackend = unsupportedBackend({
     kind: 'tmux',
     capabilities: { previousWorkspace: true },
     async list() {
@@ -64,13 +61,7 @@ function recordingBackend(initial: LiveWorkspace[]) {
       closed.push(target)
       state.workspaces = state.workspaces.filter(entry => entry.id !== target.id)
     },
-    openOrCreate: unsupported,
-    create: unsupported,
-    start: unsupported,
-    rename: unsupported,
-    directory: unsupported,
-    openEditor: unsupported,
-  }
+  })
 
   return { backend, closed, state }
 }

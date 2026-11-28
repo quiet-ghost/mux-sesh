@@ -25,6 +25,7 @@ import {
 } from '../src/sessions/launch-plan'
 import type { Item } from '../src/types'
 import { NO_GIT } from './fixtures/local-github'
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 let root = ''
 
@@ -334,11 +335,7 @@ describe('launch execution', () => {
   function recordingBackend(failures: { start?: Error; open?: Error; create?: Error } = {}) {
     const calls: string[] = []
 
-    function unsupported(): never {
-      throw new Error('Launch execution must only create, start, and open')
-    }
-
-    const backend: MultiplexerBackend = {
+    const backend: MultiplexerBackend = unsupportedBackend({
       kind: 'tmux',
       capabilities: { previousWorkspace: true },
       async create(input) {
@@ -360,15 +357,7 @@ describe('launch execution', () => {
 
         return { kind: 'focused' }
       },
-      openOrCreate: unsupported,
-      list: unsupported,
-      rename: unsupported,
-      close: unsupported,
-      current: unsupported,
-      directory: unsupported,
-      details: unsupported,
-      openEditor: unsupported,
-    }
+    })
 
     return { backend, calls }
   }

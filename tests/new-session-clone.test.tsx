@@ -13,6 +13,8 @@ import { withoutSideBorders } from './fixtures/pane'
 import { renderSessionScreen } from './fixtures/session-screen'
 import { noticeOf, statusWordColor, type Notice } from './fixtures/status-line'
 import { createFakeSpinnerMotion } from './fixtures/spinner-motion'
+import { unsupportedBackend } from './fixtures/fake-backend'
+import { waitForFrame } from './fixtures/wait'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -46,10 +48,6 @@ const alpha: LiveWorkspace = {
   unitCount: 1,
 }
 
-function unsupported(): never {
-  throw new Error('The clone backend does not implement that operation')
-}
-
 interface BackendScript {
   start?: () => Promise<void>
 }
@@ -58,7 +56,7 @@ interface BackendScript {
 function recordingBackend(script: BackendScript = {}) {
   const calls: string[] = []
 
-  const backend: MultiplexerBackend = {
+  const backend: MultiplexerBackend = unsupportedBackend({
     kind: 'herdr',
     capabilities: { previousWorkspace: false },
     async list() {
@@ -82,13 +80,7 @@ function recordingBackend(script: BackendScript = {}) {
 
       throw new MultiplexerError('command-failed', 'the fixture has no attached client')
     },
-    openOrCreate: unsupported,
-    rename: unsupported,
-    close: unsupported,
-    current: unsupported,
-    directory: unsupported,
-    openEditor: unsupported,
-  }
+  })
 
   return { backend, calls }
 }
@@ -143,16 +135,14 @@ function squashed(text: string): string {
 }
 
 // Bounded by time, not ticks: a real local git clone can outlast many settles on a slow runner.
-async function waitForFrame(fixture: Screen, text: string): Promise<string> {
-  const deadline = Date.now() + FRAME_WAIT_MS
+async function waitForText(fixture: Screen, text: string): Promise<string> {
+  const frame = await waitForFrame(
+    fixture,
+    shown => squashed(shown).includes(squashed(text)),
+    FRAME_WAIT_MS
+  )
 
-  while (Date.now() < deadline) {
-    const frame = await fixture.frame()
-
-    if (squashed(frame).includes(squashed(text))) return squashed(frame)
-    await fixture.settle()
-    await Bun.sleep(5)
-  }
+  if (frame !== undefined) return squashed(frame)
 
   throw new Error(`The screen never showed '${text}':\n${await fixture.frame()}`)
 }
@@ -160,15 +150,15 @@ async function waitForFrame(fixture: Screen, text: string): Promise<string> {
 const colors = resolveTheme('catppuccin', {}, 'dark').colors
 
 async function waitForNotice(fixture: Screen, text: string): Promise<Notice> {
-  const deadline = Date.now() + FRAME_WAIT_MS
+  const frame = await waitForFrame(
+    fixture,
+    shown => noticeOf(shown)?.text.includes(text) ?? false,
+    FRAME_WAIT_MS
+  )
 
-  while (Date.now() < deadline) {
-    const notice = noticeOf(await fixture.frame())
+  const notice = frame === undefined ? undefined : noticeOf(frame)
 
-    if (notice?.text.includes(text)) return notice
-    await fixture.settle()
-    await Bun.sleep(5)
-  }
+  if (notice) return notice
 
   throw new Error(`No notice showed '${text}':\n${await fixture.frame()}`)
 }
@@ -194,7 +184,7 @@ describe('clone from New', () => {
 
       await openNewWith(fixture, 'https://github.com/acme/widget')
 
-      const planned = await waitForFrame(fixture, 'Clone acme/widget')
+      const planned = await waitForText(fixture, 'Clone acme/widget')
       expectShown(
         planned,
         `Clone acme/widget into ${destination}, then create 'widget', then run: bun dev`
@@ -203,7 +193,7 @@ describe('clone from New', () => {
       expect(github.clones).toEqual([])
 
       await fixture.pressKey('RETURN')
-      const outcome = await waitForFrame(fixture, 'startup command failed')
+      const outcome = await waitForText(fixture, 'startup command failed')
 
       expect(github.clones).toHaveLength(1)
       expect(calls).toEqual([`create widget ${destination}`, 'start w9:p1 bun dev'])
@@ -230,12 +220,12 @@ describe('clone from New', () => {
 
     await openNewWith(fixture, 'git@github.com:acme/widget.git')
 
-    const planned = await waitForFrame(fixture, 'Reuse')
+    const planned = await waitForText(fixture, 'Reuse')
     expectShown(planned, `Reuse the acme/widget checkout at ${destination}, then create 'widget'`)
     expect(footerOf(await fixture.frame())).toMatchObject({ target: hints(['create', 'enter']) })
 
     await fixture.pressKey('RETURN')
-    const outcome = await waitForFrame(fixture, 'not opened')
+    const outcome = await waitForText(fixture, 'not opened')
 
     expectShown(outcome, `Reused the acme/widget checkout at ${destination}`)
     expectShown(outcome, "Created workspace 'widget'")
@@ -249,7 +239,7 @@ describe('clone from New', () => {
 
     await openNewWith(fixture, 'https://x-access-token:ghp_s3cret@github.com/acme/widget')
 
-    const refused = await waitForFrame(fixture, 'username or token')
+    const refused = await waitForText(fixture, 'username or token')
     expectShown(refused, 'https://github.com/acme/widget.git')
     expect(footerOf(await fixture.frame())).toMatchObject({ target: '' })
 
@@ -277,7 +267,7 @@ describe('clone from New', () => {
 
     await openNewWith(fixture, 'https://github.com/acme/widget')
     expectShown(
-      await waitForFrame(fixture, 'already holds'),
+      await waitForText(fixture, 'already holds'),
       'already holds other/widget, not acme/widget'
     )
 
@@ -286,7 +276,7 @@ describe('clone from New', () => {
 
     await fixture.replaceQuery('https://github.com/acme/notes')
     await fixture.settle()
-    expectShown(await waitForFrame(fixture, 'not a git checkout'), join(github.reposPath, 'notes'))
+    expectShown(await waitForText(fixture, 'not a git checkout'), join(github.reposPath, 'notes'))
 
     await fixture.pressKey('RETURN')
     await fixture.settle()
@@ -303,7 +293,7 @@ describe('clone from New', () => {
     const destination = join(github.reposPath, 'widget')
 
     await openNewWith(fixture, 'https://github.com/acme/widget')
-    await waitForFrame(fixture, 'Clone acme/widget')
+    await waitForText(fixture, 'Clone acme/widget')
 
     await mkdir(destination, { recursive: true })
     await writeFile(join(destination, 'todo.txt'), 'mine')
@@ -334,12 +324,12 @@ describe('clone from New', () => {
     const fixture = await mount(backend)
 
     await openNewWith(fixture, 'https://github.com/acme/widget')
-    await waitForFrame(fixture, 'Clone acme/widget')
+    await waitForText(fixture, 'Clone acme/widget')
 
     await fixture.pressKey('RETURN')
     await fixture.settle()
     await fixture.pressKey('RETURN')
-    expect(await waitForFrame(fixture, 'A launch is already running')).toBeTruthy()
+    expect(await waitForText(fixture, 'A launch is already running')).toBeTruthy()
 
     await fixture.pressKey('ESCAPE')
     await openNewWith(fixture, 'https://github.com/acme/widget')
@@ -349,7 +339,7 @@ describe('clone from New', () => {
     expect(github.clones).toHaveLength(1)
 
     gate.resolve()
-    await waitForFrame(fixture, 'not opened')
+    await waitForText(fixture, 'not opened')
 
     expect(github.clones).toHaveLength(1)
     expect(calls).toEqual([`create widget ${join(github.reposPath, 'widget')}`, 'open w9'])
@@ -382,7 +372,7 @@ describe('clone from New', () => {
     const header = async () => (await fixture.frame()).split('\n')[0] ?? ''
 
     await openNewWith(fixture, 'https://github.com/acme/widget')
-    await waitForFrame(fixture, 'Clone acme/widget')
+    await waitForText(fixture, 'Clone acme/widget')
     expect(await header()).not.toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/)
     expect(spinner.active()).toBe(0)
 
@@ -393,7 +383,7 @@ describe('clone from New', () => {
     expect(spinner.active()).toBe(1)
 
     gate.resolve()
-    await waitForFrame(fixture, 'not opened')
+    await waitForText(fixture, 'not opened')
 
     // After the launch, inventory refreshes and New plans again with real git; both then settle.
     for (let wait = 0; spinner.active() > 0 && wait < FRAME_WAIT_MS / 5; wait++) {
@@ -418,10 +408,10 @@ describe('clone from New', () => {
     const fixture = await mount(backend)
 
     await openNewWith(fixture, 'https://github.com/acme/widget')
-    await waitForFrame(fixture, 'Clone acme/widget')
+    await waitForText(fixture, 'Clone acme/widget')
     await fixture.pressKey('RETURN')
 
-    const outcome = await waitForFrame(fixture, 'did not finish')
+    const outcome = await waitForText(fixture, 'did not finish')
     expectShown(outcome, 'may hold a partial checkout')
     expectShown(outcome, 'nothing was deleted')
     expect(calls).toEqual([])
@@ -433,7 +423,7 @@ describe('clone from New', () => {
     await fixture.replaceQuery('https://github.com/acme/widget')
     await fixture.settle()
 
-    expectShown(await waitForFrame(fixture, 'may be a partial clone'), destination)
+    expectShown(await waitForText(fixture, 'may be a partial clone'), destination)
 
     await fixture.pressKey('RETURN')
     await fixture.settle()

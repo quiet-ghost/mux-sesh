@@ -11,16 +11,14 @@ import type { MultiplexerBackend } from '../src/multiplexer'
 import { MultiplexerError } from '../src/multiplexer/types'
 import { resolveTheme, ThemeProvider } from '../src/styles/theme'
 import { StartupErrorScreen } from '../src/ui/StartupErrorScreen'
+import { unsupportedBackend } from './fixtures/fake-backend'
+import { waitForFrame } from './fixtures/wait'
 
 const passthroughMeasure = async <T,>(_name: string, run: () => Promise<T>): Promise<T> => run()
 const theme = resolveTheme('catppuccin', {}, 'dark').colors
 const noMark = () => {}
 
-function unsupported(): never {
-  throw new Error('The startup fixture backend only lists')
-}
-
-const backend: MultiplexerBackend = {
+const backend: MultiplexerBackend = unsupportedBackend({
   kind: 'herdr',
   capabilities: { previousWorkspace: false },
   async list() {
@@ -35,17 +33,7 @@ const backend: MultiplexerBackend = {
       },
     ]
   },
-  open: unsupported,
-  openOrCreate: unsupported,
-  create: unsupported,
-  start: unsupported,
-  rename: unsupported,
-  close: unsupported,
-  current: unsupported,
-  directory: unsupported,
-  details: unsupported,
-  openEditor: unsupported,
-}
+})
 
 const stopped = () =>
   new MultiplexerError('server-stopped', 'Herdr is configured, but its server is not running.')
@@ -116,30 +104,19 @@ async function render(dependencies: StartupDependencies, onQuit: () => void = ()
 
   const current = setup
 
-  return {
-    async frame() {
-      await act(async () => {})
-      await current.renderOnce()
+  async function frame(): Promise<string> {
+    await act(async () => {})
+    await current.renderOnce()
 
-      return current.captureCharFrame()
-    },
+    return current.captureCharFrame()
+  }
+
+  return {
+    frame,
     // Startup runs through async effects; wait on the wall clock, bounded, rather than a fixed
     // number of flushes, so a slower machine sees the same frame.
     async frameContaining(text: string, timeoutMs = 10_000) {
-      const deadline = performance.now() + timeoutMs
-      let frame = ''
-
-      while (performance.now() < deadline) {
-        await act(async () => {})
-        await current.renderOnce()
-        frame = current.captureCharFrame()
-
-        if (frame.includes(text)) return frame
-
-        await Bun.sleep(10)
-      }
-
-      return frame
+      return (await waitForFrame({ frame }, shown => shown.includes(text), timeoutMs)) ?? frame()
     },
     async press(key: string) {
       await act(async () => current.mockInput.pressKey(key))

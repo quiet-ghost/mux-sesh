@@ -10,6 +10,7 @@ import { MultiplexerError } from '../src/multiplexer/types'
 import type { KeybindMode } from '../src/types'
 import { renderSessionScreen } from './fixtures/session-screen'
 import { listRow, selectedRowText } from './fixtures/selection'
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -53,11 +54,7 @@ interface DetailsRead {
 function createDeferredBackend(rows: LiveWorkspace[]) {
   const reads: DetailsRead[] = []
 
-  function unsupported(): never {
-    throw new Error('The details inspector fixture only lists and reads details')
-  }
-
-  const backend: MultiplexerBackend = {
+  const backend: MultiplexerBackend = unsupportedBackend({
     kind: 'tmux',
     capabilities: { previousWorkspace: false },
     async list() {
@@ -69,16 +66,7 @@ function createDeferredBackend(rows: LiveWorkspace[]) {
 
       return promise
     },
-    open: unsupported,
-    openOrCreate: unsupported,
-    create: unsupported,
-    start: unsupported,
-    rename: unsupported,
-    close: unsupported,
-    current: unsupported,
-    directory: unsupported,
-    openEditor: unsupported,
-  }
+  })
 
   return {
     backend,

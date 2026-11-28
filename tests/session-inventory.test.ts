@@ -9,6 +9,8 @@ import { getDefaultConfig } from '../src/config'
 import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import { MultiplexerError } from '../src/multiplexer/types'
 import { ViewMode, type Config } from '../src/types'
+import { unsupportedBackend } from './fixtures/fake-backend'
+import { settleTicks } from './fixtures/wait'
 
 interface PendingList {
   readonly call: number
@@ -44,7 +46,7 @@ function unsupportedBackendCall(): never {
 function createDeferredBackend() {
   const pending: PendingList[] = []
 
-  const backend: MultiplexerBackend = {
+  const backend: MultiplexerBackend = unsupportedBackend({
     kind: 'tmux',
     capabilities: { previousWorkspace: false },
     list() {
@@ -68,17 +70,7 @@ function createDeferredBackend() {
 
       return deferred.promise
     },
-    open: unsupportedBackendCall,
-    openOrCreate: unsupportedBackendCall,
-    create: unsupportedBackendCall,
-    start: unsupportedBackendCall,
-    rename: unsupportedBackendCall,
-    close: unsupportedBackendCall,
-    current: unsupportedBackendCall,
-    directory: unsupportedBackendCall,
-    details: unsupportedBackendCall,
-    openEditor: unsupportedBackendCall,
-  }
+  })
 
   return { backend, pending }
 }
@@ -111,7 +103,7 @@ function createHarness() {
   }
 
   async function quiesce(): Promise<void> {
-    for (let tick = 0; tick < 10; tick++) await Bun.sleep(0)
+    await settleTicks(10)
   }
 
   // Releasing the newest open load first is the order in which a late result would win.

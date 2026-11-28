@@ -7,6 +7,8 @@ import { MultiplexerError, type CreatedSessionReceipt } from '../src/multiplexer
 import type { KeybindMode } from '../src/types'
 import { hints, readFooter } from './fixtures/footer'
 import { renderSessionScreen } from './fixtures/session-screen'
+import { unsupportedBackend } from './fixtures/fake-backend'
+import { waitForFrame } from './fixtures/wait'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -27,10 +29,6 @@ afterEach(async () => {
 
 const MODES: KeybindMode[] = ['vim', 'standard']
 
-function unsupported(): never {
-  throw new Error('The Projects backend does not implement that operation')
-}
-
 // Each project is a real directory with a marker, so the Projects view discovers it.
 async function projectRoot(...names: string[]): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'mux-sesh-projects-'))
@@ -50,7 +48,7 @@ interface BackendOptions {
 function recordingBackend(options: BackendOptions = {}) {
   const calls: string[] = []
 
-  const backend: MultiplexerBackend = {
+  const backend: MultiplexerBackend = unsupportedBackend({
     kind: 'herdr',
     capabilities: { previousWorkspace: false },
     async list() {
@@ -83,12 +81,7 @@ function recordingBackend(options: BackendOptions = {}) {
 
       throw new MultiplexerError('command-failed', 'the fixture has no attached client')
     },
-    rename: unsupported,
-    close: unsupported,
-    current: unsupported,
-    directory: unsupported,
-    openEditor: unsupported,
-  }
+  })
 
   return { backend, calls }
 }
@@ -121,16 +114,14 @@ async function showProjects(fixture: Screen): Promise<void> {
 }
 
 // Discovery and planning hit the real filesystem, so both can outlast one settle.
-async function waitForFrame(fixture: Screen, ...texts: string[]): Promise<string> {
-  const deadline = Date.now() + 4_000
+async function waitForText(fixture: Screen, ...texts: string[]): Promise<string> {
+  const frame = await waitForFrame(
+    fixture,
+    shown => texts.some(text => shown.includes(text)),
+    4_000
+  )
 
-  while (Date.now() < deadline) {
-    const frame = await fixture.frame()
-
-    if (texts.some(text => frame.includes(text))) return frame
-    await fixture.settle()
-    await Bun.sleep(5)
-  }
+  if (frame !== undefined) return frame
 
   throw new Error(`The screen never showed '${texts.join("' or '")}':\n${await fixture.frame()}`)
 }
@@ -153,7 +144,7 @@ describe('Projects view Enter', () => {
       const { screen, calls } = await render(keybindMode, root)
       await showProjects(screen)
 
-      const frame = await waitForFrame(
+      const frame = await waitForText(
         screen,
         `Create 'api' in ${join(root, 'api')}, then run: bun dev`
       )
@@ -164,7 +155,7 @@ describe('Projects view Enter', () => {
       })
 
       await screen.pressKey('RETURN')
-      await waitForFrame(screen, 'Workspace created, but not opened')
+      await waitForText(screen, 'Workspace created, but not opened')
 
       expect(calls).toEqual([`create api ${join(root, 'api')}`, 'start w9:p1 bun dev', 'open w9'])
       expect(await screen.frame()).toContain("Created workspace 'api'")
@@ -189,7 +180,7 @@ describe('Projects view Enter', () => {
       const { screen, calls } = await render(keybindMode, root, { workspaces: [alpha] })
       await showProjects(screen)
 
-      const frame = await waitForFrame(screen, `Focus existing 'alpha' in ${join(root, 'alpha')}`)
+      const frame = await waitForText(screen, `Focus existing 'alpha' in ${join(root, 'alpha')}`)
       expect(readFooter(frame)).toMatchObject({
         global: screenHints(keybindMode),
         // The live workspace is also a session row, which vim can close directly.
@@ -200,7 +191,7 @@ describe('Projects view Enter', () => {
       })
 
       await screen.pressKey('RETURN')
-      await waitForFrame(screen, "Could not open workspace 'alpha'")
+      await waitForText(screen, "Could not open workspace 'alpha'")
 
       expect(calls).toEqual(['open w1'])
       expect(screen.defects).toEqual([])
@@ -212,18 +203,18 @@ describe('Projects view Enter', () => {
     const created = Promise.withResolvers<CreatedSessionReceipt>()
     const { screen, calls } = await render('vim', root, { create: created.promise })
     await showProjects(screen)
-    await waitForFrame(screen, "Create 'api'")
+    await waitForText(screen, "Create 'api'")
 
     await screen.pressKey('RETURN')
     await screen.settle()
     await screen.pressKey('RETURN')
-    await waitForFrame(screen, 'A launch is already running')
+    await waitForText(screen, 'A launch is already running')
 
     created.resolve({
       workspace: { backend: 'herdr', id: 'w9', title: 'api' },
       rootPaneId: 'w9:p1',
     })
-    await waitForFrame(screen, 'Workspace created, but not opened')
+    await waitForText(screen, 'Workspace created, but not opened')
 
     expect(calls).toEqual([`create api ${join(root, 'api')}`, 'start w9:p1 bun dev', 'open w9'])
   })
@@ -241,13 +232,13 @@ describe('Projects view Enter', () => {
     }
 
     const { screen, calls } = await render('vim', root, { workspaces: [beta] })
-    const frame = await waitForFrame(screen, 'beta')
+    const frame = await waitForText(screen, 'beta')
 
     expect(readFooter(frame).target).toStartWith(hints(['select', 'enter']))
     expect(frame).not.toContain("Focus existing 'beta'")
 
     await screen.pressKey('RETURN')
-    await waitForFrame(screen, 'the fixture has no attached client')
+    await waitForText(screen, 'the fixture has no attached client')
 
     expect(calls).toEqual(['open w2'])
   })
@@ -269,10 +260,10 @@ describe('Projects view number keys', () => {
 
     const { screen, calls } = await render('vim', root, { workspaces: [beta] })
     await showProjects(screen)
-    await waitForFrame(screen, "Create 'api'")
+    await waitForText(screen, "Create 'api'")
 
     await screen.pressKey('2')
-    const frame = await waitForFrame(screen, "Could not open workspace 'beta'", ...LAUNCH_ENDED)
+    const frame = await waitForText(screen, "Could not open workspace 'beta'", ...LAUNCH_ENDED)
 
     expect(calls).toEqual(['open w2'])
     expect(frame).toContain("Focus existing 'beta'")
@@ -283,10 +274,10 @@ describe('Projects view number keys', () => {
     const root = await projectRoot('api', 'beta')
     const { screen, calls } = await render('vim', root)
     await showProjects(screen)
-    await waitForFrame(screen, "Create 'api'")
+    await waitForText(screen, "Create 'api'")
 
     await screen.pressKey('2')
-    await waitForFrame(screen, ...LAUNCH_ENDED)
+    await waitForText(screen, ...LAUNCH_ENDED)
 
     expect(calls).toEqual([`create beta ${join(root, 'beta')}`, 'start w9:p1 bun dev', 'open w9'])
     expect(screen.defects).toEqual([])
@@ -296,10 +287,10 @@ describe('Projects view number keys', () => {
     const root = await projectRoot('api', 'beta')
     const { screen, calls } = await render('vim', root)
     await showProjects(screen)
-    await waitForFrame(screen, `Create 'api' in ${join(root, 'api')}, then run: bun dev`)
+    await waitForText(screen, `Create 'api' in ${join(root, 'api')}, then run: bun dev`)
 
     await screen.pressKey('1')
-    await waitForFrame(screen, ...LAUNCH_ENDED)
+    await waitForText(screen, ...LAUNCH_ENDED)
 
     expect(calls).toEqual([`create api ${join(root, 'api')}`, 'start w9:p1 bun dev', 'open w9'])
   })
@@ -309,18 +300,18 @@ describe('Projects view number keys', () => {
     const created = Promise.withResolvers<CreatedSessionReceipt>()
     const { screen, calls } = await render('vim', root, { create: created.promise })
     await showProjects(screen)
-    await waitForFrame(screen, "Create 'api'")
+    await waitForText(screen, "Create 'api'")
 
     await screen.pressKey('2')
     await screen.settle()
     await screen.pressKey('2')
-    await waitForFrame(screen, 'A launch is already running', ...LAUNCH_ENDED)
+    await waitForText(screen, 'A launch is already running', ...LAUNCH_ENDED)
 
     created.resolve({
       workspace: { backend: 'herdr', id: 'w9', title: 'beta' },
       rootPaneId: 'w9:p1',
     })
-    await waitForFrame(screen, ...LAUNCH_ENDED)
+    await waitForText(screen, ...LAUNCH_ENDED)
 
     expect(calls).toEqual([`create beta ${join(root, 'beta')}`, 'start w9:p1 bun dev', 'open w9'])
   })

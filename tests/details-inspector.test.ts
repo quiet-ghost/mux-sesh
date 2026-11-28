@@ -8,6 +8,7 @@ import {
 } from '../src/app/inspector'
 import { getDefaultConfig } from '../src/config'
 import type { Config, Item } from '../src/types'
+import { settleTicks } from './fixtures/wait'
 
 const effects = createEffectRuntime()
 
@@ -62,7 +63,7 @@ function harness() {
 }
 
 async function flush(): Promise<void> {
-  for (let tick = 0; tick < 10; tick++) await Bun.sleep(0)
+  await settleTicks(10)
 }
 
 describe('details inspector owner', () => {

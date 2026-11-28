@@ -5,30 +5,17 @@ import { workspaceToItem } from '../src/multiplexer/items'
 import { MultiplexerError } from '../src/multiplexer/types'
 import type { BackendKind, MultiplexerBackend, WorkspaceRef } from '../src/multiplexer/types'
 import type { Config, Item } from '../src/types'
-
-function unsupported(): never {
-  throw new Error('The rename test backend only renames')
-}
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 function renameBackend(
   kind: BackendKind,
   rename: MultiplexerBackend['rename']
 ): MultiplexerBackend {
-  return {
+  return unsupportedBackend({
     kind,
     capabilities: { previousWorkspace: kind === 'tmux' },
     rename,
-    list: unsupported,
-    open: unsupported,
-    openOrCreate: unsupported,
-    create: unsupported,
-    start: unsupported,
-    close: unsupported,
-    current: unsupported,
-    directory: unsupported,
-    details: unsupported,
-    openEditor: unsupported,
-  }
+  })
 }
 
 function session(kind: BackendKind, id: string, title: string): Item {

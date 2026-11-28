@@ -6,6 +6,7 @@ import type { Item, KeybindMode } from '../src/types'
 import { footerGroups, hints } from './fixtures/footer'
 import { renderSessionScreen } from './fixtures/session-screen'
 import { listRow, selectedRowText } from './fixtures/selection'
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -35,15 +36,11 @@ function project(title: string, path = `/fixture/${title}`): Item {
   return { title, desc: '', path, isSession: false, itemKind: 'project' }
 }
 
-function unsupported(): never {
-  throw new Error('The launcher backend does not implement that operation')
-}
-
 // Opening always fails with an expected error, so a launch reports instead of exiting the test.
 function recordingBackend() {
   const calls: string[] = []
 
-  const backend: MultiplexerBackend = {
+  const backend: MultiplexerBackend = unsupportedBackend({
     kind: 'herdr',
     capabilities: { previousWorkspace: false },
     async list() {
@@ -65,13 +62,7 @@ function recordingBackend() {
 
       throw new MultiplexerError('command-failed', 'the fixture has no attached client')
     },
-    openOrCreate: unsupported,
-    rename: unsupported,
-    close: unsupported,
-    current: unsupported,
-    directory: unsupported,
-    openEditor: unsupported,
-  }
+  })
 
   return { backend, calls }
 }

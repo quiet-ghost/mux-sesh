@@ -9,6 +9,7 @@ import { useLiveResolvedTheme } from '../src/app/resolved-theme'
 import { resolveTheme, type ThemeResolver } from '../src/styles/theme'
 import { FailurePalette } from '../src/ui/failure-screen'
 import { cellsOf, sameColor, type Cell } from './fixtures/selection'
+import { settleTicks } from './fixtures/wait'
 
 let setup: Awaited<ReturnType<typeof testRender>> | undefined
 
@@ -27,9 +28,7 @@ afterEach(() => {
 })
 
 async function settle(): Promise<void> {
-  await act(async () => {
-    for (let tick = 0; tick < 5; tick++) await Bun.sleep(0)
-  })
+  await act(() => settleTicks(5))
 }
 
 async function frame(): Promise<string> {

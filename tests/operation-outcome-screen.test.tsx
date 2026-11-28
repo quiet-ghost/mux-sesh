@@ -3,6 +3,7 @@ import { TextareaRenderable } from '@opentui/core'
 import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import { MultiplexerError } from '../src/multiplexer/types'
 import { renderSessionScreen } from './fixtures/session-screen'
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 type Screen = Awaited<ReturnType<typeof renderSessionScreen>>
 
@@ -26,14 +27,10 @@ const alpha: LiveWorkspace = {
   unitCount: 1,
 }
 
-function unsupported(): never {
-  throw new Error('The outcome screen backend does not implement that operation')
-}
-
 function failingBackend(open: () => Promise<never>) {
   const calls: string[] = []
 
-  const backend: MultiplexerBackend = {
+  const backend: MultiplexerBackend = unsupportedBackend({
     kind: 'herdr',
     capabilities: { previousWorkspace: false },
     async list() {
@@ -55,13 +52,7 @@ function failingBackend(open: () => Promise<never>) {
 
       return open()
     },
-    openOrCreate: unsupported,
-    rename: unsupported,
-    close: unsupported,
-    current: unsupported,
-    directory: unsupported,
-    openEditor: unsupported,
-  }
+  })
 
   return { backend, calls }
 }

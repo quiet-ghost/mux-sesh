@@ -21,14 +21,11 @@ import { previewLaunch, type LaunchPreview } from '../src/sessions/launch-plan'
 import type { Config, Item } from '../src/types'
 import type { ToastInput } from '../src/app/notifications'
 import { createLocalGitHub, NO_GIT, type LocalGitHub } from './fixtures/local-github'
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 const receipt: CreatedSessionReceipt = {
   workspace: { backend: 'herdr', id: 'w9', title: 'scratch' },
   rootPaneId: 'w9:p1',
-}
-
-function unsupported(): never {
-  throw new Error('The outcome test backend does not implement that operation')
 }
 
 const scratch: LaunchPreview = {
@@ -56,7 +53,7 @@ interface BackendScript {
 function scriptedBackend(script: BackendScript) {
   const calls: string[] = []
 
-  const backend: MultiplexerBackend = {
+  const backend: MultiplexerBackend = unsupportedBackend({
     kind: 'herdr',
     capabilities: { previousWorkspace: false },
     async create(input) {
@@ -76,15 +73,7 @@ function scriptedBackend(script: BackendScript) {
 
       throw new MultiplexerError('command-failed', 'Herdr could not focus the workspace')
     },
-    openOrCreate: unsupported,
-    list: unsupported,
-    rename: unsupported,
-    close: unsupported,
-    current: unsupported,
-    directory: unsupported,
-    details: unsupported,
-    openEditor: unsupported,
-  }
+  })
 
   return { backend, calls }
 }

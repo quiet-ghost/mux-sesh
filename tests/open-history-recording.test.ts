@@ -10,6 +10,7 @@ import * as Schema from 'effect/Schema'
 import { createOpenHistory, type OpenHistory } from '../src/search/frecency-store'
 import type { LaunchPreview } from '../src/sessions/launch-plan'
 import { NO_GIT } from './fixtures/local-github'
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 const roots: string[] = []
 
@@ -55,27 +56,12 @@ async function recordingHistory(): Promise<RecordingHistory> {
   }
 }
 
-function unsupported(): never {
-  throw new Error('The open-history backend does not implement that operation')
-}
-
 function backend(overrides: Partial<MultiplexerBackend>): MultiplexerBackend {
-  return {
+  return unsupportedBackend({
     kind: 'herdr',
     capabilities: { previousWorkspace: false },
-    list: unsupported,
-    details: unsupported,
-    open: unsupported,
-    openOrCreate: unsupported,
-    create: unsupported,
-    start: unsupported,
-    rename: unsupported,
-    close: unsupported,
-    current: unsupported,
-    directory: unsupported,
-    openEditor: unsupported,
     ...overrides,
-  }
+  })
 }
 
 const create: LaunchPreview = {

@@ -15,6 +15,7 @@ import {
 } from '../src/search/fff'
 import { AppMode, type Item } from '../src/types'
 import { createFakeNative, type FakeNative } from './fixtures/fake-native-finder'
+import { unsupportedBackend } from './fixtures/fake-backend'
 
 const config = { ...getDefaultConfig('/fixture'), projectPaths: [] }
 const NO_SESSIONS: Item[] = []
@@ -23,21 +24,10 @@ function unsupportedBackendCall(): never {
   throw new Error('The launcher-query probe never calls the backend')
 }
 
-const backend: MultiplexerBackend = {
+const backend: MultiplexerBackend = unsupportedBackend({
   kind: 'tmux',
   capabilities: { previousWorkspace: false },
-  list: unsupportedBackendCall,
-  details: unsupportedBackendCall,
-  open: unsupportedBackendCall,
-  openOrCreate: unsupportedBackendCall,
-  create: unsupportedBackendCall,
-  start: unsupportedBackendCall,
-  rename: unsupportedBackendCall,
-  close: unsupportedBackendCall,
-  current: unsupportedBackendCall,
-  directory: unsupportedBackendCall,
-  openEditor: unsupportedBackendCall,
-}
+})
 
 function project(title: string): Item {
   return { title, desc: '', path: `/fixture/${title}`, isSession: false, itemKind: 'project' }
