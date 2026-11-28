@@ -11,9 +11,6 @@ import {
 import { KeyHint, KeyHints } from './key-hints'
 import { Pane, PaneRule } from './pane'
 
-// A danger title marks a dialog whose enter destroys something, like the close reviews.
-export type ModalTone = 'neutral' | 'danger'
-
 // Dialogs sit on the screen's own surface color, and the screen behind fades toward that color
 // rather than black, so the pane meets it flush and only the border marks the pane's edge.
 const BACKDROP_OPACITY = 0.7
@@ -27,7 +24,6 @@ function backdrop(background: string): RGBA {
 
 interface Props {
   title: string
-  tone?: ModalTone
   description?: string
   hints: readonly KeyHint[]
   columns: number
@@ -40,7 +36,6 @@ interface Props {
 // Esc is always one of the hints, so the border carries only the title.
 export default function Modal({
   title,
-  tone = 'neutral',
   description,
   hints,
   columns,
@@ -66,7 +61,7 @@ export default function Modal({
     >
       <Pane
         title={truncateDialogText(title, getDialogTitleWidth(width))}
-        titleColor={tone === 'danger' ? theme.danger : theme.text}
+        titleColor={theme.text}
         borderColor={theme.border}
         backgroundColor={theme.surface}
         size={{ width }}
