@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import { TextAttributes } from '@opentui/core'
+import { rgbToHex, TextAttributes } from '@opentui/core'
 import type { LiveWorkspace, MultiplexerBackend } from '../src/multiplexer'
 import { MultiplexerError } from '../src/multiplexer/types'
 import { resolveTheme } from '../src/styles/theme'
@@ -285,7 +285,7 @@ const DIALOGS: readonly DialogCase[] = [
       return fixture
     },
     title: 'Close 2 marked tmux sessions?',
-    tone: 'danger',
+    tone: 'text',
     hints: [
       ['close 2', 'enter'],
       ['keep', 'esc'],
@@ -352,23 +352,44 @@ describe('dialogs are titled panes', () => {
       const pane = await paneOf(screen, title)
       const colors = screen.colors()
 
-      // The pane sits on the theme background; the escape key is a footer hint, not a title.
+      // The pane sits on the screen's surface color; the escape key is a footer hint, not a title.
       expectPane(pane, colors, {
         title,
         titleColor: colors[tone],
-        background: colors.background,
+        background: colors.surface,
         highlight: colors.selection,
         description,
       })
       expectPaneFooter(pane, colors, hints)
 
-      // The dialog fits the terminal, centered, with the list behind it dimmed.
+      // The dialog fits the terminal, centered.
       expect(pane.top).toBeGreaterThan(0)
       expect(pane.bottom).toBeLessThan(height - 1)
       expect(Math.abs(pane.left - (width - 1 - pane.right))).toBeLessThanOrEqual(1)
 
-      const titleRow = rowAt(pane.rows, pane.top)
-      expect(sameColor(cellAt(titleRow, pane.left - 1).bg, colors.background)).toBe(false)
+      // It sits flush on the screen, not as a card: the list behind fades toward the theme
+      // background, so only the border marks the pane's edge.
+      // Only the highlighted row behind the pane may show beside it.
+      const beside = pane.rows
+        .slice(pane.top, pane.bottom + 1)
+        .flatMap(row => [cellAt(row, pane.left - 1), cellAt(row, pane.right + 1)])
+
+      expect(beside.filter(cell => !sameColor(cell.bg, colors.surface)).length).toBeLessThanOrEqual(
+        2
+      )
+
+      const behind = pane.rows.flatMap((row, index) =>
+        row.filter(
+          (cell, column) =>
+            cell.char.trim() !== '' &&
+            (index < pane.top || index > pane.bottom || column < pane.left || column > pane.right)
+        )
+      )
+
+      expect(behind.length).toBeGreaterThan(0)
+
+      for (const cell of behind)
+        expect(contrastRatio(rgbToHex(cell.fg), rgbToHex(cell.bg))).toBeLessThan(3)
     }
   )
 
@@ -419,7 +440,7 @@ describe('dialog contents', () => {
       expect(section.attributes & TextAttributes.BOLD).toBe(TextAttributes.BOLD)
 
       // Body text and hint labels meet WCAG AA on the dialog background.
-      expect(contrastRatio(colors.text, colors.background)).toBeGreaterThanOrEqual(4.5)
+      expect(contrastRatio(colors.text, colors.surface)).toBeGreaterThanOrEqual(4.5)
     }
   )
 
@@ -458,7 +479,7 @@ describe('dialog contents', () => {
     expectPane(pane, preview, {
       title: 'Theme',
       titleColor: preview.text,
-      background: preview.background,
+      background: preview.surface,
       highlight: preview.selection,
     })
 

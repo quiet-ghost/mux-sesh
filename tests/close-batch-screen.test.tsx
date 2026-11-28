@@ -135,10 +135,10 @@ test('marked rows are visible and d reviews exactly the marked set, not the curs
   await screen.pressKey('d')
   const review = flat(await screen.frame())
   expect(review).toContain('Close 2 marked tmux sessions?')
-  expect(review).toContain("'beta' /fixture/beta 1 window")
+  expect(review).toContain('beta /fixture/beta 1 window')
   expect(review).toContain("Agent working in 'beta'")
-  expect(review).toContain("'delta' /fixture/delta 1 window")
-  expect(review).not.toContain("'charlie'")
+  expect(review).toContain('delta /fixture/delta 1 window')
+  expect(review.slice(review.indexOf('┌─ Close'))).not.toContain('charlie')
   expect(review).toContain('No files, worktrees or branches are deleted')
   expect(review).toContain('close 2 enter keep esc')
 
@@ -150,6 +150,29 @@ test('marked rows are visible and d reviews exactly the marked set, not the curs
   expect(after).toContain("Closed 2 sessions: 'beta', 'delta'")
   expect(after).toContain('charlie')
   expect(after).not.toContain('marked')
+})
+
+test('the review lines targets up in columns: name, path, and what closes at the right edge', async () => {
+  const longer = workspace('$5', 'minecraft-mods', { path: '/fixture/projects/minecraft-mods' })
+  const { backend } = recordingBackend([alpha, beta, longer])
+  screen = await renderSessionScreen({ width: 120, height: 36 }, { workspaces: [], backend })
+  await screen.settle()
+  await screen.pressKey('j')
+  await screen.pressKey('m')
+  await screen.pressKey('j')
+  await screen.pressKey('m')
+  await screen.pressKey('d')
+
+  const lines = withoutSideBorders(await screen.frame()).split('\n')
+  const row = (name: string) => lines.find(line => line.trimStart().startsWith(`${name} `)) ?? ''
+  const short = row('beta')
+  const long = row('minecraft-mods')
+
+  expect(short).not.toBe('')
+  expect(long).not.toContain("'")
+  expect(short.indexOf('/fixture/beta')).toBe(long.indexOf('/fixture/projects/minecraft-mods'))
+  expect(short.trimEnd().endsWith('1 window')).toBe(true)
+  expect(short.trimEnd().length).toBe(long.trimEnd().length)
 })
 
 test('m unmarks a marked row, so it is not reviewed', async () => {
@@ -270,7 +293,7 @@ test('the session hosting the picker is refused in a batch and the rest still cl
   const review = flat(await screen.frame())
   expect(review).toContain('Close 1 marked tmux session?')
   expect(review).toContain("✗ Not closing 'alpha': it hosts this picker")
-  expect(review).toContain("'beta' /fixture/beta")
+  expect(review).toContain('beta /fixture/beta')
 
   await screen.pressKey('RETURN')
   await screen.settle()

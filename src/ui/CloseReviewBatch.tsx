@@ -2,9 +2,14 @@ import { CleanupBatch } from '../sessions/cleanup-batch'
 import { CleanupPlan } from '../sessions/cleanup-plan'
 import { useTheme } from '../styles/theme'
 import { stripAnsi } from '../util/ansi'
-import { toHomeRelativePath } from '../util/path-display'
-import { truncatePathInText } from '../util/truncate'
-import { DEFAULT_DIALOG_WIDTH, getDialogContentWidth, getDialogWidth } from './dialog-layout'
+import { fitPath } from '../util/path-display'
+import { displayWidth } from '../util/truncate'
+import {
+  DEFAULT_DIALOG_WIDTH,
+  getDialogContentWidth,
+  getDialogWidth,
+  truncateDialogText,
+} from './dialog-layout'
 import Modal from './Modal'
 
 interface Props {
@@ -17,15 +22,36 @@ function plain(text: string): string {
   return stripAnsi(text).replace(/\p{Cc}+/gu, ' ')
 }
 
-// A long path gives up its middle first, so the title and what closes stay readable.
-function targetLine(plan: CleanupPlan, width: number): string {
-  const path = toHomeRelativePath(plain(plan.path))
+const COLUMN_GAP = '  '
 
-  return truncatePathInText(
-    `'${plain(plan.ref.title)}'  ${path}  ${CleanupPlan.unitsLabel(plan)}`,
-    path,
-    width
+// Names never take more than this share of a row, so every path keeps some room.
+const MAX_NAME_SHARE = 0.4
+
+function padEnd(text: string, width: number): string {
+  return text + ' '.repeat(Math.max(0, width - displayWidth(text)))
+}
+
+function padStart(text: string, width: number): string {
+  return ' '.repeat(Math.max(0, width - displayWidth(text))) + text
+}
+
+interface TargetColumns {
+  readonly name: number
+  readonly path: number
+  readonly units: number
+}
+
+// Name, path and what closes line up across targets; a long path gives up its middle first.
+function targetColumns(plans: readonly CleanupPlan[], width: number): TargetColumns {
+  const widest = (texts: readonly string[]) => Math.max(0, ...texts.map(displayWidth))
+  const units = widest(plans.map(CleanupPlan.unitsLabel))
+
+  const name = Math.min(
+    widest(plans.map(plan => plain(plan.ref.title))),
+    Math.floor(width * MAX_NAME_SHARE)
   )
+
+  return { name, units, path: Math.max(1, width - name - units - COLUMN_GAP.length * 2) }
 }
 
 // Every marked target as reviewed: what closes, why it may still be in use, and what is refused.
@@ -34,10 +60,10 @@ export default function CloseReviewBatch({ batch, columns }: Props) {
   const ready = CleanupBatch.readyPlans(batch)
   const hostWarning = CleanupBatch.hostWarning(batch)
   const lineWidth = getDialogContentWidth(getDialogWidth(columns, DEFAULT_DIALOG_WIDTH))
+  const widths = targetColumns(ready, lineWidth)
 
   return (
     <Modal
-      tone="danger"
       title={plain(CleanupBatch.title(batch))}
       hints={[
         { label: `close ${ready.length}`, key: 'enter' },
@@ -47,9 +73,19 @@ export default function CloseReviewBatch({ batch, columns }: Props) {
     >
       {ready.map(plan => (
         <box key={plan.key} style={{ flexDirection: 'column' }}>
-          <text style={{ fg: theme.text }}>{targetLine(plan, lineWidth)}</text>
+          <text style={{ wrapMode: 'none' }}>
+            <span style={{ fg: theme.text }}>
+              {padEnd(truncateDialogText(plain(plan.ref.title), widths.name), widths.name)}
+            </span>
+            <span style={{ fg: theme.textMuted }}>
+              {COLUMN_GAP + padEnd(fitPath(plain(plan.path), widths.path), widths.path)}
+            </span>
+            <span style={{ fg: theme.textMuted }}>
+              {COLUMN_GAP + padStart(CleanupPlan.unitsLabel(plan), widths.units)}
+            </span>
+          </text>
           {plan.warnings.map(warning => (
-            <text key={CleanupPlan.describeWarning(warning)} style={{ fg: theme.danger }}>
+            <text key={CleanupPlan.describeWarning(warning)} style={{ fg: theme.key }}>
               {`  ! ${plain(CleanupPlan.describeWarning(warning))}`}
             </text>
           ))}
@@ -62,7 +98,7 @@ export default function CloseReviewBatch({ batch, columns }: Props) {
       ))}
       {hostWarning && <text style={{ fg: theme.danger }}>{`! ${plain(hostWarning)}`}</text>}
       <text style={{ fg: theme.textMuted, marginTop: 1 }}>
-        Only these are closed. No files, worktrees or branches are deleted.
+        No files, worktrees or branches are deleted.
       </text>
     </Modal>
   )

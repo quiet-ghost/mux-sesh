@@ -14,7 +14,16 @@ import { Pane, PaneRule } from './pane'
 // A danger title marks a dialog whose enter destroys something, like the close reviews.
 export type ModalTone = 'neutral' | 'danger'
 
-const BACKDROP = RGBA.fromInts(0, 0, 0, 150)
+// Dialogs sit on the screen's own surface color, and the screen behind fades toward that color
+// rather than black, so the pane meets it flush and only the border marks the pane's edge.
+const BACKDROP_OPACITY = 0.7
+
+function backdrop(background: string): RGBA {
+  const color = RGBA.fromHex(background)
+  color.a = BACKDROP_OPACITY
+
+  return color
+}
 
 interface Props {
   title: string
@@ -52,14 +61,14 @@ export default function Modal({
         height: '100%',
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: BACKDROP,
+        backgroundColor: backdrop(theme.surface),
       }}
     >
       <Pane
         title={truncateDialogText(title, getDialogTitleWidth(width))}
         titleColor={tone === 'danger' ? theme.danger : theme.text}
         borderColor={theme.border}
-        backgroundColor={theme.background}
+        backgroundColor={theme.surface}
         size={{ width }}
       >
         <box style={{ flexDirection: 'column', paddingLeft: 1, paddingRight: 1 }}>

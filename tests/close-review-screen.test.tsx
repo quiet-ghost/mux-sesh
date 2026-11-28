@@ -226,5 +226,5 @@ test('a long path keeps its start and end in the single and batch reviews', asyn
   await screen.pressKey('m')
   await screen.pressKey('d')
 
-  expect(await screen.frame()).toMatch(/'deep' {2}\/fixture\/.*….*\/deep {2}/)
+  expect(await screen.frame()).toMatch(/deep +\/fixture\/.*….*\/deep +1 window/)
 })
