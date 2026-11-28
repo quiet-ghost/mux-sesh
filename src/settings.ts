@@ -1,8 +1,10 @@
 import * as Schema from 'effect/Schema'
 import { getDefaultConfig, normalizeConfig, serializeConfig } from './config'
+import { checkConfigDocument, type ConfigIssue } from './config/config-document'
 import { rankSettingsEntries, rankSettingsOptions } from './search/lists'
 import { BUILTIN_THEMES, DEFAULT_THEME_ID, SYSTEM_THEME_ID, getBuiltinTheme } from './styles/theme'
 import type { Config, KeybindMode, SortOrder, ThemeColorScheme, ZoxideMode } from './types'
+import { JsonSyntaxIssue } from './util/json-syntax'
 import { toHomeRelativePath } from './util/path-display'
 
 export type SettingsFieldId =
@@ -104,9 +106,11 @@ interface TextSetting extends SettingInfo {
 }
 
 // Lists and rules, edited as JSON until they have their own editors. They are never reset with
-// one key: that would drop every entry with no way back.
+// one key: that would drop every entry with no way back. `key` is the config file key: the raw
+// JSON editor shows that value as the file would hold it.
 interface JsonSetting extends SettingInfo {
   kind: 'json'
+  key: JsonDocumentKey
   read: (config: Config) => JsonSettingValue
   summary: (config: Config) => string
   patch: (value: Schema.Json) => SerializedConfigPatch
@@ -160,6 +164,9 @@ interface SerializedConfigPatch {
   wildcards?: unknown
 }
 
+type JsonDocumentKey =
+  'project_paths' | 'hidden_sessions' | 'pinned_sessions' | 'icons' | 'projects' | 'wildcards'
+
 type JsonSettingValue =
   | NonNullable<
       Config['projectPaths' | 'hiddenSessions' | 'pinnedSessions' | 'projects' | 'wildcards']
@@ -186,17 +193,10 @@ const DEFAULT_STARTUP_LABEL = 'nvim (Telescope)'
 const NAME_DEPTH_SAMPLE = ['home', 'you', 'src', 'work', 'dev', 'mux-sesh'] as const
 
 const decodeJsonText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Json))
-const decodeJson = Schema.decodeUnknownSync(Schema.Json)
 
-function formatJSON(value: JsonSettingValue): string {
-  return JSON.stringify(value, null, 2)
-}
-
-// JSON.parse keeps its message (where the text stopped being JSON) for the editor's error line.
-function parseJSON(value: string): Schema.Json {
-  const parsed: unknown = JSON.parse(value)
-
-  return decodeJson(parsed)
+// The value as the config file holds it, so the raw JSON editor shows the file's own keys.
+function formatJSON(config: Config, key: JsonDocumentKey, fallback: JsonSettingValue): string {
+  return JSON.stringify(serializeConfig(config)[key] ?? fallback, null, 2)
 }
 
 function formatNameDepth(depth: number): string {
@@ -306,6 +306,7 @@ const SETTINGS = {
   icons: {
     id: 'icons',
     kind: 'json',
+    key: 'icons',
     title: 'Icons',
     category: 'Appearance',
     description: 'Glyphs before row titles and section headers',
@@ -384,6 +385,7 @@ const SETTINGS = {
   pinnedSessions: {
     id: 'pinnedSessions',
     kind: 'list',
+    key: 'pinned_sessions',
     title: 'Pinned sessions',
     category: 'Sessions',
     description: 'Kept at the top in every order; ctrl+f pins the selected session',
@@ -395,6 +397,7 @@ const SETTINGS = {
   hiddenSessions: {
     id: 'hiddenSessions',
     kind: 'list',
+    key: 'hidden_sessions',
     title: 'Hidden sessions',
     category: 'Sessions',
     description: 'Live sessions whose names match these globs are not listed',
@@ -458,6 +461,7 @@ const SETTINGS = {
   projectPaths: {
     id: 'projectPaths',
     kind: 'list',
+    key: 'project_paths',
     title: 'Project folders',
     category: 'Projects',
     description: "Scanned for projects and searched by New's file step",
@@ -469,6 +473,7 @@ const SETTINGS = {
   projects: {
     id: 'projects',
     kind: 'rules',
+    key: 'projects',
     title: 'Project rules',
     category: 'Projects',
     description: 'Exact folders with their own name, commands, icon or listing',
@@ -480,6 +485,7 @@ const SETTINGS = {
   wildcards: {
     id: 'wildcards',
     kind: 'rules',
+    key: 'wildcards',
     title: 'Wildcard rules',
     category: 'Projects',
     description: 'Defaults for folders matching a pattern; the first match wins',
@@ -690,7 +696,7 @@ export function getSettingEditorValue(config: Config, field: SettingsFieldId): s
     case 'json':
     case 'list':
     case 'rules':
-      return formatJSON(setting.read(config))
+      return formatJSON(config, setting.key, setting.read(config))
     case 'choice':
     case 'picker':
     case 'number':
@@ -750,7 +756,7 @@ function editorPatch(
     case 'json':
     case 'list':
     case 'rules':
-      return setting.patch(parseJSON(value))
+      return setting.patch(decodeJsonText(value))
     case 'choice':
     case 'picker':
     case 'number':
@@ -772,6 +778,66 @@ export function applyEditorSetting(
   const document = decodeJsonText(JSON.stringify({ ...serializeConfig(config), ...patch }))
 
   return normalizeConfig(document, homeDir)
+}
+
+// An edit either makes the next config or says what to fix; nothing is saved from an invalid one.
+export type SettingEdit =
+  | { readonly kind: 'parsed'; readonly config: Config }
+  | { readonly kind: 'invalid'; readonly message: string }
+
+const SHOWN_ISSUES = 1
+
+// A config issue named from inside the edited value: `projects[0].listed` reads `[0].listed`.
+function describeIssue(issue: ConfigIssue, key: JsonDocumentKey): string {
+  const inner = issue.path.startsWith(key) ? issue.path.slice(key.length) : issue.path
+  const subject = inner.replace(/^\./, '') || 'The value'
+
+  if (issue.expected === 'required') return `${subject} is required`
+
+  if (issue.expected.startsWith('expected '))
+    return `${subject} must be ${issue.expected.slice('expected '.length)}`
+
+  return `${subject} is not valid`
+}
+
+function checkJsonSetting(
+  setting: JsonSetting | ListSetting | RulesSetting,
+  text: string
+): string | undefined {
+  const syntax = JsonSyntaxIssue.find(text)
+
+  if (syntax) return JsonSyntaxIssue.describe(syntax)
+
+  const document = decodeJsonText(JSON.stringify(setting.patch(decodeJsonText(text))))
+  const issues = checkConfigDocument(document)
+  const [first] = issues
+
+  if (!first) return undefined
+
+  const more = issues.length > SHOWN_ISSUES ? ` (and ${issues.length - SHOWN_ISSUES} more)` : ''
+
+  return `${describeIssue(first, setting.key)}${more}`
+}
+
+// Checks the text the way the config file is checked on load, then applies it.
+export function editSetting(
+  config: Config,
+  field: SettingsFieldId,
+  value: string,
+  homeDir: string
+): SettingEdit {
+  const setting = getSetting(field)
+  const invalid = isJsonEdited(setting) ? checkJsonSetting(setting, value) : undefined
+
+  if (invalid) return { kind: 'invalid', message: invalid }
+
+  return { kind: 'parsed', config: applyEditorSetting(config, field, value, homeDir) }
+}
+
+// Lists and rules open the raw JSON editor (from their panes); other editable settings open a
+// one-line field.
+export function isJsonSetting(field: SettingsFieldId): boolean {
+  return isJsonEdited(getSetting(field))
 }
 
 // The value one step away: a number stops at its limits, choices wrap around. Undefined when the

@@ -444,7 +444,29 @@ const DIALOG_CASES: readonly DialogCase[] = [
       focus: step === 'editing' ? 'field' : 'none',
     }))
   ),
+  {
+    name: 'raw JSON editor',
+    view: { kind: 'setting-json' },
+    modalState: { type: 'setting-json', field: 'projects', from: undefined },
+    entry: undefined,
+    focus: 'field',
+  },
 ]
+
+// Where leaving each dialog goes, as the action that left it.
+function backAction(view: DialogView): DialogActionId {
+  switch (view.kind) {
+    case 'setting-editor':
+      return 'editor-back'
+    case 'setting-json':
+      return 'json-back'
+    case 'settings':
+    case 'setting-options':
+    case 'setting-list':
+    case 'setting-rule':
+      return 'option-back'
+  }
+}
 
 function notADialogAction(): never {
   throw new Error('A dialog key reached an action outside the settings dialogs')
@@ -486,8 +508,9 @@ function pressDialog(dialog: DialogCase, input: DialogPress['input']): DialogOut
     openSettingOptions: record('settings-open'),
     openSettingEditor: record('settings-open'),
     isOptionSetting: field => field === 'sortOrder',
-    setModalState: record(dialog.view.kind === 'setting-editor' ? 'editor-back' : 'option-back'),
+    setModalState: record(backAction(dialog.view)),
     setSettingEditorError: () => {},
+    insertSettingEditorNewline: record('json-newline'),
     runAction: task => {
       task().catch(cause => {
         throw cause
@@ -496,7 +519,9 @@ function pressDialog(dialog: DialogCase, input: DialogPress['input']): DialogOut
     executeCommand: notADialogAction,
     showToast: notADialogAction,
     handleSettingOptionSubmit: recordAsync('option-apply'),
-    handleSettingsEditorSubmit: recordAsync('editor-apply'),
+    handleSettingsEditorSubmit: recordAsync(
+      dialog.view.kind === 'setting-json' ? 'json-save' : 'editor-apply'
+    ),
     handleSettingStep: recordAsync(
       row?.control === 'toggle' ? 'settings-toggle' : 'settings-change'
     ),

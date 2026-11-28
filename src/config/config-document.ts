@@ -110,8 +110,12 @@ export const ConfigDocument = Schema.Struct({
   ...aliased('pinned_sessions', 'pinnedSessions', TextList),
   icons: Schema.optionalKey(Icons),
   ...aliased('default_session', 'defaultSession', SessionDefaults),
-  projects: Schema.optionalKey(Schema.Array(ProjectProfile)),
-  wildcards: Schema.optionalKey(Schema.Array(ProjectWildcard)),
+  projects: Schema.optionalKey(
+    Schema.Array(ProjectProfile).annotate({ description: 'a list of project objects' })
+  ),
+  wildcards: Schema.optionalKey(
+    Schema.Array(ProjectWildcard).annotate({ description: 'a list of wildcard objects' })
+  ),
 }).annotate({ description: 'a JSON object' })
 
 // Every key the writer owns, in both spellings, so a save can keep the user's other keys.

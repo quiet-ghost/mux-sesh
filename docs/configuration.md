@@ -95,6 +95,13 @@ value it inherits, muted, as `default · …`, and `ctrl+r` clears an override b
 removed with `d` (after an inline confirmation) and reordered with `shift+↑` / `shift+↓`; for
 wildcards the first match wins.
 
+`Edit as JSON…` opens a list or rules as raw JSON, the value as the config file holds it, with
+line numbers. `enter`
+adds a line and nothing is saved until `ctrl+s`, which checks the text the way the file is checked
+on load: a JSON mistake names its line, and a value the config rejects names its path, such as
+`[0].listed must be true or false`. The config stays unchanged until the text is valid; `esc`
+discards the draft and goes back to the list.
+
 | Category   | Setting         | Option                                            |
 | ---------- | --------------- | ------------------------------------------------- |
 | Appearance | Theme           | `theme`                                           |

@@ -2,12 +2,13 @@ import {
   describeUnavailableAction,
   matchEditorAction,
   matchListAction,
+  matchJsonAction,
   matchOptionAction,
   matchRuleAction,
   matchSettingsAction,
 } from './action-catalog'
 import type { OperationReport } from './action-outcome'
-import type { ModalState } from './modals'
+import { leaveJsonEditor, type ModalState } from './modals'
 import { OptionPicker } from './option-picker'
 import type { ShowToast } from './notifications'
 import type { SettingPaneAction } from './setting-pane-actions'
@@ -41,6 +42,8 @@ interface ModalKeyboardContext {
   isOptionSetting: (field: SettingsEntry['id']) => boolean
   setModalState: (state: ModalState) => void
   setSettingEditorError: (message: string) => void
+  // Enter in the raw JSON editor: a new line at the cursor.
+  insertSettingEditorNewline: () => void
   runAction: (task: () => Promise<void>) => void
   executeCommand: (id: CommandEntry['id']) => Promise<void>
   showToast: ShowToast
@@ -307,6 +310,29 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
         return true
       case 'editor-apply':
         ctx.runAction(() => ctx.handleSettingsEditorSubmit(field))
+
+        return true
+      case 'none':
+        return false
+    }
+  }
+
+  // The draft is the text field itself; leaving drops it, and only ctrl+s saves.
+  if (ctx.modalState?.type === 'setting-json') {
+    const { field } = ctx.modalState
+
+    switch (matchJsonAction(key)) {
+      case 'json-save':
+        ctx.runAction(() => ctx.handleSettingsEditorSubmit(field))
+
+        return true
+      case 'json-newline':
+        ctx.insertSettingEditorNewline()
+
+        return true
+      case 'json-back':
+        ctx.setModalState(leaveJsonEditor(ctx.modalState))
+        ctx.setSettingEditorError('')
 
         return true
       case 'none':

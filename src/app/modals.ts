@@ -2,8 +2,8 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { OperationReport } from './action-outcome'
 import type { CleanupBatch, CloseReceipt } from '../sessions/cleanup-batch'
 import { OptionPicker } from './option-picker'
-import type { SettingPane } from './setting-panes'
-import { getSettingEditorValue, type SettingsFieldId } from '../settings'
+import type { SettingListPane, SettingPane, SettingRulesPane } from './setting-panes'
+import { getSettingEditorValue, isJsonSetting, type SettingsFieldId } from '../settings'
 import type { Config, Item } from '../types'
 
 export type ModalState =
@@ -18,10 +18,26 @@ export type ModalState =
     }
   | { type: 'setting-editor'; field: SettingsFieldId }
   | SettingPane
+  // `from` is the list or rule list pane whose "Edit as JSON…" row opened it; leaving goes back
+  // there, or to Settings when it was opened from Settings.
+  | { type: 'setting-json'; field: SettingsFieldId; from: JsonEditorOrigin }
   | { type: 'outcome'; report: OperationReport }
   | { type: 'close-batch-review'; batch: CleanupBatch }
   | { type: 'close-batch-results'; receipt: CloseReceipt }
   | null
+
+export type JsonEditorOrigin = SettingListPane | SettingRulesPane | undefined
+
+function jsonEditorOrigin(current: ModalState): JsonEditorOrigin {
+  return current?.type === 'setting-list' || current?.type === 'setting-rules' ? current : undefined
+}
+
+// Where the raw JSON editor goes back to: the pane that opened it, or the same Settings row.
+export function leaveJsonEditor(current: ModalState): ModalState {
+  if (current?.type === 'setting-json' && current.from) return current.from
+
+  return { type: 'settings', picker: OptionPicker.browsing }
+}
 
 interface ModalSetters {
   setModalState: Dispatch<SetStateAction<ModalState>>
@@ -92,6 +108,8 @@ export function openSettingOptions(
   }))
 }
 
+// The one way into a setting's editor: lists and rules open the raw JSON view, other settings a
+// one-line field. List editors' "Edit as JSON…" rows open it here too.
 export function openSettingEditor(
   config: Config | null,
   field: SettingsFieldId,
@@ -105,6 +123,13 @@ export function openSettingEditor(
 
   setSettingEditorError('')
   setSettingEditorValue(getSettingEditorValue(config, field))
+
+  if (isJsonSetting(field)) {
+    setModalState(current => ({ type: 'setting-json', field, from: jsonEditorOrigin(current) }))
+
+    return
+  }
+
   setModalState({ type: 'setting-editor', field })
 }
 

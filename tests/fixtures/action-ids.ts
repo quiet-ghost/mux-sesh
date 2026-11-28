@@ -60,6 +60,9 @@ export const DIALOG_ACTION_IDS = [
   'rule-edit',
   'rule-reset',
   'rule-back',
+  'json-save',
+  'json-newline',
+  'json-back',
 ] as const satisfies readonly DialogActionId[]
 
 type UnlistedDialogActionId = Exclude<DialogActionId, (typeof DIALOG_ACTION_IDS)[number]>

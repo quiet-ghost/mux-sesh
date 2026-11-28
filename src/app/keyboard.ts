@@ -1,3 +1,4 @@
+import type { TextareaRenderable } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { ActionOwner } from './action-owner'
@@ -60,6 +61,7 @@ interface UseAppKeyboardOptions {
   setSettingOptionsCursor: Dispatch<SetStateAction<number>>
   setModalState: Dispatch<SetStateAction<ModalState>>
   setSettingEditorError: Dispatch<SetStateAction<string>>
+  settingEditorTextareaRef: MutableRefObject<TextareaRenderable | null>
   executeCommand: (id: CommandEntry['id']) => Promise<void>
   handleSettingOptionSubmit: (field: SettingsFieldId, value: string) => Promise<void>
   handleSettingsEditorSubmit: (field: SettingsFieldId) => Promise<void>
@@ -242,6 +244,7 @@ function handleKey(
       isOptionSetting: options.isOptionSetting,
       setModalState: options.setModalState,
       setSettingEditorError: options.setSettingEditorError,
+      insertSettingEditorNewline: () => options.settingEditorTextareaRef.current?.newLine(),
       runAction: owner.run,
       executeCommand: options.executeCommand,
       showToast: options.showToast,

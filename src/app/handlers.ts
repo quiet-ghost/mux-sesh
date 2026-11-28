@@ -6,7 +6,7 @@ import {
   type OperationReport,
   type OutcomePresenter,
 } from './action-outcome'
-import type { ModalState } from './modals'
+import { leaveJsonEditor, type ModalState } from './modals'
 import type { ShowToast } from './notifications'
 import { persistConfigUpdate, runWithErrorToast } from './operations'
 import { OptionPicker } from './option-picker'
@@ -25,6 +25,7 @@ import { CleanupPlan } from '../sessions/cleanup-plan'
 import {
   applyEditorSetting,
   applyOptionSetting,
+  editSetting,
   getSettingEditorTitle,
   getSettingDisplayValue,
   getSettingEditorValue,
@@ -417,23 +418,22 @@ export async function handleSettingsEditorSubmitWithFeedback(
     return
   }
 
-  let nextConfig: Config
-  let savedConfig: Config
   const homeDir = process.env.HOME || '~'
+  const rawText = options.settingEditorPlainText ?? options.settingEditorValue
+  const edit = editSetting(options.config, field, rawText, homeDir)
 
   // An invalid value stays in the editor with its draft; nothing is saved.
-  try {
-    const rawText = options.settingEditorPlainText ?? options.settingEditorValue
-    nextConfig = applyEditorSetting(options.config, field, rawText, homeDir)
-
-    // The saved value through the same reload, so an unchanged value compares equal.
-    const savedText = getSettingEditorValue(options.config, field)
-    savedConfig = applyEditorSetting(options.config, field, savedText, homeDir)
-  } catch (error) {
-    options.setSettingEditorError(error instanceof Error ? error.message : 'The value is not valid')
+  if (edit.kind === 'invalid') {
+    options.setSettingEditorError(edit.message)
 
     return
   }
+
+  const nextConfig = edit.config
+
+  // The saved value through the same reload, so an unchanged value compares equal.
+  const savedText = getSettingEditorValue(options.config, field)
+  const savedConfig = applyEditorSetting(options.config, field, savedText, homeDir)
 
   options.setSettingEditorError('')
 
@@ -748,7 +748,8 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       saveConfig: options.saveConfig,
       setConfig: options.setConfig,
       setSettingEditorError: options.setSettingEditorError,
-      returnToSettings,
+      // The raw JSON editor goes back to the list or rule pane that opened it.
+      returnToSettings: () => options.setModalState(leaveJsonEditor),
       settingEditorValue: options.settingEditorValue,
       settingEditorPlainText: options.settingEditorPlainText,
       refreshItems: options.refreshItems,

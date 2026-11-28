@@ -12,6 +12,7 @@ import OperationOutcomeModal from '../ui/OperationOutcomeModal'
 import RenameModal from '../ui/RenameModal'
 import SettingEditorModal from '../ui/SettingEditorModal'
 import SettingPaneModal from '../ui/SettingPaneModal'
+import SettingJsonModal from '../ui/SettingJsonModal'
 import SettingOptionsModal from '../ui/SettingOptionsModal'
 import SettingsModal from '../ui/SettingsModal'
 import { useItemSelection } from '../ui/use-item-selection'
@@ -201,6 +202,18 @@ export function AppModalsLayer({
           draft={settingFieldDraft}
           textareaRef={settingFieldTextareaRef}
           onContentChange={() => syncTextareaValue(settingFieldTextareaRef, setSettingFieldDraft)}
+        />
+      )}
+
+      {modalState?.type === 'setting-json' && (
+        <SettingJsonModal
+          title={getSettingEditorTitle(modalState.field)}
+          value={settingEditorValue}
+          error={settingEditorError}
+          columns={columns}
+          rows={rows}
+          textareaRef={settingEditorTextareaRef}
+          onContentChange={() => syncTextareaValue(settingEditorTextareaRef, setSettingEditorValue)}
         />
       )}
     </>

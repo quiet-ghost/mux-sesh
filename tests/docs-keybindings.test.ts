@@ -151,6 +151,7 @@ const DIALOG_ROWS = [
   ['Remove confirmation', 'confirm-'],
   ['List field', 'field-'],
   ['Rule form', 'rule-'],
+  ['Raw JSON', 'json-'],
 ] as const
 
 function dialogRowKeys(markdown: string, title: string): string[] {

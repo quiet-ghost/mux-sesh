@@ -601,6 +601,9 @@ export type OptionActionId = 'option-move' | 'option-apply' | 'option-back'
 
 export type EditorActionId = 'editor-apply' | 'editor-back'
 
+// The raw JSON editor: Enter belongs to the text, so saving takes ctrl+s.
+export type JsonActionId = 'json-save' | 'json-newline' | 'json-back'
+
 // A list or rule list pane: no text field has focus, so single letters act.
 export type ListActionId =
   | 'list-move'
@@ -628,6 +631,7 @@ export type DialogActionId =
   | ConfirmActionId
   | FieldActionId
   | RuleActionId
+  | JsonActionId
 
 // The selected row of a list pane: an entry, the add row, or the "Edit as JSON…" row.
 export type ListRowKind = 'item' | 'add' | 'json'
@@ -652,6 +656,7 @@ export type DialogView =
   | { kind: 'setting-editor' }
   | { kind: 'setting-list'; row: ListRowKind; step: ListStepKind; keybindMode: KeybindMode }
   | { kind: 'setting-rule'; row: RuleRowControl | undefined; step: 'browsing' | 'editing' }
+  | { kind: 'setting-json' }
 
 export interface DialogKey {
   readonly name: string
@@ -701,6 +706,7 @@ const KEY_A = dialogKey('a', 'a')
 const KEY_D = dialogKey('d', 'd')
 const KEY_J = vimKey('j')
 const KEY_K = vimKey('k')
+const CTRL_S = dialogKey('s', 'ctrl+s', true)
 
 export const DIALOG_ACTIONS = {
   'settings-move': { label: 'navigate', keys: [UP, DOWN], footer: false },
@@ -737,6 +743,9 @@ export const DIALOG_ACTIONS = {
   'rule-edit': { label: 'edit', keys: [ENTER], footer: true },
   'rule-reset': { label: 'reset', keys: [CTRL_R], footer: true },
   'rule-back': { label: 'back', keys: [ESC], footer: true },
+  'json-save': { label: 'save', keys: [CTRL_S], footer: true },
+  'json-newline': { label: 'new line', keys: [ENTER], footer: true },
+  'json-back': { label: 'back', keys: [ESC], footer: true },
 } as const satisfies Record<DialogActionId, DialogAction>
 
 // In footer order. A Settings row offers ←/→ only where they change it, Enter only where it opens
@@ -820,6 +829,8 @@ function ruleActions(
   return [...actions, 'rule-back']
 }
 
+const JSON_ACTIONS: readonly JsonActionId[] = ['json-save', 'json-newline', 'json-back']
+
 export function getDialogActions(view: DialogView): readonly DialogActionId[] {
   switch (view.kind) {
     case 'settings':
@@ -832,6 +843,8 @@ export function getDialogActions(view: DialogView): readonly DialogActionId[] {
       return listActions(view.row, view.step)
     case 'setting-rule':
       return ruleActions(view.row, view.step)
+    case 'setting-json':
+      return JSON_ACTIONS
   }
 }
 
@@ -905,4 +918,8 @@ export function matchRuleAction(
   input: DialogKeyInput
 ): RulePaneActionId | 'none' {
   return firstMatch(ruleActions(view.row, view.step), input)
+}
+
+export function matchJsonAction(input: DialogKeyInput): JsonActionId | 'none' {
+  return firstMatch(JSON_ACTIONS, input)
 }

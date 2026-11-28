@@ -4,6 +4,7 @@ import { getDefaultConfig, normalizeConfig, serializeConfig } from '../src/confi
 import {
   applyEditorSetting,
   applyOptionSetting,
+  editSetting,
   getSettingEditorTitle,
   getSettingEditorValue,
   getSettingOptions,
@@ -206,5 +207,43 @@ describe('settings metadata', () => {
     expect(values[0]).toBe('system')
     expect(values).not.toContain('omarchy')
     expect(applyOptionSetting(config, 'theme', 'system').theme).toBe('system')
+  })
+
+  test('the JSON editor shows a value as the config file holds it', () => {
+    const rules = { ...config, projects: [{ path: '/home/tester/api', sessionName: 'api' }] }
+
+    expect(JSON.parse(getSettingEditorValue(rules, 'projects'))).toEqual([
+      { path: '/home/tester/api', session_name: 'api' },
+    ])
+  })
+
+  test('JSON edits are checked like the config file before they apply', () => {
+    function message(field: SettingsEntry['id'], text: string): string | undefined {
+      const edit = editSetting(config, field, text, '/home/tester')
+
+      return edit.kind === 'invalid' ? edit.message : undefined
+    }
+
+    expect(message('projects', '[\n  {"path": "~/a", "listed": tru}\n]')).toBe(
+      'Line 2: not valid JSON (expected true, false or null)'
+    )
+    expect(message('projects', '[{"path": "~/a", "listed": "yes"}]')).toBe(
+      '[0].listed must be true or false'
+    )
+    expect(message('projects', '[{}, {}]')).toBe('[0].path is required (and 1 more)')
+    expect(message('projects', '{}')).toBe('The value must be a list of project objects')
+    expect(message('hiddenSessions', '["tmp-*", ""]')).toBe('[1] must be a non-empty string')
+    expect(message('icons', '{"tmux": 1}')).toBe('tmux must be text')
+
+    const edit = editSetting(
+      config,
+      'projects',
+      '[{"path": "~/a", "listed": true}]',
+      '/home/tester'
+    )
+
+    expect(edit.kind === 'parsed' && edit.config.projects).toEqual([
+      { path: '/home/tester/a', listed: true },
+    ])
   })
 })

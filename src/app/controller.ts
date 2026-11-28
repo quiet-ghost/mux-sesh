@@ -425,6 +425,7 @@ export function useAppController(invocationCwd: string) {
     setSettingOptionsCursor,
     setModalState,
     setSettingEditorError,
+    settingEditorTextareaRef,
     executeCommand,
     handleSettingOptionSubmit,
     handleSettingsEditorSubmit,
