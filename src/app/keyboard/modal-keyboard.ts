@@ -1,6 +1,6 @@
+import { describeUnavailableAction } from '../action-catalog'
 import {
   type IconsFormView,
-  describeUnavailableAction,
   matchEditorAction,
   matchIconsAction,
   matchListAction,
@@ -8,7 +8,7 @@ import {
   matchOptionAction,
   matchRuleAction,
   matchSettingsAction,
-} from '../action-catalog'
+} from '../dialog-actions'
 import type { OperationReport } from '../action-outcome'
 import { leaveJsonEditor, type IconsFormMode, type ModalState } from '../modals'
 import { OptionPicker } from '../option-picker'

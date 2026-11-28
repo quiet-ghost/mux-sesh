@@ -1,10 +1,10 @@
 import type { TextareaRenderable } from '@opentui/core'
 import { useLayoutEffect } from 'react'
-import { getDialogHints } from '../app/action-catalog'
+import { getDialogHints } from '../app/dialog-actions'
 import type { OptionPicker } from '../app/option-picker'
 import { reconcileTextareaValue } from '../app/textarea'
 import { useTheme } from '../styles/theme'
-import { getSettingsLabelMatches } from '../search/lists'
+import { getSettingsLabelMatches } from '../settings/settings-search'
 import type { SettingsEntry } from '../settings/settings-catalog'
 import { toHomeRelativePath } from '../util/path-display'
 import {

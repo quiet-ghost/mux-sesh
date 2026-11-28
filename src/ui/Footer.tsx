@@ -1,5 +1,5 @@
 import { memo, type ReactNode } from 'react'
-import type { ActionFooter, FooterHint } from '../app/action-catalog'
+import type { ActionFooter, FooterHint } from '../app/action-footer'
 import type { QueuedToast } from '../app/notifications'
 import { useTheme } from '../styles/theme'
 import { GROUP_GAP_COLUMNS, HINT_GAP } from './key-hints'

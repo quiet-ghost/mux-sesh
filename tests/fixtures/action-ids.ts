@@ -1,4 +1,5 @@
-import type { ActionId, CommandId, DialogActionId } from '../../src/app/action-catalog'
+import type { ActionId, CommandId } from '../../src/app/action-catalog'
+import type { DialogActionId } from '../../src/app/dialog-actions'
 
 export const COMMAND_IDS = [
   'search',

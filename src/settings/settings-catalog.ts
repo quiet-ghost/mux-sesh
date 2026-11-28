@@ -2,7 +2,6 @@ import * as Schema from 'effect/Schema'
 import { getDefaultConfig, normalizeConfig, serializeConfig } from '../config'
 import { checkConfigDocument, type ConfigIssue } from '../config/config-document'
 import { PrefixKey } from '../config/prefix-key'
-import { rankSettingsEntries, rankSettingsOptions } from '../search/lists'
 import { BUILTIN_THEMES, DEFAULT_THEME_ID, SYSTEM_THEME_ID, getBuiltinTheme } from '../styles/theme'
 import type { Config, KeybindMode, SortOrder, ThemeColorScheme, ZoxideMode } from '../types'
 import { toHomeRelativePath } from '../util/path-display'
@@ -1001,12 +1000,4 @@ export function getSettingEditorTitle(field: SettingsFieldId): string {
 
 export function getSettingDescription(field: SettingsFieldId): string {
   return getSetting(field).description
-}
-
-export function filterSettingsEntries(entries: SettingsEntry[], query: string): SettingsEntry[] {
-  return rankSettingsEntries(entries, query)
-}
-
-export function filterSettingsOptions(options: SettingsOption[], query: string): SettingsOption[] {
-  return rankSettingsOptions(options, query)
 }

@@ -1,5 +1,5 @@
 import type { TextareaRenderable } from '@opentui/core'
-import { getDialogHints } from '../app/action-catalog'
+import { getDialogHints } from '../app/dialog-actions'
 import { useTheme } from '../styles/theme'
 import { DialogField } from './DialogList'
 import Modal from './Modal'

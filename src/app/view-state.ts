@@ -1,8 +1,7 @@
 import { resolvePrefixKey } from '../config'
 import { filterCommandEntries } from '../ui/CommandsModal'
+import { filterSettingsEntries, filterSettingsOptions } from '../settings/settings-search'
 import {
-  filterSettingsEntries,
-  filterSettingsOptions,
   getSettingsEntries,
   getSettingOptions,
   getSettingValue,

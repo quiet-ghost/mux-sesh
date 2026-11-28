@@ -304,6 +304,17 @@ export function rankValues<T extends object>(
   return searchIndices(schema, source, allIndices(source.length), parsed, ranking).hits
 }
 
+// Label match positions for one visible row, from the same schema and query that ranked it.
+export function labelMatches<T extends object>(
+  schema: SearchSchema<T>,
+  value: T,
+  query: string
+): readonly number[] {
+  if (parseQuery(query).terms.length === 0) return []
+
+  return rankValues(schema, [value], query)[0]?.positions[0] ?? []
+}
+
 export interface SearchSession<T> {
   search(source: readonly T[], query: string): SearchHit<T>[]
 }

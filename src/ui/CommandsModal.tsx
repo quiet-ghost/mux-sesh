@@ -1,6 +1,6 @@
 import type { TextareaRenderable } from '@opentui/core'
 import type { CommandEntry } from '../app/action-catalog'
-import { getCommandLabelMatches, rankCommandEntries } from '../search/lists'
+import { getCommandLabelMatches, rankCommandEntries } from '../app/command-search'
 import { useTheme } from '../styles/theme'
 import { useTextareaFocus } from './use-textarea-focus'
 import {

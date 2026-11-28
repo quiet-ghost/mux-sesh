@@ -3,7 +3,8 @@ import { getPanelStyle } from '../styles/theme'
 import { getNoMatchMessage } from '../ui/dialog-layout'
 import { workspaceNoun } from '../multiplexer/types'
 import { AppMode, ViewMode, type BackendKind, type ThemeColors } from '../types'
-import { getActionFooter, getActionKeyHint, type ActionContext } from './action-catalog'
+import { getActionKeyHint, type ActionContext } from './action-catalog'
+import { getActionFooter } from './action-footer'
 import type { NewSessionStepKind } from './new-session-step'
 
 export function splitVisibleSessions<T extends { isSession: boolean; title: string }>(

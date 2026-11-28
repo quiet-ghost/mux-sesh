@@ -15,7 +15,8 @@ import {
 import type { Config, Item } from '../types'
 import { getNewSessionAction } from '../ui/launch-preview'
 import { clampCursorIndex } from '../ui/list-window'
-import type { NewSessionAction, NewSessionStepId } from './action-catalog'
+import type { NewSessionStepId } from './action-catalog'
+import type { NewSessionAction } from './action-footer'
 import type { LauncherFiles } from './launcher-query'
 import type { ShowToast } from './notifications'
 

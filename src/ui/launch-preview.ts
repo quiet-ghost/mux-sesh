@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { NewSessionAction } from '../app/action-catalog'
+import type { NewSessionAction } from '../app/action-footer'
 import type { BackendKind } from '../multiplexer/types'
 import type { CloneServices } from '../sessions/clone-plan'
 import {

@@ -1,10 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test'
-import {
-  getActionFooter,
-  getActionTarget,
-  getCommandEntries,
-  type ActionContext,
-} from '../src/app/action-catalog'
+import { getActionTarget, getCommandEntries, type ActionContext } from '../src/app/action-catalog'
+import { getActionFooter } from '../src/app/action-footer'
 import { PendingClose } from '../src/app/pending-close'
 import { ActionRefused } from '../src/app/action-outcome'
 import { createAppControls } from '../src/app/modal-controls'

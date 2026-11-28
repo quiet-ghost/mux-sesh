@@ -11,7 +11,7 @@ import {
 } from '../settings/settings-catalog'
 import type { Config, ViewMode } from '../types'
 import { clampCursorIndex } from '../ui/list-window'
-import type { ListPaneActionId, RulePaneActionId } from './action-catalog'
+import type { ListPaneActionId, RulePaneActionId } from './dialog-actions'
 import { ActionOutcome, type OperationReport } from './action-outcome'
 import type { ModalState } from './modals'
 import type { ShowToast } from './notifications'

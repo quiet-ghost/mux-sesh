@@ -15,7 +15,7 @@ import {
   type DialogView,
   type ListRowKind,
   type RuleRowControl,
-} from './action-catalog'
+} from './dialog-actions'
 import type { ModalState } from './modals'
 import { OptionPicker } from './option-picker'
 

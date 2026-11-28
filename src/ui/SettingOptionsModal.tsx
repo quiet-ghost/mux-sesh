@@ -1,8 +1,8 @@
 import type { TextareaRenderable } from '@opentui/core'
-import { getDialogHints } from '../app/action-catalog'
+import { getDialogHints } from '../app/dialog-actions'
 import { OptionPicker } from '../app/option-picker'
 import { useTheme } from '../styles/theme'
-import { getOptionLabelMatches } from '../search/lists'
+import { getOptionLabelMatches } from '../settings/settings-search'
 import type { SettingsOption } from '../settings/settings-catalog'
 import {
   DIALOG_FILTER_ROWS,

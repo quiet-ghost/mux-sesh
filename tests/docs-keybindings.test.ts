@@ -1,6 +1,7 @@
 import { join } from 'path'
 import { describe, expect, test } from 'bun:test'
-import { getActionKeys, getDialogActionKeys, type ActionContext } from '../src/app/action-catalog'
+import { getActionKeys, type ActionContext } from '../src/app/action-catalog'
+import { getDialogActionKeys } from '../src/app/dialog-actions'
 import { PendingClose } from '../src/app/pending-close'
 import { AppMode, ViewMode, type KeybindMode } from '../src/types'
 import { ACTION_IDS, DIALOG_ACTION_IDS, EVERY_ACTION_LISTED } from './fixtures/action-ids'

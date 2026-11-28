@@ -1,11 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import type { CommandEntry } from '../src/app/action-catalog'
 import { filterAndSortItems } from '../src/search'
-import {
-  filterSettingsEntries,
-  filterSettingsOptions,
-  type SettingsEntry,
-} from '../src/settings/settings-catalog'
+import type { SettingsEntry } from '../src/settings/settings-catalog'
+import { filterSettingsEntries, filterSettingsOptions } from '../src/settings/settings-search'
 import type { Item } from '../src/types'
 import { filterCommandEntries } from '../src/ui/CommandsModal'
 

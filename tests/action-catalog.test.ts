@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
   getActionAvailability,
-  getActionFooter,
   getActionKeyHint,
   getActionTarget,
   getCommandEntries,
@@ -9,8 +8,8 @@ import {
   type ActionContext,
   type ActionId,
   type ActionTarget,
-  type FooterHint,
 } from '../src/app/action-catalog'
+import { getActionFooter, type FooterHint } from '../src/app/action-footer'
 import { PendingClose } from '../src/app/pending-close'
 import { getItemKey, workspaceToItem } from '../src/multiplexer/items'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../src/types'

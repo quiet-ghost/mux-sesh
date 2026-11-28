@@ -4,17 +4,19 @@ import {
   getActionKeys,
   getActionTarget,
   getCommandEntry,
-  getDialogActionKeys,
-  getDialogActions,
   type ActionContext,
   type ActionId,
+} from '../src/app/action-catalog'
+import {
+  getDialogActionKeys,
+  getDialogActions,
   type DialogActionId,
   type DialogKey,
   type DialogView,
   type ListRowKind,
   type ListStepKind,
   type RuleRowControl,
-} from '../src/app/action-catalog'
+} from '../src/app/dialog-actions'
 import { handleModalKeyboard } from '../src/app/keyboard/modal-keyboard'
 import type { ModalState } from '../src/app/modals'
 import { OptionPicker } from '../src/app/option-picker'

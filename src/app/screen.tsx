@@ -13,7 +13,8 @@ import {
   getStatusLabel,
 } from './screen-layout'
 import { syncTextareaValue } from './textarea'
-import { getActionFooter, getActionKeyHint, type ActionContext } from './action-catalog'
+import { getActionKeyHint, type ActionContext } from './action-catalog'
+import { getActionFooter } from './action-footer'
 import type { FocusOwner } from './focus-owner'
 import { getLaunchScope } from './launch-scope'
 import { getNewSessionEnterAction, type NewSessionSteps } from './new-session-step'
