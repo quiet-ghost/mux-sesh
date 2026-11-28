@@ -3,13 +3,11 @@ import { mkdtemp, mkdir, rm, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import {
-  applyZoxideMode,
   getProjectItems,
   getSessionCandidateItems,
-  parseZoxideOutput,
   refreshProjectDiscovery,
 } from '../src/tmux/projects'
-import { getZoxideEntries } from '../src/tmux/project-zoxide'
+import { applyZoxideMode, getZoxideEntries, parseZoxideOutput } from '../src/tmux/project-zoxide'
 import { filterHiddenSessions, getLastSessionTarget } from '../src/tmux/workflows'
 import { getDefaultConfig } from '../src/config'
 import { annotateProjectItemsWithSessionLinks } from '../src/projects/session-links'

@@ -10,8 +10,6 @@ import { handoffOf } from '../multiplexer/focus-outcome'
 import { requestShutdown } from '../util/shutdown'
 import { quoteShellArg } from '../util/shell'
 
-export { quoteShellArg } from '../util/shell'
-
 export function buildEditorCommand(editor: string, path: string): string {
   return `${editor} ${quoteShellArg(path)}`
 }

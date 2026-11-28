@@ -8,10 +8,10 @@ import {
   buildEditorCommand,
   getNextSessionName,
   getRootSessionPath,
-  quoteShellArg,
   requireConfig,
   requireConfiguredItem,
 } from '../src/handlers/action-helpers'
+import { quoteShellArg } from '../src/util/shell'
 
 describe('action helpers', () => {
   test('quotes shell arguments safely for editor launch commands', () => {

@@ -1,8 +1,6 @@
 import { createCommandRunner } from '../multiplexer/command'
 import type { Config, Item } from '../types'
-import { filterProjectCandidatePaths } from './project-discovery'
 import { createProjectDiscovery, type DiscoveryFailureListener } from './project-discovery-service'
-import { applyZoxideMode, parseZoxideOutput } from './project-zoxide'
 
 const DISCOVERY_CACHE_TTL_MS = 15000
 const DISCOVERY_COMMAND_TIMEOUT_MS = 10_000
@@ -27,5 +25,3 @@ export function refreshProjectDiscovery(): void {
 export function subscribeProjectDiscoveryFailures(listener: DiscoveryFailureListener): () => void {
   return projectDiscovery.subscribeFailures(listener)
 }
-
-export { applyZoxideMode, filterProjectCandidatePaths, parseZoxideOutput }
