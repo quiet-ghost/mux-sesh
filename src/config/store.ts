@@ -6,7 +6,7 @@ import * as Schema from 'effect/Schema'
 import type { Config } from '../types'
 import { CONFIG_DOCUMENT_KEYS, checkConfigDocument, ConfigInvalid } from './config-document'
 import { getConfigPath, getHomeDir } from './paths'
-import { getDefaultConfig, normalizeConfig, serializeConfig } from './index'
+import { getDefaultConfig, normalizeConfig, serializeConfig } from './config-normalize'
 
 type ReadDocument =
   | { readonly kind: 'missing' }
