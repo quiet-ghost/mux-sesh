@@ -9,11 +9,6 @@
   "bin": {
     "mux-sesh": "./bin/mux-sesh"
   },
-  "files": [
-    "bin",
-    "src",
-    "tsconfig.json"
-  ],
   "scripts": {
     "dev": "MUX_SESH_DEV=1 bun run src/index.tsx",
     "dev:config-error": "bun tools/dev/screens.ts config-error",
