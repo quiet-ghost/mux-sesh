@@ -1,6 +1,6 @@
 import { AppMode, type KeybindMode } from '../../types'
 import { clampCursorIndex } from '../../ui/list-window'
-import { requestShutdown } from '../../util/shutdown'
+import { requestShutdown } from '../../lifecycle/shutdown'
 import {
   activatePrefix,
   clearPrefix,

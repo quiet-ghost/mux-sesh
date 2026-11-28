@@ -2,8 +2,8 @@ import { afterEach, expect, test } from 'bun:test'
 import { testRender } from '@opentui/react/test-utils'
 import { act } from 'react'
 import { ErrorScreen } from '../src/ui/ErrorScreen'
-import type { ClipboardResult } from '../src/util/clipboard'
-import { DiagnosticReport } from '../src/util/errors'
+import type { ClipboardResult } from '../src/diagnostics/clipboard'
+import { DiagnosticReport } from '../src/diagnostics/errors'
 
 let setup: Awaited<ReturnType<typeof testRender>> | undefined
 

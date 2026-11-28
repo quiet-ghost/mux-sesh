@@ -9,7 +9,7 @@ import { useAppStartup, type StartupDependencies } from '../../src/app/state'
 import { useEffectRuntime } from '../../src/app/use-effect-runtime'
 import { getDefaultConfig } from '../../src/config'
 import type { MultiplexerBackend } from '../../src/multiplexer'
-import { initializeShutdown } from '../../src/util/shutdown'
+import { initializeShutdown } from '../../src/lifecycle/shutdown'
 
 // A render crash while startup still waits on its backend probe, as when Herdr is slow to answer
 // `herdr status`. Unmounting the crashed tree interrupts the probe; once that interruption has

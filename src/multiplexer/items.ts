@@ -1,6 +1,6 @@
 import type { Item } from '../types'
 import type { HerdrAgentTarget, LiveWorkspace, WorkspaceRef } from './types'
-import { getLiveSessionGroupLabel } from '../util/path-display'
+import { getLiveSessionGroupLabel } from '../items/session-groups'
 
 export interface LiveSessionItem extends Item {
   isSession: true

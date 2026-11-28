@@ -7,7 +7,7 @@ import { getWorkspaceRef, isLiveSessionItem } from '../multiplexer/items'
 import { getGitRoot, resolveProjectSession } from '../config/session-rules'
 import { isFileItem, resolveFileSession } from '../files/target'
 import { handoffOf } from '../multiplexer/focus-outcome'
-import { requestShutdown } from '../util/shutdown'
+import { requestShutdown } from '../lifecycle/shutdown'
 import { quoteShellArg } from '../util/shell'
 
 export function buildEditorCommand(editor: string, path: string): string {

@@ -7,7 +7,7 @@ import type { ThemeColors } from '../src/types'
 import { ErrorScreen } from '../src/ui/ErrorScreen'
 import { FailurePalette } from '../src/ui/failure-screen'
 import { StartupErrorScreen } from '../src/ui/StartupErrorScreen'
-import { DiagnosticReport } from '../src/util/errors'
+import { DiagnosticReport } from '../src/diagnostics/errors'
 import {
   cellAt,
   expectBorderCell,

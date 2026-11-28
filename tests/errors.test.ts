@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test'
-import { DiagnosticReport, MAX_DIAGNOSTIC_LENGTH, MAX_ISSUE_URL_LENGTH } from '../src/util/errors'
+import {
+  DiagnosticReport,
+  MAX_DIAGNOSTIC_LENGTH,
+  MAX_ISSUE_URL_LENGTH,
+} from '../src/diagnostics/errors'
 
 const context = {
   muxSeshVersion: '1.2.3',

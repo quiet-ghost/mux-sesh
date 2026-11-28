@@ -1,6 +1,6 @@
 import type { Item, SortOrder } from '../types'
 import { isAgentSessionItem } from '../agents/session-name'
-import { getLiveSessionSortKey } from '../util/path-display'
+import { getLiveSessionSortKey } from './session-groups'
 
 export type SessionSection = 'pinned' | 'live' | 'configured'
 

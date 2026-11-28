@@ -18,8 +18,8 @@ import { BusyContext } from './ui/Spinner'
 import { ErrorScreen } from './ui/ErrorScreen'
 import { FailurePalette } from './ui/failure-screen'
 import { StartupErrorScreen } from './ui/StartupErrorScreen'
-import { requestFatalShutdown, requestShutdown } from './util/shutdown'
-import { DiagnosticReport } from './util/errors'
+import { requestFatalShutdown, requestShutdown } from './lifecycle/shutdown'
+import { DiagnosticReport } from './diagnostics/errors'
 
 interface ErrorBoundaryState {
   report: DiagnosticReport | null

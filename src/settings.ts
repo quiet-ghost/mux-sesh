@@ -5,7 +5,7 @@ import { PrefixKey } from './config/prefix-key'
 import { rankSettingsEntries, rankSettingsOptions } from './search/lists'
 import { BUILTIN_THEMES, DEFAULT_THEME_ID, SYSTEM_THEME_ID, getBuiltinTheme } from './styles/theme'
 import type { Config, KeybindMode, SortOrder, ThemeColorScheme, ZoxideMode } from './types'
-import { JsonSyntaxIssue } from './util/json-syntax'
+import { JsonSyntaxIssue } from './settings/json-syntax'
 import { toHomeRelativePath } from './util/path-display'
 
 export type SettingsFieldId =

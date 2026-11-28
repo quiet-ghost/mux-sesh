@@ -3,7 +3,7 @@ import { act } from 'react'
 import type { LiveWorkspace, MultiplexerBackend } from '../../src/multiplexer'
 import type { FocusOutcome } from '../../src/multiplexer/types'
 import { OPEN_HISTORY } from '../../src/search/frecency-store'
-import { initializeShutdown } from '../../src/util/shutdown'
+import { initializeShutdown } from '../../src/lifecycle/shutdown'
 import { renderSessionScreen } from './session-screen'
 
 // Usage: open-history-handoff.tsx <select|launch|off> <project dir> <history file>

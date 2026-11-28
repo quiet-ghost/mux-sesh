@@ -14,9 +14,9 @@ import {
 } from '../search/fff'
 import { OPEN_HISTORY } from '../search/frecency-store'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
-import { isGitHubURL } from '../util/github'
+import { isGitHubURL } from '../sessions/github-url'
 import { mark, measure } from '../util/perf'
-import { requestFatalShutdown } from '../util/shutdown'
+import { requestFatalShutdown } from '../lifecycle/shutdown'
 import { loadSessionCandidateItems } from './data'
 import type { ShowToast } from './notifications'
 

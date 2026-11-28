@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import type { MultiplexerBackend } from '../multiplexer/types'
 import { AppMode, ViewMode, type Config } from '../types'
-import { requestFatalShutdown } from '../util/shutdown'
+import { requestFatalShutdown } from '../lifecycle/shutdown'
 import type { SessionInventory } from './session-inventory'
 
 // Polls only ask the inventory owner to refresh; it coalesces them with any load in flight.

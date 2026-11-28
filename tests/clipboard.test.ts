@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { buildClipboardSequence, writeClipboard } from '../src/util/clipboard'
+import { buildClipboardSequence, writeClipboard } from '../src/diagnostics/clipboard'
 
 function terminal(isTTY: boolean, fail = false) {
   const written: string[] = []

@@ -1,7 +1,11 @@
 import { writeSync } from 'fs'
 import { testRender } from '@opentui/react/test-utils'
 import { act, useEffect } from 'react'
-import { initializeShutdown, requestFatalShutdown, requestShutdown } from '../../src/util/shutdown'
+import {
+  initializeShutdown,
+  requestFatalShutdown,
+  requestShutdown,
+} from '../../src/lifecycle/shutdown'
 
 // Usage: shutdown-teardown.tsx <renderer-step|terminal-write|fatal-terminal-write>. Injects one
 // teardown fault, then reports what was still restored on exit.

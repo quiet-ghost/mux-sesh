@@ -41,9 +41,9 @@ import {
 } from '../sessions/launch-plan'
 import { OpenKey } from '../search/frecency'
 import { OPEN_HISTORY, type OpenHistory } from '../search/frecency-store'
-import { gitHubRepositoryName } from '../util/github'
+import { gitHubRepositoryName } from '../sessions/github-url'
 import { toHomeRelativePath } from '../util/path-display'
-import { requestShutdown } from '../util/shutdown'
+import { requestShutdown } from '../lifecycle/shutdown'
 import {
   buildEditorCommand,
   getNextSessionName,

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { isGitHubURL, parseGitHubURL, sameGitHubRepository } from '../src/util/github'
+import { isGitHubURL, parseGitHubURL, sameGitHubRepository } from '../src/sessions/github-url'
 
 describe('github utilities', () => {
   test('rejects unsafe repository names', () => {

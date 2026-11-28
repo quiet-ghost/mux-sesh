@@ -1,6 +1,6 @@
 import { writeSync } from 'fs'
 import { testRender } from '@opentui/react/test-utils'
-import { initializeShutdown, requestFatalShutdown } from '../../src/util/shutdown'
+import { initializeShutdown, requestFatalShutdown } from '../../src/lifecycle/shutdown'
 
 // Records, in order, what a fatal shutdown on a terminal writes to stdout and stderr, then prints
 // the record as JSON on exit.

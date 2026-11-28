@@ -2,7 +2,7 @@ import { writeSync } from 'fs'
 import { testRender } from '@opentui/react/test-utils'
 import { act, useState } from 'react'
 import { AppRecoveryBoundary } from '../../src/app'
-import { initializeShutdown } from '../../src/util/shutdown'
+import { initializeShutdown } from '../../src/lifecycle/shutdown'
 
 // Usage: render-failure.tsx <repeat|error-view>. Both modes must end in a fatal shutdown.
 const mode = process.argv[2]

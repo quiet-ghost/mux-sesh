@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { JsonSyntaxIssue } from '../src/util/json-syntax'
+import { JsonSyntaxIssue } from '../src/settings/json-syntax'
 
 describe('JsonSyntaxIssue.find', () => {
   test.each([

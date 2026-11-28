@@ -1,7 +1,7 @@
 import { writeSync } from 'fs'
 import { testRender } from '@opentui/react/test-utils'
 import { act, useEffect } from 'react'
-import { initializeShutdown, requestShutdown } from '../../src/util/shutdown'
+import { initializeShutdown, requestShutdown } from '../../src/lifecycle/shutdown'
 
 const lifecycle: string[] = []
 

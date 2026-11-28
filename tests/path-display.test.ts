@@ -1,10 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  getLiveSessionGroupLabel,
-  getLiveSessionSortKey,
-  getPathContextLabel,
-  getPathGroupLabel,
-} from '../src/util/path-display'
+import { getLiveSessionGroupLabel, getLiveSessionSortKey } from '../src/items/session-groups'
+import { getPathContextLabel, getPathGroupLabel } from '../src/util/path-display'
 
 describe('path display helpers', () => {
   test('returns the parent directory name for grouping', () => {

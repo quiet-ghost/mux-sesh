@@ -5,7 +5,7 @@ import type { AppEffectRuntime } from './effect-runtime'
 import { resolveMultiplexerBackend, type MultiplexerBackend } from '../multiplexer'
 import { CommandInterrupted, type CommandRunner } from '../multiplexer/command'
 import { isBackendFailure } from '../multiplexer/failure'
-import { requestFatalShutdown } from '../util/shutdown'
+import { requestFatalShutdown } from '../lifecycle/shutdown'
 import { loadProjectSourceItems, type Measure } from './data'
 import type { SessionInventory } from './session-inventory'
 

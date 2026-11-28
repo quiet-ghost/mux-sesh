@@ -11,7 +11,7 @@ import type { MultiplexerBackend } from '../multiplexer'
 import { getItemKey } from '../multiplexer/items'
 import { ViewMode, type Config, type Item } from '../types'
 import { createPendingFlag, type PendingSignal } from '../util/pending'
-import { requestFatalShutdown } from '../util/shutdown'
+import { requestFatalShutdown } from '../lifecycle/shutdown'
 import {
   getAgentSelectionIndex,
   getProjectSelectionIndex,

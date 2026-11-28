@@ -1,10 +1,10 @@
 import type { ScrollBoxRenderable } from '@opentui/core'
 import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import { useRef, useState } from 'react'
-import { openBrowser } from '../util/browser'
-import { type ClipboardResult, writeClipboard } from '../util/clipboard'
-import type { DiagnosticReport } from '../util/errors'
-import { requestShutdown } from '../util/shutdown'
+import { openBrowser } from '../diagnostics/browser'
+import { type ClipboardResult, writeClipboard } from '../diagnostics/clipboard'
+import type { DiagnosticReport } from '../diagnostics/errors'
+import { requestShutdown } from '../lifecycle/shutdown'
 import {
   FailureScreen,
   FailureSection,

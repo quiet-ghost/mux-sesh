@@ -49,7 +49,7 @@
       {
         "ignoreVoid": false,
         "allowForKnownSafeCalls": [
-          { "from": "file", "name": "requestShutdown", "path": "src/util/shutdown.ts" }
+          { "from": "file", "name": "requestShutdown", "path": "src/lifecycle/shutdown.ts" }
         ]
       }
     ],

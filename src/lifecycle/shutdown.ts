@@ -1,7 +1,7 @@
 import type { CliRenderer } from '@opentui/core'
 import { flushSync } from '@opentui/react'
 import type { TerminalHandoff } from '../multiplexer/types'
-import { DiagnosticReport } from './errors'
+import { DiagnosticReport } from '../diagnostics/errors'
 import { runTeardownSteps, type TeardownStep } from './teardown'
 
 const TERMINAL_RESET_SEQUENCE = [

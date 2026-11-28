@@ -16,7 +16,7 @@ import {
   type ProjectPreview,
 } from '../preview/project'
 import type { Config, Item } from '../types'
-import { requestFatalShutdown } from '../util/shutdown'
+import { requestFatalShutdown } from '../lifecycle/shutdown'
 import { readEffect, type AppEffectRuntime } from './effect-runtime'
 
 // Routine navigation shows compact inventory context only. Detail, pane, and configured-preview

@@ -9,7 +9,7 @@ import { getDefaultConfig } from '@/config'
 import type { MultiplexerBackend, OpenWorkspaceInput } from '@/multiplexer'
 import type { CloneServices } from '@/sessions/clone-plan'
 import { previewLaunch } from '@/sessions/launch-plan'
-import { initializeShutdown } from '@/util/shutdown'
+import { initializeShutdown } from '@/lifecycle/shutdown'
 
 const invocationCwd = captureInvocationCwd()
 const created: OpenWorkspaceInput[] = []

@@ -22,7 +22,7 @@ import type {
 import type { FileStepSearch } from '../search/file-step'
 import { sanitizeTmuxSessionName } from '../tmux/helpers'
 import type { Config, Item } from '../types'
-import { isGitHubURL, parseGitHubURL, type GitHubURL } from '../util/github'
+import { isGitHubURL, parseGitHubURL, type GitHubURL } from './github-url'
 import {
   checkCloneDestination,
   cloneDestinationOf,

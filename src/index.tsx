@@ -3,7 +3,11 @@ import { createRoot } from '@opentui/react'
 import { App } from './app'
 import { captureInvocationCwd } from './cli/invocation-cwd'
 import { ignoreUnhandledThemeFollowSignal } from './styles/theme-follow'
-import { initializeFatalErrorHandling, initializeShutdown, requestShutdown } from './util/shutdown'
+import {
+  initializeFatalErrorHandling,
+  initializeShutdown,
+  requestShutdown,
+} from './lifecycle/shutdown'
 
 const invocationCwd = captureInvocationCwd()
 

@@ -1,5 +1,5 @@
 import { writeSync } from 'fs'
-import { initializeShutdown } from '../../src/util/shutdown'
+import { initializeShutdown } from '../../src/lifecycle/shutdown'
 import { renderSessionScreen } from './session-screen'
 import { listRow, selectedRowText } from './selection'
 

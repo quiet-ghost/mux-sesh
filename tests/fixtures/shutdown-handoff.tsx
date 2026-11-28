@@ -1,7 +1,7 @@
 import { writeSync } from 'fs'
 import { testRender } from '@opentui/react/test-utils'
 import { act, useEffect } from 'react'
-import { initializeShutdown, requestShutdown } from '../../src/util/shutdown'
+import { initializeShutdown, requestShutdown } from '../../src/lifecycle/shutdown'
 
 // Usage: shutdown-handoff.tsx <ok|fail|missing>. Records teardown → handoff → exit order on stdout.
 const mode = process.argv[2] ?? 'ok'

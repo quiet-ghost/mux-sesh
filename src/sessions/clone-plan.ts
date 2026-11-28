@@ -17,7 +17,7 @@ import {
   parseGitHubURL,
   sameGitHubRepository,
   type GitHubRepository,
-} from '../util/github'
+} from './github-url'
 import { toHomeRelativePath } from '../util/path-display'
 
 // Inspecting a checkout is quick; a clone may legitimately take minutes.

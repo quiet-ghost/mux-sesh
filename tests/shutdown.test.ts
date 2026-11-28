@@ -64,7 +64,7 @@ describe('shutdown', () => {
   }, 10000)
 
   test('exits immediately even when the event loop has active handles', async () => {
-    const shutdownModule = pathToFileURL(join(repoRoot, 'src/util/shutdown.ts')).href
+    const shutdownModule = pathToFileURL(join(repoRoot, 'src/lifecycle/shutdown.ts')).href
 
     const script = `
       import { requestShutdown } from ${JSON.stringify(shutdownModule)}
@@ -89,7 +89,7 @@ describe('shutdown', () => {
   })
 
   test('fatal rejection prints diagnostics and exits despite active handles', async () => {
-    const shutdownModule = pathToFileURL(join(repoRoot, 'src/util/shutdown.ts')).href
+    const shutdownModule = pathToFileURL(join(repoRoot, 'src/lifecycle/shutdown.ts')).href
 
     const script = `
       import { initializeFatalErrorHandling } from ${JSON.stringify(shutdownModule)}
@@ -119,7 +119,7 @@ describe('shutdown', () => {
   })
 
   test('fatal output sanitizes the report and never serializes hostile rejection values', async () => {
-    const shutdownModule = pathToFileURL(join(repoRoot, 'src/util/shutdown.ts')).href
+    const shutdownModule = pathToFileURL(join(repoRoot, 'src/lifecycle/shutdown.ts')).href
 
     const script = `
       import { requestFatalShutdown } from ${JSON.stringify(shutdownModule)}
@@ -162,7 +162,7 @@ describe('shutdown', () => {
   }, 10000)
 
   test('ignores duplicate fatal events', async () => {
-    const shutdownModule = pathToFileURL(join(repoRoot, 'src/util/shutdown.ts')).href
+    const shutdownModule = pathToFileURL(join(repoRoot, 'src/lifecycle/shutdown.ts')).href
 
     const script = `
       import { requestFatalShutdown } from ${JSON.stringify(shutdownModule)}

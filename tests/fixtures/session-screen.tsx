@@ -67,7 +67,7 @@ import {
   type SpinnerMotion,
 } from '../../src/ui/Spinner'
 import { anyPending, createPendingFlag } from '../../src/util/pending'
-import { shouldShowDetailPanel, useTerminalSize } from '../../src/util/terminal'
+import { shouldShowDetailPanel, useTerminalSize } from '../../src/ui/terminal-size'
 
 type BackendCall = { operation: 'list' } | { operation: 'details' | 'open'; id: string }
 

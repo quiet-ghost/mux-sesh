@@ -9,7 +9,7 @@ import {
   executeCheckout,
   type ClonePlan,
 } from '../src/sessions/clone-plan'
-import { parseGitHubURL, type GitHubRepository } from '../src/util/github'
+import { parseGitHubURL, type GitHubRepository } from '../src/sessions/github-url'
 import { createLocalGitHub, type LocalGitHub } from './fixtures/local-github'
 
 let github: LocalGitHub

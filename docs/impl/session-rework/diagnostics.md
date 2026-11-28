@@ -1,7 +1,7 @@
 # Diagnostic capture boundary
 
 DEV-308 replaces repeated raw-error formatting with `DiagnosticReport.capture` in
-`src/util/errors.ts`. The React error boundary and fatal handler capture once. The error screen,
+`src/diagnostics/errors.ts`. The React error boundary and fatal handler capture once. The error screen,
 clipboard action, browser action, and fatal output consume the frozen report's strings.
 
 ## Capture policy

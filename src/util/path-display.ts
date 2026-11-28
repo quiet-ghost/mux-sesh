@@ -24,7 +24,7 @@ export function fitPath(path: string, width: number): string {
   return truncateMiddle(toHomeRelativePath(path), width)
 }
 
-function getWorktreeProjectName(path: string): string | null {
+export function getWorktreeProjectName(path: string): string | null {
   if (!path) {
     return null
   }
@@ -84,26 +84,4 @@ export function getPathContextLabel(path: string): string {
   }
 
   return toHomeRelativePath(parentPath)
-}
-
-export function getLiveSessionGroupLabel(path: string): string {
-  const worktreeProject = getWorktreeProjectName(path)
-
-  if (worktreeProject) {
-    return `${worktreeProject} [worktree]`
-  }
-
-  return getPathGroupLabel(path)
-}
-
-export function getLiveSessionSortKey(path: string, title: string): string {
-  const worktreeProject = getWorktreeProjectName(path)
-
-  if (worktreeProject) {
-    return worktreeProject
-  }
-
-  const baseName = basename(path)
-
-  return baseName && baseName !== '.' && baseName !== '/' ? baseName : title
 }

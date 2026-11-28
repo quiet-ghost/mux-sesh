@@ -12,7 +12,7 @@ import {
   type SessionPlan,
 } from '../sessions/launch-plan'
 import type { Config, Item } from '../types'
-import { gitHubRepositoryName } from '../util/github'
+import { gitHubRepositoryName } from '../sessions/github-url'
 import { toHomeRelativePath } from '../util/path-display'
 
 export interface LaunchPreviewInput {
