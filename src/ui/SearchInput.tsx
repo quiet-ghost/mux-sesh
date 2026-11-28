@@ -3,6 +3,7 @@ import { useLayoutEffect } from 'react'
 import { reconcileTextareaValue } from '../app/textarea'
 import { useTheme } from '../styles/theme'
 import { AppMode } from '../types'
+import { textFieldColors } from './text-field-colors'
 
 const PROMPT = '›'
 
@@ -57,9 +58,7 @@ export default function SearchInput({
         ref={textareaRef}
         style={{ flexGrow: 1, flexShrink: 1, height: 1 }}
         placeholder={placeholder}
-        placeholderColor={theme.textMuted}
-        textColor={theme.text}
-        focusedTextColor={theme.text}
+        {...textFieldColors(theme)}
         initialValue={searchQuery}
         onContentChange={onContentChange}
         focused={focused}

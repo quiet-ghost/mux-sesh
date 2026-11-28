@@ -3,6 +3,7 @@ import { useTheme } from '../styles/theme'
 import { fitDialogLabelMatches, fitDialogRow } from './dialog-layout'
 import HighlightedText from './HighlightedText'
 import { rowForeground, SELECTED_MATCH_ATTRIBUTES } from './row-mark'
+import { textFieldColors } from './text-field-colors'
 
 interface DialogFilterProps {
   placeholder: string
@@ -64,9 +65,7 @@ export function DialogField({
         ref={textareaRef}
         style={{ flexGrow: 1, flexShrink: 1, height }}
         placeholder={placeholder}
-        placeholderColor={theme.textMuted}
-        textColor={theme.text}
-        focusedTextColor={theme.text}
+        {...textFieldColors(theme)}
         initialValue={initialValue}
         onContentChange={onContentChange}
         focused
