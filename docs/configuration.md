@@ -102,6 +102,15 @@ on load: a JSON mistake names its line, and a value the config rejects names its
 `[0].listed must be true or false`. The config stays unchanged until the text is valid; `esc`
 discards the draft and goes back to the list.
 
+Prefix key offers the presets and `Custom…`, which takes any key the prefix can use: `ctrl` or
+`shift` with a key (such as `ctrl+a`), or one symbol, `space`, `tab` or `f1`–`f12` alone. A
+letter or digit needs `ctrl`, since alone it would type into search. A configured key that is not
+a preset is listed as the current one.
+
+Icons opens a form that saves each change as it is made. Its Icons row turns icons on, filling
+`tmux`, `configured` and `project` with the Nerd Font glyphs shown below, or off, clearing every
+glyph. Each icon kind has its own row: `enter` edits the glyph in place and `ctrl+r` clears it.
+
 | Category   | Setting         | Option                                            |
 | ---------- | --------------- | ------------------------------------------------- |
 | Appearance | Theme           | `theme`                                           |

@@ -1,6 +1,8 @@
 import {
+  type IconsFormView,
   describeUnavailableAction,
   matchEditorAction,
+  matchIconsAction,
   matchListAction,
   matchJsonAction,
   matchOptionAction,
@@ -8,7 +10,7 @@ import {
   matchSettingsAction,
 } from './action-catalog'
 import type { OperationReport } from './action-outcome'
-import { leaveJsonEditor, type ModalState } from './modals'
+import { leaveJsonEditor, type IconsFormMode, type ModalState } from './modals'
 import { OptionPicker } from './option-picker'
 import type { ShowToast } from './notifications'
 import type { SettingPaneAction } from './setting-pane-actions'
@@ -20,6 +22,7 @@ import {
   type SettingsEntry,
   type SettingsOption,
 } from '../settings'
+import type { IconsFormAction, IconsFormEntry, IconsFormRow } from '../settings-icons'
 import type { CommandEntry } from '../ui/CommandsModal'
 import { clampCursorIndex } from '../ui/list-window'
 
@@ -44,6 +47,9 @@ interface ModalKeyboardContext {
   setSettingEditorError: (message: string) => void
   // Enter in the raw JSON editor: a new line at the cursor.
   insertSettingEditorNewline: () => void
+  setSettingEditorValue: (value: string) => void
+  iconsFormEntries: readonly IconsFormEntry[]
+  handleIconsChange: (action: IconsFormAction) => Promise<void>
   runAction: (task: () => Promise<void>) => void
   executeCommand: (id: CommandEntry['id']) => Promise<void>
   showToast: ShowToast
@@ -155,6 +161,75 @@ function paneAction(
   const id = matchRuleAction(view, key)
 
   return id === 'none' ? undefined : { pane: 'rule', id }
+}
+
+type IconsForm = Extract<ModalState, { type: 'icons-form' }>
+
+function iconsForm(form: IconsForm, change: { row?: IconsFormRow; mode?: IconsFormMode }) {
+  return { ...form, ...change }
+}
+
+// The form has no text field while browsing; a glyph is edited in a field on its own row.
+function handleIconsFormKey(
+  key: KeyboardInput,
+  ctx: ModalKeyboardContext,
+  form: IconsForm
+): boolean {
+  const entries = ctx.iconsFormEntries
+  const index = entries.findIndex(entry => entry.row === form.row)
+  const entry = entries[index]
+  const icon = entry && entry.row !== 'enabled' ? entry.row : undefined
+  const idle = form.mode.kind === 'browsing'
+
+  const view: IconsFormView =
+    form.mode.kind === 'editing' ? { mode: 'editing' } : { mode: 'browsing', entry }
+
+  switch (matchIconsAction(view, key)) {
+    case 'icons-move': {
+      const next = entries[clampCursorIndex(entries.length, index + cursorStep(key))]
+
+      if (next) ctx.setModalState(iconsForm(form, { row: next.row }))
+
+      return true
+    }
+
+    case 'icons-toggle':
+      if (idle) ctx.runAction(() => ctx.handleIconsChange({ kind: 'toggle' }))
+
+      return true
+    case 'icons-edit':
+      if (entry && entry.row !== 'enabled' && idle) {
+        ctx.setSettingEditorError('')
+        ctx.setSettingEditorValue(entry.glyph)
+        ctx.setModalState(iconsForm(form, { mode: { kind: 'editing', icon: entry.row } }))
+      }
+
+      return true
+    case 'icons-clear':
+      if (icon && idle) ctx.runAction(() => ctx.handleIconsChange({ kind: 'clear', icon }))
+
+      return true
+    case 'icons-apply':
+      if (form.mode.kind === 'editing') {
+        const editing = form.mode.icon
+
+        ctx.runAction(() => ctx.handleIconsChange({ kind: 'apply', icon: editing }))
+      }
+
+      return true
+    case 'icons-cancel':
+      ctx.setSettingEditorError('')
+      ctx.setModalState(iconsForm(form, { mode: { kind: 'browsing' } }))
+
+      return true
+    case 'icons-back':
+      ctx.setSettingEditorError('')
+      ctx.setModalState({ type: 'settings', picker: OptionPicker.browsing })
+
+      return true
+    case 'none':
+      return false
+  }
 }
 
 // Every modal is a focused text field, so only non-text keys act; letters stay in the field.
@@ -272,6 +347,12 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
       case 'option-apply': {
         const option = ctx.filteredSettingOptions[ctx.settingOptionsCursor]
 
+        if (option?.custom) {
+          ctx.openSettingEditor(field)
+
+          return true
+        }
+
         if (option && picker.kind !== 'saving') {
           ctx.runAction(() => ctx.handleSettingOptionSubmit(field, option.value))
         }
@@ -315,6 +396,10 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
       case 'none':
         return false
     }
+  }
+
+  if (ctx.modalState?.type === 'icons-form') {
+    return handleIconsFormKey(key, ctx, ctx.modalState)
   }
 
   // The draft is the text field itself; leaving drops it, and only ctrl+s saves.

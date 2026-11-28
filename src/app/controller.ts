@@ -123,13 +123,8 @@ export function useAppController(invocationCwd: string) {
   const configPath = getConfigPath()
   const homeDir = getHomeDir()
 
-  const { filteredSettingsEntries, filteredSettingOptions, savedSettingOption } = getSettingsState(
-    config,
-    modalState,
-    settingsSearchQuery,
-    settingOptionsSearchQuery,
-    homeDir
-  )
+  const { filteredSettingsEntries, filteredSettingOptions, savedSettingOption, iconsFormEntries } =
+    getSettingsState(config, modalState, settingsSearchQuery, settingOptionsSearchQuery, homeDir)
 
   const resolvedTheme = useLiveResolvedTheme({
     themeId:
@@ -317,6 +312,7 @@ export function useAppController(invocationCwd: string) {
     handleSettingOptionSubmit,
     handleSettingStep,
     handleSettingReset,
+    handleIconsChange,
     handleTogglePinnedSessionWrapper,
     executeCommand,
   } = createAppHandlers({
@@ -426,6 +422,9 @@ export function useAppController(invocationCwd: string) {
     setModalState,
     setSettingEditorError,
     settingEditorTextareaRef,
+    setSettingEditorValue,
+    iconsFormEntries,
+    handleIconsChange,
     executeCommand,
     handleSettingOptionSubmit,
     handleSettingsEditorSubmit,
@@ -566,6 +565,7 @@ export function useAppController(invocationCwd: string) {
       setSettingsSearchQuery,
       filteredSettingOptions,
       savedSettingOption,
+      iconsFormEntries,
       settingOptionsCursor,
       settingOptionsSearchQuery,
       setSettingOptionsCursor,

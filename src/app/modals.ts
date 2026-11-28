@@ -3,7 +3,13 @@ import type { OperationReport } from './action-outcome'
 import type { CleanupBatch, CloseReceipt } from '../sessions/cleanup-batch'
 import { OptionPicker } from './option-picker'
 import type { SettingListPane, SettingPane, SettingRulesPane } from './setting-panes'
-import { getSettingEditorValue, isJsonSetting, type SettingsFieldId } from '../settings'
+import {
+  getSettingEditorValue,
+  isFormSetting,
+  isJsonSetting,
+  type SettingsFieldId,
+} from '../settings'
+import type { IconKind, IconsFormRow } from '../settings-icons'
 import type { Config, Item } from '../types'
 
 export type ModalState =
@@ -21,6 +27,7 @@ export type ModalState =
   // `from` is the list or rule list pane whose "Edit as JSON…" row opened it; leaving goes back
   // there, or to Settings when it was opened from Settings.
   | { type: 'setting-json'; field: SettingsFieldId; from: JsonEditorOrigin }
+  | { type: 'icons-form'; row: IconsFormRow; mode: IconsFormMode }
   | { type: 'outcome'; report: OperationReport }
   | { type: 'close-batch-review'; batch: CleanupBatch }
   | { type: 'close-batch-results'; receipt: CloseReceipt }
@@ -38,6 +45,12 @@ export function leaveJsonEditor(current: ModalState): ModalState {
 
   return { type: 'settings', picker: OptionPicker.browsing }
 }
+
+// A glyph saves when it is applied; while a save runs, no other change starts.
+export type IconsFormMode =
+  | { readonly kind: 'browsing' }
+  | { readonly kind: 'editing'; readonly icon: IconKind }
+  | { readonly kind: 'saving' }
 
 interface ModalSetters {
   setModalState: Dispatch<SetStateAction<ModalState>>
@@ -108,8 +121,8 @@ export function openSettingOptions(
   }))
 }
 
-// The one way into a setting's editor: lists and rules open the raw JSON view, other settings a
-// one-line field. List editors' "Edit as JSON…" rows open it here too.
+// The one way into a setting's editor: lists and rules open the raw JSON view, Icons its form, and
+// other settings a one-line field. List editors' "Edit as JSON…" rows open it here too.
 export function openSettingEditor(
   config: Config | null,
   field: SettingsFieldId,
@@ -122,6 +135,13 @@ export function openSettingEditor(
   }
 
   setSettingEditorError('')
+
+  if (isFormSetting(field)) {
+    setModalState({ type: 'icons-form', row: 'enabled', mode: { kind: 'browsing' } })
+
+    return
+  }
+
   setSettingEditorValue(getSettingEditorValue(config, field))
 
   if (isJsonSetting(field)) {

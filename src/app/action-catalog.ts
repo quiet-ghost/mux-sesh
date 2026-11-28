@@ -604,6 +604,16 @@ export type EditorActionId = 'editor-apply' | 'editor-back'
 // The raw JSON editor: Enter belongs to the text, so saving takes ctrl+s.
 export type JsonActionId = 'json-save' | 'json-newline' | 'json-back'
 
+// The Icons form has no text field until a glyph is edited in place.
+export type IconsActionId =
+  | 'icons-move'
+  | 'icons-toggle'
+  | 'icons-edit'
+  | 'icons-clear'
+  | 'icons-back'
+  | 'icons-apply'
+  | 'icons-cancel'
+
 // A list or rule list pane: no text field has focus, so single letters act.
 export type ListActionId =
   | 'list-move'
@@ -632,6 +642,7 @@ export type DialogActionId =
   | FieldActionId
   | RuleActionId
   | JsonActionId
+  | IconsActionId
 
 // The selected row of a list pane: an entry, the add row, or the "Edit as JSON…" row.
 export type ListRowKind = 'item' | 'add' | 'json'
@@ -645,6 +656,14 @@ export interface RuleRowControl {
   readonly reset: 'available' | 'none'
 }
 
+// The selected Icons form row, or the glyph being edited in place.
+export type IconsFormView =
+  | {
+      readonly mode: 'browsing'
+      readonly entry: Pick<SettingsEntry, 'control' | 'reset'> | undefined
+    }
+  | { readonly mode: 'editing' }
+
 // The dialog on screen, with what the selected Settings row offers.
 export type DialogView =
   | {
@@ -657,6 +676,7 @@ export type DialogView =
   | { kind: 'setting-list'; row: ListRowKind; step: ListStepKind; keybindMode: KeybindMode }
   | { kind: 'setting-rule'; row: RuleRowControl | undefined; step: 'browsing' | 'editing' }
   | { kind: 'setting-json' }
+  | ({ kind: 'icons-form' } & IconsFormView)
 
 export interface DialogKey {
   readonly name: string
@@ -746,6 +766,13 @@ export const DIALOG_ACTIONS = {
   'json-save': { label: 'save', keys: [CTRL_S], footer: true },
   'json-newline': { label: 'new line', keys: [ENTER], footer: true },
   'json-back': { label: 'back', keys: [ESC], footer: true },
+  'icons-move': { label: 'navigate', keys: [UP, DOWN], footer: false },
+  'icons-toggle': { label: 'change', keys: [LEFT, RIGHT, ENTER], footer: true },
+  'icons-edit': { label: 'edit', keys: [ENTER], footer: true },
+  'icons-clear': { label: 'clear', keys: [CTRL_R], footer: true },
+  'icons-back': { label: 'back', keys: [ESC], footer: true },
+  'icons-apply': { label: 'apply', keys: [ENTER], footer: true },
+  'icons-cancel': { label: 'cancel', keys: [ESC], footer: true },
 } as const satisfies Record<DialogActionId, DialogAction>
 
 // In footer order. A Settings row offers ←/→ only where they change it, Enter only where it opens
@@ -831,6 +858,30 @@ function ruleActions(
 
 const JSON_ACTIONS: readonly JsonActionId[] = ['json-save', 'json-newline', 'json-back']
 
+// The on/off row switches; a glyph row edits, and offers clear once a glyph is set.
+function iconsActions(view: IconsFormView): IconsActionId[] {
+  if (view.mode === 'editing') return ['icons-apply', 'icons-cancel']
+
+  const row: IconsActionId[] = []
+
+  switch (view.entry?.control) {
+    case 'toggle':
+      row.push('icons-toggle')
+      break
+    case 'open':
+      row.push('icons-edit')
+      break
+    case 'cycle':
+    case 'step':
+    case undefined:
+      break
+  }
+
+  if (view.entry?.reset === 'available') row.push('icons-clear')
+
+  return ['icons-move', ...row, 'icons-back']
+}
+
 export function getDialogActions(view: DialogView): readonly DialogActionId[] {
   switch (view.kind) {
     case 'settings':
@@ -845,6 +896,8 @@ export function getDialogActions(view: DialogView): readonly DialogActionId[] {
       return ruleActions(view.row, view.step)
     case 'setting-json':
       return JSON_ACTIONS
+    case 'icons-form':
+      return iconsActions(view)
   }
 }
 
@@ -922,4 +975,11 @@ export function matchRuleAction(
 
 export function matchJsonAction(input: DialogKeyInput): JsonActionId | 'none' {
   return firstMatch(JSON_ACTIONS, input)
+}
+
+export function matchIconsAction(
+  view: IconsFormView,
+  input: DialogKeyInput
+): IconsActionId | 'none' {
+  return firstMatch(iconsActions(view), input)
 }

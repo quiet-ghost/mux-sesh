@@ -30,6 +30,7 @@ import {
   type KeyboardInput,
 } from '../src/handlers/keyboard'
 import type { SettingsControl, SettingsEntry, SettingsReset } from '../src/settings'
+import type { IconsFormAction, IconsFormEntry } from '../src/settings-icons'
 import { AppMode, ViewMode, type Item, type KeybindMode } from '../src/types'
 import {
   ACTION_IDS,
@@ -382,6 +383,33 @@ const RULE_ROWS: readonly (RuleRowControl | undefined)[] = [
   { control: 'toggle', reset: 'available' },
 ]
 
+const ICONS_ROWS: readonly Pick<IconsFormEntry, 'row' | 'reset'>[] = [
+  { row: 'enabled', reset: 'default' },
+  { row: 'enabled', reset: 'unavailable' },
+  { row: 'herdr', reset: 'default' },
+  { row: 'herdr', reset: 'available' },
+]
+
+function iconsEntry({ row, reset }: Pick<IconsFormEntry, 'row' | 'reset'>): IconsFormEntry {
+  const shared = { title: 'Fixture icon', value: 'value', description: 'An icon for key checks' }
+
+  return row === 'enabled'
+    ? { ...shared, row, control: 'toggle', reset }
+    : { ...shared, row, glyph: 'H', control: 'open', reset }
+}
+
+// The Icons form rows the keyboard sees for each case.
+function iconsFormEntries(dialog: DialogCase): IconsFormEntry[] {
+  if (dialog.view.kind !== 'icons-form') return []
+
+  if (dialog.view.mode === 'editing') return [iconsEntry({ row: 'herdr', reset: 'default' })]
+
+  const { entry } = dialog.view
+  const row = dialog.modalState?.type === 'icons-form' ? dialog.modalState.row : 'enabled'
+
+  return entry ? [iconsEntry({ row, reset: entry.reset })] : []
+}
+
 const DIALOG_CASES: readonly DialogCase[] = [
   ...SETTINGS_CONTROLS.flatMap(control =>
     SETTINGS_RESETS.flatMap(reset =>
@@ -451,20 +479,56 @@ const DIALOG_CASES: readonly DialogCase[] = [
     entry: undefined,
     focus: 'field',
   },
+  ...ICONS_ROWS.map(row => {
+    const entry = iconsEntry(row)
+
+    return {
+      name: `Icons form ${row.row} ${row.reset}`,
+      view: { kind: 'icons-form', mode: 'browsing', entry },
+      modalState: { type: 'icons-form', row: row.row, mode: { kind: 'browsing' } },
+      entry: undefined,
+      focus: 'none',
+    } satisfies DialogCase
+  }),
+  {
+    name: 'Icons form editing a glyph',
+    view: { kind: 'icons-form', mode: 'editing' },
+    modalState: { type: 'icons-form', row: 'herdr', mode: { kind: 'editing', icon: 'herdr' } },
+    entry: undefined,
+    focus: 'field',
+  },
 ]
 
-// Where leaving each dialog goes, as the action that left it.
-function backAction(view: DialogView): DialogActionId {
-  switch (view.kind) {
+// The action a dialog ran, from the dialog state it moved to.
+function modalStateAction(dialog: DialogCase, next: ModalState): DialogActionId {
+  switch (dialog.view.kind) {
     case 'setting-editor':
       return 'editor-back'
     case 'setting-json':
       return 'json-back'
+    case 'icons-form':
+      if (next?.type !== 'icons-form') return 'icons-back'
+
+      if (dialog.view.mode === 'editing') return 'icons-cancel'
+
+      return next.mode.kind === 'editing' ? 'icons-edit' : 'icons-move'
     case 'settings':
     case 'setting-options':
     case 'setting-list':
     case 'setting-rule':
       return 'option-back'
+  }
+}
+
+// What a form change asked for, as the action that asked.
+function iconsAction(action: IconsFormAction): DialogActionId {
+  switch (action.kind) {
+    case 'toggle':
+      return 'icons-toggle'
+    case 'apply':
+      return 'icons-apply'
+    case 'clear':
+      return 'icons-clear'
   }
 }
 
@@ -508,9 +572,16 @@ function pressDialog(dialog: DialogCase, input: DialogPress['input']): DialogOut
     openSettingOptions: record('settings-open'),
     openSettingEditor: record('settings-open'),
     isOptionSetting: field => field === 'sortOrder',
-    setModalState: record(backAction(dialog.view)),
+    setModalState: next => {
+      actions.push(modalStateAction(dialog, next))
+    },
     setSettingEditorError: () => {},
     insertSettingEditorNewline: record('json-newline'),
+    setSettingEditorValue: () => {},
+    iconsFormEntries: iconsFormEntries(dialog),
+    handleIconsChange: async action => {
+      actions.push(iconsAction(action))
+    },
     runAction: task => {
       task().catch(cause => {
         throw cause

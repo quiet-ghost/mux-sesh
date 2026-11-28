@@ -24,6 +24,7 @@ import { resolvePrefixKey } from '../config'
 import type { SettingCollection, SettingsEntry, SettingsFieldId, SettingsOption } from '../settings'
 import type { SettingPaneAction } from './setting-pane-actions'
 import type { SettingPaneView } from './setting-panes'
+import type { IconsFormAction, IconsFormEntry } from '../settings-icons'
 import type { Config, Item } from '../types'
 import type { CommandEntry } from '../ui/CommandsModal'
 import { getActionTargetItem, type ActionContext } from './action-catalog'
@@ -62,6 +63,9 @@ interface UseAppKeyboardOptions {
   setModalState: Dispatch<SetStateAction<ModalState>>
   setSettingEditorError: Dispatch<SetStateAction<string>>
   settingEditorTextareaRef: MutableRefObject<TextareaRenderable | null>
+  setSettingEditorValue: Dispatch<SetStateAction<string>>
+  iconsFormEntries: IconsFormEntry[]
+  handleIconsChange: (action: IconsFormAction) => Promise<void>
   executeCommand: (id: CommandEntry['id']) => Promise<void>
   handleSettingOptionSubmit: (field: SettingsFieldId, value: string) => Promise<void>
   handleSettingsEditorSubmit: (field: SettingsFieldId) => Promise<void>
@@ -245,6 +249,9 @@ function handleKey(
       setModalState: options.setModalState,
       setSettingEditorError: options.setSettingEditorError,
       insertSettingEditorNewline: () => options.settingEditorTextareaRef.current?.newLine(),
+      setSettingEditorValue: options.setSettingEditorValue,
+      iconsFormEntries: options.iconsFormEntries,
+      handleIconsChange: options.handleIconsChange,
       runAction: owner.run,
       executeCommand: options.executeCommand,
       showToast: options.showToast,

@@ -1,6 +1,7 @@
 import * as Schema from 'effect/Schema'
 import { getDefaultConfig, normalizeConfig, serializeConfig } from './config'
 import { checkConfigDocument, type ConfigIssue } from './config/config-document'
+import { PrefixKey } from './config/prefix-key'
 import { rankSettingsEntries, rankSettingsOptions } from './search/lists'
 import { BUILTIN_THEMES, DEFAULT_THEME_ID, SYSTEM_THEME_ID, getBuiltinTheme } from './styles/theme'
 import type { Config, KeybindMode, SortOrder, ThemeColorScheme, ZoxideMode } from './types'
@@ -61,6 +62,8 @@ export interface SettingsOption {
   value: string
   label: string
   description?: string
+  // "Custom…": Enter opens a text entry for any value instead of saving this option.
+  custom?: true
 }
 
 interface SettingInfo {
@@ -86,6 +89,18 @@ interface PickerSetting extends SettingInfo {
   options: (config: Config) => SettingsOption[]
   read: (config: Config) => string
   apply: (config: Config, value: string) => Config
+  // Typed through the picker's "Custom…" option.
+  custom?: CustomEntry
+}
+
+type CustomParse =
+  | { readonly kind: 'parsed'; readonly value: string }
+  | { readonly kind: 'invalid'; readonly reason: string }
+
+interface CustomEntry {
+  // The text entry's description line.
+  description: string
+  parse: (text: string) => CustomParse
 }
 
 interface NumberSetting extends SettingInfo {
@@ -116,6 +131,13 @@ interface JsonSetting extends SettingInfo {
   patch: (value: Schema.Json) => SerializedConfigPatch
 }
 
+// A group of related values with its own form; Enter opens it.
+interface FormSetting extends SettingInfo {
+  kind: 'form'
+  read: (config: Config) => Partial<NonNullable<Config['icons']>>
+  summary: (config: Config) => string
+}
+
 export type ListSettingId = 'projectPaths' | 'hiddenSessions' | 'pinnedSessions'
 
 export type RulesSettingId = 'projects' | 'wildcards'
@@ -140,6 +162,7 @@ type SettingDefinition =
   | JsonSetting
   | ListSetting
   | RulesSetting
+  | FormSetting
 
 // The editor a list or rules setting opens instead of the JSON editor.
 export type SettingCollection =
@@ -159,23 +182,54 @@ interface SerializedConfigPatch {
   project_paths?: unknown
   hidden_sessions?: unknown
   pinned_sessions?: unknown
-  icons?: unknown
   projects?: unknown
   wildcards?: unknown
 }
 
 type JsonDocumentKey =
-  'project_paths' | 'hidden_sessions' | 'pinned_sessions' | 'icons' | 'projects' | 'wildcards'
+  'project_paths' | 'hidden_sessions' | 'pinned_sessions' | 'projects' | 'wildcards'
 
-type JsonSettingValue =
-  | NonNullable<
-      Config['projectPaths' | 'hiddenSessions' | 'pinnedSessions' | 'projects' | 'wildcards']
-    >
-  | Partial<NonNullable<Config['icons']>>
+type JsonSettingValue = NonNullable<
+  Config['projectPaths' | 'hiddenSessions' | 'pinnedSessions' | 'projects' | 'wildcards']
+>
 
 const COLOR_SCHEME_OPTIONS: ThemeColorScheme[] = ['system', 'dark', 'light']
 const KEYBIND_OPTIONS: KeybindMode[] = ['vim', 'standard']
-const PREFIX_OPTIONS = ['ctrl+x', 'ctrl+space', 'space', ',', ';'] as const
+const PREFIX_OPTIONS: readonly string[] = ['ctrl+x', 'ctrl+space', 'space', ',', ';']
+
+const CUSTOM_PREFIX_OPTION: SettingsOption = {
+  value: '',
+  label: 'Custom…',
+  description: 'Type any other key, such as ctrl+a',
+  custom: true,
+}
+
+function parsePrefixKey(text: string): CustomParse {
+  const parsed = PrefixKey.parse(text)
+
+  return parsed.kind === 'parsed' ? { kind: 'parsed', value: parsed.key } : parsed
+}
+
+// The presets, then a configured key that is not one of them, so it shows as current.
+function prefixOptions(config: Config): SettingsOption[] {
+  const presets = choiceOptions(PREFIX_OPTIONS, {
+    'ctrl+x': 'Default OpenCode-style prefix',
+    'ctrl+space': 'Control-space prefix',
+    space: 'Spacebar prefix',
+    ',': 'Comma prefix',
+    ';': 'Semicolon prefix',
+  })
+
+  const configured = config.prefixKey
+
+  const custom =
+    configured && !PREFIX_OPTIONS.includes(configured)
+      ? [{ value: configured, label: configured, description: 'Your custom prefix' }]
+      : []
+
+  return [...presets, ...custom, CUSTOM_PREFIX_OPTION]
+}
+
 const ZOXIDE_OPTIONS: ZoxideMode[] = ['off', 'rank', 'merge']
 const BACKEND_OPTIONS = ['auto', 'tmux', 'herdr'] as const
 
@@ -305,15 +359,13 @@ const SETTINGS = {
   },
   icons: {
     id: 'icons',
-    kind: 'json',
-    key: 'icons',
+    kind: 'form',
     title: 'Icons',
     category: 'Appearance',
     description: 'Glyphs before row titles and section headers',
     keywords: ['glyphs', 'nerd', 'font'],
     read: config => config.icons ?? {},
     summary: config => (Object.values(config.icons ?? {}).some(Boolean) ? 'on' : 'off'),
-    patch: icons => ({ icons }),
   },
   keybindMode: {
     id: 'keybindMode',
@@ -341,16 +393,14 @@ const SETTINGS = {
     category: 'Keys',
     description: 'Starts secondary actions, such as ctrl+x r to rename',
     keywords: ['leader', 'shortcut'],
-    options: () =>
-      choiceOptions(PREFIX_OPTIONS, {
-        'ctrl+x': 'Default OpenCode-style prefix',
-        'ctrl+space': 'Control-space prefix',
-        space: 'Spacebar prefix',
-        ',': 'Comma prefix',
-        ';': 'Semicolon prefix',
-      }),
+    options: prefixOptions,
     read: config => config.prefixKey ?? 'ctrl+x',
     apply: (config, prefixKey) => ({ ...config, prefixKey }),
+    custom: {
+      description:
+        'Hold ctrl or shift and a key, such as ctrl+a; or a symbol, space, tab or f1–f12',
+      parse: parsePrefixKey,
+    },
   },
   sortOrder: {
     id: 'sortOrder',
@@ -611,6 +661,7 @@ export function getSettingCollection(field: SettingsFieldId): SettingCollection 
     case 'number':
     case 'text':
     case 'json':
+    case 'form':
       return undefined
   }
 }
@@ -631,6 +682,7 @@ function displayValue(setting: SettingDefinition, config: Config): string {
     case 'json':
     case 'list':
     case 'rules':
+    case 'form':
       return setting.summary(config)
   }
 }
@@ -647,6 +699,7 @@ function storedValue(setting: SettingDefinition, config: Config): string {
     case 'json':
     case 'list':
     case 'rules':
+    case 'form':
       return JSON.stringify(setting.read(config))
   }
 }
@@ -662,6 +715,7 @@ function controlOf(setting: SettingDefinition, config: Config): SettingsControl 
     case 'json':
     case 'list':
     case 'rules':
+    case 'form':
       return 'open'
   }
 }
@@ -669,7 +723,7 @@ function controlOf(setting: SettingDefinition, config: Config): SettingsControl 
 function resetOf(setting: SettingDefinition, config: Config, defaults: Config): SettingsReset {
   if (storedValue(setting, config) === storedValue(setting, defaults)) return 'default'
 
-  return isJsonEdited(setting) ? 'unavailable' : 'available'
+  return isJsonEdited(setting) || setting.kind === 'form' ? 'unavailable' : 'available'
 }
 
 export function getSettingsEntries(config: Config, homeDir: string): SettingsEntry[] {
@@ -697,11 +751,23 @@ export function getSettingEditorValue(config: Config, field: SettingsFieldId): s
     case 'list':
     case 'rules':
       return formatJSON(config, setting.key, setting.read(config))
-    case 'choice':
     case 'picker':
+      return setting.custom ? setting.read(config) : ''
+    case 'choice':
     case 'number':
+    case 'form':
       return ''
   }
+}
+
+const EDITOR_DESCRIPTION = 'Edit value and press Enter to apply immediately'
+
+export function getSettingEditorDescription(field: SettingsFieldId): string {
+  const setting = getSetting(field)
+
+  return setting.kind === 'picker' && setting.custom
+    ? setting.custom.description
+    : EDITOR_DESCRIPTION
 }
 
 export function getSettingOptions(config: Config, field: SettingsFieldId): SettingsOption[] {
@@ -714,7 +780,9 @@ export function getSettingOptions(config: Config, field: SettingsFieldId): Setti
 export function getSettingValue(config: Config, field: SettingsFieldId): string {
   const setting = getSetting(field)
 
-  return isJsonEdited(setting) ? setting.summary(config) : storedValue(setting, config)
+  return isJsonEdited(setting) || setting.kind === 'form'
+    ? setting.summary(config)
+    : storedValue(setting, config)
 }
 
 // The value as the Settings row shows it.
@@ -760,6 +828,7 @@ function editorPatch(
     case 'choice':
     case 'picker':
     case 'number':
+    case 'form':
       return undefined
   }
 }
@@ -827,6 +896,15 @@ export function editSetting(
   homeDir: string
 ): SettingEdit {
   const setting = getSetting(field)
+
+  if (setting.kind === 'picker' && setting.custom) {
+    const parsed = setting.custom.parse(value)
+
+    return parsed.kind === 'parsed'
+      ? { kind: 'parsed', config: setting.apply(config, parsed.value) }
+      : { kind: 'invalid', message: parsed.reason }
+  }
+
   const invalid = isJsonEdited(setting) ? checkJsonSetting(setting, value) : undefined
 
   if (invalid) return { kind: 'invalid', message: invalid }
@@ -838,6 +916,11 @@ export function editSetting(
 // one-line field.
 export function isJsonSetting(field: SettingsFieldId): boolean {
   return isJsonEdited(getSetting(field))
+}
+
+// Icons open their own form.
+export function isFormSetting(field: SettingsFieldId): boolean {
+  return getSetting(field).kind === 'form'
 }
 
 // The value one step away: a number stops at its limits, choices wrap around. Undefined when the
@@ -874,6 +957,7 @@ export function stepSetting(
     case 'json':
     case 'list':
     case 'rules':
+    case 'form':
       return undefined
   }
 }
@@ -901,6 +985,7 @@ export function resetSetting(
     case 'json':
     case 'list':
     case 'rules':
+    case 'form':
       return undefined
   }
 }

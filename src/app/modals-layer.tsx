@@ -1,6 +1,11 @@
 import type { TextareaRenderable } from '@opentui/core'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
-import type { SettingsEntry, SettingsOption, SettingsFieldId } from '../settings'
+import {
+  getSettingEditorDescription,
+  type SettingsEntry,
+  type SettingsOption,
+  type SettingsFieldId,
+} from '../settings'
 import type { CommandEntry } from '../ui/CommandsModal'
 import type { ModalState } from './modals'
 import type { SettingPaneState } from './setting-panes'
@@ -13,6 +18,8 @@ import RenameModal from '../ui/RenameModal'
 import SettingEditorModal from '../ui/SettingEditorModal'
 import SettingPaneModal from '../ui/SettingPaneModal'
 import SettingJsonModal from '../ui/SettingJsonModal'
+import IconsFormModal from '../ui/IconsFormModal'
+import type { IconsFormEntry } from '../settings-icons'
 import SettingOptionsModal from '../ui/SettingOptionsModal'
 import SettingsModal from '../ui/SettingsModal'
 import { useItemSelection } from '../ui/use-item-selection'
@@ -34,6 +41,7 @@ interface Props {
   setSettingsSearchQuery: Dispatch<SetStateAction<string>>
   filteredSettingOptions: SettingsOption[]
   savedSettingOption: string | undefined
+  iconsFormEntries: IconsFormEntry[]
   settingOptionsCursor: number
   settingOptionsSearchQuery: string
   setSettingOptionsCursor: Dispatch<SetStateAction<number>>
@@ -80,6 +88,7 @@ export function AppModalsLayer({
   setSettingsSearchQuery,
   filteredSettingOptions,
   savedSettingOption,
+  iconsFormEntries,
   settingOptionsCursor,
   settingOptionsSearchQuery,
   setSettingOptionsCursor,
@@ -184,7 +193,7 @@ export function AppModalsLayer({
       {modalState?.type === 'setting-editor' && (
         <SettingEditorModal
           title={getSettingEditorTitle(modalState.field)}
-          description="Edit value and press Enter to apply immediately"
+          description={getSettingEditorDescription(modalState.field)}
           value={settingEditorValue}
           error={settingEditorError}
           columns={columns}
@@ -202,6 +211,19 @@ export function AppModalsLayer({
           draft={settingFieldDraft}
           textareaRef={settingFieldTextareaRef}
           onContentChange={() => syncTextareaValue(settingFieldTextareaRef, setSettingFieldDraft)}
+        />
+      )}
+
+      {modalState?.type === 'icons-form' && (
+        <IconsFormModal
+          entries={iconsFormEntries}
+          row={modalState.row}
+          mode={modalState.mode}
+          draft={settingEditorValue}
+          error={settingEditorError}
+          columns={columns}
+          textareaRef={settingEditorTextareaRef}
+          onContentChange={() => syncTextareaValue(settingEditorTextareaRef, setSettingEditorValue)}
         />
       )}
 

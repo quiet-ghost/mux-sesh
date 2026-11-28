@@ -9,6 +9,7 @@ import {
   type SettingsEntry,
   type SettingsOption,
 } from '../settings'
+import { IconsForm, type IconsFormEntry } from '../settings-icons'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
 import {
   getActionTarget,
@@ -36,6 +37,7 @@ interface SettingsState {
   filteredSettingsEntries: SettingsEntry[]
   filteredSettingOptions: SettingsOption[]
   savedSettingOption: string | undefined
+  iconsFormEntries: IconsFormEntry[]
 }
 
 export function getSessionCommandState(
@@ -110,5 +112,6 @@ export function getSettingsState(
     filteredSettingOptions: filterSettingsOptions(settingOptions, settingOptionsSearchQuery),
     savedSettingOption:
       config && currentOptionField ? getSettingValue(config, currentOptionField) : undefined,
+    iconsFormEntries: config && modalState?.type === 'icons-form' ? IconsForm.entries(config) : [],
   }
 }

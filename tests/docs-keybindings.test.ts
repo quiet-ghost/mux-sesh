@@ -152,6 +152,7 @@ const DIALOG_ROWS = [
   ['List field', 'field-'],
   ['Rule form', 'rule-'],
   ['Raw JSON', 'json-'],
+  ['Icons', 'icons-'],
 ] as const
 
 function dialogRowKeys(markdown: string, title: string): string[] {

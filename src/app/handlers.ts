@@ -6,7 +6,7 @@ import {
   type OperationReport,
   type OutcomePresenter,
 } from './action-outcome'
-import { leaveJsonEditor, type ModalState } from './modals'
+import { leaveJsonEditor, type IconsFormMode, type ModalState } from './modals'
 import type { ShowToast } from './notifications'
 import { persistConfigUpdate, runWithErrorToast } from './operations'
 import { OptionPicker } from './option-picker'
@@ -33,6 +33,7 @@ import {
   resetSetting,
   stepSetting,
 } from '../settings'
+import { IconsForm, type IconsChange, type IconsFormAction } from '../settings-icons'
 import {
   handleCloseBatch,
   handleRetryCloseBatch,
@@ -556,6 +557,67 @@ export async function handleSettingResetWithFeedback(
   await saveSettingsRowChange(field, nextConfig, 'reset', options, trackSave)
 }
 
+// A form change saves at once, one at a time. A glyph that fails to save goes back into its field
+// with the reason, so it can be retried or cancelled.
+export async function handleIconsChangeWithFeedback(
+  action: IconsFormAction,
+  options: SettingsHandlerOptions,
+  trackForm: (mode: IconsFormMode) => void
+): Promise<void> {
+  if (!options.config) return
+
+  const change: IconsChange =
+    action.kind === 'apply'
+      ? {
+          kind: 'set',
+          icon: action.icon,
+          glyph: options.settingEditorPlainText ?? options.settingEditorValue,
+        }
+      : action
+
+  const nextConfig = IconsForm.apply(options.config, change)
+  options.setSettingEditorError('')
+
+  if (!isSettingsChange(options.config, nextConfig)) {
+    trackForm({ kind: 'browsing' })
+
+    return
+  }
+
+  trackForm({ kind: 'saving' })
+
+  const outcome = await persistConfigUpdate(
+    nextConfig,
+    iconsChangeMessage(change, nextConfig),
+    options.saveConfig,
+    options.setConfig,
+    options.refreshItems
+  )
+
+  if (outcome.kind === 'failed') {
+    options.setSettingEditorError(outcome.message)
+    trackForm(
+      action.kind === 'apply' ? { kind: 'editing', icon: action.icon } : { kind: 'browsing' }
+    )
+
+    return
+  }
+
+  trackForm({ kind: 'browsing' })
+  ActionOutcome.present(outcome, options)
+}
+
+function iconsChangeMessage(change: IconsChange, config: Config): string {
+  switch (change.kind) {
+    case 'toggle':
+      return `Icons ${getSettingDisplayValue(config, 'icons')}`
+    case 'set':
+      return `${IconsForm.titleOf(change.icon)} icon updated`
+    case 'clear':
+      return `${IconsForm.titleOf(change.icon)} icon cleared`
+  }
+}
+
 export function getPinnedSessionsAfterToggle(config: Config, sessionName: string): string[] {
   const pinnedSessions = config.pinnedSessions ?? []
 
@@ -814,6 +876,28 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     )
   }
 
+  async function handleIconsChange(action: IconsFormAction) {
+    await handleIconsChangeWithFeedback(
+      action,
+      {
+        config: options.config,
+        saveConfig: options.saveConfig,
+        setConfig: options.setConfig,
+        setSettingEditorError: options.setSettingEditorError,
+        returnToSettings,
+        settingEditorValue: options.settingEditorValue,
+        settingEditorPlainText: options.settingEditorPlainText,
+        refreshItems: options.refreshItems,
+        showToast: options.showToast,
+        showOutcome: options.showOutcome,
+      },
+      mode =>
+        options.setModalState(current =>
+          current?.type === 'icons-form' ? { ...current, mode } : current
+        )
+    )
+  }
+
   async function handleTogglePinnedSessionWrapper(sessionName: string) {
     await handleTogglePinnedSessionWithFeedback(sessionName, {
       config: options.config,
@@ -876,6 +960,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     handleSettingOptionSubmit,
     handleSettingStep,
     handleSettingReset,
+    handleIconsChange,
     handleTogglePinnedSessionWrapper,
     executeCommand,
   }

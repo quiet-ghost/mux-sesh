@@ -5,7 +5,7 @@ import HighlightedText from './HighlightedText'
 import { rowForeground, SELECTED_MATCH_ATTRIBUTES } from './row-mark'
 
 interface Props {
-  entry: SettingsEntry
+  entry: Pick<SettingsEntry, 'title' | 'value' | 'control' | 'reset'>
   selected: boolean
   width: number
   // Search match positions into the title.
@@ -19,7 +19,7 @@ const CYCLE_CLOSE = ' ›'
 const OPENS = ' ↵'
 const LABEL_GAP = 2
 
-function valueCell(entry: SettingsEntry, selected: boolean, width: number): string {
+function valueCell(entry: Props['entry'], selected: boolean, width: number): string {
   if (entry.control === 'open') {
     const value = truncateDialogText(entry.value, width - OPENS.length)
 

@@ -483,6 +483,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     handleSettingReset: handlers.handleSettingReset,
     settingPaneView: settingPane.view,
     ...settingPaneActions,
+    handleIconsChange: handlers.handleIconsChange,
     handleRenameSubmit: unsupportedFixtureAction,
     newSession: getNewSessionStepControls(
       newSession,

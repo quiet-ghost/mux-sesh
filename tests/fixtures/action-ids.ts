@@ -63,6 +63,13 @@ export const DIALOG_ACTION_IDS = [
   'json-save',
   'json-newline',
   'json-back',
+  'icons-move',
+  'icons-toggle',
+  'icons-edit',
+  'icons-clear',
+  'icons-back',
+  'icons-apply',
+  'icons-cancel',
 ] as const satisfies readonly DialogActionId[]
 
 type UnlistedDialogActionId = Exclude<DialogActionId, (typeof DIALOG_ACTION_IDS)[number]>

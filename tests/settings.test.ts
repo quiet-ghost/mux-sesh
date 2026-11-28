@@ -233,7 +233,6 @@ describe('settings metadata', () => {
     expect(message('projects', '[{}, {}]')).toBe('[0].path is required (and 1 more)')
     expect(message('projects', '{}')).toBe('The value must be a list of project objects')
     expect(message('hiddenSessions', '["tmp-*", ""]')).toBe('[1] must be a non-empty string')
-    expect(message('icons', '{"tmux": 1}')).toBe('tmux must be text')
 
     const edit = editSetting(
       config,
