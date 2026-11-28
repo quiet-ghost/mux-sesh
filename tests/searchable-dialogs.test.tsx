@@ -97,7 +97,9 @@ async function pressDown(fixture: Screen, times: number): Promise<void> {
 
 const COMMAND_HINT = 'navigate ↑/↓  run enter  close esc'
 const THEME_HINT = 'navigate ↑/↓  apply enter  back esc'
-const SETTINGS_HINT = 'navigate ↑/↓  open enter  close esc'
+
+// Theme is selected, and the fixture's catppuccin is not the default theme.
+const SETTINGS_HINT = 'open enter  reset ctrl+r  close esc'
 
 describe('searchable dialog viewports', () => {
   test.each([

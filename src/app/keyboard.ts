@@ -62,6 +62,9 @@ interface UseAppKeyboardOptions {
   handleSettingOptionSubmit: (field: SettingsFieldId, value: string) => Promise<void>
   handleSettingsEditorSubmit: (field: SettingsFieldId) => Promise<void>
   handleSettingStep: (field: SettingsFieldId, direction: 1 | -1) => Promise<void>
+  handleSettingReset: (field: SettingsFieldId) => Promise<void>
+  settingsSearchQuery: string
+  setSettingsSearchQuery: Dispatch<SetStateAction<string>>
   handleRenameSubmit: () => Promise<void>
   newSession: NewSessionStepControls
   handleOutcomeRetry: (report: OperationReport) => Promise<void>
@@ -240,6 +243,9 @@ function handleKey(
       handleSettingOptionSubmit: options.handleSettingOptionSubmit,
       handleSettingsEditorSubmit: options.handleSettingsEditorSubmit,
       handleSettingStep: options.handleSettingStep,
+      handleSettingReset: options.handleSettingReset,
+      settingsSearchQuery: options.settingsSearchQuery,
+      setSettingsSearchQuery: options.setSettingsSearchQuery,
       handleRenameSubmit: options.handleRenameSubmit,
       handleOutcomeRetry: options.handleOutcomeRetry,
       confirmBatchClose: options.confirmBatchClose,

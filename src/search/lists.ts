@@ -17,10 +17,14 @@ const COMMAND_SCHEMA = createSearchSchema<CommandEntry>([
   { role: 'context', weight: 0.25, text: entry => entry.keybind },
 ])
 
+// Title ×1 and keywords ×0.7 are names, so `colors` finds Theme; the value, category and
+// description are context.
 const SETTINGS_ENTRY_SCHEMA = createSearchSchema<SettingsEntry>([
-  { role: 'name', weight: 1, text: entry => entry.label },
+  { role: 'name', weight: 1, text: entry => entry.title },
+  { role: 'name', weight: 0.7, text: entry => entry.keywords },
   { role: 'context', weight: 0.5, text: entry => entry.value },
-  { role: 'context', weight: 0.5, text: entry => entry.hint },
+  { role: 'context', weight: 0.4, text: entry => entry.category },
+  { role: 'context', weight: 0.25, text: entry => entry.description },
 ])
 
 const SETTINGS_OPTION_KEYS: readonly SearchKey<SettingsOption>[] = [

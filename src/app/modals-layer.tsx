@@ -20,8 +20,6 @@ interface Props {
   rows: number
   configPath: string
   themeId: string
-  themeName: string
-  colorMode: string
   filteredCommandEntries: CommandEntry[]
   commandsCursor: number
   commandsSearchQuery: string
@@ -65,8 +63,6 @@ export function AppModalsLayer({
   rows,
   configPath,
   themeId,
-  themeName,
-  colorMode,
   filteredCommandEntries,
   commandsCursor,
   commandsSearchQuery,
@@ -146,8 +142,6 @@ export function AppModalsLayer({
       {modalState?.type === 'settings' && (
         <SettingsModal
           configPath={configPath}
-          themeName={themeName}
-          colorMode={colorMode}
           columns={columns}
           rows={rows}
           entries={filteredSettingsEntries}

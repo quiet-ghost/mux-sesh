@@ -26,9 +26,10 @@ import {
   applyEditorSetting,
   applyOptionSetting,
   getSettingEditorTitle,
+  getSettingDisplayValue,
   getSettingEditorValue,
-  getSettingValue,
   isSettingsChange,
+  resetSetting,
   stepSetting,
 } from '../settings'
 import {
@@ -82,7 +83,8 @@ interface SettingsHandlerOptions {
   saveConfig: (config: Config) => Promise<void>
   setConfig: (config: Config) => void
   setSettingEditorError: (message: string) => void
-  openSettingsModal: () => void
+  // Back to Settings on the same row and filter.
+  returnToSettings: () => void
   settingEditorValue: string
   settingEditorPlainText?: string
   refreshItems: (forceViewMode?: ViewMode, nextConfig?: Config | null) => Promise<void>
@@ -436,7 +438,7 @@ export async function handleSettingsEditorSubmitWithFeedback(
   options.setSettingEditorError('')
 
   if (!isSettingsChange(savedConfig, nextConfig)) {
-    options.openSettingsModal()
+    options.returnToSettings()
 
     return
   }
@@ -457,7 +459,7 @@ export async function handleSettingsEditorSubmitWithFeedback(
 
   ActionOutcome.present(outcome, options)
 
-  if (outcome.kind === 'completed') options.openSettingsModal()
+  if (outcome.kind === 'completed') options.returnToSettings()
 }
 
 // The open picker keeps its draft until the save succeeds. A failure is also reported as a
@@ -495,6 +497,36 @@ export async function handleSettingOptionSubmitWithFeedback(
   ActionOutcome.present(outcome, options)
 }
 
+// A change made on the Settings list itself saves at once, one at a time; the row's value
+// changes only after the save succeeds.
+async function saveSettingsRowChange(
+  field: SettingsFieldId,
+  nextConfig: Config,
+  verb: 'updated' | 'reset',
+  options: SettingsHandlerOptions,
+  trackSave: (picker: OptionPicker) => void
+): Promise<void> {
+  const title = getSettingEditorTitle(field)
+  const value = getSettingDisplayValue(nextConfig, field)
+  const draft = { value, label: `${title} ${value}` }
+  trackSave(OptionPicker.saving(draft))
+
+  const outcome = await persistConfigUpdate(
+    nextConfig,
+    `${title} ${verb}`,
+    options.saveConfig,
+    options.setConfig,
+    options.refreshItems
+  )
+
+  trackSave(
+    outcome.kind === 'failed'
+      ? OptionPicker.saveFailed(draft, outcome.message)
+      : OptionPicker.browsing
+  )
+  ActionOutcome.present(outcome, options)
+}
+
 // ←/→ on a Settings row saves the next value at once; at a limit nothing is saved or said.
 export async function handleSettingStepWithFeedback(
   field: SettingsFieldId,
@@ -507,26 +539,21 @@ export async function handleSettingStepWithFeedback(
   const nextConfig = stepSetting(options.config, field, direction)
 
   if (!nextConfig) return
+  await saveSettingsRowChange(field, nextConfig, 'updated', options, trackSave)
+}
 
-  const title = getSettingEditorTitle(field)
-  const value = getSettingValue(nextConfig, field)
-  const draft = { value, label: `${title} ${value}` }
-  trackSave(OptionPicker.saving(draft))
+// ctrl+r puts the default back; a value that already is the default saves nothing.
+export async function handleSettingResetWithFeedback(
+  field: SettingsFieldId,
+  options: SettingsHandlerOptions,
+  trackSave: (picker: OptionPicker) => void = () => {}
+): Promise<void> {
+  if (!options.config) return
 
-  const outcome = await persistConfigUpdate(
-    nextConfig,
-    `${title} updated`,
-    options.saveConfig,
-    options.setConfig,
-    options.refreshItems
-  )
+  const nextConfig = resetSetting(options.config, field, process.env.HOME || '~')
 
-  trackSave(
-    outcome.kind === 'failed'
-      ? OptionPicker.saveFailed(draft, outcome.message)
-      : OptionPicker.browsing
-  )
-  ActionOutcome.present(outcome, options)
+  if (!nextConfig) return
+  await saveSettingsRowChange(field, nextConfig, 'reset', options, trackSave)
 }
 
 export function getPinnedSessionsAfterToggle(config: Config, sessionName: string): string[] {
@@ -707,13 +734,21 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     })
   }
 
+  function returnToSettings() {
+    options.setModalState({ type: 'settings', picker: OptionPicker.browsing })
+  }
+
+  function trackSettingsSave(picker: OptionPicker) {
+    options.setModalState(OptionPicker.withinSettings(picker))
+  }
+
   async function handleSettingsEditorSubmit(field: SettingsFieldId) {
     await handleSettingsEditorSubmitWithFeedback(field, {
       config: options.config,
       saveConfig: options.saveConfig,
       setConfig: options.setConfig,
       setSettingEditorError: options.setSettingEditorError,
-      openSettingsModal: options.openSettingsModal,
+      returnToSettings,
       settingEditorValue: options.settingEditorValue,
       settingEditorPlainText: options.settingEditorPlainText,
       refreshItems: options.refreshItems,
@@ -731,7 +766,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
         saveConfig: options.saveConfig,
         setConfig: options.setConfig,
         setSettingEditorError: options.setSettingEditorError,
-        openSettingsModal: options.openSettingsModal,
+        returnToSettings,
         settingEditorValue: options.settingEditorValue,
         refreshItems: options.refreshItems,
         showToast: options.showToast,
@@ -750,13 +785,31 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
         saveConfig: options.saveConfig,
         setConfig: options.setConfig,
         setSettingEditorError: options.setSettingEditorError,
-        openSettingsModal: options.openSettingsModal,
+        returnToSettings,
         settingEditorValue: options.settingEditorValue,
         refreshItems: options.refreshItems,
         showToast: options.showToast,
         showOutcome: options.showOutcome,
       },
-      picker => options.setModalState(OptionPicker.withinSettings(picker))
+      trackSettingsSave
+    )
+  }
+
+  async function handleSettingReset(field: SettingsFieldId) {
+    await handleSettingResetWithFeedback(
+      field,
+      {
+        config: options.config,
+        saveConfig: options.saveConfig,
+        setConfig: options.setConfig,
+        setSettingEditorError: options.setSettingEditorError,
+        returnToSettings,
+        settingEditorValue: options.settingEditorValue,
+        refreshItems: options.refreshItems,
+        showToast: options.showToast,
+        showOutcome: options.showOutcome,
+      },
+      trackSettingsSave
     )
   }
 
@@ -766,7 +819,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
       saveConfig: options.saveConfig,
       setConfig: options.setConfig,
       setSettingEditorError: options.setSettingEditorError,
-      openSettingsModal: options.openSettingsModal,
+      returnToSettings,
       settingEditorValue: options.settingEditorValue,
       refreshItems: options.refreshItems,
       showToast: options.showToast,
@@ -821,6 +874,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     handleSettingsEditorSubmit,
     handleSettingOptionSubmit,
     handleSettingStep,
+    handleSettingReset,
     handleTogglePinnedSessionWrapper,
     executeCommand,
   }

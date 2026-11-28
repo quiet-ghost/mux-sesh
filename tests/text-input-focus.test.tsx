@@ -18,7 +18,9 @@ afterEach(() => {
 })
 
 const MODES: KeybindMode[] = ['vim', 'standard']
-const SETTINGS_HINT = 'navigate ↑/↓  open enter  close esc'
+
+// While a query is typed, Esc clears it before it closes Settings.
+const SETTINGS_SEARCH_HINT = 'clear esc'
 
 function focusedTextarea(fixture: Screen): TextareaRenderable {
   const focused = fixture.renderer.currentFocusedRenderable
@@ -71,7 +73,7 @@ describe('text fields own printable keys', () => {
     await screen.typeText('jkeq')
 
     const settings = await screen.frame()
-    expect(settings).toContain(SETTINGS_HINT)
+    expect(settings).toContain(SETTINGS_SEARCH_HINT)
     expect(settings).toContain('No matches for "jkeq"')
     expect(filter.plainText).toBe('jkeq')
   })
@@ -128,8 +130,8 @@ describe('query resets reach the editor', () => {
     await screen.pressKey('ESCAPE')
 
     const settings = await screen.frame()
-    expect(settings).toContain(SETTINGS_HINT)
-    expect(settings).toMatch(/Theme\s+catppuccin/)
+    expect(settings).toContain(`open enter  reset ctrl+r  ${SETTINGS_SEARCH_HINT}`)
+    expect(settings).toMatch(/Theme\s+Catppuccin ↵/)
     expect(focusedTextarea(screen).plainText).toBe('Theme')
   })
 })
@@ -161,6 +163,8 @@ describe('modal focus lifecycle', () => {
       await openSettings(screen)
       await screen.replaceQuery('Theme')
       await screen.pressKey('RETURN')
+      await screen.pressKey('ESCAPE')
+      // The first Esc in Settings clears the query; the second closes it.
       await screen.pressKey('ESCAPE')
       await screen.pressKey('ESCAPE')
 
@@ -194,7 +198,7 @@ describe('modal focus lifecycle', () => {
     async keybindMode => {
       screen = await renderSessionScreen({ width: 120, height: 36 }, { keybindMode })
       await openSettings(screen)
-      await screen.replaceQuery('Startup Command')
+      await screen.replaceQuery('Startup command')
       await screen.pressKey('RETURN')
       const editor = focusedTextarea(screen)
       expect(await screen.frame()).toContain('Edit value and press Enter')
@@ -204,9 +208,9 @@ describe('modal focus lifecycle', () => {
       expect(await screen.frame()).toContain('Edit value and press Enter')
       await screen.pressKey('ESCAPE')
 
-      expect(await screen.frame()).toContain(SETTINGS_HINT)
+      expect(await screen.frame()).toContain(`open enter  ${SETTINGS_SEARCH_HINT}`)
       expect(editor.isDestroyed).toBe(true)
-      expect(focusedTextarea(screen).plainText).toBe('Startup Command')
+      expect(focusedTextarea(screen).plainText).toBe('Startup command')
     }
   )
 

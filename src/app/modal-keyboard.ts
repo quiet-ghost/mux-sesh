@@ -16,6 +16,8 @@ interface ModalKeyboardContext {
   filteredSettingsEntries: SettingsEntry[]
   settingsCursor: number
   setSettingsCursor: (cursor: (current: number) => number) => void
+  settingsSearchQuery: string
+  setSettingsSearchQuery: (query: string) => void
   filteredSettingOptions: SettingsOption[]
   settingOptionsCursor: number
   setSettingOptionsCursor: (cursor: (current: number) => number) => void
@@ -31,6 +33,7 @@ interface ModalKeyboardContext {
   handleSettingOptionSubmit: (field: SettingsEntry['id'], value: string) => Promise<void>
   handleSettingsEditorSubmit: (field: SettingsEntry['id']) => Promise<void>
   handleSettingStep: (field: SettingsEntry['id'], direction: 1 | -1) => Promise<void>
+  handleSettingReset: (field: SettingsEntry['id']) => Promise<void>
   handleRenameSubmit: () => Promise<void>
   handleOutcomeRetry: (report: OperationReport) => Promise<void>
   confirmBatchClose: (batch: CleanupBatch) => Promise<void>
@@ -39,16 +42,10 @@ interface ModalKeyboardContext {
 
 interface KeyboardInput {
   name?: string
+  ctrl?: boolean
 }
 
-function openSelectedSetting(ctx: ModalKeyboardContext) {
-  const entry = ctx.filteredSettingsEntries[ctx.settingsCursor]
-
-  // A stepper changes with ←/→ only; it has no editor to open.
-  if (!entry || entry.kind === 'number') {
-    return
-  }
-
+function openSetting(ctx: ModalKeyboardContext, entry: SettingsEntry) {
   if (ctx.isOptionSetting(entry.id)) {
     ctx.openSettingOptions(entry.id)
 
@@ -56,6 +53,54 @@ function openSelectedSetting(ctx: ModalKeyboardContext) {
   }
 
   ctx.openSettingEditor(entry.id)
+}
+
+// Settings saves one row change at a time, so the next change starts from the saved value.
+function changeSetting(
+  ctx: ModalKeyboardContext,
+  picker: OptionPicker,
+  change: () => Promise<void>
+) {
+  if (picker.kind !== 'saving') ctx.runAction(change)
+}
+
+// Settings keeps its filter focused: letters type, and ←/→ belong to the list, not the query.
+function handleSettingsKey(
+  key: KeyboardInput,
+  ctx: ModalKeyboardContext,
+  picker: OptionPicker
+): boolean {
+  const entry = ctx.filteredSettingsEntries[ctx.settingsCursor]
+
+  if (key.name === 'escape') {
+    if (ctx.settingsSearchQuery.length > 0) ctx.setSettingsSearchQuery('')
+    else ctx.closeModal()
+  } else if (key.name === 'down') {
+    ctx.setSettingsCursor(current =>
+      clampCursorIndex(ctx.filteredSettingsEntries.length, current + 1)
+    )
+  } else if (key.name === 'up') {
+    ctx.setSettingsCursor(current =>
+      clampCursorIndex(ctx.filteredSettingsEntries.length, current - 1)
+    )
+  } else if (key.name === 'left' || key.name === 'right') {
+    const direction = key.name === 'right' ? 1 : -1
+
+    if (entry && entry.control !== 'open') {
+      changeSetting(ctx, picker, () => ctx.handleSettingStep(entry.id, direction))
+    }
+  } else if (key.name === 'return') {
+    if (entry?.control === 'toggle')
+      changeSetting(ctx, picker, () => ctx.handleSettingStep(entry.id, 1))
+    else if (entry?.control === 'cycle' || entry?.control === 'open') openSetting(ctx, entry)
+  } else if (key.ctrl && key.name === 'r') {
+    if (entry?.reset === 'available')
+      changeSetting(ctx, picker, () => ctx.handleSettingReset(entry.id))
+  } else {
+    return false
+  }
+
+  return true
 }
 
 // Every modal is a focused text field, so only non-text keys act; letters stay in the field.
@@ -152,34 +197,7 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
   }
 
   if (ctx.modalState?.type === 'settings') {
-    if (key.name === 'escape') {
-      ctx.closeModal()
-    } else if (key.name === 'down') {
-      ctx.setSettingsCursor(current =>
-        clampCursorIndex(ctx.filteredSettingsEntries.length, current + 1)
-      )
-    } else if (key.name === 'up') {
-      ctx.setSettingsCursor(current =>
-        clampCursorIndex(ctx.filteredSettingsEntries.length, current - 1)
-      )
-    } else if (key.name === 'return') {
-      openSelectedSetting(ctx)
-    } else if (key.name === 'left' || key.name === 'right') {
-      const entry = ctx.filteredSettingsEntries[ctx.settingsCursor]
-
-      // Other rows leave ←/→ to the filter's text cursor.
-      if (entry?.kind !== 'number') return false
-
-      // One save at a time: the next step starts from the saved value.
-      if (ctx.modalState.picker.kind === 'saving') return true
-
-      const direction = key.name === 'right' ? 1 : -1
-      ctx.runAction(() => ctx.handleSettingStep(entry.id, direction))
-    } else {
-      return false
-    }
-
-    return true
+    return handleSettingsKey(key, ctx, ctx.modalState.picker)
   }
 
   if (ctx.modalState?.type === 'setting-options') {

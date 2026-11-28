@@ -200,10 +200,11 @@ const DIALOGS: readonly DialogCase[] = [
     },
     title: 'Settings',
     tone: 'text',
-    description: 'Search for a setting',
+    description: '/fixture/config.json',
+    // Theme is selected, and the fixture's theme is not the default one.
     hints: [
-      ['navigate', '↑/↓'],
       ['open', 'enter'],
+      ['reset', 'ctrl+r'],
       ['close', 'esc'],
     ],
   },
@@ -212,12 +213,12 @@ const DIALOGS: readonly DialogCase[] = [
     open: async size => {
       const fixture = await sessions(size)
       await runCommand(fixture, 'Open settings')
-      await fixture.replaceQuery('Startup Command')
+      await fixture.replaceQuery('Startup command')
       await fixture.pressKey('RETURN')
 
       return fixture
     },
-    title: 'Startup Command',
+    title: 'Startup command',
     tone: 'text',
     description: 'Edit value and press Enter',
     hints: [
@@ -482,10 +483,10 @@ describe('dialog contents', () => {
 
     await screen.pressKey('ESCAPE')
     await runCommand(screen, 'Open settings')
-    await screen.replaceQuery('Startup Command')
+    await screen.replaceQuery('Startup command')
     await screen.pressKey('RETURN')
 
-    const editor = await paneOf(screen, 'Startup Command')
+    const editor = await paneOf(screen, 'Startup command')
     expect(paneRowText(editor, editor.top + 2)).toMatch(/^ › nvim /)
   })
 })

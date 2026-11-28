@@ -288,7 +288,7 @@ function settingsOptions(
       setSettingEditorError: (message: string) => {
         editorErrors.push(message)
       },
-      openSettingsModal: () => {
+      returnToSettings: () => {
         opened.push('settings')
       },
       settingEditorValue: 'nvim',

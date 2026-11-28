@@ -182,7 +182,8 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     config,
     modal.modalState,
     modal.settingsSearchQuery,
-    modal.settingOptionsSearchQuery
+    modal.settingOptionsSearchQuery,
+    fixture.homeDir
   )
 
   const resolvedTheme = useLiveResolvedTheme(
@@ -445,6 +446,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     handleSettingOptionSubmit: handlers.handleSettingOptionSubmit,
     handleSettingsEditorSubmit: handlers.handleSettingsEditorSubmit,
     handleSettingStep: handlers.handleSettingStep,
+    handleSettingReset: handlers.handleSettingReset,
     handleRenameSubmit: unsupportedFixtureAction,
     newSession: getNewSessionStepControls(
       newSession,
@@ -491,8 +493,6 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
             {...dimensions}
             configPath="/fixture/config.json"
             themeId={resolvedTheme.id}
-            themeName={resolvedTheme.name}
-            colorMode={resolvedTheme.mode}
             getSettingEditorTitle={getSettingEditorTitle}
           />
         </BusyContext>

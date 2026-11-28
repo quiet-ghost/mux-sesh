@@ -1,37 +1,58 @@
 import * as Schema from 'effect/Schema'
-import { normalizeConfig, serializeConfig } from './config'
+import { getDefaultConfig, normalizeConfig, serializeConfig } from './config'
 import { rankSettingsEntries, rankSettingsOptions } from './search/lists'
 import { BUILTIN_THEMES, DEFAULT_THEME_ID, SYSTEM_THEME_ID, getBuiltinTheme } from './styles/theme'
 import type { Config, KeybindMode, SortOrder, ThemeColorScheme, ZoxideMode } from './types'
+import { toHomeRelativePath } from './util/path-display'
 
 export type SettingsFieldId =
-  | 'backend'
   | 'theme'
   | 'colorScheme'
+  | 'icons'
   | 'keybindMode'
   | 'prefixKey'
   | 'sortOrder'
-  | 'zoxideMode'
-  | 'autoUpdate'
-  | 'searchHistory'
-  | 'dirLength'
-  | 'reposPath'
-  | 'editor'
-  | 'startupCommand'
-  | 'defaultPreviewCommand'
-  | 'projectPaths'
-  | 'hiddenSessions'
   | 'pinnedSessions'
-  | 'icons'
+  | 'hiddenSessions'
+  | 'dirLength'
+  | 'startupCommand'
+  | 'previewCommand'
+  | 'editor'
+  | 'projectPaths'
   | 'projects'
   | 'wildcards'
+  | 'zoxideMode'
+  | 'reposPath'
+  | 'backend'
+  | 'autoUpdate'
+  | 'searchHistory'
+
+export type SettingsCategory =
+  'Appearance' | 'Keys' | 'Sessions' | 'Launch' | 'Projects' | 'General'
+
+// What ←/→ and Enter do on a Settings row.
+export type SettingsControl =
+  // Two choices: ←/→ and Enter switch between them.
+  | 'toggle'
+  // ←/→ cycle the choices in place; Enter opens the picker.
+  | 'cycle'
+  // ←/→ step a number; Enter does nothing.
+  | 'step'
+  // Enter opens a picker or editor; ←/→ do nothing.
+  | 'open'
+
+// Whether the value is the default, and if not, whether ctrl+r may put the default back.
+export type SettingsReset = 'default' | 'available' | 'unavailable'
 
 export interface SettingsEntry {
   id: SettingsFieldId
-  label: string
+  title: string
+  category: SettingsCategory
+  description: string
+  keywords: string
   value: string
-  hint: string
-  kind: 'options' | 'number' | 'text' | 'json'
+  control: SettingsControl
+  reset: SettingsReset
 }
 
 export interface SettingsOption {
@@ -40,42 +61,58 @@ export interface SettingsOption {
   description?: string
 }
 
-const COLOR_SCHEME_OPTIONS: ThemeColorScheme[] = ['system', 'dark', 'light']
-const KEYBIND_OPTIONS: KeybindMode[] = ['vim', 'standard']
-const PREFIX_OPTIONS = ['ctrl+x', 'ctrl+space', 'space', ',', ';'] as const
+interface SettingInfo {
+  id: SettingsFieldId
+  title: string
+  category: SettingsCategory
+  description: string
+  keywords: readonly string[]
+}
 
-const SORT_ORDER_OPTIONS: SortOrder[] = [
-  'live-first',
-  'configured-first',
-  'zoxide-first',
-  'alphabetical',
-]
+// A fixed set of choices. `read` and `apply` use option values; the row shows option labels.
+interface ChoiceSetting extends SettingInfo {
+  kind: 'choice'
+  options: (config: Config) => SettingsOption[]
+  read: (config: Config) => string
+  apply: (config: Config, value: string) => Config
+}
 
-const ZOXIDE_OPTIONS: ZoxideMode[] = ['off', 'rank', 'merge']
-const BACKEND_OPTIONS = ['auto', 'tmux', 'herdr'] as const
+// Choices that only open their picker: each Theme step would save and reload the list, and a
+// custom prefix key is not one of the presets.
+interface PickerSetting extends SettingInfo {
+  kind: 'picker'
+  options: (config: Config) => SettingsOption[]
+  read: (config: Config) => string
+  apply: (config: Config, value: string) => Config
+}
 
-type SettingsFieldKind = SettingsEntry['kind']
-
-interface NumberStepper {
+interface NumberSetting extends SettingInfo {
+  kind: 'number'
   min: number
   max: number
   read: (config: Config) => number
   apply: (config: Config, value: number) => Config
+  format: (value: number) => string
 }
 
-interface SettingsFieldDefinition {
-  id: SettingsFieldId
-  label: string
-  hint: string
-  kind: SettingsFieldKind
-  title?: string
-  getValue: (config: Config) => string
-  getEditorValue?: (config: Config) => string
-  getOptions?: (config: Config) => SettingsOption[]
-  applyOption?: (config: Config, value: string) => Config
-  applyEditor?: (config: Config, value: string) => SerializedConfigPatch
-  stepper?: NumberStepper
+// Edited as text; the patch is merged into the saved document and normalized like a reload.
+interface TextSetting extends SettingInfo {
+  kind: 'text'
+  read: (config: Config) => string
+  display: (config: Config) => string
+  patch: (config: Config, value: string) => SerializedConfigPatch
 }
+
+// Lists and rules, edited as JSON until they have their own editors. They are never reset with
+// one key: that would drop every entry with no way back.
+interface JsonSetting extends SettingInfo {
+  kind: 'json'
+  read: (config: Config) => JsonSettingValue
+  summary: (config: Config) => string
+  patch: (value: Schema.Json) => SerializedConfigPatch
+}
+
+type SettingDefinition = ChoiceSetting | PickerSetting | NumberSetting | TextSetting | JsonSetting
 
 interface SerializedSessionDefaults {
   startup_command: string | undefined
@@ -101,17 +138,45 @@ type JsonSettingValue =
     >
   | Partial<NonNullable<Config['icons']>>
 
+const COLOR_SCHEME_OPTIONS: ThemeColorScheme[] = ['system', 'dark', 'light']
+const KEYBIND_OPTIONS: KeybindMode[] = ['vim', 'standard']
+const PREFIX_OPTIONS = ['ctrl+x', 'ctrl+space', 'space', ',', ';'] as const
+const ZOXIDE_OPTIONS: ZoxideMode[] = ['off', 'rank', 'merge']
+const BACKEND_OPTIONS = ['auto', 'tmux', 'herdr'] as const
+
+const SORT_ORDER_OPTIONS: SortOrder[] = [
+  'live-first',
+  'configured-first',
+  'zoxide-first',
+  'alphabetical',
+]
+
+// The built-in startup command opens nvim with Telescope; its full text does not fit a row.
+const DEFAULT_STARTUP_LABEL = 'nvim (Telescope)'
+
+// A sample project path whose last segments preview what a Name depth keeps.
+const NAME_DEPTH_SAMPLE = ['home', 'you', 'src', 'work', 'dev', 'mux-sesh'] as const
+
 const decodeJsonText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Json))
+const decodeJson = Schema.decodeUnknownSync(Schema.Json)
 
 function formatJSON(value: JsonSettingValue): string {
   return JSON.stringify(value, null, 2)
 }
 
-// A sample project path whose last segments preview what a Name depth keeps.
-const NAME_DEPTH_SAMPLE = ['home', 'you', 'src', 'work', 'dev', 'mux-sesh'] as const
+// JSON.parse keeps its message (where the text stopped being JSON) for the editor's error line.
+function parseJSON(value: string): Schema.Json {
+  const parsed: unknown = JSON.parse(value)
+
+  return decodeJson(parsed)
+}
 
 function formatNameDepth(depth: number): string {
   return `${depth} · ${NAME_DEPTH_SAMPLE.slice(-depth).join('/')}`
+}
+
+function countSummary(count: number): string {
+  return count === 0 ? 'none' : String(count)
 }
 
 function findChoice<T extends string>(choices: readonly T[], value: string): T | undefined {
@@ -152,75 +217,89 @@ function themeOptions(config: Config): SettingsOption[] {
 
 function choiceOptions(
   values: readonly string[],
-  descriptions?: Partial<Record<string, string>>
+  descriptions: Partial<Record<string, string>>,
+  labels: Partial<Record<string, string>> = {}
 ): SettingsOption[] {
   return values.map(value => ({
     value,
-    label: value,
-    description: descriptions?.[value],
+    label: labels[value] ?? value,
+    description: descriptions[value],
   }))
 }
 
-const SETTINGS_FIELD_MAP = {
-  backend: {
-    id: 'backend',
-    label: 'Backend',
-    hint: 'Multiplexer selection; applies next launch',
-    kind: 'options',
-    getValue: config => config.backend ?? 'auto',
-    getOptions: () =>
-      choiceOptions(BACKEND_OPTIONS, {
-        auto: 'Detect current or running multiplexer',
-        tmux: 'Require tmux',
-        herdr: 'Require a running Herdr server',
-      }),
-    applyOption: (config, value) => ({
-      ...config,
-      backend: value === 'tmux' || value === 'herdr' ? value : undefined,
-    }),
-  },
+const ON_OFF_LABELS = { true: 'on', false: 'off' }
+
+function sessionDefaults(
+  config: Config,
+  change: Partial<SerializedSessionDefaults>
+): SerializedConfigPatch {
+  return {
+    default_session: {
+      startup_command: config.defaultSession?.startupCommand,
+      preview_command: config.defaultSession?.previewCommand,
+      ...change,
+    },
+  }
+}
+
+// In display order: categories in this order, each setting under its category.
+const SETTINGS = {
   theme: {
     id: 'theme',
-    label: 'Theme',
-    hint: 'Built-in, custom, or system',
-    kind: 'options',
-    getValue: config => config.theme ?? DEFAULT_THEME_ID,
-    getOptions: config => themeOptions(config),
-    applyOption: (config, value) => ({
-      ...config,
-      theme: value,
-    }),
+    kind: 'picker',
+    title: 'Theme',
+    category: 'Appearance',
+    description: 'Colors for every screen; System follows Omarchy or the terminal',
+    keywords: ['colors', 'palette', 'omarchy'],
+    options: themeOptions,
+    read: config => config.theme ?? DEFAULT_THEME_ID,
+    apply: (config, theme) => ({ ...config, theme }),
   },
   colorScheme: {
     id: 'colorScheme',
-    label: 'Color Scheme',
-    hint: 'System, dark, or light',
-    kind: 'options',
-    getValue: config => config.colorScheme ?? 'system',
-    getOptions: () =>
+    kind: 'choice',
+    title: 'Color scheme',
+    category: 'Appearance',
+    description: 'Light or dark variant, or follow the terminal',
+    keywords: ['dark', 'light', 'mode'],
+    options: () =>
       choiceOptions(COLOR_SCHEME_OPTIONS, {
         system: 'Follow the detected terminal theme',
         dark: 'Force dark mode',
         light: 'Force light mode',
       }),
-    applyOption: (config, value) => {
+    read: config => config.colorScheme ?? 'system',
+    apply: (config, value) => {
       const colorScheme = findChoice(COLOR_SCHEME_OPTIONS, value)
 
       return colorScheme ? { ...config, colorScheme } : config
     },
   },
+  icons: {
+    id: 'icons',
+    kind: 'json',
+    title: 'Icons',
+    category: 'Appearance',
+    description: 'Glyphs before row titles and section headers',
+    keywords: ['glyphs', 'nerd', 'font'],
+    read: config => config.icons ?? {},
+    summary: config => (Object.values(config.icons ?? {}).some(Boolean) ? 'on' : 'off'),
+    patch: icons => ({ icons }),
+  },
   keybindMode: {
     id: 'keybindMode',
-    label: 'Keybind Mode',
-    hint: 'Navigation style',
-    kind: 'options',
-    getValue: config => config.keybindMode ?? 'vim',
-    getOptions: () =>
+    kind: 'choice',
+    title: 'Keybind mode',
+    category: 'Keys',
+    description: 'vim: single-key actions; standard: type to search, prefix for actions',
+    keywords: ['vim', 'standard', 'navigation'],
+    options: () =>
       choiceOptions(KEYBIND_OPTIONS, {
         vim: 'Single-key navigation and actions',
         standard: 'Arrow keys with prefixed commands',
       }),
-    applyOption: (config, value) => {
+    read: config => config.keybindMode ?? 'vim',
+    apply: (config, value) => {
       const keybindMode = findChoice(KEYBIND_OPTIONS, value)
 
       return keybindMode ? { ...config, keybindMode } : config
@@ -228,13 +307,12 @@ const SETTINGS_FIELD_MAP = {
   },
   prefixKey: {
     id: 'prefixKey',
-    label: 'Prefix Key',
-    hint: 'Prefixed command trigger',
-    kind: 'options',
-    title: 'Prefix Key',
-    getValue: config => config.prefixKey ?? 'ctrl+x',
-    getEditorValue: config => config.prefixKey ?? 'ctrl+x',
-    getOptions: () =>
+    kind: 'picker',
+    title: 'Prefix key',
+    category: 'Keys',
+    description: 'Starts secondary actions, such as ctrl+x r to rename',
+    keywords: ['leader', 'shortcut'],
+    options: () =>
       choiceOptions(PREFIX_OPTIONS, {
         'ctrl+x': 'Default OpenCode-style prefix',
         'ctrl+space': 'Control-space prefix',
@@ -242,223 +320,340 @@ const SETTINGS_FIELD_MAP = {
         ',': 'Comma prefix',
         ';': 'Semicolon prefix',
       }),
-    applyOption: (config, value) => ({
-      ...config,
-      prefixKey: value,
-    }),
+    read: config => config.prefixKey ?? 'ctrl+x',
+    apply: (config, prefixKey) => ({ ...config, prefixKey }),
   },
   sortOrder: {
     id: 'sortOrder',
-    label: 'Sort Order',
-    hint: 'List ordering',
-    kind: 'options',
-    getValue: config => config.sortOrder ?? 'live-first',
-    getOptions: () => choiceOptions(SORT_ORDER_OPTIONS),
-    applyOption: (config, value) => {
+    kind: 'choice',
+    title: 'Sort order',
+    category: 'Sessions',
+    description: 'Order of sessions and projects; pinned sessions stay on top',
+    keywords: ['order', 'sorting', 'alphabetical'],
+    options: () =>
+      choiceOptions(
+        SORT_ORDER_OPTIONS,
+        {
+          'live-first': 'Live sessions, then configured projects, then the rest',
+          'configured-first': 'Configured projects before live sessions',
+          'zoxide-first': 'Most-used folders first, by zoxide rank',
+          alphabetical: 'By name',
+        },
+        {
+          'live-first': 'live first',
+          'configured-first': 'configured first',
+          'zoxide-first': 'zoxide first',
+          alphabetical: 'A–Z',
+        }
+      ),
+    read: config => config.sortOrder ?? 'live-first',
+    apply: (config, value) => {
       const sortOrder = findChoice(SORT_ORDER_OPTIONS, value)
 
       return sortOrder ? { ...config, sortOrder } : config
     },
   },
+  pinnedSessions: {
+    id: 'pinnedSessions',
+    kind: 'json',
+    title: 'Pinned sessions',
+    category: 'Sessions',
+    description: 'Kept at the top in every order; ctrl+f pins the selected session',
+    keywords: ['pin', 'favorites', 'top'],
+    read: config => config.pinnedSessions ?? [],
+    summary: config => countSummary(config.pinnedSessions?.length ?? 0),
+    patch: pinned_sessions => ({ pinned_sessions }),
+  },
+  hiddenSessions: {
+    id: 'hiddenSessions',
+    kind: 'json',
+    title: 'Hidden sessions',
+    category: 'Sessions',
+    description: 'Live sessions whose names match these globs are not listed',
+    keywords: ['hide', 'filter', 'ignore', 'glob'],
+    read: config => config.hiddenSessions ?? [],
+    summary: config => countSummary(config.hiddenSessions?.length ?? 0),
+    patch: hidden_sessions => ({ hidden_sessions }),
+  },
+  dirLength: {
+    id: 'dirLength',
+    kind: 'number',
+    title: 'Name depth',
+    category: 'Sessions',
+    description: 'Path segments used in generated session names',
+    keywords: ['dir', 'length', 'session', 'name'],
+    min: 1,
+    max: NAME_DEPTH_SAMPLE.length,
+    read: config => config.dirLength ?? 1,
+    apply: (config, dirLength) => ({ ...config, dirLength }),
+    format: formatNameDepth,
+  },
+  // Writes default_session.startup_command, which wins over the legacy editor_cmd on reload.
+  startupCommand: {
+    id: 'startupCommand',
+    kind: 'text',
+    title: 'Startup command',
+    category: 'Launch',
+    description: 'Runs in new sessions without a project rule; {file} {dir} {} for files',
+    keywords: ['editor', 'command', 'nvim', 'run'],
+    read: config => config.defaultSession?.startupCommand ?? config.editorCmd,
+    display: config => {
+      const command = config.defaultSession?.startupCommand ?? config.editorCmd
+
+      return command === getDefaultConfig().editorCmd ? DEFAULT_STARTUP_LABEL : command
+    },
+    patch: (config, value) => sessionDefaults(config, { startup_command: value }),
+  },
+  previewCommand: {
+    id: 'previewCommand',
+    kind: 'text',
+    title: 'Preview command',
+    category: 'Launch',
+    description: 'Runs in details for projects without a rule; {} is the path',
+    keywords: ['details', 'listing', 'eza', 'ls'],
+    read: config => config.defaultSession?.previewCommand ?? '',
+    display: config => config.defaultSession?.previewCommand || 'directory listing',
+    patch: (config, value) =>
+      sessionDefaults(config, { preview_command: value.trim().length > 0 ? value : undefined }),
+  },
+  editor: {
+    id: 'editor',
+    kind: 'text',
+    title: 'File editor',
+    category: 'Launch',
+    description: 'Opens files picked in New and listed targets with Edit target',
+    keywords: ['editor', 'nvim', 'files'],
+    read: config => config.editor,
+    display: config => config.editor,
+    patch: (_config, value) => ({ editor: value.trim() }),
+  },
+  projectPaths: {
+    id: 'projectPaths',
+    kind: 'json',
+    title: 'Project folders',
+    category: 'Projects',
+    description: "Scanned for projects and searched by New's file step",
+    keywords: ['roots', 'paths', 'scan', 'directories'],
+    read: config => config.projectPaths,
+    summary: config => config.projectPaths.map(toHomeRelativePath).join(', ') || 'none',
+    patch: project_paths => ({ project_paths }),
+  },
+  projects: {
+    id: 'projects',
+    kind: 'json',
+    title: 'Project rules',
+    category: 'Projects',
+    description: 'Exact folders with their own name, commands, icon or listing',
+    keywords: ['projects', 'profiles', 'exact'],
+    read: config => config.projects ?? [],
+    summary: config => countSummary(config.projects?.length ?? 0),
+    patch: projects => ({ projects }),
+  },
+  wildcards: {
+    id: 'wildcards',
+    kind: 'json',
+    title: 'Wildcard rules',
+    category: 'Projects',
+    description: 'Defaults for folders matching a pattern; the first match wins',
+    keywords: ['wildcards', 'patterns', 'glob'],
+    read: config => config.wildcards ?? [],
+    summary: config => countSummary(config.wildcards?.length ?? 0),
+    patch: wildcards => ({ wildcards }),
+  },
   zoxideMode: {
     id: 'zoxideMode',
-    label: 'Zoxide Mode',
-    hint: 'Project discovery weighting',
-    kind: 'options',
-    getValue: config => config.zoxideMode ?? 'off',
-    getOptions: () => choiceOptions(ZOXIDE_OPTIONS),
-    applyOption: (config, value) => {
+    kind: 'choice',
+    title: 'Zoxide',
+    category: 'Projects',
+    description: 'Use zoxide to rank projects, or to add folders inside your roots',
+    keywords: ['frecency', 'discovery', 'rank'],
+    options: () =>
+      choiceOptions(
+        ZOXIDE_OPTIONS,
+        {
+          off: 'Do not read zoxide',
+          rank: 'Rank discovered projects by zoxide score',
+          merge: 'Also add zoxide folders inside your project folders',
+        },
+        { merge: 'add folders' }
+      ),
+    read: config => config.zoxideMode ?? 'off',
+    apply: (config, value) => {
       const zoxideMode = findChoice(ZOXIDE_OPTIONS, value)
 
       return zoxideMode ? { ...config, zoxideMode } : config
     },
   },
+  reposPath: {
+    id: 'reposPath',
+    kind: 'text',
+    title: 'Clone folder',
+    category: 'Projects',
+    description: 'Where New clones GitHub repositories',
+    keywords: ['repos', 'git', 'clone', 'github'],
+    read: config => config.reposPath,
+    display: config => toHomeRelativePath(config.reposPath),
+    patch: (_config, value) => ({ repos_path: value.trim() }),
+  },
+  backend: {
+    id: 'backend',
+    kind: 'choice',
+    title: 'Backend',
+    category: 'General',
+    description: 'Applies next launch; inside tmux or Herdr that one is always used',
+    keywords: ['tmux', 'herdr', 'multiplexer'],
+    options: () =>
+      choiceOptions(BACKEND_OPTIONS, {
+        auto: 'Detect current or running multiplexer',
+        tmux: 'Require tmux',
+        herdr: 'Require a running Herdr server',
+      }),
+    read: config => config.backend ?? 'auto',
+    apply: (config, value) => ({
+      ...config,
+      backend: value === 'tmux' || value === 'herdr' ? value : undefined,
+    }),
+  },
   autoUpdate: {
     id: 'autoUpdate',
-    label: 'Auto Update',
-    hint: 'Background update checks',
-    kind: 'options',
-    getValue: config => (config.autoUpdate ? 'on' : 'off'),
-    getOptions: () => [
-      { value: 'true', label: 'on', description: 'Check for updates automatically' },
-      { value: 'false', label: 'off', description: 'Disable automatic update checks' },
-    ],
-    applyOption: (config, value) => ({
-      ...config,
-      autoUpdate: value === 'true',
-    }),
+    kind: 'choice',
+    title: 'Auto update',
+    category: 'General',
+    description: 'Install npm and Bun updates in the background; mise and Homebrew get a command',
+    keywords: ['upgrade', 'version'],
+    options: () =>
+      choiceOptions(
+        ['true', 'false'],
+        { true: 'Check for updates automatically', false: 'Disable automatic update checks' },
+        ON_OFF_LABELS
+      ),
+    read: config => String(config.autoUpdate),
+    apply: (config, value) => ({ ...config, autoUpdate: value === 'true' }),
   },
   searchHistory: {
     id: 'searchHistory',
-    label: 'Search History',
-    hint: 'Rank searches by what you open',
-    kind: 'options',
-    getValue: config => (config.searchHistory === false ? 'off' : 'on'),
-    getOptions: () => [
-      {
-        value: 'true',
-        label: 'on',
-        description: 'Remember opens locally and rank matches you open often first',
-      },
-      { value: 'false', label: 'off', description: 'Record nothing and rank by match only' },
-    ],
-    applyOption: (config, value) => ({
-      ...config,
-      searchHistory: value === 'true',
-    }),
+    kind: 'choice',
+    title: 'Search history',
+    category: 'General',
+    description: 'Rank matches by what you open; stored only on this machine',
+    keywords: ['frecency', 'ranking', 'privacy'],
+    options: () =>
+      choiceOptions(
+        ['true', 'false'],
+        {
+          true: 'Remember opens locally and rank matches you open often first',
+          false: 'Record nothing and rank by match only',
+        },
+        ON_OFF_LABELS
+      ),
+    read: config => String(config.searchHistory !== false),
+    apply: (config, value) => ({ ...config, searchHistory: value === 'true' }),
   },
-  dirLength: {
-    id: 'dirLength',
-    label: 'Name Depth',
-    hint: 'Path segments used in generated session names',
-    kind: 'number',
-    getValue: config => formatNameDepth(config.dirLength ?? 1),
-    stepper: {
-      min: 1,
-      max: NAME_DEPTH_SAMPLE.length,
-      read: config => config.dirLength ?? 1,
-      apply: (config, dirLength) => ({ ...config, dirLength }),
-    },
-  },
-  reposPath: {
-    id: 'reposPath',
-    label: 'Repos Path',
-    hint: 'Git clone destination',
-    kind: 'text',
-    title: 'Repos Path',
-    getValue: config => config.reposPath,
-    getEditorValue: config => config.reposPath,
-    applyEditor: (_config, value) => ({ repos_path: value.trim() }),
-  },
-  editor: {
-    id: 'editor',
-    label: 'Editor',
-    hint: 'Short editor name',
-    kind: 'text',
-    title: 'Editor',
-    getValue: config => config.editor,
-    getEditorValue: config => config.editor,
-    applyEditor: (_config, value) => ({ editor: value.trim() }),
-  },
-  // Writes default_session.startup_command, which wins over the legacy editor_cmd on reload.
-  startupCommand: {
-    id: 'startupCommand',
-    label: 'Startup Command',
-    hint: 'Runs in new sessions without a project rule',
-    kind: 'text',
-    title: 'Startup Command',
-    getValue: config => config.defaultSession?.startupCommand ?? config.editorCmd,
-    getEditorValue: config => config.defaultSession?.startupCommand ?? config.editorCmd,
-    applyEditor: (config, value) => ({
-      default_session: {
-        startup_command: value,
-        preview_command: config.defaultSession?.previewCommand,
-      },
-    }),
-  },
-  defaultPreviewCommand: {
-    id: 'defaultPreviewCommand',
-    label: 'Default Preview',
-    hint: 'Fallback preview command',
-    kind: 'text',
-    title: 'Default Preview Command',
-    getValue: config => config.defaultSession?.previewCommand ?? '',
-    getEditorValue: config => config.defaultSession?.previewCommand ?? '',
-    applyEditor: (config, value) => ({
-      default_session: {
-        startup_command: config.defaultSession?.startupCommand,
-        preview_command: value.trim().length > 0 ? value : undefined,
-      },
-    }),
-  },
-  projectPaths: {
-    id: 'projectPaths',
-    label: 'Project Paths',
-    hint: 'JSON array of roots',
-    kind: 'json',
-    title: 'Project Paths',
-    getValue: config => `${config.projectPaths.length} entries`,
-    getEditorValue: config => formatJSON(config.projectPaths),
-    applyEditor: (_config, value) => ({ project_paths: JSON.parse(value) }),
-  },
-  hiddenSessions: {
-    id: 'hiddenSessions',
-    label: 'Hidden Sessions',
-    hint: 'JSON array of filters',
-    kind: 'json',
-    title: 'Hidden Sessions',
-    getValue: config => `${config.hiddenSessions?.length ?? 0} patterns`,
-    getEditorValue: config => formatJSON(config.hiddenSessions ?? []),
-    applyEditor: (_config, value) => ({ hidden_sessions: JSON.parse(value) }),
-  },
-  pinnedSessions: {
-    id: 'pinnedSessions',
-    label: 'Pinned Sessions',
-    hint: 'JSON array of session names',
-    kind: 'json',
-    title: 'Pinned Sessions',
-    getValue: config => `${config.pinnedSessions?.length ?? 0} pinned`,
-    getEditorValue: config => formatJSON(config.pinnedSessions ?? []),
-    applyEditor: (_config, value) => ({ pinned_sessions: JSON.parse(value) }),
-  },
-  icons: {
-    id: 'icons',
-    label: 'Icons',
-    hint: 'JSON object',
-    kind: 'json',
-    title: 'Icons',
-    getValue: () => 'customize glyphs',
-    getEditorValue: config => formatJSON(config.icons ?? {}),
-    applyEditor: (_config, value) => ({ icons: JSON.parse(value) }),
-  },
-  projects: {
-    id: 'projects',
-    label: 'Projects',
-    hint: 'JSON array of exact rules',
-    kind: 'json',
-    title: 'Projects',
-    getValue: config => `${config.projects?.length ?? 0} rules`,
-    getEditorValue: config => formatJSON(config.projects ?? []),
-    applyEditor: (_config, value) => ({ projects: JSON.parse(value) }),
-  },
-  wildcards: {
-    id: 'wildcards',
-    label: 'Wildcards',
-    hint: 'JSON array of wildcard rules',
-    kind: 'json',
-    title: 'Wildcards',
-    getValue: config => `${config.wildcards?.length ?? 0} rules`,
-    getEditorValue: config => formatJSON(config.wildcards ?? []),
-    applyEditor: (_config, value) => ({ wildcards: JSON.parse(value) }),
-  },
-} satisfies { readonly [Id in SettingsFieldId]: SettingsFieldDefinition & { id: Id } }
+} satisfies { readonly [Id in SettingsFieldId]: SettingDefinition & { id: Id } }
 
-const SETTINGS_FIELDS = Object.values<SettingsFieldDefinition>(SETTINGS_FIELD_MAP)
+const SETTINGS_LIST = Object.values<SettingDefinition>(SETTINGS)
 
-function getSettingsField(field: SettingsFieldId): SettingsFieldDefinition {
-  return SETTINGS_FIELD_MAP[field]
+function getSetting(field: SettingsFieldId): SettingDefinition {
+  return SETTINGS[field]
 }
 
-export function getSettingsEntries(config: Config): SettingsEntry[] {
-  return SETTINGS_FIELDS.map(field => ({
-    id: field.id,
-    label: field.label,
-    value: field.getValue(config),
-    hint: field.hint,
-    kind: field.kind,
+function optionLabel(options: readonly SettingsOption[], value: string): string {
+  return options.find(option => option.value === value)?.label ?? value
+}
+
+function displayValue(setting: SettingDefinition, config: Config): string {
+  switch (setting.kind) {
+    case 'choice':
+    case 'picker':
+      return optionLabel(setting.options(config), setting.read(config))
+    case 'number':
+      return setting.format(setting.read(config))
+    case 'text':
+      return setting.display(config)
+    case 'json':
+      return setting.summary(config)
+  }
+}
+
+// The value as stored, compared with the default to decide whether it was changed.
+function storedValue(setting: SettingDefinition, config: Config): string {
+  switch (setting.kind) {
+    case 'choice':
+    case 'picker':
+    case 'text':
+      return setting.read(config)
+    case 'number':
+      return String(setting.read(config))
+    case 'json':
+      return JSON.stringify(setting.read(config))
+  }
+}
+
+function controlOf(setting: SettingDefinition, config: Config): SettingsControl {
+  switch (setting.kind) {
+    case 'choice':
+      return setting.options(config).length === 2 ? 'toggle' : 'cycle'
+    case 'number':
+      return 'step'
+    case 'picker':
+    case 'text':
+    case 'json':
+      return 'open'
+  }
+}
+
+function resetOf(setting: SettingDefinition, config: Config, defaults: Config): SettingsReset {
+  if (storedValue(setting, config) === storedValue(setting, defaults)) return 'default'
+
+  return setting.kind === 'json' ? 'unavailable' : 'available'
+}
+
+export function getSettingsEntries(config: Config, homeDir: string): SettingsEntry[] {
+  const defaults = getDefaultConfig(homeDir)
+
+  return SETTINGS_LIST.map(setting => ({
+    id: setting.id,
+    title: setting.title,
+    category: setting.category,
+    description: setting.description,
+    keywords: setting.keywords.join(' '),
+    value: displayValue(setting, config),
+    control: controlOf(setting, config),
+    reset: resetOf(setting, config, defaults),
   }))
 }
 
 export function getSettingEditorValue(config: Config, field: SettingsFieldId): string {
-  return getSettingsField(field).getEditorValue?.(config) ?? ''
+  const setting = getSetting(field)
+
+  switch (setting.kind) {
+    case 'text':
+      return setting.read(config)
+    case 'json':
+      return formatJSON(setting.read(config))
+    case 'choice':
+    case 'picker':
+    case 'number':
+      return ''
+  }
 }
 
 export function getSettingOptions(config: Config, field: SettingsFieldId): SettingsOption[] {
-  return getSettingsField(field).getOptions?.(config) ?? []
+  const setting = getSetting(field)
+
+  return setting.kind === 'choice' || setting.kind === 'picker' ? setting.options(config) : []
 }
 
+// The stored value: an option value for choices, so it matches the picker's options.
 export function getSettingValue(config: Config, field: SettingsFieldId): string {
-  return getSettingsField(field).getValue(config)
+  const setting = getSetting(field)
+
+  return setting.kind === 'json' ? setting.summary(config) : storedValue(setting, config)
+}
+
+// The value as the Settings row shows it.
+export function getSettingDisplayValue(config: Config, field: SettingsFieldId): string {
+  return displayValue(getSetting(field), config)
 }
 
 export function getSelectedOptionIndex(config: Config, field: SettingsFieldId): number {
@@ -471,33 +666,34 @@ export function getSelectedOptionIndex(config: Config, field: SettingsFieldId): 
 }
 
 export function isOptionSetting(field: SettingsFieldId): boolean {
-  return getSettingsField(field).kind === 'options'
+  const { kind } = getSetting(field)
+
+  return kind === 'choice' || kind === 'picker'
 }
 
 export function applyOptionSetting(config: Config, field: SettingsFieldId, value: string): Config {
-  return getSettingsField(field).applyOption?.(config, value) ?? config
+  const setting = getSetting(field)
+
+  return setting.kind === 'choice' || setting.kind === 'picker'
+    ? setting.apply(config, value)
+    : config
 }
 
-// The next value one step away, or undefined when the setting does not step or is at its limit.
-export function stepSetting(
+function editorPatch(
+  setting: SettingDefinition,
   config: Config,
-  field: SettingsFieldId,
-  direction: 1 | -1
-): Config | undefined {
-  const stepper = getSettingsField(field).stepper
-
-  if (!stepper) return undefined
-
-  const current = stepper.read(config)
-
-  if (direction > 0 ? current >= stepper.max : current <= stepper.min) return undefined
-
-  return stepper.apply(config, Math.min(stepper.max, Math.max(stepper.min, current + direction)))
-}
-
-// Saves compare the written document, so a change that writes the same file is no change.
-export function isSettingsChange(before: Config, after: Config): boolean {
-  return JSON.stringify(serializeConfig(before)) !== JSON.stringify(serializeConfig(after))
+  value: string
+): SerializedConfigPatch | undefined {
+  switch (setting.kind) {
+    case 'text':
+      return setting.patch(config, value)
+    case 'json':
+      return setting.patch(parseJSON(value))
+    case 'choice':
+    case 'picker':
+    case 'number':
+      return undefined
+  }
 }
 
 export function applyEditorSetting(
@@ -506,24 +702,84 @@ export function applyEditorSetting(
   value: string,
   homeDir: string
 ): Config {
-  const applyEditor = getSettingsField(field).applyEditor
+  const patch = editorPatch(getSetting(field), config, value)
 
-  if (!applyEditor) {
-    return config
-  }
+  if (!patch) return config
 
   // Round-trip through JSON text, as a save and reload would, so the merge is a plain JSON document.
-  const document = decodeJsonText(
-    JSON.stringify({ ...serializeConfig(config), ...applyEditor(config, value) })
-  )
+  const document = decodeJsonText(JSON.stringify({ ...serializeConfig(config), ...patch }))
 
   return normalizeConfig(document, homeDir)
 }
 
-export function getSettingEditorTitle(field: SettingsFieldId): string {
-  const setting = getSettingsField(field)
+// The value one step away: a number stops at its limits, choices wrap around. Undefined when the
+// setting does not step or is already at its limit.
+export function stepSetting(
+  config: Config,
+  field: SettingsFieldId,
+  direction: 1 | -1
+): Config | undefined {
+  const setting = getSetting(field)
 
-  return setting.title ?? setting.label
+  switch (setting.kind) {
+    case 'number': {
+      const current = setting.read(config)
+
+      if (direction > 0 ? current >= setting.max : current <= setting.min) return undefined
+
+      return setting.apply(
+        config,
+        Math.min(setting.max, Math.max(setting.min, current + direction))
+      )
+    }
+
+    case 'choice': {
+      const options = setting.options(config)
+      const current = options.findIndex(option => option.value === setting.read(config))
+      const next = options[(current + direction + options.length) % options.length]
+
+      return next ? setting.apply(config, next.value) : undefined
+    }
+
+    case 'picker':
+    case 'text':
+    case 'json':
+      return undefined
+  }
+}
+
+// The config with this setting back at its default; undefined when it already is, or when the
+// setting is a list that is never reset with one key.
+export function resetSetting(
+  config: Config,
+  field: SettingsFieldId,
+  homeDir: string
+): Config | undefined {
+  const setting = getSetting(field)
+  const defaults = getDefaultConfig(homeDir)
+
+  if (resetOf(setting, config, defaults) !== 'available') return undefined
+
+  switch (setting.kind) {
+    case 'choice':
+    case 'picker':
+      return setting.apply(config, setting.read(defaults))
+    case 'number':
+      return setting.apply(config, setting.read(defaults))
+    case 'text':
+      return applyEditorSetting(config, field, setting.read(defaults), homeDir)
+    case 'json':
+      return undefined
+  }
+}
+
+// Saves compare the written document, so a change that writes the same file is no change.
+export function isSettingsChange(before: Config, after: Config): boolean {
+  return JSON.stringify(serializeConfig(before)) !== JSON.stringify(serializeConfig(after))
+}
+
+export function getSettingEditorTitle(field: SettingsFieldId): string {
+  return getSetting(field).title
 }
 
 export function filterSettingsEntries(entries: SettingsEntry[], query: string): SettingsEntry[] {

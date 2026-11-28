@@ -182,13 +182,14 @@ With rows marked, `d` opens the batch close review instead, even for one marked 
 
 ## Dialogs
 
-| Dialog                    | Keys                                                                       |
-| ------------------------- | -------------------------------------------------------------------------- |
-| Command palette, settings | Type to filter, `↑` / `↓` move, `enter` runs or opens, `esc` closes        |
-| Theme picker              | `↑` / `↓` preview, `enter` saves, `esc` restores the saved theme           |
-| Rename                    | Type the name, `enter` renames, `esc` cancels                              |
-| Batch close review        | `enter` closes exactly the marked set shown, `esc` keeps it                |
-| Close results             | `enter` retries what is still open (or closes the dialog), `esc` closes    |
-| Operation report          | `enter` retries when the footer offers it (otherwise closes), `esc` closes |
-| Startup failure           | `r` retries, `q` / `esc` / `ctrl+c` quit                                   |
-| Crash recovery            | See [Crash Recovery](workflows.md#crash-recovery)                          |
+| Dialog             | Keys                                                                                                                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Command palette    | Type to filter, `↑` / `↓` move, `enter` runs, `esc` closes                                                                                                                                       |
+| Settings           | Type to filter, `↑` / `↓` move, `←` / `→` change the value in place, `enter` opens it (or switches a two-value setting), `ctrl+r` resets it to the default, `esc` clears the filter, then closes |
+| Theme picker       | `↑` / `↓` preview, `enter` saves, `esc` restores the saved theme                                                                                                                                 |
+| Rename             | Type the name, `enter` renames, `esc` cancels                                                                                                                                                    |
+| Batch close review | `enter` closes exactly the marked set shown, `esc` keeps it                                                                                                                                      |
+| Close results      | `enter` retries what is still open (or closes the dialog), `esc` closes                                                                                                                          |
+| Operation report   | `enter` retries when the footer offers it (otherwise closes), `esc` closes                                                                                                                       |
+| Startup failure    | `r` retries, `q` / `esc` / `ctrl+c` quit                                                                                                                                                         |
+| Crash recovery     | See [Crash Recovery](workflows.md#crash-recovery)                                                                                                                                                |

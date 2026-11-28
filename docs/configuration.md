@@ -74,6 +74,38 @@ off update checks. `MUX_SESH_NO_ANIMATION=1` replaces the busy spinner with a st
 that is not a terminal never animates. The spinner runs only while work is pending: a refresh, a
 clone or launch, New planning what Enter will open, or the details inspector reading.
 
+## Settings Screen
+
+Open settings from the command palette (`ctrl+p`). Settings are grouped by category and save as
+soon as they change; the value is muted while it is the default. `←` / `→` change a choice or
+number in place, `enter` opens a picker or editor, and `ctrl+r` puts back the default (lists and
+rules are not reset this way). See [keybindings.md](keybindings.md#dialogs).
+
+| Category   | Setting         | Option                                            |
+| ---------- | --------------- | ------------------------------------------------- |
+| Appearance | Theme           | `theme`                                           |
+|            | Color scheme    | `color_scheme`                                    |
+|            | Icons           | `icons`                                           |
+| Keys       | Keybind mode    | `keybind_mode`                                    |
+|            | Prefix key      | `prefix_key`                                      |
+| Sessions   | Sort order      | `sort_order`                                      |
+|            | Pinned sessions | `pinned_sessions`                                 |
+|            | Hidden sessions | `hidden_sessions`                                 |
+|            | Name depth      | `dir_length` (1–6 here; larger values still load) |
+| Launch     | Startup command | `default_session.startup_command`                 |
+|            | Preview command | `default_session.preview_command`                 |
+|            | File editor     | `editor`                                          |
+| Projects   | Project folders | `project_paths`                                   |
+|            | Project rules   | `projects`                                        |
+|            | Wildcard rules  | `wildcards`                                       |
+|            | Zoxide          | `zoxide_mode`                                     |
+|            | Clone folder    | `repos_path`                                      |
+| General    | Backend         | `backend`                                         |
+|            | Auto update     | `auto_update`                                     |
+|            | Search history  | `search_history`                                  |
+
+`editor_cmd` and custom `themes` are edited in the file only.
+
 ## Backend Selection
 
 mux-sesh supports tmux sessions and Herdr 0.7.5 or newer (protocol 17 or newer) workspaces,

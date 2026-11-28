@@ -96,9 +96,10 @@ export function getSettingsState(
   config: Config | null,
   modalState: ModalState,
   settingsSearchQuery: string,
-  settingOptionsSearchQuery: string
+  settingOptionsSearchQuery: string,
+  homeDir: string
 ): SettingsState {
-  const settingsEntries = config ? getSettingsEntries(config) : []
+  const settingsEntries = config ? getSettingsEntries(config, homeDir) : []
   const currentOptionField = modalState?.type === 'setting-options' ? modalState.field : undefined
 
   const settingOptions =

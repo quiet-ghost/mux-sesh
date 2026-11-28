@@ -189,24 +189,33 @@ describe('command palette ranking', () => {
   })
 })
 
-function setting(label: string, value: string, hint: string): SettingsEntry {
-  return { id: 'theme', label, value, hint, kind: 'options' }
+function setting(title: string, value: string, description: string): SettingsEntry {
+  return {
+    id: 'theme',
+    title,
+    category: 'Appearance',
+    description,
+    keywords: '',
+    value,
+    control: 'open',
+    reset: 'default',
+  }
 }
 
 describe('settings ranking', () => {
   test('fuzzy-matches settings by label and ranks label matches first', () => {
     const entries = [
       setting('Theme', 'catppuccin', 'Built-in, custom, or system'),
-      setting('Keybind Mode', 'vim', 'Navigation style'),
-      setting('Color Scheme', 'system', 'System, dark, or light'),
+      setting('Keybind mode', 'vim', 'Navigation style'),
+      setting('Color scheme', 'system', 'System, dark, or light'),
     ]
 
-    expect(filterSettingsEntries(entries, 'kbmode').map(entry => entry.label)).toEqual([
-      'Keybind Mode',
+    expect(filterSettingsEntries(entries, 'kbmode').map(entry => entry.title)).toEqual([
+      'Keybind mode',
     ])
 
-    expect(filterSettingsEntries(entries, 'sys').map(entry => entry.label)).toEqual([
-      'Color Scheme',
+    expect(filterSettingsEntries(entries, 'sys').map(entry => entry.title)).toEqual([
+      'Color scheme',
       'Theme',
     ])
   })

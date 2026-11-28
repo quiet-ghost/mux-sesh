@@ -371,7 +371,8 @@ describe('app derived helpers', () => {
         picker: OptionPicker.browsing,
       },
       'theme',
-      'stan'
+      'stan',
+      '/home/tester'
     )
 
     expect(state.filteredSettingsEntries.some(entry => entry.id === 'theme')).toBe(true)

@@ -120,7 +120,8 @@ export function useAppController(invocationCwd: string) {
     config,
     modalState,
     settingsSearchQuery,
-    settingOptionsSearchQuery
+    settingOptionsSearchQuery,
+    homeDir
   )
 
   const resolvedTheme = useLiveResolvedTheme({
@@ -307,6 +308,7 @@ export function useAppController(invocationCwd: string) {
     handleSettingsEditorSubmit,
     handleSettingOptionSubmit,
     handleSettingStep,
+    handleSettingReset,
     handleTogglePinnedSessionWrapper,
     executeCommand,
   } = createAppHandlers({
@@ -394,6 +396,9 @@ export function useAppController(invocationCwd: string) {
     handleSettingOptionSubmit,
     handleSettingsEditorSubmit,
     handleSettingStep,
+    handleSettingReset,
+    settingsSearchQuery,
+    setSettingsSearchQuery,
     handleRenameSubmit,
     newSession: getNewSessionStepControls(
       newSession,
@@ -513,8 +518,6 @@ export function useAppController(invocationCwd: string) {
       rows,
       configPath,
       themeId: resolvedTheme.id,
-      themeName: resolvedTheme.name,
-      colorMode: resolvedTheme.mode,
       filteredCommandEntries,
       commandsCursor,
       commandsSearchQuery,
