@@ -1,4 +1,5 @@
 import type { TextareaRenderable } from '@opentui/core'
+import type { OptionPicker } from '../app/option-picker'
 import { useTheme } from '../styles/theme'
 import { getSettingsLabelMatches } from '../search/lists'
 import type { SettingsEntry } from '../settings'
@@ -31,6 +32,17 @@ const SETTINGS_PREFERRED_WIDTH = 74
 const SETTINGS_SUMMARY_ROWS = 3
 const SETTINGS_DETAIL_ROWS = 3
 
+function settingsNotice(picker: OptionPicker): string | undefined {
+  switch (picker.kind) {
+    case 'browsing':
+      return undefined
+    case 'saving':
+      return `Saving ${picker.draft.label}…`
+    case 'save-failed':
+      return picker.reason
+  }
+}
+
 interface Props {
   configPath: string
   themeName: string
@@ -40,6 +52,8 @@ interface Props {
   entries: SettingsEntry[]
   cursor: number
   searchQuery: string
+  // A ←/→ save in flight or failed; its message replaces the selected row's hint.
+  picker: OptionPicker
   textareaRef: { current: TextareaRenderable | null }
   onContentChange: () => void
 }
@@ -53,6 +67,7 @@ export default function SettingsModal({
   entries,
   cursor,
   searchQuery,
+  picker,
   textareaRef,
   onContentChange,
 }: Props) {
@@ -121,8 +136,8 @@ export default function SettingsModal({
           <text style={{ fg: theme.accent }}>
             {truncateDialogText(selected.label, contentWidth)}
           </text>
-          <text style={{ fg: theme.textMuted }}>
-            {truncateDialogText(selected.hint, contentWidth)}
+          <text style={{ fg: picker.kind === 'save-failed' ? theme.danger : theme.textMuted }}>
+            {truncateDialogText(settingsNotice(picker) ?? selected.hint, contentWidth)}
           </text>
         </box>
       )}

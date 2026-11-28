@@ -1,6 +1,7 @@
 import { describeUnavailableAction } from './action-catalog'
 import type { OperationReport } from './action-outcome'
 import type { ModalState } from './modals'
+import { OptionPicker } from './option-picker'
 import type { ShowToast } from './notifications'
 import { CloseReceipt, type CleanupBatch } from '../sessions/cleanup-batch'
 import type { SettingsEntry, SettingsOption } from '../settings'
@@ -29,6 +30,7 @@ interface ModalKeyboardContext {
   showToast: ShowToast
   handleSettingOptionSubmit: (field: SettingsEntry['id'], value: string) => Promise<void>
   handleSettingsEditorSubmit: (field: SettingsEntry['id']) => Promise<void>
+  handleSettingStep: (field: SettingsEntry['id'], direction: 1 | -1) => Promise<void>
   handleRenameSubmit: () => Promise<void>
   handleOutcomeRetry: (report: OperationReport) => Promise<void>
   confirmBatchClose: (batch: CleanupBatch) => Promise<void>
@@ -42,7 +44,8 @@ interface KeyboardInput {
 function openSelectedSetting(ctx: ModalKeyboardContext) {
   const entry = ctx.filteredSettingsEntries[ctx.settingsCursor]
 
-  if (!entry) {
+  // A stepper changes with ←/→ only; it has no editor to open.
+  if (!entry || entry.kind === 'number') {
     return
   }
 
@@ -161,6 +164,17 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
       )
     } else if (key.name === 'return') {
       openSelectedSetting(ctx)
+    } else if (key.name === 'left' || key.name === 'right') {
+      const entry = ctx.filteredSettingsEntries[ctx.settingsCursor]
+
+      // Other rows leave ←/→ to the filter's text cursor.
+      if (entry?.kind !== 'number') return false
+
+      // One save at a time: the next step starts from the saved value.
+      if (ctx.modalState.picker.kind === 'saving') return true
+
+      const direction = key.name === 'right' ? 1 : -1
+      ctx.runAction(() => ctx.handleSettingStep(entry.id, direction))
     } else {
       return false
     }
@@ -176,7 +190,7 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
       if (openedFrom === 'commands') {
         ctx.closeModal()
       } else {
-        ctx.setModalState({ type: 'settings' })
+        ctx.setModalState({ type: 'settings', picker: OptionPicker.browsing })
       }
     } else if (key.name === 'down') {
       ctx.setSettingOptionsCursor(current =>
@@ -202,7 +216,7 @@ export function handleModalKeyboard(key: KeyboardInput, ctx: ModalKeyboardContex
     const { field } = ctx.modalState
 
     if (key.name === 'escape') {
-      ctx.setModalState({ type: 'settings' })
+      ctx.setModalState({ type: 'settings', picker: OptionPicker.browsing })
       ctx.setSettingEditorError('')
     } else if (key.name === 'return') {
       ctx.runAction(() => ctx.handleSettingsEditorSubmit(field))

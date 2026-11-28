@@ -306,6 +306,7 @@ export function useAppController(invocationCwd: string) {
     handleOutcomeRetry,
     handleSettingsEditorSubmit,
     handleSettingOptionSubmit,
+    handleSettingStep,
     handleTogglePinnedSessionWrapper,
     executeCommand,
   } = createAppHandlers({
@@ -392,6 +393,7 @@ export function useAppController(invocationCwd: string) {
     executeCommand,
     handleSettingOptionSubmit,
     handleSettingsEditorSubmit,
+    handleSettingStep,
     handleRenameSubmit,
     newSession: getNewSessionStepControls(
       newSession,

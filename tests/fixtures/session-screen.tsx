@@ -444,6 +444,7 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
       }),
     handleSettingOptionSubmit: handlers.handleSettingOptionSubmit,
     handleSettingsEditorSubmit: handlers.handleSettingsEditorSubmit,
+    handleSettingStep: handlers.handleSettingStep,
     handleRenameSubmit: unsupportedFixtureAction,
     newSession: getNewSessionStepControls(
       newSession,

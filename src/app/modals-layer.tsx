@@ -153,6 +153,7 @@ export function AppModalsLayer({
           entries={filteredSettingsEntries}
           cursor={settingsCursor}
           searchQuery={settingsSearchQuery}
+          picker={modalState.picker}
           textareaRef={settingsSearchTextareaRef}
           onContentChange={() =>
             syncTextareaValue(settingsSearchTextareaRef, setSettingsSearchQuery)

@@ -369,7 +369,11 @@ test('a settings edit whose save fails keeps the editor and its draft', async ()
     async () => {}
   )
 
-  await handleSettingsEditorSubmitWithFeedback('editor', settings.options)
+  // A changed draft, since an unchanged value is not saved at all.
+  await handleSettingsEditorSubmitWithFeedback('editor', {
+    ...settings.options,
+    settingEditorValue: 'helix',
+  })
 
   expect(settings.saved).toEqual([])
   expect(settings.opened).toEqual([])

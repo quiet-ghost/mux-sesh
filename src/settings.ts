@@ -56,6 +56,13 @@ const BACKEND_OPTIONS = ['auto', 'tmux', 'herdr'] as const
 
 type SettingsFieldKind = SettingsEntry['kind']
 
+interface NumberStepper {
+  min: number
+  max: number
+  read: (config: Config) => number
+  apply: (config: Config, value: number) => Config
+}
+
 interface SettingsFieldDefinition {
   id: SettingsFieldId
   label: string
@@ -67,6 +74,7 @@ interface SettingsFieldDefinition {
   getOptions?: (config: Config) => SettingsOption[]
   applyOption?: (config: Config, value: string) => Config
   applyEditor?: (config: Config, value: string) => SerializedConfigPatch
+  stepper?: NumberStepper
 }
 
 interface SerializedSessionDefaults {
@@ -97,6 +105,13 @@ const decodeJsonText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Jso
 
 function formatJSON(value: JsonSettingValue): string {
   return JSON.stringify(value, null, 2)
+}
+
+// A sample project path whose last segments preview what a Name depth keeps.
+const NAME_DEPTH_SAMPLE = ['home', 'you', 'src', 'work', 'dev', 'mux-sesh'] as const
+
+function formatNameDepth(depth: number): string {
+  return `${depth} · ${NAME_DEPTH_SAMPLE.slice(-depth).join('/')}`
 }
 
 function findChoice<T extends string>(choices: readonly T[], value: string): T | undefined {
@@ -294,10 +309,16 @@ const SETTINGS_FIELD_MAP = {
   },
   dirLength: {
     id: 'dirLength',
-    label: 'Dir Length',
-    hint: 'Session naming depth',
+    label: 'Name Depth',
+    hint: 'Path segments used in generated session names',
     kind: 'number',
-    getValue: config => String(config.dirLength ?? 1),
+    getValue: config => formatNameDepth(config.dirLength ?? 1),
+    stepper: {
+      min: 1,
+      max: NAME_DEPTH_SAMPLE.length,
+      read: config => config.dirLength ?? 1,
+      apply: (config, dirLength) => ({ ...config, dirLength }),
+    },
   },
   reposPath: {
     id: 'reposPath',
@@ -455,6 +476,28 @@ export function isOptionSetting(field: SettingsFieldId): boolean {
 
 export function applyOptionSetting(config: Config, field: SettingsFieldId, value: string): Config {
   return getSettingsField(field).applyOption?.(config, value) ?? config
+}
+
+// The next value one step away, or undefined when the setting does not step or is at its limit.
+export function stepSetting(
+  config: Config,
+  field: SettingsFieldId,
+  direction: 1 | -1
+): Config | undefined {
+  const stepper = getSettingsField(field).stepper
+
+  if (!stepper) return undefined
+
+  const current = stepper.read(config)
+
+  if (direction > 0 ? current >= stepper.max : current <= stepper.min) return undefined
+
+  return stepper.apply(config, Math.min(stepper.max, Math.max(stepper.min, current + direction)))
+}
+
+// Saves compare the written document, so a change that writes the same file is no change.
+export function isSettingsChange(before: Config, after: Config): boolean {
+  return JSON.stringify(serializeConfig(before)) !== JSON.stringify(serializeConfig(after))
 }
 
 export function applyEditorSetting(

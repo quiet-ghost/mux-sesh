@@ -42,6 +42,11 @@ function within(field: SettingsFieldId, picker: OptionPicker): SetStateAction<Mo
       : current
 }
 
+// A Settings-list save that finishes after Settings closed must not reopen it.
+function withinSettings(picker: OptionPicker): SetStateAction<ModalState> {
+  return current => (current?.type === 'settings' ? { ...current, picker } : current)
+}
+
 function previewedThemeId(
   modalState: ModalState,
   options: readonly SettingsOption[],
@@ -85,6 +90,7 @@ export const OptionPicker = {
   saveFailed,
   draftOf,
   within,
+  withinSettings,
   previewedThemeId,
   openAtSaved,
   notice,

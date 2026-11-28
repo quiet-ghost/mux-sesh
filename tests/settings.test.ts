@@ -8,7 +8,9 @@ import {
   getSettingEditorValue,
   getSettingOptions,
   getSettingsEntries,
+  getSettingValue,
   isOptionSetting,
+  stepSetting,
 } from '../src/settings'
 
 const decodeJsonText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Json))
@@ -102,6 +104,24 @@ describe('settings metadata', () => {
 
     expect(getSettingEditorValue(legacy, 'startupCommand')).toBe('hx .')
     expect(getSettingsEntries(legacy).some(entry => entry.value === 'hx .')).toBe(true)
+  })
+
+  test('Name depth steps from 1 to 6 and previews the path segments it keeps', () => {
+    expect(getSettingValue(config, 'dirLength')).toBe('1 · mux-sesh')
+
+    const two = stepSetting(config, 'dirLength', 1)
+    expect(two?.dirLength).toBe(2)
+    expect(two && getSettingValue(two, 'dirLength')).toBe('2 · dev/mux-sesh')
+    expect(two && stepSetting(two, 'dirLength', 1)?.dirLength).toBe(3)
+
+    expect(stepSetting(config, 'dirLength', -1)).toBeUndefined()
+    expect(stepSetting({ ...config, dirLength: 6 }, 'dirLength', 1)).toBeUndefined()
+    expect(stepSetting({ ...config, dirLength: 6 }, 'dirLength', -1)?.dirLength).toBe(5)
+  })
+
+  test('only number settings step', () => {
+    expect(stepSetting(config, 'reposPath', 1)).toBeUndefined()
+    expect(stepSetting(config, 'theme', 1)).toBeUndefined()
   })
 
   test('sets and clears backend preference', () => {

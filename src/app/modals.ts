@@ -8,7 +8,7 @@ import type { Config, Item } from '../types'
 export type ModalState =
   | { type: 'rename'; target: string }
   | { type: 'commands' }
-  | { type: 'settings' }
+  | { type: 'settings'; picker: OptionPicker }
   | {
       type: 'setting-options'
       field: SettingsFieldId
@@ -70,7 +70,7 @@ export function openSettingsModal(
   setSettingEditorError('')
   setSettingsSearchQuery('')
   setSettingsCursor(0)
-  setModalState({ type: 'settings' })
+  setModalState({ type: 'settings', picker: OptionPicker.browsing })
 }
 
 export function openSettingOptions(

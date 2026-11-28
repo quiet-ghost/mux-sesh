@@ -22,7 +22,15 @@ import { requestShutdown } from '../util/shutdown'
 import { movePinAfterRename } from '../config/pinned-sessions'
 import type { CleanupBatch, CloseReceipt } from '../sessions/cleanup-batch'
 import { CleanupPlan } from '../sessions/cleanup-plan'
-import { applyEditorSetting, applyOptionSetting, getSettingEditorTitle } from '../settings'
+import {
+  applyEditorSetting,
+  applyOptionSetting,
+  getSettingEditorTitle,
+  getSettingEditorValue,
+  getSettingValue,
+  isSettingsChange,
+  stepSetting,
+} from '../settings'
 import {
   handleCloseBatch,
   handleRetryCloseBatch,
@@ -408,11 +416,17 @@ export async function handleSettingsEditorSubmitWithFeedback(
   }
 
   let nextConfig: Config
+  let savedConfig: Config
+  const homeDir = process.env.HOME || '~'
 
   // An invalid value stays in the editor with its draft; nothing is saved.
   try {
     const rawText = options.settingEditorPlainText ?? options.settingEditorValue
-    nextConfig = applyEditorSetting(options.config, field, rawText, process.env.HOME || '~')
+    nextConfig = applyEditorSetting(options.config, field, rawText, homeDir)
+
+    // The saved value through the same reload, so an unchanged value compares equal.
+    const savedText = getSettingEditorValue(options.config, field)
+    savedConfig = applyEditorSetting(options.config, field, savedText, homeDir)
   } catch (error) {
     options.setSettingEditorError(error instanceof Error ? error.message : 'The value is not valid')
 
@@ -420,6 +434,12 @@ export async function handleSettingsEditorSubmitWithFeedback(
   }
 
   options.setSettingEditorError('')
+
+  if (!isSettingsChange(savedConfig, nextConfig)) {
+    options.openSettingsModal()
+
+    return
+  }
 
   const outcome = await persistConfigUpdate(
     nextConfig,
@@ -453,6 +473,9 @@ export async function handleSettingOptionSubmitWithFeedback(
   }
 
   const nextConfig = applyOptionSetting(options.config, field, value)
+
+  if (!isSettingsChange(options.config, nextConfig)) return
+
   const draft = OptionPicker.draftOf(options.config, field, value)
   trackPicker(OptionPicker.saving(draft))
 
@@ -465,6 +488,40 @@ export async function handleSettingOptionSubmitWithFeedback(
   )
 
   trackPicker(
+    outcome.kind === 'failed'
+      ? OptionPicker.saveFailed(draft, outcome.message)
+      : OptionPicker.browsing
+  )
+  ActionOutcome.present(outcome, options)
+}
+
+// ←/→ on a Settings row saves the next value at once; at a limit nothing is saved or said.
+export async function handleSettingStepWithFeedback(
+  field: SettingsFieldId,
+  direction: 1 | -1,
+  options: SettingsHandlerOptions,
+  trackSave: (picker: OptionPicker) => void = () => {}
+): Promise<void> {
+  if (!options.config) return
+
+  const nextConfig = stepSetting(options.config, field, direction)
+
+  if (!nextConfig) return
+
+  const title = getSettingEditorTitle(field)
+  const value = getSettingValue(nextConfig, field)
+  const draft = { value, label: `${title} ${value}` }
+  trackSave(OptionPicker.saving(draft))
+
+  const outcome = await persistConfigUpdate(
+    nextConfig,
+    `${title} updated`,
+    options.saveConfig,
+    options.setConfig,
+    options.refreshItems
+  )
+
+  trackSave(
     outcome.kind === 'failed'
       ? OptionPicker.saveFailed(draft, outcome.message)
       : OptionPicker.browsing
@@ -684,6 +741,25 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     )
   }
 
+  async function handleSettingStep(field: SettingsFieldId, direction: 1 | -1) {
+    await handleSettingStepWithFeedback(
+      field,
+      direction,
+      {
+        config: options.config,
+        saveConfig: options.saveConfig,
+        setConfig: options.setConfig,
+        setSettingEditorError: options.setSettingEditorError,
+        openSettingsModal: options.openSettingsModal,
+        settingEditorValue: options.settingEditorValue,
+        refreshItems: options.refreshItems,
+        showToast: options.showToast,
+        showOutcome: options.showOutcome,
+      },
+      picker => options.setModalState(OptionPicker.withinSettings(picker))
+    )
+  }
+
   async function handleTogglePinnedSessionWrapper(sessionName: string) {
     await handleTogglePinnedSessionWithFeedback(sessionName, {
       config: options.config,
@@ -744,6 +820,7 @@ export function createAppHandlers(options: CreateAppHandlersOptions) {
     handleOutcomeRetry,
     handleSettingsEditorSubmit,
     handleSettingOptionSubmit,
+    handleSettingStep,
     handleTogglePinnedSessionWrapper,
     executeCommand,
   }
