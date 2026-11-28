@@ -75,7 +75,10 @@ function createTmuxBackend(mutations: string[]): MultiplexerBackend {
     start: unexpected('start'),
     rename: unexpected('rename'),
     close: unexpected('close'),
-    current: unexpected('current'),
+    // A read the picker makes at startup to place its cursor; this fixture runs outside tmux.
+    async current() {
+      return undefined
+    },
     directory: unexpected('directory'),
     openEditor: unexpected('openEditor'),
   }

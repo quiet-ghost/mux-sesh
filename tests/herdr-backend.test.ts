@@ -369,6 +369,24 @@ describe('Herdr backend', () => {
     expect(listed[3]?.agentStatus).toBe('unknown')
   })
 
+  test('names the focused workspace as current, never the agent in its focused pane', async () => {
+    const { runner, commands } = recordingRunner([{ exitCode: 0, stdout: snapshot, stderr: '' }])
+    const backend = createHerdrBackend({ runner, insideHerdr: true })
+
+    await backend.list()
+
+    expect(await backend.current()).toEqual({ backend: 'herdr', id: 'w1', title: 'api' })
+    expect(commands).toEqual([['herdr', 'api', 'snapshot']])
+  })
+
+  test('has no current workspace when the snapshot reports none focused', async () => {
+    const unfocused = snapshot.replace('"focused_workspace_id":"w1"', '"focused_workspace_id":null')
+    expect(unfocused).not.toBe(snapshot)
+    const { runner } = recordingRunner([{ exitCode: 0, stdout: unfocused, stderr: '' }])
+
+    expect(await createHerdrBackend({ runner, insideHerdr: true }).current()).toBeUndefined()
+  })
+
   test('rejects an agent whose pane is not in the same snapshot', async () => {
     const dangling = JSON.stringify({
       result: {

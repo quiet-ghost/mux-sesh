@@ -56,6 +56,10 @@ enter to focus it
 1-9 to open a visible row directly
 ```
 
+The cursor starts on the session or workspace you opened mux-sesh from, popups included. If
+that is unknown or not listed, it starts at the top. A key pressed before it is known keeps the
+cursor where you put it.
+
 ## Search
 
 In vim mode, search is explicit:

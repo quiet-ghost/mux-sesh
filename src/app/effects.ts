@@ -27,6 +27,7 @@ import { getItemKey } from '../multiplexer/items'
 import { describeDiscoveryFailures } from '../tmux/project-discovery-service'
 import { subscribeProjectDiscoveryFailures } from '../tmux/projects'
 import { clampCursorIndex } from '../ui/list-window'
+import { useStartOnCurrentSession } from './start-cursor'
 
 export function useSystemThemeFollow(
   themeId: string | undefined,
@@ -309,6 +310,7 @@ interface UseAppBehaviorsOptions {
   cursor: number
   items: Item[]
   selectedPrimaryItem: Item | undefined
+  regularSessions: Item[]
   searchQuery: string
   allItems: Item[]
   setUpdatedVersion: Dispatch<SetStateAction<string | null>>
@@ -353,4 +355,5 @@ export function useAppBehaviors(options: UseAppBehaviorsOptions) {
     options.config,
     options.backend
   )
+  useStartOnCurrentSession(options)
 }

@@ -459,6 +459,7 @@ export function useAppController(invocationCwd: string) {
     cursor,
     items,
     selectedPrimaryItem,
+    regularSessions,
     searchQuery,
     allItems,
     setUpdatedVersion,

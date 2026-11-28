@@ -39,9 +39,10 @@ import { useLiveResolvedTheme } from '../../src/app/resolved-theme'
 import { createAppRuntime } from '../../src/app/runtime'
 import { AppScreen } from '../../src/app/screen'
 import { useSessionInventory } from '../../src/app/session-inventory'
+import { useStartOnCurrentSession } from '../../src/app/start-cursor'
 import { useEffectRuntime } from '../../src/app/use-effect-runtime'
 import { getDefaultConfig } from '../../src/config'
-import type { LiveWorkspace, MultiplexerBackend } from '../../src/multiplexer'
+import type { LiveWorkspace, MultiplexerBackend, WorkspaceRef } from '../../src/multiplexer'
 import { filterAndSortItems } from '../../src/search'
 import type { FileSearchOutcome } from '../../src/search/fff'
 import type { OpenHistory } from '../../src/search/frecency-store'
@@ -117,6 +118,8 @@ interface SessionScreenData {
   keybindMode?: KeybindMode
   theme?: string
   workspaces?: LiveWorkspace[]
+  // The default backend's current(); defaults to refusing, which leaves the cursor at the top.
+  current?: () => Promise<WorkspaceRef | undefined>
   backend?: MultiplexerBackend
   projects?: Item[]
   // Candidate discovery for New; defaults to resolving the fixture projects at once.
@@ -317,6 +320,8 @@ function SessionScreenFixture({ fixture }: { fixture: SessionFixture }) {
     core.setCursor,
     filterItems
   )
+
+  useStartOnCurrentSession({ ...core, ...derived, backend })
 
   const launcherFiles = useLauncherQuery(
     { ...core, config, backend, setMessage: core.setFileSearchStatus },
@@ -560,7 +565,7 @@ export async function renderSessionScreen(
     start: unsupportedFixtureAction,
     rename: unsupportedFixtureAction,
     close: unsupportedFixtureAction,
-    current: unsupportedFixtureAction,
+    current: data.current ?? unsupportedFixtureAction,
     directory: unsupportedFixtureAction,
     openEditor: unsupportedFixtureAction,
   }
