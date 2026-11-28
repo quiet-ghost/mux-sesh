@@ -22,17 +22,16 @@ import { requestShutdown } from '../lifecycle/shutdown'
 import { movePinAfterRename } from '../config/pinned-sessions'
 import type { CleanupBatch, CloseReceipt } from '../sessions/cleanup-batch'
 import { CleanupPlan } from '../sessions/cleanup-plan'
+import { getSettingEditorTitle } from '../settings/settings-catalog'
 import {
   applyEditorSetting,
   applyOptionSetting,
   editSetting,
-  getSettingEditorTitle,
-  getSettingDisplayValue,
-  getSettingEditorValue,
   isSettingsChange,
   resetSetting,
   stepSetting,
-} from '../settings/settings-catalog'
+} from '../settings/settings-edit'
+import { getSettingDisplayValue, getSettingEditorValue } from '../settings/settings-view'
 import { IconsForm, type IconsChange, type IconsFormAction } from '../settings/settings-icons'
 import * as SessionActions from './session-actions'
 

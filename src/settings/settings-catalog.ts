@@ -1,11 +1,9 @@
 import * as Schema from 'effect/Schema'
-import { getDefaultConfig, normalizeConfig, serializeConfig } from '../config'
-import { checkConfigDocument, type ConfigIssue } from '../config/config-document'
+import { getDefaultConfig, serializeConfig } from '../config'
 import { PrefixKey } from '../config/prefix-key'
 import { BUILTIN_THEMES, DEFAULT_THEME_ID, SYSTEM_THEME_ID, getBuiltinTheme } from '../styles/theme'
 import type { Config, KeybindMode, SortOrder, ThemeColorScheme, ZoxideMode } from '../types'
 import { toHomeRelativePath } from '../util/path-display'
-import { JsonSyntaxIssue } from './json-syntax'
 
 export type SettingsFieldId =
   | 'theme'
@@ -122,7 +120,7 @@ interface TextSetting extends SettingInfo {
 // Lists and rules, edited as JSON until they have their own editors. They are never reset with
 // one key: that would drop every entry with no way back. `key` is the config file key: the raw
 // JSON editor shows that value as the file would hold it.
-interface JsonSetting extends SettingInfo {
+export interface JsonSetting extends SettingInfo {
   kind: 'json'
   key: JsonDocumentKey
   read: (config: Config) => JsonSettingValue
@@ -142,18 +140,18 @@ export type ListSettingId = 'projectPaths' | 'hiddenSessions' | 'pinnedSessions'
 export type RulesSettingId = 'projects' | 'wildcards'
 
 // A list of strings, edited row by row; its "Edit as JSON…" row opens the JSON editor.
-interface ListSetting extends Omit<JsonSetting, 'kind' | 'id'> {
+export interface ListSetting extends Omit<JsonSetting, 'kind' | 'id'> {
   kind: 'list'
   id: ListSettingId
 }
 
 // Project or wildcard rules, edited in a rule list and a form per rule.
-interface RulesSetting extends Omit<JsonSetting, 'kind' | 'id'> {
+export interface RulesSetting extends Omit<JsonSetting, 'kind' | 'id'> {
   kind: 'rules'
   id: RulesSettingId
 }
 
-type SettingDefinition =
+export type SettingDefinition =
   | ChoiceSetting
   | PickerSetting
   | NumberSetting
@@ -174,7 +172,7 @@ interface SerializedSessionDefaults {
 }
 
 // JSON-edited values stay unparsed here; normalizeConfig validates every serialized field.
-interface SerializedConfigPatch {
+export interface SerializedConfigPatch {
   repos_path?: string
   editor?: string
   default_session?: SerializedSessionDefaults
@@ -185,7 +183,7 @@ interface SerializedConfigPatch {
   wildcards?: unknown
 }
 
-type JsonDocumentKey =
+export type JsonDocumentKey =
   'project_paths' | 'hidden_sessions' | 'pinned_sessions' | 'projects' | 'wildcards'
 
 type JsonSettingValue = NonNullable<
@@ -245,10 +243,14 @@ const DEFAULT_STARTUP_LABEL = 'nvim (Telescope)'
 // A sample project path whose last segments preview what a Name depth keeps.
 const NAME_DEPTH_SAMPLE = ['home', 'you', 'src', 'work', 'dev', 'mux-sesh'] as const
 
-const decodeJsonText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Json))
+export const decodeJsonText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Json))
 
 // The value as the config file holds it, so the raw JSON editor shows the file's own keys.
-function formatJSON(config: Config, key: JsonDocumentKey, fallback: JsonSettingValue): string {
+export function formatJSON(
+  config: Config,
+  key: JsonDocumentKey,
+  fallback: JsonSettingValue
+): string {
   return JSON.stringify(serializeConfig(config)[key] ?? fallback, null, 2)
 }
 
@@ -634,14 +636,14 @@ const SETTINGS = {
   },
 } satisfies { readonly [Id in SettingsFieldId]: SettingDefinition & { id: Id } }
 
-const SETTINGS_LIST = Object.values<SettingDefinition>(SETTINGS)
+export const SETTINGS_LIST = Object.values<SettingDefinition>(SETTINGS)
 
-function getSetting(field: SettingsFieldId): SettingDefinition {
+export function getSetting(field: SettingsFieldId): SettingDefinition {
   return SETTINGS[field]
 }
 
 // Lists and rules are JSON underneath: the JSON editor reads and writes them as one document.
-function isJsonEdited(
+export function isJsonEdited(
   setting: SettingDefinition
 ): setting is JsonSetting | ListSetting | RulesSetting {
   return setting.kind === 'json' || setting.kind === 'list' || setting.kind === 'rules'
@@ -669,7 +671,7 @@ function optionLabel(options: readonly SettingsOption[], value: string): string 
   return options.find(option => option.value === value)?.label ?? value
 }
 
-function displayValue(setting: SettingDefinition, config: Config): string {
+export function displayValue(setting: SettingDefinition, config: Config): string {
   switch (setting.kind) {
     case 'choice':
     case 'picker':
@@ -687,7 +689,7 @@ function displayValue(setting: SettingDefinition, config: Config): string {
 }
 
 // The value as stored, compared with the default to decide whether it was changed.
-function storedValue(setting: SettingDefinition, config: Config): string {
+export function storedValue(setting: SettingDefinition, config: Config): string {
   switch (setting.kind) {
     case 'choice':
     case 'picker':
@@ -703,7 +705,7 @@ function storedValue(setting: SettingDefinition, config: Config): string {
   }
 }
 
-function controlOf(setting: SettingDefinition, config: Config): SettingsControl {
+export function controlOf(setting: SettingDefinition, config: Config): SettingsControl {
   switch (setting.kind) {
     case 'choice':
       return setting.options(config).length === 2 ? 'toggle' : 'cycle'
@@ -719,196 +721,20 @@ function controlOf(setting: SettingDefinition, config: Config): SettingsControl 
   }
 }
 
-function resetOf(setting: SettingDefinition, config: Config, defaults: Config): SettingsReset {
+export function resetOf(
+  setting: SettingDefinition,
+  config: Config,
+  defaults: Config
+): SettingsReset {
   if (storedValue(setting, config) === storedValue(setting, defaults)) return 'default'
 
   return isJsonEdited(setting) || setting.kind === 'form' ? 'unavailable' : 'available'
-}
-
-export function getSettingsEntries(config: Config, homeDir: string): SettingsEntry[] {
-  const defaults = getDefaultConfig(homeDir)
-
-  return SETTINGS_LIST.map(setting => ({
-    id: setting.id,
-    title: setting.title,
-    category: setting.category,
-    description: setting.description,
-    keywords: setting.keywords.join(' '),
-    value: displayValue(setting, config),
-    control: controlOf(setting, config),
-    reset: resetOf(setting, config, defaults),
-  }))
-}
-
-export function getSettingEditorValue(config: Config, field: SettingsFieldId): string {
-  const setting = getSetting(field)
-
-  switch (setting.kind) {
-    case 'text':
-      return setting.read(config)
-    case 'json':
-    case 'list':
-    case 'rules':
-      return formatJSON(config, setting.key, setting.read(config))
-    case 'picker':
-      return setting.custom ? setting.read(config) : ''
-    case 'choice':
-    case 'number':
-    case 'form':
-      return ''
-  }
-}
-
-const EDITOR_DESCRIPTION = 'Edit value and press Enter to apply immediately'
-
-export function getSettingEditorDescription(field: SettingsFieldId): string {
-  const setting = getSetting(field)
-
-  return setting.kind === 'picker' && setting.custom
-    ? setting.custom.description
-    : EDITOR_DESCRIPTION
-}
-
-export function getSettingOptions(config: Config, field: SettingsFieldId): SettingsOption[] {
-  const setting = getSetting(field)
-
-  return setting.kind === 'choice' || setting.kind === 'picker' ? setting.options(config) : []
-}
-
-// The stored value: an option value for choices, so it matches the picker's options.
-export function getSettingValue(config: Config, field: SettingsFieldId): string {
-  const setting = getSetting(field)
-
-  return isJsonEdited(setting) || setting.kind === 'form'
-    ? setting.summary(config)
-    : storedValue(setting, config)
-}
-
-// The value as the Settings row shows it.
-export function getSettingDisplayValue(config: Config, field: SettingsFieldId): string {
-  return displayValue(getSetting(field), config)
-}
-
-export function getSelectedOptionIndex(config: Config, field: SettingsFieldId): number {
-  const current = getSettingValue(config, field)
-
-  return Math.max(
-    0,
-    getSettingOptions(config, field).findIndex(option => option.value === current)
-  )
 }
 
 export function isOptionSetting(field: SettingsFieldId): boolean {
   const { kind } = getSetting(field)
 
   return kind === 'choice' || kind === 'picker'
-}
-
-export function applyOptionSetting(config: Config, field: SettingsFieldId, value: string): Config {
-  const setting = getSetting(field)
-
-  return setting.kind === 'choice' || setting.kind === 'picker'
-    ? setting.apply(config, value)
-    : config
-}
-
-function editorPatch(
-  setting: SettingDefinition,
-  config: Config,
-  value: string
-): SerializedConfigPatch | undefined {
-  switch (setting.kind) {
-    case 'text':
-      return setting.patch(config, value)
-    case 'json':
-    case 'list':
-    case 'rules':
-      return setting.patch(decodeJsonText(value))
-    case 'choice':
-    case 'picker':
-    case 'number':
-    case 'form':
-      return undefined
-  }
-}
-
-export function applyEditorSetting(
-  config: Config,
-  field: SettingsFieldId,
-  value: string,
-  homeDir: string
-): Config {
-  const patch = editorPatch(getSetting(field), config, value)
-
-  if (!patch) return config
-
-  // Round-trip through JSON text, as a save and reload would, so the merge is a plain JSON document.
-  const document = decodeJsonText(JSON.stringify({ ...serializeConfig(config), ...patch }))
-
-  return normalizeConfig(document, homeDir)
-}
-
-// An edit either makes the next config or says what to fix; nothing is saved from an invalid one.
-export type SettingEdit =
-  | { readonly kind: 'parsed'; readonly config: Config }
-  | { readonly kind: 'invalid'; readonly message: string }
-
-const SHOWN_ISSUES = 1
-
-// A config issue named from inside the edited value: `projects[0].listed` reads `[0].listed`.
-function describeIssue(issue: ConfigIssue, key: JsonDocumentKey): string {
-  const inner = issue.path.startsWith(key) ? issue.path.slice(key.length) : issue.path
-  const subject = inner.replace(/^\./, '') || 'The value'
-
-  if (issue.expected === 'required') return `${subject} is required`
-
-  if (issue.expected.startsWith('expected '))
-    return `${subject} must be ${issue.expected.slice('expected '.length)}`
-
-  return `${subject} is not valid`
-}
-
-function checkJsonSetting(
-  setting: JsonSetting | ListSetting | RulesSetting,
-  text: string
-): string | undefined {
-  const syntax = JsonSyntaxIssue.find(text)
-
-  if (syntax) return JsonSyntaxIssue.describe(syntax)
-
-  const document = decodeJsonText(JSON.stringify(setting.patch(decodeJsonText(text))))
-  const issues = checkConfigDocument(document)
-  const [first] = issues
-
-  if (!first) return undefined
-
-  const more = issues.length > SHOWN_ISSUES ? ` (and ${issues.length - SHOWN_ISSUES} more)` : ''
-
-  return `${describeIssue(first, setting.key)}${more}`
-}
-
-// Checks the text the way the config file is checked on load, then applies it.
-export function editSetting(
-  config: Config,
-  field: SettingsFieldId,
-  value: string,
-  homeDir: string
-): SettingEdit {
-  const setting = getSetting(field)
-
-  if (setting.kind === 'picker' && setting.custom) {
-    const parsed = setting.custom.parse(value)
-
-    return parsed.kind === 'parsed'
-      ? { kind: 'parsed', config: setting.apply(config, parsed.value) }
-      : { kind: 'invalid', message: parsed.reason }
-  }
-
-  const invalid = isJsonEdited(setting) ? checkJsonSetting(setting, value) : undefined
-
-  if (invalid) return { kind: 'invalid', message: invalid }
-
-  return { kind: 'parsed', config: applyEditorSetting(config, field, value, homeDir) }
 }
 
 // Lists and rules open the raw JSON editor (from their panes); other editable settings open a
@@ -920,78 +746,6 @@ export function isJsonSetting(field: SettingsFieldId): boolean {
 // Icons open their own form.
 export function isFormSetting(field: SettingsFieldId): boolean {
   return getSetting(field).kind === 'form'
-}
-
-// The value one step away: a number stops at its limits, choices wrap around. Undefined when the
-// setting does not step or is already at its limit.
-export function stepSetting(
-  config: Config,
-  field: SettingsFieldId,
-  direction: 1 | -1
-): Config | undefined {
-  const setting = getSetting(field)
-
-  switch (setting.kind) {
-    case 'number': {
-      const current = setting.read(config)
-
-      if (direction > 0 ? current >= setting.max : current <= setting.min) return undefined
-
-      return setting.apply(
-        config,
-        Math.min(setting.max, Math.max(setting.min, current + direction))
-      )
-    }
-
-    case 'choice': {
-      const options = setting.options(config)
-      const current = options.findIndex(option => option.value === setting.read(config))
-      const next = options[(current + direction + options.length) % options.length]
-
-      return next ? setting.apply(config, next.value) : undefined
-    }
-
-    case 'picker':
-    case 'text':
-    case 'json':
-    case 'list':
-    case 'rules':
-    case 'form':
-      return undefined
-  }
-}
-
-// The config with this setting back at its default; undefined when it already is, or when the
-// setting is a list that is never reset with one key.
-export function resetSetting(
-  config: Config,
-  field: SettingsFieldId,
-  homeDir: string
-): Config | undefined {
-  const setting = getSetting(field)
-  const defaults = getDefaultConfig(homeDir)
-
-  if (resetOf(setting, config, defaults) !== 'available') return undefined
-
-  switch (setting.kind) {
-    case 'choice':
-    case 'picker':
-      return setting.apply(config, setting.read(defaults))
-    case 'number':
-      return setting.apply(config, setting.read(defaults))
-    case 'text':
-      return applyEditorSetting(config, field, setting.read(defaults), homeDir)
-    case 'json':
-    case 'list':
-    case 'rules':
-    case 'form':
-      return undefined
-  }
-}
-
-// Saves compare the written document, so a change that writes the same file is no change.
-export function isSettingsChange(before: Config, after: Config): boolean {
-  return JSON.stringify(serializeConfig(before)) !== JSON.stringify(serializeConfig(after))
 }
 
 export function getSettingEditorTitle(field: SettingsFieldId): string {

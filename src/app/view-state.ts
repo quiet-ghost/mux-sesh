@@ -1,13 +1,8 @@
 import { resolvePrefixKey } from '../config'
 import { filterCommandEntries } from '../ui/CommandsModal'
 import { filterSettingsEntries, filterSettingsOptions } from '../settings/settings-search'
-import {
-  getSettingsEntries,
-  getSettingOptions,
-  getSettingValue,
-  type SettingsEntry,
-  type SettingsOption,
-} from '../settings/settings-catalog'
+import type { SettingsEntry, SettingsOption } from '../settings/settings-catalog'
+import { getSettingOptions, getSettingsEntries, getSettingValue } from '../settings/settings-view'
 import { IconsForm, type IconsFormEntry } from '../settings/settings-icons'
 import { AppMode, ViewMode, type Config, type Item } from '../types'
 import {

@@ -1,11 +1,7 @@
 import type { SetStateAction } from 'react'
 import type { ModalState } from './modals'
-import {
-  getSelectedOptionIndex,
-  getSettingOptions,
-  type SettingsFieldId,
-  type SettingsOption,
-} from '../settings/settings-catalog'
+import type { SettingsFieldId, SettingsOption } from '../settings/settings-catalog'
+import { getSelectedOptionIndex, getSettingOptions } from '../settings/settings-view'
 import type { Config } from '../types'
 
 // While an option picker is open, the highlighted option is the preview; the saved value lives

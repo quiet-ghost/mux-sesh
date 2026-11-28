@@ -1,11 +1,7 @@
 import type { TextareaRenderable } from '@opentui/core'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
-import {
-  getSettingEditorDescription,
-  type SettingsEntry,
-  type SettingsOption,
-  type SettingsFieldId,
-} from '../settings/settings-catalog'
+import type { SettingsEntry, SettingsOption, SettingsFieldId } from '../settings/settings-catalog'
+import { getSettingEditorDescription } from '../settings/settings-view'
 import type { CommandEntry } from '../ui/CommandsModal'
 import type { ModalState } from './modals'
 import type { SettingPaneState } from './setting-panes'

@@ -2,19 +2,23 @@ import { describe, expect, test } from 'bun:test'
 import * as Schema from 'effect/Schema'
 import { getDefaultConfig, normalizeConfig, serializeConfig } from '../src/config'
 import {
+  getSettingEditorTitle,
+  isOptionSetting,
+  type SettingsEntry,
+} from '../src/settings/settings-catalog'
+import {
   applyEditorSetting,
   applyOptionSetting,
   editSetting,
-  getSettingEditorTitle,
+  resetSetting,
+  stepSetting,
+} from '../src/settings/settings-edit'
+import {
+  getSettingDisplayValue,
   getSettingEditorValue,
   getSettingOptions,
   getSettingsEntries,
-  getSettingDisplayValue,
-  isOptionSetting,
-  resetSetting,
-  stepSetting,
-  type SettingsEntry,
-} from '../src/settings/settings-catalog'
+} from '../src/settings/settings-view'
 
 const decodeJsonText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Json))
 

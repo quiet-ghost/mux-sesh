@@ -3,12 +3,8 @@ import type { OperationReport } from './action-outcome'
 import type { CleanupBatch, CloseReceipt } from '../sessions/cleanup-batch'
 import { OptionPicker } from './option-picker'
 import type { SettingListPane, SettingPane, SettingRulesPane } from './setting-panes'
-import {
-  getSettingEditorValue,
-  isFormSetting,
-  isJsonSetting,
-  type SettingsFieldId,
-} from '../settings/settings-catalog'
+import { isFormSetting, isJsonSetting, type SettingsFieldId } from '../settings/settings-catalog'
+import { getSettingEditorValue } from '../settings/settings-view'
 import type { IconKind, IconsFormRow } from '../settings/settings-icons'
 import type { Config, Item } from '../types'
 
