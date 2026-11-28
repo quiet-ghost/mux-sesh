@@ -102,7 +102,7 @@ Keep a backup of your config before a major upgrade.
 - Updates detect compiled installs, verify the installed version afterwards, and leave mise and
   Homebrew installs to their own tools.
 - The README and the configuration, keybinding, workflow and theme docs are rewritten for 2.0.
-- Releases are published from CI with npm trusted publishing and signed provenance.
+- Releases are published from GitHub Actions with signed npm provenance, using npm trusted publishing (OIDC) for every package that has it configured.
 - Internal: the source tree is reorganized into domain modules; no behaviour change.
 
 ### Removed
